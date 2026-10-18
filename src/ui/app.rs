@@ -18,15 +18,30 @@ pub(crate) enum DrawState {
     /// No active draft.
     Idle,
     /// Freehand ink path under construction.
-    Ink { strokes: Vec<Vec<Pt>>, current: Vec<Pt> },
+    Ink {
+        strokes: Vec<Vec<Pt>>,
+        current: Vec<Pt>,
+    },
     /// Drawing a bounds-based shape (rectangle, ellipse, cloud, text box, ...).
-    Bounds { start: Pt, kind: MarkupKind, geometry: MarkupGeometry },
+    Bounds {
+        start: Pt,
+        kind: MarkupKind,
+        geometry: MarkupGeometry,
+    },
     /// Drawing a segment (line, arrow, measure length/diameter/radius).
     Segment { start: Pt, kind: MarkupKind },
     /// Drawing a path (polyline, polygon, measure perimeter/area).
-    Path { points: Vec<Pt>, kind: MarkupKind, closed: bool },
+    Path {
+        points: Vec<Pt>,
+        kind: MarkupKind,
+        closed: bool,
+    },
     /// Drawing a three-point angle.
-    Angle { a: Pt, vertex: Option<Pt>, kind: MarkupKind },
+    Angle {
+        a: Pt,
+        vertex: Option<Pt>,
+        kind: MarkupKind,
+    },
     /// Placing a count marker.
     Count { kind: MarkupKind },
 }
@@ -64,7 +79,8 @@ impl Default for UiState {
             zoom: 1.0,
             pan: Vec2::ZERO,
             page_origin: Pos2::new(40.0, 40.0),
-            hint: "Ctrl+S: Save  ·  Ctrl+Z: Undo  ·  Ctrl+Shift+Z: Redo  ·  Del: Delete".to_string(),
+            hint: "Ctrl+S: Save  ·  Ctrl+Z: Undo  ·  Ctrl+Shift+Z: Redo  ·  Del: Delete"
+                .to_string(),
             status: "Ready".to_string(),
             dirty: false,
         }
@@ -110,7 +126,9 @@ impl RubricApp {
     }
 
     fn measure_scale(&self) -> Scale {
-        self.page_of_active_doc().map(|p| p.scale).unwrap_or(Scale::PAPER)
+        self.page_of_active_doc()
+            .map(|p| p.scale)
+            .unwrap_or(Scale::PAPER)
     }
 
     fn clear_selection(&mut self) {
@@ -315,6 +333,7 @@ impl App for RubricApp {
             self.push_snapshot("drawing");
         }
 
-        ui.ctx().request_repaint_after(Duration::from_secs_f32(0.25));
+        ui.ctx()
+            .request_repaint_after(Duration::from_secs_f32(0.25));
     }
 }

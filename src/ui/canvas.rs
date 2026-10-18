@@ -138,10 +138,7 @@ fn draw_markup(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup
         }
         MarkupGeometry::Ink { strokes } => {
             for s in strokes {
-                let pts: Vec<Pos2> = s
-                    .iter()
-                    .map(|p| to_screen(*p, pan, zoom, origin))
-                    .collect();
+                let pts: Vec<Pos2> = s.iter().map(|p| to_screen(*p, pan, zoom, origin)).collect();
                 if pts.len() >= 2 {
                     painter.add(egui::Shape::line(pts, stroke_eg));
                 }

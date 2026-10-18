@@ -1,10 +1,10 @@
 //! Domain tests: geometry, measurements, hit testing, serialization round-trips.
 
 use rubric::domain::{
-    Markup, MarkupGeometry, MarkupKind, Document, Page, Project, Pt, Rect, ReviewStatus, Scale,
-    units::MeasureUnit,
+    geom::{angle_degrees, path_length, polygon_area},
     style::palette,
-    geom::{path_length, polygon_area, angle_degrees},
+    units::MeasureUnit,
+    Document, Markup, MarkupGeometry, MarkupKind, Page, Project, Pt, Rect, ReviewStatus, Scale,
 };
 
 fn foot_scale() -> Scale {
@@ -56,7 +56,10 @@ fn measure_length_and_radius() {
     let mut mlen = Markup::new(
         0,
         MarkupKind::MeasureLength,
-        MarkupGeometry::Segment { a: Pt::new(0.0, 0.0), b: Pt::new(144.0, 0.0) },
+        MarkupGeometry::Segment {
+            a: Pt::new(0.0, 0.0),
+            b: Pt::new(144.0, 0.0),
+        },
         "t",
     );
     mlen.recompute_measurement(foot_scale());
@@ -65,7 +68,10 @@ fn measure_length_and_radius() {
     let mut mr = Markup::new(
         0,
         MarkupKind::MeasureRadius,
-        MarkupGeometry::Segment { a: Pt::new(0.0, 0.0), b: Pt::new(144.0, 0.0) },
+        MarkupGeometry::Segment {
+            a: Pt::new(0.0, 0.0),
+            b: Pt::new(144.0, 0.0),
+        },
         "t",
     );
     mr.recompute_measurement(foot_scale());
@@ -74,7 +80,12 @@ fn measure_length_and_radius() {
 
 #[test]
 fn review_status_and_style_defaults() {
-    let m = Markup::new(0, MarkupKind::Highlight, MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0)), "a");
+    let m = Markup::new(
+        0,
+        MarkupKind::Highlight,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0)),
+        "a",
+    );
     assert_eq!(m.status, ReviewStatus::None);
     assert_eq!(m.style.stroke, palette::YELLOW);
 }
@@ -83,7 +94,12 @@ fn review_status_and_style_defaults() {
 fn project_save_load_roundtrip() {
     let mut proj = Project::new("Test Project");
     let mut doc = Document::empty("Doc1");
-    let m = Markup::new(0, MarkupKind::Rectangle, MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 50.0, 40.0)), "a");
+    let m = Markup::new(
+        0,
+        MarkupKind::Rectangle,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 50.0, 40.0)),
+        "a",
+    );
     doc.add_markup(m);
     proj.add_document(doc);
     let json = serde_json::to_string_pretty(&proj).expect("ser");

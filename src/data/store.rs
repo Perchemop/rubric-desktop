@@ -29,7 +29,11 @@ pub fn default_project_path(name: &str) -> Option<PathBuf> {
         .collect::<String>()
         .trim()
         .replace(' ', "_");
-    let safe = if safe.is_empty() { "untitled".into() } else { safe };
+    let safe = if safe.is_empty() {
+        "untitled".into()
+    } else {
+        safe
+    };
     project_dir().map(|d| d.join(format!("{safe}.rubric.json")))
 }
 

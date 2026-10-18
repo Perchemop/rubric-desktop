@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::geom::{self, Pt, Rect};
-use super::style::{Color, FillMode, MarkupStyle, palette};
+use super::style::{palette, Color, FillMode, MarkupStyle};
 use super::units::{self, MeasureKind, Scale};
 
 /// The tool / shape family of a markup.
@@ -147,9 +147,10 @@ impl MarkupKind {
             | MarkupKind::Callout
             | MarkupKind::Note
             | MarkupKind::Stamp => ToolGroup::Review,
-            MarkupKind::Rectangle | MarkupKind::Ellipse | MarkupKind::Cloud | MarkupKind::Polygon => {
-                ToolGroup::Shapes
-            }
+            MarkupKind::Rectangle
+            | MarkupKind::Ellipse
+            | MarkupKind::Cloud
+            | MarkupKind::Polygon => ToolGroup::Shapes,
             MarkupKind::Polyline | MarkupKind::Line | MarkupKind::Arrow | MarkupKind::Ink => {
                 ToolGroup::Paths
             }
@@ -412,7 +413,12 @@ pub struct Markup {
 }
 
 impl Markup {
-    pub fn new(page: usize, kind: MarkupKind, geometry: MarkupGeometry, author: impl Into<String>) -> Self {
+    pub fn new(
+        page: usize,
+        kind: MarkupKind,
+        geometry: MarkupGeometry,
+        author: impl Into<String>,
+    ) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4(),
@@ -460,7 +466,9 @@ impl Markup {
                     outer.contains(p) && !inner.contains(p)
                 }
             }
-            MarkupGeometry::Segment { a, b } => distance_to_segment(p, *a, *b) <= tolerance.max(3.0),
+            MarkupGeometry::Segment { a, b } => {
+                distance_to_segment(p, *a, *b) <= tolerance.max(3.0)
+            }
             MarkupGeometry::Path { points, closed } => {
                 let mut pts = points.clone();
                 if *closed {
@@ -471,12 +479,15 @@ impl Markup {
                 pts.windows(2)
                     .any(|w| distance_to_segment(p, w[0], w[1]) <= tolerance.max(3.0))
             }
-            MarkupGeometry::Ink { strokes } => strokes
-                .iter()
-                .any(|s| s.windows(2).any(|w| distance_to_segment(p, w[0], w[1]) <= tolerance.max(3.0))),
+            MarkupGeometry::Ink { strokes } => strokes.iter().any(|s| {
+                s.windows(2)
+                    .any(|w| distance_to_segment(p, w[0], w[1]) <= tolerance.max(3.0))
+            }),
             MarkupGeometry::Text { at, wrap, text } => {
                 let h = (text.lines().count().max(1) as f32) * 16.0;
-                Rect::new(at.x, at.y, *wrap, h).expanded(tolerance).contains(p)
+                Rect::new(at.x, at.y, *wrap, h)
+                    .expanded(tolerance)
+                    .contains(p)
             }
             MarkupGeometry::Callout { rect, tail, .. } => {
                 rect.expanded(tolerance).contains(p) || p.distance(*tail) <= tolerance.max(4.0)
@@ -597,7 +608,11 @@ mod tests {
         );
         m.recompute_measurement(scale());
         let meas = m.measurement.unwrap();
-        assert!((meas.value - 10.0).abs() < 1e-6, "720 pt = 10 ft, got {}", meas.value);
+        assert!(
+            (meas.value - 10.0).abs() < 1e-6,
+            "720 pt = 10 ft, got {}",
+            meas.value
+        );
     }
 
     #[test]
@@ -656,7 +671,10 @@ mod tests {
             "t",
         );
         assert!(rect.hit_test(Pt::new(0.0, 50.0), 2.0), "on the left edge");
-        assert!(!rect.hit_test(Pt::new(50.0, 50.0), 2.0), "centre of empty rect");
+        assert!(
+            !rect.hit_test(Pt::new(50.0, 50.0), 2.0),
+            "centre of empty rect"
+        );
 
         let highlight = Markup::new(
             0,
@@ -664,7 +682,10 @@ mod tests {
             MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 100.0, 20.0)),
             "t",
         );
-        assert!(highlight.hit_test(Pt::new(50.0, 10.0), 2.0), "fills are hit inside");
+        assert!(
+            highlight.hit_test(Pt::new(50.0, 10.0), 2.0),
+            "fills are hit inside"
+        );
     }
 
     #[test]
@@ -685,7 +706,11 @@ mod tests {
             0,
             MarkupKind::Polygon,
             MarkupGeometry::Path {
-                points: vec![Pt::new(10.0, 10.0), Pt::new(30.0, 12.0), Pt::new(20.0, 40.0)],
+                points: vec![
+                    Pt::new(10.0, 10.0),
+                    Pt::new(30.0, 12.0),
+                    Pt::new(20.0, 40.0),
+                ],
                 closed: true,
             },
             "t",

@@ -2,8 +2,8 @@
 
 use eframe::{egui, NativeOptions, Result};
 
-use rubric::ui::RubricApp;
 use rubric::ui::icons::load_icon_arc;
+use rubric::ui::RubricApp;
 
 fn main() -> Result {
     tracing_subscriber::fmt()

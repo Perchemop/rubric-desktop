@@ -4,4 +4,4 @@ pub mod error;
 pub mod store;
 
 pub use error::DataError;
-pub use store::{load_project, save_project, project_dir, default_project_path};
+pub use store::{default_project_path, load_project, project_dir, save_project};

@@ -69,7 +69,8 @@ pub enum DashPattern {
 }
 
 impl DashPattern {
-    pub const ALL: [DashPattern; 3] = [DashPattern::Solid, DashPattern::Dashed, DashPattern::Dotted];
+    pub const ALL: [DashPattern; 3] =
+        [DashPattern::Solid, DashPattern::Dashed, DashPattern::Dotted];
 
     pub fn label(self) -> &'static str {
         match self {

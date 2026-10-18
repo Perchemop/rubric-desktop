@@ -42,7 +42,10 @@ pub(crate) fn draw_inspector(
                 project.rename(name);
             }
             ui.label("Author");
-            if ui.text_edit_singleline(&mut project.settings.author).changed() {
+            if ui
+                .text_edit_singleline(&mut project.settings.author)
+                .changed()
+            {
                 *status = "Author updated".to_string();
             }
             ComboBox::from_label("Unit")
