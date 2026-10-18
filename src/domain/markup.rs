@@ -530,7 +530,7 @@ impl Markup {
         };
         let value = match kind {
             MeasureKind::Angle | MeasureKind::Count => raw,
-            MeasureKind::Area => raw * ((points.units_per_point as f64).powi(2)),
+            MeasureKind::Area => raw * (points.units_per_point * points.units_per_point),
             _ => points.points_to_units(raw),
         };
         self.measurement = Some(Measurement {
