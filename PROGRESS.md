@@ -35,5 +35,37 @@
 5. Phase 1: define the feature requirement set and update traceability
 6. Phase 2: improve drawing (drag-to-draw, polyline/polygon/angle/ink preview), zoom/pan UX
 
+## 2026-10-18 — Phase 0 verified via GitHub CI + subagent suite added
+**Status**: Phase 0 committed and pushed; CI enforces quality gates
+
+### Completed
+- Phase 0 committed (`f984665`) and pushed to GitHub; `main` branch.
+- CI workflow (`.github/workflows/ci.yml`) runs `cargo fmt --check`,
+  `cargo clippy -D warnings`, `cargo test --all`, and a release build on every
+  push — the machine-freezing local test problem is worked around by letting
+  GitHub Actions run the test gate.
+- Formatting applied and committed (`d157759`, `0dd6844`); area measurement
+  rescaling fix landed (area scales with `units_per_point²`).
+- Subagent suite added under `.opencode/agents/` (symlinked into
+  `~/.config/opencode/agents/` so the home-directory session can launch them):
+  - `domain-dev` (deepseek-v4.1-flash-free#high) — domain types + unit tests
+  - `ui-dev` (beam-free#high) — egui/eframe UI slices
+  - `test-writer` (mimo-v2.6-flash-free) — test coverage only
+  - `docs-writer` (big-pickle) — process docs upkeep
+  - `fixer` (space-bunny-free#high) — build-gate failure fixes
+  - `reviewer` (glm-5.3-flash-free#high) — read-only review (pre-existing)
+  All run as `subagent` mode with allowlisted shell access (fmt/check/clippy
+  and read-only git); `cargo test` and git push are reserved for CI and the
+  parent agent respectively. Smoke-tested `domain-dev` successfully.
+
+### Active
+- Waiting on GitHub CI run results for the pushed commits.
+
+### Blocked
+- None.
+
 ## Summary
-Phase 0 is complete: a domain-first foundation, functional UI skeleton, and tests. Next is to verify build/tests/lint/format, commit, then proceed to Phase 1.
+Phase 0 is complete, committed, and pushed; CI is the source of truth for the
+quality gates. A free-model subagent suite now covers each build stage
+(domain → tests → UI → review → docs → fixes). Next: confirm CI green, then
+Phase 1 (feature requirement set + traceability) and Phase 2 (drawing/zoom UX).

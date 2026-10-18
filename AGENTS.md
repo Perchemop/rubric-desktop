@@ -30,6 +30,16 @@ Build a free, cross-platform Rust PDF markup/measurement desktop app (egui/efram
 - Hit testing: use tolerance; prefer segment/bounds hit tests per geometry.
 - Undo/redo: project snapshots in `History` (bounded to 128). Push snapshot on destructive/committed actions; avoid spamming during live drags.
 
+## Subagent pipeline
+Specialised subagents live in `.opencode/agents/` and split the build by stage:
+`domain-dev` (types + unit tests) → `test-writer` (coverage) → `ui-dev` (egui
+slices) → `reviewer` (read-only review) → `docs-writer` (process docs) →
+`fixer` (fmt/clippy/check failures). All run on free OpenCode models in
+`subagent` mode. Conventions: subagents never commit or push (the parent
+does), and never run `cargo test` locally (GitHub Actions CI runs the suite
+because local runs destabilise the host); they may run `cargo fmt`,
+`cargo check`, and `cargo clippy` plus read-only `git status`/`git diff`.
+
 ## Do not
 - Commit any notes about other products or external reference material.
 - Introduce AGPL/GPL dependencies without approval.
