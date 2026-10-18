@@ -1,0 +1,29 @@
+# External reference material (never commit, never push)
+# Any documents describing other products, or internal planning that references
+# them, live outside this repository and must stay there.
+docs/spec/
+*.pdf
+*_App_Build_Guide.md
+*_Build_Guide.md
+
+# Secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.keystore
+*.jks
+*.p12
+*.pem
+
+# Rust / build
+/target/
+**/*.rs.bk
+*.profraw
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
