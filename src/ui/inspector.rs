@@ -4,7 +4,11 @@ use uuid::Uuid;
 
 use eframe::egui::{self, ComboBox, Ui};
 
-use crate::domain::{style::Color, units::MeasureUnit, Project, ReviewStatus, Scale};
+use crate::domain::{
+    style::Color,
+    units::{MeasureUnit, MAX_PRECISION},
+    Project, ReviewStatus, Scale,
+};
 use crate::ui::app::UiState;
 
 fn color32_to_domain(c: egui::Color32) -> Color {
@@ -154,6 +158,27 @@ pub(crate) fn draw_inspector(
             }
 
             ui.separator();
+            ui.label("Precision (decimal places)");
+            let precision_before = project.settings.precision;
+            let mut precision = precision_before;
+            let precision_resp = ui.add(
+                egui::DragValue::new(&mut precision)
+                    .speed(1.0)
+                    .range(0..=MAX_PRECISION),
+            );
+            if precision_resp.changed() {
+                project.settings.set_precision(precision);
+            }
+            // Commit once per drag/entry: snapshot only on release / focus loss.
+            if project.settings.precision != precision_before
+                && (precision_resp.drag_stopped() || precision_resp.lost_focus())
+            {
+                project.touch();
+                committed = true;
+                ui_state.status = format!("Precision → {}", project.settings.precision);
+            }
+
+            ui.separator();
             ui.label("Custom ratio: paper inches = real units");
             ui.horizontal(|ui| {
                 ui.label("1 in paper =");
@@ -265,7 +290,10 @@ pub(crate) fn draw_inspector(
             if let Some(meas) = m.measurement {
                 ui.separator();
                 ui.label("Measurement");
-                ui.small(format!("Value: {}", meas.label(scale.unit)));
+                ui.small(format!(
+                    "Value: {}",
+                    meas.label_with(scale.unit, project.settings.precision)
+                ));
                 ui.small(format!("Points: {:.2} pt", meas.value_points));
                 ui.small(format!(
                     "Scale: {:.6} {}/pt",

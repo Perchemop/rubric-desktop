@@ -173,7 +173,7 @@
 - None.
 
 ## 2026-10-19 — Phase 3: measurement labels + scale editor
-**Status**: implemented + reviewed + fixed; awaiting CI verification
+**Status**: CI-verified green (`e76a816`) — fmt, clippy, tests (incl. 3 new units tests), release build. 1 CI follow-up fix (`Painter::layout_no_wrap` for egui 0.36).
 
 ### Completed
 - UI (`ui-dev`): measurement labels on canvas — screen-space 12 pt text with
@@ -200,14 +200,39 @@
   comment add now snapshots once. fmt clean.
 
 ### Active
-- Pushing Phase 3; CI is the compile/clippy/test gate (new units tests run
-  there).
+- Label/scale slice CI-verified green (`e76a816`); precision slice pushed
+  next (see entry below).
+
+### Blocked
+- None.
+
+## 2026-10-19 — Phase 3 completion: precision preference
+**Status**: implemented + reviewed clean; awaiting CI verification
+
+### Completed
+- Domain (`domain-dev`): `Settings::precision` (u8, serde default 3 — legacy
+  `.rubric.json` loads unchanged), `set_precision` clamped 0..=6,
+  `format_value_precise` + `DEFAULT_PRECISION`/`MAX_PRECISION` consts,
+  `Measurement::label_with(unit, precision)`; `format_value`/`label` kept as
+  wrappers with identical behaviour. Angle fixed at 2 decimals, count at 0.
+  11 new tests (formatting, clamping, legacy JSON load, roundtrip).
+- UI (`ui-dev`): inspector Precision DragValue (0..=6) — `changed()` applies
+  live, snapshot only on `drag_stopped() || lost_focus()` with a frame-start
+  before-value diff (one snapshot per edit, none per keystroke); canvas +
+  inspector measurement displays use `label_with(…, settings.precision)`.
+- Review (`reviewer`): no material defects; recommended push. Findings: CHANGELOG
+  entry missing (added), info-level note that hand-edited out-of-range
+  `precision` in JSON loads unclamped but is clamped at every formatter/writer
+  (accepted — `format_value_precise` clamps defensively).
+
+### Active
+- Pushing precision slice; Phase 3 then fully complete.
 
 ### Blocked
 - None.
 
 ## Summary
 Phase 1 complete; Phase 2 slices A + B complete and CI-green; Phase 3
-(measurement labels, scale editor, unit selection) implemented through the
-pipeline (domain → ui → reviewer → fixer → CI). Next: precision/formatting
-preferences, then review-workflow UI (Phase 4).
+(measurement labels, scale editor, unit selection, precision preference)
+implemented through the pipeline (domain → ui → reviewer → CI). Next: review
+workflow UI (Phase 4): layers, status colours/legend, stamps, callout editing.

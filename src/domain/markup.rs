@@ -381,8 +381,17 @@ pub struct Measurement {
 }
 
 impl Measurement {
+    /// Human-readable label using the default measurement precision.
     pub fn label(&self, unit: units::MeasureUnit) -> String {
-        units::format_value(self.kind, unit, self.value)
+        self.label_with(unit, units::DEFAULT_PRECISION)
+    }
+
+    /// Human-readable label using `precision` decimal places for linear and
+    /// area values.
+    ///
+    /// See [`units::format_value_precise`] for the angle/count handling rules.
+    pub fn label_with(&self, unit: units::MeasureUnit, precision: u8) -> String {
+        units::format_value_precise(self.kind, unit, self.value, precision)
     }
 }
 
@@ -986,6 +995,25 @@ mod tests {
         );
         assert!(m.hit_test(Pt::new(11.0, 10.0), 2.0));
         assert!(!m.hit_test(Pt::new(20.0, 10.0), 2.0));
+    }
+
+    #[test]
+    fn measurement_labels_honour_precision_and_default() {
+        let m = Measurement {
+            kind: MeasureKind::Length,
+            value: 12.3456,
+            value_points: 12.3456,
+        };
+        assert_eq!(m.label(units::MeasureUnit::Foot), "12.346 ft");
+        assert_eq!(m.label_with(units::MeasureUnit::Foot, 0), "12 ft");
+        assert_eq!(m.label_with(units::MeasureUnit::Foot, 1), "12.3 ft");
+
+        let angle = Measurement {
+            kind: MeasureKind::Angle,
+            value: 90.0,
+            value_points: 90.0,
+        };
+        assert_eq!(angle.label_with(units::MeasureUnit::Point, 6), "90.00°");
     }
 
     #[test]

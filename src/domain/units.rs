@@ -193,19 +193,58 @@ impl MeasureKind {
     }
 }
 
-/// Format a raw numeric measurement with the unit's suffix.
+/// Default number of decimal places for linear and area measurements.
+pub const DEFAULT_PRECISION: u8 = 3;
+
+/// Largest accepted number of decimal places.
+pub const MAX_PRECISION: u8 = 6;
+
+/// Clamp a requested precision to the supported range `0..=6`.
+pub fn clamp_precision(precision: u8) -> u8 {
+    precision.min(MAX_PRECISION)
+}
+
+/// Format a raw numeric measurement with the default precision.
+///
+/// This is a convenience wrapper around [`format_value_precise`] using
+/// [`DEFAULT_PRECISION`], so existing call sites keep their behaviour.
 pub fn format_value(kind: MeasureKind, unit: MeasureUnit, value: f64) -> String {
+    format_value_precise(kind, unit, value, DEFAULT_PRECISION)
+}
+
+/// Format a raw numeric measurement with the unit's suffix and `precision`
+/// decimal places.
+///
+/// The precision preference controls linear measurements (length, perimeter,
+/// diameter, radius) and areas (the same number of decimal places, suffix
+/// squared). Two kinds deliberately ignore it:
+///
+/// * [`MeasureKind::Angle`] is always shown with two decimals (`90.00°`):
+///   angular precision is conventionally fixed and independent of drawing
+///   units.
+/// * [`MeasureKind::Count`] is always shown as an integer (`3 count`) because
+///   counts are whole numbers.
+///
+/// `precision` is clamped to `0..=`[`MAX_PRECISION`] (0..=6), so callers may
+/// pass UI values without pre-validating them.
+pub fn format_value_precise(
+    kind: MeasureKind,
+    unit: MeasureUnit,
+    value: f64,
+    precision: u8,
+) -> String {
     if kind == MeasureKind::Angle {
         return format!("{value:.2}°");
     }
     if kind == MeasureKind::Count {
         return format!("{value:.0} count");
     }
+    let precision = usize::from(clamp_precision(precision));
     let suffix = unit.suffix();
     if kind.is_area() {
-        format!("{value:.3} {suffix}²")
+        format!("{value:.precision$} {suffix}²")
     } else {
-        format!("{value:.3} {suffix}")
+        format!("{value:.precision$} {suffix}")
     }
 }
 
@@ -275,5 +314,107 @@ mod tests {
             format_value(MeasureKind::Angle, MeasureUnit::Point, 90.0),
             "90.00°"
         );
+    }
+
+    #[test]
+    fn precise_formatting_respects_zero_decimal_places() {
+        assert_eq!(
+            format_value_precise(MeasureKind::Length, MeasureUnit::Foot, 12.0, 0),
+            "12 ft"
+        );
+        assert_eq!(
+            format_value_precise(MeasureKind::Length, MeasureUnit::Foot, 12.4, 0),
+            "12 ft"
+        );
+        assert_eq!(
+            format_value_precise(MeasureKind::Length, MeasureUnit::Foot, 12.6, 0),
+            "13 ft"
+        );
+    }
+
+    #[test]
+    fn precise_formatting_uses_requested_decimals() {
+        assert_eq!(
+            format_value_precise(MeasureKind::Length, MeasureUnit::Foot, 12.34, 1),
+            "12.3 ft"
+        );
+        assert_eq!(
+            format_value_precise(MeasureKind::Perimeter, MeasureUnit::Meter, 1.23456, 3),
+            "1.235 m"
+        );
+        assert_eq!(
+            format_value_precise(
+                MeasureKind::Diameter,
+                MeasureUnit::Millimeter,
+                1.234_567_89,
+                6
+            ),
+            "1.234568 mm"
+        );
+    }
+
+    #[test]
+    fn precise_formatting_clamps_precision_to_supported_range() {
+        assert_eq!(DEFAULT_PRECISION, 3);
+        assert_eq!(MAX_PRECISION, 6);
+        assert_eq!(clamp_precision(0), 0);
+        assert_eq!(clamp_precision(6), 6);
+        assert_eq!(clamp_precision(7), 6);
+        assert_eq!(clamp_precision(255), 6);
+        assert_eq!(
+            format_value_precise(MeasureKind::Length, MeasureUnit::Foot, 1.234_567_89, 99),
+            "1.234568 ft"
+        );
+        assert_eq!(
+            format_value_precise(MeasureKind::Length, MeasureUnit::Foot, 1.234_567_89, 99),
+            format_value_precise(
+                MeasureKind::Length,
+                MeasureUnit::Foot,
+                1.234_567_89,
+                MAX_PRECISION
+            )
+        );
+    }
+
+    #[test]
+    fn precise_area_uses_same_precision_and_squared_suffix() {
+        assert_eq!(
+            format_value_precise(MeasureKind::Area, MeasureUnit::Foot, 12.3456, 1),
+            "12.3 ft²"
+        );
+        assert_eq!(
+            format_value_precise(MeasureKind::Area, MeasureUnit::Foot, 12.0, 0),
+            "12 ft²"
+        );
+    }
+
+    #[test]
+    fn precise_formatting_keeps_angle_and_count_fixed() {
+        for precision in [0, 1, 3, 6, 99] {
+            assert_eq!(
+                format_value_precise(MeasureKind::Angle, MeasureUnit::Point, 90.0, precision),
+                "90.00°"
+            );
+            assert_eq!(
+                format_value_precise(MeasureKind::Count, MeasureUnit::Foot, 7.0, precision),
+                "7 count"
+            );
+        }
+    }
+
+    #[test]
+    fn default_formatting_matches_explicit_default_precision() {
+        let cases = [
+            (MeasureKind::Length, 12.3456),
+            (MeasureKind::Area, 12.3456),
+            (MeasureKind::Angle, 90.0),
+            (MeasureKind::Count, 7.0),
+        ];
+        for (kind, value) in cases {
+            assert_eq!(
+                format_value(kind, MeasureUnit::Foot, value),
+                format_value_precise(kind, MeasureUnit::Foot, value, DEFAULT_PRECISION)
+            );
+        }
     }
 }

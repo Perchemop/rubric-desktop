@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use super::document::Document;
 use super::markup::MarkupKind;
+use super::units::{clamp_precision, DEFAULT_PRECISION};
 
 /// Application-level settings (preferences).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -19,6 +20,16 @@ pub struct Settings {
     pub show_grid: bool,
     /// Whether to show measurement labels by default.
     pub show_measurements: bool,
+    /// Decimal places (0..=6) used when formatting linear and area
+    /// measurements. Older project files without this field default to 3.
+    #[serde(default = "default_precision")]
+    pub precision: u8,
+}
+
+/// Serde default for [`Settings::precision`], also used by projects saved
+/// before the preference existed.
+fn default_precision() -> u8 {
+    DEFAULT_PRECISION
 }
 
 impl Default for Settings {
@@ -30,7 +41,19 @@ impl Default for Settings {
             ui_scale: 1.0,
             show_grid: false,
             show_measurements: true,
+            precision: default_precision(),
         }
+    }
+}
+
+impl Settings {
+    /// Set the measurement decimal precision, clamped to the supported
+    /// `0..=6` range.
+    ///
+    /// Prefer this over assigning the field directly so out-of-range values
+    /// from UI widgets cannot be persisted.
+    pub fn set_precision(&mut self, precision: u8) {
+        self.precision = clamp_precision(precision);
     }
 }
 
@@ -365,5 +388,51 @@ impl History {
 
     pub fn clear(&mut self, initial: Project) {
         *self = History::new(initial);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn settings_default_precision_is_three() {
+        assert_eq!(Settings::default().precision, 3);
+    }
+
+    #[test]
+    fn settings_precision_setter_clamps_to_supported_range() {
+        let mut settings = Settings::default();
+        settings.set_precision(99);
+        assert_eq!(settings.precision, 6);
+        settings.set_precision(0);
+        assert_eq!(settings.precision, 0);
+        settings.set_precision(4);
+        assert_eq!(settings.precision, 4);
+    }
+
+    #[test]
+    fn settings_without_precision_field_loads_default() {
+        // A project saved before the preference existed has no `precision`.
+        let json = r#"{
+            "author": "Reviewer",
+            "auto_save": false,
+            "auto_save_interval_secs": 60,
+            "ui_scale": 1.0,
+            "show_grid": false,
+            "show_measurements": true
+        }"#;
+        let settings: Settings = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(settings.precision, 3);
+    }
+
+    #[test]
+    fn settings_precision_serde_roundtrip() {
+        let mut settings = Settings::default();
+        settings.set_precision(5);
+        let json = serde_json::to_string(&settings).expect("serialize");
+        let back: Settings = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, settings);
+        assert_eq!(back.precision, 5);
     }
 }

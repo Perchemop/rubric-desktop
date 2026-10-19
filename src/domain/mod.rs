@@ -14,4 +14,7 @@ pub use markup::{
 };
 pub use project::{History, Project, ProjectSnapshot, Settings, Tool, ToolSet};
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
-pub use units::{MeasureKind, MeasureUnit, Scale};
+pub use units::{
+    clamp_precision, format_value, format_value_precise, MeasureKind, MeasureUnit, Scale,
+    DEFAULT_PRECISION, MAX_PRECISION,
+};

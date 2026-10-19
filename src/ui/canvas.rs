@@ -324,7 +324,7 @@ pub(crate) fn draw_canvas(
             let unit = page.scale.unit;
             for m in doc.markups.iter().filter(|m| m.page == page.index) {
                 if let Some(meas) = m.measurement {
-                    let label = meas.label(unit);
+                    let label = meas.label_with(unit, project.settings.precision);
                     let anchor_page = measure_anchor(m);
                     let anchor = to_screen(anchor_page, pan, zoom, origin);
                     let font = FontId::proportional(12.0);

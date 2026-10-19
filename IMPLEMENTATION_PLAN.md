@@ -46,7 +46,7 @@
 - [x] Scale editor in inspector/settings (ratio presets: 1:1, 1 in=1 ft, 1 in=10 ft, custom)
 - [x] Units dropdown in inspector (active doc/page scale unit)
 - [x] Measurement labels rendered on canvas
-- [ ] Precision/formatting preferences
+- [x] Precision/formatting preferences (Settings::precision 0–6, inspector DragValue)
 
 ## Phase 4 — Review workflow, layers, toolsets
 - [x] ReviewStatus, Comments, Subject/Author
