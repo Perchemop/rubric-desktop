@@ -639,7 +639,7 @@ pub(crate) fn draw_canvas(
     // Enter commits an in-progress multi-point sequence — but not while a text
     // field has focus (Enter there belongs to the widget, not the canvas).
     let enter_pressed = ui.ctx().input(|i| i.key_pressed(egui::Key::Enter));
-    let keyboard_taken = ui.ctx().memory(|m| m.wants_keyboard_input());
+    let keyboard_taken = ui.ctx().text_edit_focused();
     if enter_pressed && !keyboard_taken && !panning {
         match draw_state {
             super::app::DrawState::Path {
