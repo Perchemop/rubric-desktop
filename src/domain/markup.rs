@@ -449,40 +449,73 @@ impl Markup {
     }
 
     /// Hit test with a tolerance in page points.
+    ///
+    /// Filled closed shapes hit anywhere inside; unfilled (stroke-only) shapes
+    /// hit only near their outline, within `tolerance` of an edge or segment.
+    /// Highlights keep full-bounds hits and the remaining geometry kinds keep
+    /// their existing behaviour. The signature is stable for the UI layer.
     pub fn hit_test(&self, p: Pt, tolerance: f32) -> bool {
+        let tolerance = tolerance.max(0.0);
+        let filled = self.style.fill_mode != FillMode::None;
         match &self.geometry {
-            MarkupGeometry::Bounds(r) => {
-                if self.kind == MarkupKind::Highlight || self.style.fill_mode != FillMode::None {
-                    r.expanded(tolerance).contains(p)
-                } else {
-                    // Outline hit test: near the border, or inside for text-ish markups.
-                    let outer = r.expanded(tolerance);
-                    let inner = Rect::new(
-                        r.x + tolerance,
-                        r.y + tolerance,
-                        (r.w - 2.0 * tolerance).max(0.0),
-                        (r.h - 2.0 * tolerance).max(0.0),
-                    );
-                    outer.contains(p) && !inner.contains(p)
+            MarkupGeometry::Bounds(r) => match self.kind {
+                MarkupKind::Rectangle => {
+                    if filled {
+                        r.expanded(tolerance).contains(p)
+                    } else {
+                        distance_to_rect_border(*r, p) <= tolerance
+                    }
                 }
-            }
+                MarkupKind::Ellipse => {
+                    if filled {
+                        ellipse_contains(r.expanded(tolerance), p)
+                    } else {
+                        // Empty interior: hit only in the band around the
+                        // elliptical edge (inside outer, outside inner).
+                        ellipse_contains(r.expanded(tolerance), p)
+                            && !ellipse_contains(r.expanded(-tolerance), p)
+                    }
+                }
+                MarkupKind::Cloud => {
+                    // Approximation: a revision cloud is drawn as scalloped
+                    // bumps straddling the rectangle perimeter; the exact
+                    // scallop path lives in the renderer. Hit-testing therefore
+                    // uses the underlying rectangle border (unfilled) or the
+                    // rectangle interior (filled) as a close approximation.
+                    if filled {
+                        r.expanded(tolerance).contains(p)
+                    } else {
+                        distance_to_rect_border(*r, p) <= tolerance
+                    }
+                }
+                _ => {
+                    // Text-ish markups and highlights are hit anywhere in their
+                    // bounds; other unfilled bounds hit within an edge band.
+                    if self.kind == MarkupKind::Highlight || filled {
+                        r.expanded(tolerance).contains(p)
+                    } else {
+                        let outer = r.expanded(tolerance);
+                        let inner = Rect::new(
+                            r.x + tolerance,
+                            r.y + tolerance,
+                            (r.w - 2.0 * tolerance).max(0.0),
+                            (r.h - 2.0 * tolerance).max(0.0),
+                        );
+                        outer.contains(p) && !inner.contains(p)
+                    }
+                }
+            },
             MarkupGeometry::Segment { a, b } => {
                 distance_to_segment(p, *a, *b) <= tolerance.max(3.0)
             }
             MarkupGeometry::Path { points, closed } => {
-                let mut pts = points.clone();
-                if *closed {
-                    if let Some(first) = points.first() {
-                        pts.push(*first);
-                    }
-                }
-                pts.windows(2)
-                    .any(|w| distance_to_segment(p, w[0], w[1]) <= tolerance.max(3.0))
+                let tol = tolerance.max(3.0);
+                polyline_hit(p, points, *closed, tol)
+                    || (*closed && filled && point_in_polygon(points, p))
             }
-            MarkupGeometry::Ink { strokes } => strokes.iter().any(|s| {
-                s.windows(2)
-                    .any(|w| distance_to_segment(p, w[0], w[1]) <= tolerance.max(3.0))
-            }),
+            MarkupGeometry::Ink { strokes } => strokes
+                .iter()
+                .any(|s| polyline_hit(p, s, false, tolerance.max(3.0))),
             MarkupGeometry::Text { at, wrap, text } => {
                 let h = (text.lines().count().max(1) as f32) * 16.0;
                 Rect::new(at.x, at.y, *wrap, h)
@@ -585,6 +618,70 @@ pub(crate) fn distance_to_segment(p: Pt, a: Pt, b: Pt) -> f32 {
     let t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / len_sq).clamp(0.0, 1.0);
     let proj = Pt::new(a.x + t * dx, a.y + t * dy);
     p.distance(proj)
+}
+
+/// Whether `p` lies inside the axis-aligned ellipse inscribed in `r`.
+fn ellipse_contains(r: Rect, p: Pt) -> bool {
+    let a = r.w / 2.0;
+    let b = r.h / 2.0;
+    if a <= 0.0 || b <= 0.0 {
+        return false;
+    }
+    let c = r.center();
+    let nx = (p.x - c.x) / a;
+    let ny = (p.y - c.y) / b;
+    nx * nx + ny * ny <= 1.0
+}
+
+/// Minimum distance from `p` to the four edges of `r` (its border).
+fn distance_to_rect_border(r: Rect, p: Pt) -> f32 {
+    let tl = Pt::new(r.x, r.y);
+    let tr = Pt::new(r.right(), r.y);
+    let br = Pt::new(r.right(), r.bottom());
+    let bl = Pt::new(r.x, r.bottom());
+    distance_to_segment(p, tl, tr)
+        .min(distance_to_segment(p, tr, br))
+        .min(distance_to_segment(p, br, bl))
+        .min(distance_to_segment(p, bl, tl))
+}
+
+/// Even-odd (ray casting) point-in-polygon test.
+///
+/// Boundary results are implementation-defined, so callers should also accept
+/// a near-edge hit (see [`polyline_hit`]).
+fn point_in_polygon(points: &[Pt], p: Pt) -> bool {
+    if points.len() < 3 {
+        return false;
+    }
+    let n = points.len();
+    let mut inside = false;
+    for (i, a) in points.iter().enumerate() {
+        let b = points[(i + n - 1) % n];
+        if (a.y > p.y) != (b.y > p.y) {
+            let x = a.x + (p.y - a.y) / (b.y - a.y) * (b.x - a.x);
+            if p.x < x {
+                inside = !inside;
+            }
+        }
+    }
+    inside
+}
+
+/// Whether `p` is within `tol` of any segment of a polyline.
+///
+/// A closed path also tests the closing segment; a single-point stroke acts as
+/// a dot. Used by ink, polyline and closed path hit testing.
+fn polyline_hit(p: Pt, points: &[Pt], closed: bool, tol: f32) -> bool {
+    match points.len() {
+        0 => false,
+        1 => p.distance(points[0]) <= tol,
+        n => {
+            points
+                .windows(2)
+                .any(|w| distance_to_segment(p, w[0], w[1]) <= tol)
+                || (closed && distance_to_segment(p, points[n - 1], points[0]) <= tol)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -716,5 +813,199 @@ mod tests {
             "t",
         );
         assert_eq!(m.bounds(), Rect::new(10.0, 10.0, 20.0, 30.0));
+    }
+
+    /// Copy a markup with a different fill mode (the UI's fill toggle).
+    fn with_fill(mut m: Markup, mode: FillMode) -> Markup {
+        m.style.fill_mode = mode;
+        m
+    }
+
+    #[test]
+    fn filled_rectangle_hits_interior() {
+        let base = Markup::new(
+            0,
+            MarkupKind::Rectangle,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 100.0, 100.0)),
+            "t",
+        );
+        // Default style is stroke-only: the hollow centre is not a hit.
+        assert!(!base.hit_test(Pt::new(50.0, 50.0), 2.0), "hollow centre");
+        assert!(base.hit_test(Pt::new(0.0, 50.0), 2.0), "left edge");
+
+        let filled = with_fill(base, FillMode::Solid);
+        assert!(
+            filled.hit_test(Pt::new(50.0, 50.0), 2.0),
+            "filled rectangle is hit in its interior"
+        );
+        assert!(
+            !filled.hit_test(Pt::new(150.0, 50.0), 2.0),
+            "outside the tolerance band"
+        );
+    }
+
+    #[test]
+    fn unfilled_rectangle_hits_only_near_edge() {
+        let m = Markup::new(
+            0,
+            MarkupKind::Rectangle,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 100.0, 100.0)),
+            "t",
+        );
+        assert!(m.hit_test(Pt::new(50.0, 0.0), 2.0), "top edge");
+        assert!(
+            m.hit_test(Pt::new(50.0, -1.5), 2.0),
+            "just outside the top edge"
+        );
+        assert!(!m.hit_test(Pt::new(50.0, 50.0), 2.0), "hollow centre");
+        assert!(!m.hit_test(Pt::new(-10.0, 50.0), 2.0), "far outside");
+    }
+
+    #[test]
+    fn ellipse_fill_and_outline_hits() {
+        let base = Markup::new(
+            0,
+            MarkupKind::Ellipse,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 100.0, 100.0)),
+            "t",
+        );
+        assert!(
+            !base.hit_test(Pt::new(2.0, 2.0), 2.0),
+            "bounding-box corner lies outside the ellipse"
+        );
+        assert!(
+            !base.hit_test(Pt::new(50.0, 50.0), 2.0),
+            "unfilled ellipse centre"
+        );
+        assert!(
+            base.hit_test(Pt::new(50.0, 1.0), 2.0),
+            "near the top of the outline"
+        );
+
+        let filled = with_fill(base, FillMode::Solid);
+        assert!(
+            filled.hit_test(Pt::new(50.0, 50.0), 2.0),
+            "filled ellipse interior"
+        );
+        assert!(
+            !filled.hit_test(Pt::new(2.0, 2.0), 2.0),
+            "corner still outside the ellipse"
+        );
+    }
+
+    #[test]
+    fn cloud_hits_near_perimeter_not_interior() {
+        let base = Markup::new(
+            0,
+            MarkupKind::Cloud,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 100.0, 60.0)),
+            "t",
+        );
+        assert_eq!(base.style.fill_mode, FillMode::None);
+        assert!(base.hit_test(Pt::new(50.0, 1.0), 2.0), "near top surround");
+        assert!(
+            base.hit_test(Pt::new(99.0, 30.0), 2.0),
+            "near right surround"
+        );
+        assert!(!base.hit_test(Pt::new(50.0, 30.0), 2.0), "hollow centre");
+
+        let filled = with_fill(base, FillMode::Solid);
+        assert!(
+            filled.hit_test(Pt::new(50.0, 30.0), 2.0),
+            "filled cloud interior"
+        );
+    }
+
+    #[test]
+    fn filled_polygon_hits_interior() {
+        let geom = MarkupGeometry::Path {
+            points: vec![
+                Pt::new(0.0, 0.0),
+                Pt::new(100.0, 0.0),
+                Pt::new(100.0, 100.0),
+                Pt::new(0.0, 100.0),
+            ],
+            closed: true,
+        };
+        let base = Markup::new(0, MarkupKind::Polygon, geom, "t");
+        assert!(
+            !base.hit_test(Pt::new(50.0, 50.0), 2.0),
+            "unfilled polygon is hollow"
+        );
+        assert!(base.hit_test(Pt::new(0.0, 50.0), 2.0), "polygon edge");
+
+        let filled = with_fill(base, FillMode::Solid);
+        assert!(
+            filled.hit_test(Pt::new(50.0, 50.0), 2.0),
+            "filled polygon interior"
+        );
+        assert!(
+            !filled.hit_test(Pt::new(150.0, 50.0), 2.0),
+            "outside the polygon"
+        );
+    }
+
+    #[test]
+    fn ink_hits_near_strokes_not_whole_bounds() {
+        let m = Markup::new(
+            0,
+            MarkupKind::Ink,
+            MarkupGeometry::Ink {
+                strokes: vec![vec![
+                    Pt::new(0.0, 0.0),
+                    Pt::new(100.0, 0.0),
+                    Pt::new(100.0, 100.0),
+                ]],
+            },
+            "t",
+        );
+        assert!(
+            m.hit_test(Pt::new(50.0, 1.0), 2.0),
+            "near the horizontal stroke"
+        );
+        assert!(
+            m.hit_test(Pt::new(99.0, 50.0), 2.0),
+            "near the vertical stroke"
+        );
+        assert!(
+            !m.hit_test(Pt::new(20.0, 80.0), 2.0),
+            "inside the bounding box but far from any stroke"
+        );
+        assert!(!m.hit_test(Pt::new(200.0, 200.0), 2.0), "far away");
+    }
+
+    #[test]
+    fn ink_single_point_stroke_acts_as_dot() {
+        let m = Markup::new(
+            0,
+            MarkupKind::Ink,
+            MarkupGeometry::Ink {
+                strokes: vec![vec![Pt::new(10.0, 10.0)]],
+            },
+            "t",
+        );
+        assert!(m.hit_test(Pt::new(11.0, 10.0), 2.0));
+        assert!(!m.hit_test(Pt::new(20.0, 10.0), 2.0));
+    }
+
+    #[test]
+    fn hit_test_geometry_serde_roundtrip() {
+        let geometries = [
+            MarkupGeometry::Ink {
+                strokes: vec![vec![Pt::new(0.0, 0.0), Pt::new(5.0, 5.0)]],
+            },
+            MarkupGeometry::Path {
+                points: vec![Pt::new(0.0, 0.0), Pt::new(5.0, 0.0), Pt::new(5.0, 5.0)],
+                closed: true,
+            },
+            MarkupGeometry::Bounds(Rect::new(1.0, 2.0, 3.0, 4.0)),
+        ];
+        for geom in geometries {
+            let m = Markup::new(0, MarkupKind::Ink, geom, "t");
+            let json = serde_json::to_string(&m).expect("serialize");
+            let back: Markup = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(m.geometry, back.geometry);
+            assert_eq!(m.style.fill_mode, back.style.fill_mode);
+        }
     }
 }

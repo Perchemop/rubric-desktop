@@ -284,20 +284,87 @@ pub(crate) fn draw_canvas(
     let page_pos = response.hover_pos().map(|h| to_page(h, pan, zoom, origin));
     *last_page_pos = page_pos;
 
-    // Draft preview for a rubber-band bounds shape.
-    if let (Some(hover), super::app::DrawState::Bounds { start, .. }) = (page_pos, &*draw_state) {
-        let r = DRect::from_corners(*start, hover);
-        let sr = screen_rect(r, origin, pan, zoom);
-        painter.rect_stroke(
-            sr,
-            egui::CornerRadius::ZERO,
-            egui::Stroke::new(1.0, Color32::from_rgb(30, 144, 255)),
-            egui::StrokeKind::Middle,
-        );
+    // Pan state.
+    let space_held = ui.ctx().input(|i| i.key_down(egui::Key::Space));
+    if space_held {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
     }
 
-    // Click handling.
-    if response.clicked() {
+    // Wheel zoom centred on cursor (and horizontal-scroll pan).
+    if response.hovered() {
+        let scroll = ui.ctx().input(|i| i.raw_scroll_delta);
+        if scroll != Vec2::ZERO {
+            if scroll.x.abs() > scroll.y.abs() && scroll.y.abs() < 0.5 {
+                ui_state.pan.x += scroll.x;
+            } else if scroll.y.abs() > f32::EPSILON {
+                if let Some(hover) = response.hover_pos() {
+                    let page_before = to_page(hover, pan, zoom, origin);
+                    let factor = (scroll.y * 0.001).exp();
+                    let new_zoom = (zoom * factor).clamp(0.1, 16.0);
+                    let new_pan = hover
+                        - origin
+                        - Vec2::new(page_before.x * new_zoom, page_before.y * new_zoom);
+                    ui_state.zoom = new_zoom;
+                    ui_state.pan = new_pan;
+                }
+            }
+        }
+    }
+
+    let panning = space_held || response.dragged_by(egui::PointerButton::Middle);
+
+    // Pan via middle-button or Space+primary drag.
+    if panning && response.dragged() {
+        let delta = response.drag_delta();
+        if delta != Vec2::ZERO {
+            ui_state.pan += delta;
+        }
+        // Cancel any in-progress draw while panning.
+        *draw_state = super::app::DrawState::Idle;
+        ui_state.draw_cancelled = true;
+    }
+
+    // Cancel in-progress draw if Space pressed mid-drag.
+    if space_held && !matches!(*draw_state, super::app::DrawState::Idle) {
+        *draw_state = super::app::DrawState::Idle;
+        ui_state.draw_cancelled = true;
+    }
+
+    // Preview for in-progress draw.
+    let preview_color = Color32::from_rgb(30, 144, 255);
+    match &*draw_state {
+        super::app::DrawState::Bounds { start, end, .. } => {
+            let r = DRect::from_corners(*start, *end);
+            let sr = screen_rect(r, origin, pan, ui_state.zoom);
+            painter.rect_stroke(
+                sr,
+                egui::CornerRadius::ZERO,
+                egui::Stroke::new(1.0, preview_color),
+                egui::StrokeKind::Middle,
+            );
+        }
+        super::app::DrawState::Segment { start, end, .. } => {
+            let sa = to_screen(*start, ui_state.pan, ui_state.zoom, origin);
+            let sb = to_screen(*end, ui_state.pan, ui_state.zoom, origin);
+            painter.line_segment([sa, sb], egui::Stroke::new(1.5, preview_color));
+        }
+        super::app::DrawState::Ink { strokes, current } => {
+            let stroke = egui::Stroke::new(2.0, preview_color);
+            for s in strokes.iter().chain(std::iter::once(current)) {
+                let pts: Vec<Pos2> = s
+                    .iter()
+                    .map(|p| to_screen(*p, ui_state.pan, ui_state.zoom, origin))
+                    .collect();
+                if pts.len() >= 2 {
+                    painter.add(egui::Shape::line(pts, stroke));
+                }
+            }
+        }
+        _ => {}
+    }
+
+    // Click handling (fallback placement).
+    if response.clicked() && !panning {
         if let Some(pp) = page_pos {
             if ui_state.active_tool == Tool::Select {
                 match pick_markup_id(project, page.index, pp, 6.0) {
@@ -310,7 +377,7 @@ pub(crate) fn draw_canvas(
                 }
             } else if let Some(kind) = ui_state.active_tool.to_kind() {
                 let author = project.settings.author.clone();
-                let inv = 1.0 / zoom.max(0.1);
+                let inv = 1.0 / ui_state.zoom.max(0.1);
                 let geom = match kind {
                     MarkupKind::Rectangle
                     | MarkupKind::Ellipse
@@ -328,6 +395,9 @@ pub(crate) fn draw_canvas(
                     | MarkupKind::MeasureDiameter
                     | MarkupKind::MeasureRadius => MarkupGeometry::Segment { a: pp, b: pp },
                     MarkupKind::MeasureCount => MarkupGeometry::Count { at: pp, number: 1 },
+                    MarkupKind::Ink => MarkupGeometry::Ink {
+                        strokes: vec![vec![pp]],
+                    },
                     _ => MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv)),
                 };
                 let m = Markup::new(page.index, kind, geom, author);
@@ -340,22 +410,153 @@ pub(crate) fn draw_canvas(
         }
     }
 
-    // Drag to move the selection.
-    if response.dragged() {
-        let delta = response.drag_delta();
-        if delta != Vec2::ZERO {
-            let dx = delta.x / zoom;
-            let dy = delta.y / zoom;
-            let sel: Vec<Uuid> = ui_state.selected.iter().copied().collect();
-            if let Some(doc) = project.active_mut() {
-                for id in sel {
-                    if let Some(m) = doc.find_markup_mut(id) {
-                        m.geometry.translate(dx, dy);
-                        m.touch();
+    // Drag-to-draw.
+    if !panning && !matches!(ui_state.active_tool, Tool::Select) {
+        // A drag cancelled with Esc stays cancelled until this drag ends; the
+        // pointer is still down, so we must not spawn a fresh draft from it.
+        if response.drag_started() || response.drag_stopped() {
+            ui_state.draw_cancelled = false;
+        }
+
+        if response.dragged() {
+            // Start a new draw if idle and this drag was not cancelled.
+            if matches!(*draw_state, super::app::DrawState::Idle) && !ui_state.draw_cancelled {
+                if let Some(pp) = page_pos {
+                    if let Some(kind) = ui_state.active_tool.to_kind() {
+                        match kind {
+                            MarkupKind::Ink => {
+                                *draw_state = super::app::DrawState::Ink {
+                                    strokes: Vec::new(),
+                                    current: vec![pp],
+                                };
+                            }
+                            MarkupKind::Line
+                            | MarkupKind::Arrow
+                            | MarkupKind::MeasureLength
+                            | MarkupKind::MeasureDiameter
+                            | MarkupKind::MeasureRadius => {
+                                *draw_state = super::app::DrawState::Segment {
+                                    start: pp,
+                                    end: pp,
+                                    kind,
+                                };
+                            }
+                            _ => {
+                                *draw_state = super::app::DrawState::Bounds {
+                                    start: pp,
+                                    end: pp,
+                                    kind,
+                                };
+                            }
+                        }
                     }
                 }
             }
-            mutated = true;
+            // Update in-progress draw.
+            if let Some(pp) = page_pos {
+                match draw_state {
+                    super::app::DrawState::Bounds { end, .. } => *end = pp,
+                    super::app::DrawState::Segment { end, .. } => *end = pp,
+                    super::app::DrawState::Ink { current, .. } => {
+                        if let Some(last) = current.last().copied() {
+                            let dscreen = to_screen(pp, ui_state.pan, ui_state.zoom, origin)
+                                .distance(to_screen(last, ui_state.pan, ui_state.zoom, origin));
+                            if dscreen >= 2.0 {
+                                current.push(pp);
+                            }
+                        } else {
+                            current.push(pp);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if response.drag_stopped() {
+            // Commit.
+            if ui_state.active_tool.to_kind().is_some() {
+                let author = project.settings.author.clone();
+                match std::mem::replace(draw_state, super::app::DrawState::Idle) {
+                    super::app::DrawState::Bounds { start, end, kind } => {
+                        let r = DRect::from_corners(start, end);
+                        let geom = MarkupGeometry::Bounds(r);
+                        let m = Markup::new(page.index, kind, geom, author);
+                        if let Some(doc) = project.active_mut() {
+                            doc.add_markup(m);
+                        }
+                        ui_state.status = format!("Added {}", kind.label());
+                        mutated = true;
+                    }
+                    super::app::DrawState::Segment { start, end, kind } => {
+                        let geom = MarkupGeometry::Segment { a: start, b: end };
+                        let m = Markup::new(page.index, kind, geom, author);
+                        if let Some(doc) = project.active_mut() {
+                            doc.add_markup(m);
+                        }
+                        ui_state.status = format!("Added {}", kind.label());
+                        mutated = true;
+                    }
+                    super::app::DrawState::Ink {
+                        mut strokes,
+                        current,
+                    } => {
+                        if !current.is_empty() {
+                            strokes.push(current);
+                        }
+                        if !strokes.is_empty() {
+                            let geom = MarkupGeometry::Ink { strokes };
+                            let m = Markup::new(page.index, MarkupKind::Ink, geom, author);
+                            if let Some(doc) = project.active_mut() {
+                                doc.add_markup(m);
+                            }
+                            ui_state.status = "Added Ink".to_string();
+                            mutated = true;
+                        }
+                    }
+                    other => {
+                        *draw_state = other;
+                    }
+                }
+            }
+            *draw_state = super::app::DrawState::Idle;
+        }
+    }
+
+    // Drag to move the selection (when not drawing/panning).
+    if !panning && matches!(ui_state.active_tool, Tool::Select) {
+        if response.drag_started() {
+            // Only a drag that starts on a selected markup moves it; dragging
+            // from empty space must not touch the selection or the history.
+            ui_state.move_selection = page_pos
+                .and_then(|pp| pick_markup_id(project, page.index, pp, 6.0))
+                .is_some_and(|id| ui_state.selected.contains(&id));
+        }
+
+        if ui_state.move_selection {
+            let delta = if response.dragged() {
+                response.drag_delta()
+            } else {
+                Vec2::ZERO
+            };
+            if delta != Vec2::ZERO {
+                let dx = delta.x / ui_state.zoom;
+                let dy = delta.y / ui_state.zoom;
+                let sel: Vec<Uuid> = ui_state.selected.iter().copied().collect();
+                if let Some(doc) = project.active_mut() {
+                    for id in sel {
+                        if let Some(m) = doc.find_markup_mut(id) {
+                            m.geometry.translate(dx, dy);
+                            m.touch();
+                        }
+                    }
+                }
+            }
+            // Snapshot once, when the drag ends (never per frame).
+            if response.drag_stopped() {
+                ui_state.move_selection = false;
+                mutated = true;
+            }
         }
     }
 

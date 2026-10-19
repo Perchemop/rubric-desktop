@@ -119,9 +119,36 @@
 - None. (The `docs/spec/` gitignore rule that blocked the spec commit was
   narrowed by the parent; the original requirement set is now tracked.)
 
+## 2026-10-19 — Phase 2 slice A: interactive canvas (drag-to-draw, zoom, pan)
+**Status**: implemented + reviewed + fixed; awaiting CI verification
+
+### Completed
+- Domain (`domain-dev`, src/domain/markup.rs): hit-testing upgrades — filled
+  shapes hit interior, stroke-only hit near outline only; true elliptical edge;
+  cloud approximated by rect border (documented); even-odd interior test for
+  filled closed paths/polygon; ink segment-based incl. single-point dot hits.
+  8 new unit tests; public `hit_test` signature unchanged.
+- UI (`ui-dev`, src/ui/{canvas,app}.rs): drag-to-draw with live preview for
+  bounds/segment tools; ink freehand accumulation (2 screen-px subsample);
+  wheel zoom clamped 10–1600% anchored on cursor; Space/middle-drag pan;
+  Del/Backspace delete with one snapshot; Esc cancels previews.
+- Review (`reviewer`): found 2 blockers (stray brace, unused var), 2 majors
+  (Esc mid-drag re-spawn, selection drag-move snapshot spam), minors.
+- Fixes (`fixer`): all blockers + Esc-cancel flag (`draw_cancelled`),
+  single-snapshot-per-drag for selection moves (`move_selection`), dead-code
+  tail removed; `cargo fmt --all -- --check` clean.
+- Deferred follow-ups (reviewer findings): one-frame stale transform on
+  mid-drag wheel zoom; wheel-direction/platform convention check on desktop;
+  single-point ink tap rendering; unfilled-rect vs Bounds tolerance unification.
+
+### Active
+- Pushing slice A; CI is the compile/clippy/test gate.
+
+### Blocked
+- None.
+
 ## Summary
-Phase 0 is complete, pushed, and CI-verified green on GitHub Actions. The
-build loop is now CI-first: edit → push → CI gates → fixer agent on failure.
-Phase 1 (feature requirements + traceability) is complete with
-`docs/spec/README.md` as the canonical inventory. Next is Phase 2
-(drawing/zoom UX).
+Phase 1 complete; Phase 2 slice A (drag-to-draw, zoom, pan, delete, hit
+testing) implemented through the subagent pipeline (domain → ui → reviewer →
+fixer) and pushed for CI verification. Next: multi-point polyline/polygon/
+angle drawing, then measurement labels.

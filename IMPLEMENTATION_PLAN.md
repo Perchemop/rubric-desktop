@@ -33,12 +33,12 @@
 - [x] Draw count marker
 - [x] Canvas page rendering + zoom (pan not yet wired to drag except selection)
 - [x] Inspector (properties, status, author/subject, comments, measurement display)
-- [ ] Improve drawing: drag-to-draw for bounds/segment/path/angle/ink with live preview
+- [x] Improve drawing: drag-to-draw for bounds/segment with live preview (polyline/angle still click-based)
 - [ ] Polyline/Polygon/Perimeter/Area path drawing (multi-point)
 - [ ] Angle tool (three-point)
-- [ ] Ink (freehand) with stroke accumulation + commit
-- [ ] Hit testing improvements (edge/outline vs fill; cloud/ink)
-- [ ] Zoom/pan with mouse wheel + Space/middle-drag
+- [x] Ink (freehand) with stroke accumulation + commit
+- [x] Hit testing improvements (edge/outline vs fill; cloud approximation; ink segments)
+- [x] Zoom/pan with mouse wheel + Space/middle-drag
 
 ## Phase 3 — Measurements + scale UI
 - [x] Scale per page, units_per_point, recompute on geometry change

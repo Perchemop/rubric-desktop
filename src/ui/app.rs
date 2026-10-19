@@ -26,10 +26,14 @@ pub(crate) enum DrawState {
     Bounds {
         start: Pt,
         kind: MarkupKind,
-        geometry: MarkupGeometry,
+        end: Pt,
     },
     /// Drawing a segment (line, arrow, measure length/diameter/radius).
-    Segment { start: Pt, kind: MarkupKind },
+    Segment {
+        start: Pt,
+        end: Pt,
+        kind: MarkupKind,
+    },
     /// Drawing a path (polyline, polygon, measure perimeter/area).
     Path {
         points: Vec<Pt>,
@@ -67,6 +71,11 @@ pub(crate) struct UiState {
     pub(crate) page_origin: Pos2,
     hint: String,
     pub(crate) status: String,
+    /// Set when an in-progress draw is cancelled (Esc) so the still-held drag
+    /// does not spawn a fresh draft; cleared when that drag starts or ends.
+    pub(crate) draw_cancelled: bool,
+    /// True while a drag that began on a selected markup is moving it.
+    pub(crate) move_selection: bool,
     dirty: bool,
 }
 
@@ -82,6 +91,8 @@ impl Default for UiState {
             hint: "Ctrl+S: Save  ·  Ctrl+Z: Undo  ·  Ctrl+Shift+Z: Redo  ·  Del: Delete"
                 .to_string(),
             status: "Ready".to_string(),
+            draw_cancelled: false,
+            move_selection: false,
             dirty: false,
         }
     }
@@ -138,6 +149,9 @@ impl RubricApp {
 
     fn delete_selected(&mut self) {
         let ids: Vec<_> = self.ui.selected.iter().copied().collect();
+        if ids.is_empty() {
+            return;
+        }
         if let Some(doc) = self.active_doc_mut() {
             for id in ids {
                 doc.remove_markup(id);
@@ -209,10 +223,10 @@ impl RubricApp {
             });
             ui.menu_button("View", |ui| {
                 if ui.button("Zoom In").clicked() {
-                    self.ui.zoom = (self.ui.zoom * 1.25).clamp(0.25, 3.0);
+                    self.ui.zoom = (self.ui.zoom * 1.25).clamp(0.1, 16.0);
                 }
                 if ui.button("Zoom Out").clicked() {
-                    self.ui.zoom = (self.ui.zoom / 1.25).clamp(0.25, 3.0);
+                    self.ui.zoom = (self.ui.zoom / 1.25).clamp(0.1, 16.0);
                 }
                 if ui.button("Fit Page").clicked() {
                     self.ui.zoom = 1.0;
@@ -300,7 +314,11 @@ impl App for RubricApp {
                 }
             }
             if i.key_pressed(egui::Key::Escape) {
+                // Abort the draft and consume the current (still held) drag, so
+                // canvas.rs does not immediately start a new one.
+                self.ui.draw_cancelled = true;
                 self.draw = DrawState::Idle;
+                self.ui.move_selection = false;
                 self.clear_selection();
             }
         });
