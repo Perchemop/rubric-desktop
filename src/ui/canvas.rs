@@ -328,9 +328,7 @@ pub(crate) fn draw_canvas(
                     let anchor_page = measure_anchor(m);
                     let anchor = to_screen(anchor_page, pan, zoom, origin);
                     let font = FontId::proportional(12.0);
-                    let galley = ui
-                        .ctx()
-                        .fonts(|f| f.layout_no_wrap(label, font.clone(), Color32::WHITE));
+                    let galley = painter.layout_no_wrap(label, font, Color32::WHITE);
                     let text_rect = galley.rect.translate(Vec2::new(anchor.x, anchor.y));
                     let bg = text_rect.expand(4.0);
                     painter.rect_filled(bg, 4.0, Color32::from_black_alpha(180));
