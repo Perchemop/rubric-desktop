@@ -34,8 +34,8 @@
 - [x] Canvas page rendering + zoom (pan not yet wired to drag except selection)
 - [x] Inspector (properties, status, author/subject, comments, measurement display)
 - [x] Improve drawing: drag-to-draw for bounds/segment with live preview (polyline/angle still click-based)
-- [ ] Polyline/Polygon/Perimeter/Area path drawing (multi-point)
-- [ ] Angle tool (three-point)
+- [x] Polyline/Polygon/Perimeter/Area path drawing (multi-point)
+- [x] Angle tool (three-point)
 - [x] Ink (freehand) with stroke accumulation + commit
 - [x] Hit testing improvements (edge/outline vs fill; cloud approximation; ink segments)
 - [x] Zoom/pan with mouse wheel + Space/middle-drag

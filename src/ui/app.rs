@@ -72,6 +72,9 @@ pub(crate) struct UiState {
     /// Set when an in-progress draw is cancelled (Esc) so the still-held drag
     /// does not spawn a fresh draft; cleared when that drag starts or ends.
     pub(crate) draw_cancelled: bool,
+    /// The tool that was active when the last canvas frame ran. Used to detect
+    /// a tool switch and abort any draft that is still in progress.
+    pub(crate) last_tool: Tool,
     /// True while a drag that began on a selected markup is moving it.
     pub(crate) move_selection: bool,
     dirty: bool,
@@ -90,6 +93,7 @@ impl Default for UiState {
                 .to_string(),
             status: "Ready".to_string(),
             draw_cancelled: false,
+            last_tool: Tool::Select,
             move_selection: false,
             dirty: false,
         }

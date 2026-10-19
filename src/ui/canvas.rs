@@ -41,6 +41,14 @@ fn screen_rect(r: DRect, origin: Pos2, pan: Vec2, zoom: f32) -> egui::Rect {
     egui::Rect::from_min_max(min, max)
 }
 
+/// Whether a drafted path is worth committing: it must have enough points
+/// (`min`, which encodes whether the path is closed) and at least one edge
+/// long enough to be meaningful — coincident points, which double-clicks and
+/// repeated clicks produce, do not count.
+fn path_points_ok(points: &[Pt], min: usize, _closed: bool) -> bool {
+    points.len() >= min && points.windows(2).any(|w| w[0].distance(w[1]) > 0.5)
+}
+
 /// Draw a single markup.
 fn draw_markup(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup) {
     let style = m.style;
@@ -238,6 +246,15 @@ pub(crate) fn draw_canvas(
     last_page_pos: &mut Option<Pt>,
 ) -> bool {
     let mut mutated = false;
+
+    // Switching tools abandons whatever draft was in progress: a multi-point
+    // path/angle must not survive (and later commit) under a different tool.
+    // Discarded without a snapshot, since nothing was committed.
+    if ui_state.active_tool != ui_state.last_tool {
+        *draw_state = super::app::DrawState::Idle;
+        ui_state.last_tool = ui_state.active_tool;
+    }
+
     let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
 
     painter.rect_filled(
@@ -360,11 +377,85 @@ pub(crate) fn draw_canvas(
                 }
             }
         }
+        super::app::DrawState::Path { points, closed, .. } => {
+            let stroke = egui::Stroke::new(1.5, preview_color);
+            let mut pts: Vec<Pos2> = points
+                .iter()
+                .map(|p| to_screen(*p, ui_state.pan, ui_state.zoom, origin))
+                .collect();
+            // Rubber-band segment from the last committed point to the cursor.
+            if let Some(cursor) = page_pos {
+                let sc = to_screen(cursor, ui_state.pan, ui_state.zoom, origin);
+                if !pts.is_empty() {
+                    if let Some(last) = pts.last().copied() {
+                        painter.line_segment([last, sc], stroke);
+                    }
+                }
+                if *closed && pts.len() >= 2 {
+                    // Auto-closing segment in preview.
+                    if let Some(first) = pts.first().copied() {
+                        painter.line_segment([sc, first], stroke);
+                    }
+                }
+                pts.push(sc);
+            }
+            if pts.len() >= 2 {
+                if *closed && pts.len() >= 3 {
+                    painter.add(egui::Shape::closed_line(pts, stroke));
+                } else {
+                    painter.add(egui::Shape::line(pts, stroke));
+                }
+            }
+        }
+        super::app::DrawState::Angle { a, vertex, .. } => {
+            let stroke = egui::Stroke::new(1.5, preview_color);
+            let sa = to_screen(*a, ui_state.pan, ui_state.zoom, origin);
+            if let Some(v) = vertex {
+                let sv = to_screen(*v, ui_state.pan, ui_state.zoom, origin);
+                painter.line_segment([sv, sa], stroke);
+                if let Some(cursor) = page_pos {
+                    let sc = to_screen(cursor, ui_state.pan, ui_state.zoom, origin);
+                    painter.line_segment([sv, sc], stroke);
+                }
+            } else if let Some(cursor) = page_pos {
+                let sc = to_screen(cursor, ui_state.pan, ui_state.zoom, origin);
+                painter.line_segment([sa, sc], stroke);
+            }
+        }
         _ => {}
     }
 
-    // Click handling (fallback placement).
-    if response.clicked() && !panning {
+    // Helper classification for multi-point tools.
+    let is_path_kind = |k: MarkupKind| {
+        matches!(
+            k,
+            MarkupKind::Polygon
+                | MarkupKind::Polyline
+                | MarkupKind::MeasurePerimeter
+                | MarkupKind::MeasureArea
+        )
+    };
+    let path_closed = |k: MarkupKind| {
+        matches!(
+            k,
+            MarkupKind::Polygon | MarkupKind::MeasurePerimeter | MarkupKind::MeasureArea
+        )
+    };
+    // Segment kinds are drag-drawn, never click-placed.
+    let is_segment_kind = |k: MarkupKind| {
+        matches!(
+            k,
+            MarkupKind::Line
+                | MarkupKind::Arrow
+                | MarkupKind::MeasureLength
+                | MarkupKind::MeasureDiameter
+                | MarkupKind::MeasureRadius
+        )
+    };
+
+    // Click handling. `clicked_by` (not `clicked`) so a focused widget's fake
+    // click cannot place or commit a markup on the canvas.
+    if response.clicked_by(egui::PointerButton::Primary) && !panning {
         if let Some(pp) = page_pos {
             if ui_state.active_tool == Tool::Select {
                 match pick_markup_id(project, page.index, pp, 6.0) {
@@ -376,42 +467,243 @@ pub(crate) fn draw_canvas(
                     None => ui_state.selected.clear(),
                 }
             } else if let Some(kind) = ui_state.active_tool.to_kind() {
-                let author = project.settings.author.clone();
-                let inv = 1.0 / ui_state.zoom.max(0.1);
-                let geom = match kind {
-                    MarkupKind::Rectangle
-                    | MarkupKind::Ellipse
-                    | MarkupKind::Cloud
-                    | MarkupKind::Text
-                    | MarkupKind::Stamp
-                    | MarkupKind::Note
-                    | MarkupKind::Callout
-                    | MarkupKind::Highlight => {
-                        MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv))
+                if is_path_kind(kind) {
+                    let closed = path_closed(kind);
+                    // A double-click in egui is also a click, so the point of
+                    // that release must not be appended before committing.
+                    if response.double_clicked() {
+                        let commit_points = match &*draw_state {
+                            super::app::DrawState::Path { points, .. } => points.clone(),
+                            _ => Vec::new(),
+                        };
+                        let min = if closed { 3 } else { 2 };
+                        if path_points_ok(&commit_points, min, closed) {
+                            let author = project.settings.author.clone();
+                            let geom = MarkupGeometry::Path {
+                                points: commit_points,
+                                closed,
+                            };
+                            let m = Markup::new(page.index, kind, geom, author);
+                            if let Some(doc) = project.active_mut() {
+                                doc.add_markup(m);
+                            }
+                            ui_state.status = format!("Added {}", kind.label());
+                            mutated = true;
+                        }
+                        *draw_state = super::app::DrawState::Idle;
+                    } else {
+                        // Append point to in-progress path (or start one).
+                        match draw_state {
+                            super::app::DrawState::Path { points, .. } => {
+                                points.push(pp);
+                            }
+                            _ => {
+                                *draw_state = super::app::DrawState::Path {
+                                    points: vec![pp],
+                                    kind,
+                                    closed,
+                                };
+                            }
+                        }
                     }
-                    MarkupKind::Line
-                    | MarkupKind::Arrow
-                    | MarkupKind::MeasureLength
-                    | MarkupKind::MeasureDiameter
-                    | MarkupKind::MeasureRadius => MarkupGeometry::Segment { a: pp, b: pp },
-                    MarkupKind::MeasureCount => MarkupGeometry::Count { at: pp, number: 1 },
-                    MarkupKind::Ink => MarkupGeometry::Ink {
-                        strokes: vec![vec![pp]],
-                    },
-                    _ => MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv)),
-                };
-                let m = Markup::new(page.index, kind, geom, author);
-                if let Some(doc) = project.active_mut() {
-                    doc.add_markup(m);
+                } else if kind == MarkupKind::MeasureAngle {
+                    match draw_state {
+                        super::app::DrawState::Angle {
+                            a,
+                            vertex: Some(_v),
+                            ..
+                        } => {
+                            // Third click: commit.
+                            let a_pt = *a;
+                            let vertex_pt = *_v;
+                            let b_pt = pp;
+                            let distinct = a_pt != vertex_pt && b_pt != vertex_pt && a_pt != b_pt;
+                            if distinct {
+                                let author = project.settings.author.clone();
+                                let geom = MarkupGeometry::Angle {
+                                    a: a_pt,
+                                    vertex: vertex_pt,
+                                    b: b_pt,
+                                };
+                                let m = Markup::new(page.index, kind, geom, author);
+                                if let Some(doc) = project.active_mut() {
+                                    doc.add_markup(m);
+                                }
+                                ui_state.status = format!("Added {}", kind.label());
+                                mutated = true;
+                            }
+                            *draw_state = super::app::DrawState::Idle;
+                        }
+                        super::app::DrawState::Angle { vertex, .. } => {
+                            // Second click: set vertex.
+                            *vertex = Some(pp);
+                        }
+                        _ => {
+                            *draw_state = super::app::DrawState::Angle {
+                                a: pp,
+                                vertex: None,
+                                kind,
+                            };
+                        }
+                    }
+                } else if is_segment_kind(kind) {
+                    // Segment tools are drag-drawn; a bare click commits
+                    // nothing (and pushes no snapshot).
+                } else {
+                    let author = project.settings.author.clone();
+                    let inv = 1.0 / ui_state.zoom.max(0.1);
+                    let geom = match kind {
+                        MarkupKind::Rectangle
+                        | MarkupKind::Ellipse
+                        | MarkupKind::Cloud
+                        | MarkupKind::Text
+                        | MarkupKind::Stamp
+                        | MarkupKind::Note
+                        | MarkupKind::Callout
+                        | MarkupKind::Highlight => {
+                            MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv))
+                        }
+                        MarkupKind::MeasureCount => MarkupGeometry::Count { at: pp, number: 1 },
+                        MarkupKind::Ink => MarkupGeometry::Ink {
+                            strokes: vec![vec![pp]],
+                        },
+                        // Remaining kinds (strikeout, underline, squiggly) are
+                        // bounds-like and default to a small rect.
+                        _ => MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv)),
+                    };
+                    let m = Markup::new(page.index, kind, geom, author);
+                    if let Some(doc) = project.active_mut() {
+                        doc.add_markup(m);
+                    }
+                    ui_state.status = format!("Added {}", kind.label());
+                    mutated = true;
                 }
-                ui_state.status = format!("Added {}", kind.label());
-                mutated = true;
             }
         }
     }
 
-    // Drag-to-draw.
-    if !panning && !matches!(ui_state.active_tool, Tool::Select) {
+    // Right-click commits an in-progress multi-point sequence.
+    if response.clicked_by(egui::PointerButton::Secondary) && !panning {
+        match draw_state {
+            super::app::DrawState::Path {
+                points,
+                kind,
+                closed,
+            } => {
+                let min = if *closed { 3 } else { 2 };
+                if path_points_ok(points, min, *closed) {
+                    let author = project.settings.author.clone();
+                    let geom = MarkupGeometry::Path {
+                        points: points.clone(),
+                        closed: *closed,
+                    };
+                    let m = Markup::new(page.index, *kind, geom, author);
+                    if let Some(doc) = project.active_mut() {
+                        doc.add_markup(m);
+                    }
+                    ui_state.status = format!("Added {}", kind.label());
+                    mutated = true;
+                }
+                *draw_state = super::app::DrawState::Idle;
+            }
+            super::app::DrawState::Angle {
+                a,
+                vertex: Some(v),
+                kind,
+            } => {
+                let kind = *kind;
+                // Need a third point; use cursor if available, else cancel.
+                if let Some(pp) = page_pos {
+                    let distinct = a != v && pp != *v && *a != pp;
+                    if distinct {
+                        let author = project.settings.author.clone();
+                        let geom = MarkupGeometry::Angle {
+                            a: *a,
+                            vertex: *v,
+                            b: pp,
+                        };
+                        let m = Markup::new(page.index, kind, geom, author);
+                        if let Some(doc) = project.active_mut() {
+                            doc.add_markup(m);
+                        }
+                        ui_state.status = format!("Added {}", kind.label());
+                        mutated = true;
+                    }
+                }
+                *draw_state = super::app::DrawState::Idle;
+            }
+            _ => {}
+        }
+    }
+
+    // Enter commits an in-progress multi-point sequence — but not while a text
+    // field has focus (Enter there belongs to the widget, not the canvas).
+    let enter_pressed = ui.ctx().input(|i| i.key_pressed(egui::Key::Enter));
+    let keyboard_taken = ui.ctx().memory(|m| m.wants_keyboard_input());
+    if enter_pressed && !keyboard_taken && !panning {
+        match draw_state {
+            super::app::DrawState::Path {
+                points,
+                kind,
+                closed,
+            } => {
+                let min = if *closed { 3 } else { 2 };
+                if path_points_ok(points, min, *closed) {
+                    let author = project.settings.author.clone();
+                    let geom = MarkupGeometry::Path {
+                        points: points.clone(),
+                        closed: *closed,
+                    };
+                    let m = Markup::new(page.index, *kind, geom, author);
+                    if let Some(doc) = project.active_mut() {
+                        doc.add_markup(m);
+                    }
+                    ui_state.status = format!("Added {}", kind.label());
+                    mutated = true;
+                }
+                *draw_state = super::app::DrawState::Idle;
+            }
+            super::app::DrawState::Angle {
+                a,
+                vertex: Some(v),
+                kind,
+            } => {
+                let kind = *kind;
+                if let Some(pp) = page_pos {
+                    let distinct = *a != *v && pp != *v && *a != pp;
+                    if distinct {
+                        let author = project.settings.author.clone();
+                        let geom = MarkupGeometry::Angle {
+                            a: *a,
+                            vertex: *v,
+                            b: pp,
+                        };
+                        let m = Markup::new(page.index, kind, geom, author);
+                        if let Some(doc) = project.active_mut() {
+                            doc.add_markup(m);
+                        }
+                        ui_state.status = format!("Added {}", kind.label());
+                        mutated = true;
+                    }
+                }
+                *draw_state = super::app::DrawState::Idle;
+            }
+            _ => {}
+        }
+    }
+
+    // Drag-to-draw (bounds/segment/ink only; multi-point tools use clicks).
+    let multi_tool = ui_state.active_tool.to_kind().is_some_and(|k| {
+        matches!(
+            k,
+            MarkupKind::Polygon
+                | MarkupKind::Polyline
+                | MarkupKind::MeasurePerimeter
+                | MarkupKind::MeasureArea
+                | MarkupKind::MeasureAngle
+        )
+    });
+    if !panning && !matches!(ui_state.active_tool, Tool::Select) && !multi_tool {
         // A drag cancelled with Esc stays cancelled until this drag ends; the
         // pointer is still down, so we must not spawn a fresh draft from it.
         if response.drag_started() || response.drag_stopped() {

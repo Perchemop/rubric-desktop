@@ -147,8 +147,33 @@
 ### Blocked
 - None.
 
+## 2026-10-19 — Phase 2 slice B: multi-point drawing (polyline/polygon/angle)
+**Status**: implemented + reviewed + fixed; awaiting CI verification
+
+### Completed
+- Slice A CI-verified green (`ae87bab`): fmt, clippy, tests, release build —
+  2 follow-up fixes from CI (egui 0.36 `smooth_scroll_delta`, unused import).
+- UI (`ui-dev`): multi-point Path drawing (Polygon/Polyline/Perimeter/Area)
+  — click-to-append, rubber-band + auto-close preview, commit on
+  double-click/right-click/Enter, Esc cancels; three-click Angle tool with
+  live ray preview; click-fallback no longer commits degenerate geometry.
+- Review (`reviewer`, second pass): found 1 CRITICAL (`&mut Pt` vs owned `Pt`
+  in angle-commit arm — would not compile), 2 MEDIUM (stale draft on tool
+  switch; segment tools committing wrong-typed Bounds on click), 3 LOW
+  (double-click duplicate vertex, point-distinctness validation, fake-keyboard
+  Enter/click conflicts).
+- Fixes (`fixer`): all six applied; `last_tool` draft reset on tool switch,
+  `path_points_ok` helper at all three commit sites, `clicked_by(Primary)` +
+  `wants_keyboard_input` guards; fmt clean.
+
+### Active
+- Pushing slice B; CI is the compile/clippy/test gate.
+
+### Blocked
+- None.
+
 ## Summary
-Phase 1 complete; Phase 2 slice A (drag-to-draw, zoom, pan, delete, hit
-testing) implemented through the subagent pipeline (domain → ui → reviewer →
-fixer) and pushed for CI verification. Next: multi-point polyline/polygon/
-angle drawing, then measurement labels.
+Phase 1 complete; Phase 2 slices A (drag-to-draw/zoom/pan/hit-testing) and B
+(multi-point polyline/polygon/angle) implemented via the subagent pipeline
+(domain → ui → reviewer → fixer → CI). Next: measurement labels + scale editor
+(Phase 3), then review-workflow UI (Phase 4).
