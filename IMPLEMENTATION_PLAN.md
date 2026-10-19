@@ -18,14 +18,14 @@
 - [x] Local git init + commit
 
 ## Phase 1 — Feature definition and requirements
-- [ ] Define the product feature inventory for a PDF markup/measurement app
-- [ ] Map features → Rubric domain: markups, layers/toolsets, review workflow (statuses), measurements, stamps, callouts, clouds, ink, annotations, snapshots, etc.
-- [ ] Update REQUIREMENTS_TRACEABILITY.md with traceability (requirement → file/module/test)
-- [ ] Record gaps, assumptions, and scope exclusions in assumptions-and-questions.md + DECISIONS.md
-- [ ] Create docs/spec/README.md summarising the requirement set
+- [x] Define the product feature inventory for a PDF markup/measurement app
+- [x] Map features → Rubric domain: markups, layers/toolsets, review workflow (statuses), measurements, stamps, callouts, clouds, ink, annotations, snapshots, etc.
+- [x] Update REQUIREMENTS_TRACEABILITY.md with traceability (requirement → file/module/test)
+- [x] Record gaps, assumptions, and scope exclusions in assumptions-and-questions.md + DECISIONS.md
+- [x] Create docs/spec/README.md summarising the requirement set
 
 ## Phase 2 — Vertical slice 1: Core markup + canvas (interactive)
-- [x] Domain types complete (MarkupKind 22 variants, Geometry variants, ReviewStatus, Measurement)
+- [x] Domain types complete (MarkupKind 23 variants, Geometry variants, ReviewStatus, Measurement)
 - [x] Undo/redo (History snapshots, bounded 128)
 - [x] Selection + move/translate
 - [x] Draw rect-based shapes (rect/ellipse/cloud/highlight/text/callout/stamp/note) — basic placement

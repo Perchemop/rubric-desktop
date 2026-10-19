@@ -29,7 +29,7 @@
 
 **MeasureKind**: Length, Perimeter, Area, Angle, Diameter, Radius, Count. is_area() for unit suffix.
 
-## Markup kinds (22)
+## Markup kinds (23)
 Review: Highlight, Strikeout, Underline, Squiggly, Text, Callout, Note, Stamp.  
 Shapes: Rectangle, Ellipse, Cloud, Polygon.  
 Paths: Polyline, Line, Arrow, Ink.  

@@ -33,7 +33,7 @@ Record significant architectural/implementation decisions.
 - **Impact**: memory small (clones); history.push calls needed.
 
 ## 2026-10-17: Markup model
-- **Decision**: Flat `MarkupKind` enum (22 variants) + `MarkupGeometry` enum. No trait objects for serialisation/simplicity.
+- **Decision**: Flat `MarkupKind` enum (23 variants) + `MarkupGeometry` enum. No trait objects for serialisation/simplicity.
 - **Rationale**: exhaustive matching, serde-friendly, cheap clones.
 - **Impact**: all drawing/rendering/hit-testing switch on kind/geometry.
 
@@ -61,3 +61,8 @@ Record significant architectural/implementation decisions.
 - **Decision**: Enforce `cargo fmt --all -- --check`, `cargo clippy -- -D warnings`, `cargo test` (lib + tests). CI skeleton added.
 - **Rationale**: Prevents drift, catches bugs early.
 - **Impact**: AGENTS.md, CI.
+
+## 2026-10-19: Phase 1 requirement set adopted
+- **Decision**: Adopted Phase 1 requirement set (`docs/spec/README.md`) as the canonical feature inventory; requirements use F-1xx…F-7xx groups and feed REQUIREMENTS_TRACEABILITY.md.
+- **Rationale**: one source of truth for scope and priorities; traceability links spec IDs → R-S requirement IDs → planned modules → tests.
+- **Impact**: `docs/spec/README.md` (52 F-IDs), REQUIREMENTS_TRACEABILITY.md (R-S-001…R-S-017 + seven group rows), IMPLEMENTATION_PLAN.md Phase 1 ticked.

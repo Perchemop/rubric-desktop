@@ -14,7 +14,7 @@
 - Docs: `README.md`, `AGENTS.md`, `docs/architecture.md`, `docs/data-model.md`, `docs/test-plan.md`, `docs/assumptions-and-questions.md`.
 - Process docs: `IMPLEMENTATION_PLAN.md`, `REQUIREMENTS_TRACEABILITY.md`, `DECISIONS.md`, `PROGRESS.md`, `CHANGELOG.md`.
 - Cargo.toml (eframe/egui 0.36, serde, uuid, thiserror, tracing, chrono, image), rust-toolchain.toml, LICENSE (MIT).
-- Domain model complete: `geom`, `units`, `style`, `markup` (22 kinds + geometry + measurements + hit tests), `document`, `project` (history/undo/redo, toolsets). All with unit tests.
+- Domain model complete: `geom`, `units`, `style`, `markup` (23 kinds + geometry + measurements + hit tests), `document`, `project` (history/undo/redo, toolsets). All with unit tests.
 - Data layer: `data/error.rs`, `data/store.rs` (JSON save/load, app data dir).
 - UI skeleton: `ui/theme.rs`, `ui/icons.rs`, `ui/app.rs` (panels, menu, shortcuts), `ui/canvas.rs` (page rendering, selection, basic draw/place), `ui/toolbar.rs` (tool groups), `ui/inspector.rs` (properties/comments/measurements).
 - Integration tests: `tests/domain_tests.rs`.
@@ -87,8 +87,41 @@
 ### Blocked
 - None.
 
+## 2026-10-19 — Phase 1 complete (feature definition and requirements)
+**Status**: Phase 1 done via the docs-writer agent; spec adopted as canonical inventory
+
+### Completed
+- Created `docs/spec/README.md` — the requirement set: one-paragraph overview,
+  conventions, non-goals, and 52 feature IDs in seven groups (F-1xx markups/tools 16,
+  F-2xx measurements/scale 9, F-3xx review workflow 5, F-4xx navigation/pages 6,
+  F-5xx persistence/I/O 7, F-6xx UI/UX polish 5, F-7xx packaging 4), each row with a
+  priority (MVP / Ph 2-6 / later) mapped to IMPLEMENTATION_PLAN.md phases.
+- `REQUIREMENTS_TRACEABILITY.md`: new "Phase 1 requirement set" section with
+  R-S-001…R-S-017 (spec area → F-IDs → planned modules, TODO/PARTIAL), seven new
+  F-1xx…F-7xx group rows in the Feature requirements table, and the stale
+  "(22 kinds)" count corrected to 23 (MarkupKind has 23 variants).
+- `docs/assumptions-and-questions.md`: "Scope decisions (Phase 1)" (pure-Rust PDF
+  renderer first, sidecar-only MVP persistence, image/print export instead of
+  PDF-embedded annotations, target status set Open/In review/Approved/Rejected)
+  plus questions 17-22 (PDF crate, stamp library, report format, export scope,
+  layer model, page navigation).
+- `DECISIONS.md`: 2026-10-19 entry adopting the spec as canonical inventory;
+  stale 22→23 markup-kind count fixed there too.
+- `IMPLEMENTATION_PLAN.md`: Phase 1 checklist ticked; stale 22→23 count fixed.
+- `CHANGELOG.md`: Unreleased "Added" entry for the Phase 1 requirement set;
+  stale counts fixed (incl. the 0.1.0 note) and noted under "Fixed".
+- `docs/data-model.md`: markup-kind count corrected to 23.
+
+### Active
+- Phase 2: drag-to-draw, polyline/polygon/angle/ink, zoom/pan UX.
+
+### Blocked
+- None. (The `docs/spec/` gitignore rule that blocked the spec commit was
+  narrowed by the parent; the original requirement set is now tracked.)
+
 ## Summary
 Phase 0 is complete, pushed, and CI-verified green on GitHub Actions. The
 build loop is now CI-first: edit → push → CI gates → fixer agent on failure.
-Next is Phase 1 (feature requirements + traceability), then Phase 2
+Phase 1 (feature requirements + traceability) is complete with
+`docs/spec/README.md` as the canonical inventory. Next is Phase 2
 (drawing/zoom UX).
