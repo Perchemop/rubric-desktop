@@ -114,6 +114,18 @@ impl Scale {
         Self::new(unit, upp)
     }
 
+    /// Re-express this scale in another display unit while preserving the
+    /// physical length it represents.
+    ///
+    /// `units_per_point` is re-derived from the old unit's size so a given
+    /// point distance maps to the same real-world length before and after the
+    /// conversion (e.g. a `10 ft` reading stays ten feet when shown in
+    /// metres). Converting to the unit already in use is the identity.
+    pub fn with_display_unit(self, unit: MeasureUnit) -> Self {
+        let upp = self.units_per_point * self.unit.points_per_unit() / unit.points_per_unit();
+        Self::new(unit, upp)
+    }
+
     pub fn points_to_units(&self, points: f64) -> f64 {
         points * self.units_per_point
     }
@@ -221,6 +233,36 @@ mod tests {
         let s = Scale::new(MeasureUnit::Meter, 0.01);
         let pts = 1234.0;
         assert!((s.units_to_points(s.points_to_units(pts)) - pts).abs() < 1e-6);
+    }
+
+    #[test]
+    fn display_unit_conversion_preserves_physical_length() {
+        // 1 inch on paper == 1 foot on site.
+        let feet = Scale::from_ratio(MeasureUnit::Foot, 1.0, 72.0);
+        let metres = feet.with_display_unit(MeasureUnit::Meter);
+        let pts = 720.0; // 10 inches on paper
+        assert!((feet.points_to_units(pts) - 10.0).abs() < 1e-9);
+        let expected = feet.points_to_units(pts) * MeasureUnit::Foot.points_per_unit()
+            / MeasureUnit::Meter.points_per_unit();
+        assert!((metres.points_to_units(pts) - expected).abs() < 1e-9);
+    }
+
+    #[test]
+    fn display_unit_conversion_to_same_unit_is_identity() {
+        let s = Scale::from_ratio(MeasureUnit::Foot, 10.0, 72.0);
+        let same = s.with_display_unit(MeasureUnit::Foot);
+        assert_eq!(same.unit, MeasureUnit::Foot);
+        assert!((same.units_per_point - s.units_per_point).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn display_unit_conversion_round_trips() {
+        let s = Scale::from_ratio(MeasureUnit::Foot, 10.0, 72.0);
+        let back = s
+            .with_display_unit(MeasureUnit::Meter)
+            .with_display_unit(MeasureUnit::Foot);
+        assert_eq!(back.unit, MeasureUnit::Foot);
+        assert!((back.units_per_point - s.units_per_point).abs() < 1e-12);
     }
 
     #[test]

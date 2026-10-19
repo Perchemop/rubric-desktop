@@ -49,6 +49,27 @@ fn path_points_ok(points: &[Pt], min: usize, _closed: bool) -> bool {
     points.len() >= min && points.windows(2).any(|w| w[0].distance(w[1]) > 0.5)
 }
 
+/// Anchor point in page space for a measurement label.
+fn measure_anchor(m: &Markup) -> Pt {
+    match &m.geometry {
+        MarkupGeometry::Segment { a, b } => Pt::new((a.x + b.x) * 0.5, (a.y + b.y) * 0.5),
+        MarkupGeometry::Path { points, .. } => {
+            if points.is_empty() {
+                m.bounds().center()
+            } else {
+                let n = points.len() as f32;
+                let (sx, sy) = points
+                    .iter()
+                    .fold((0.0f32, 0.0f32), |(x, y), p| (x + p.x, y + p.y));
+                Pt::new(sx / n, sy / n)
+            }
+        }
+        MarkupGeometry::Angle { vertex, .. } => *vertex,
+        MarkupGeometry::Count { at, .. } => *at,
+        _ => m.bounds().center(),
+    }
+}
+
 /// Draw a single markup.
 fn draw_markup(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup) {
     let style = m.style;
@@ -293,6 +314,28 @@ pub(crate) fn draw_canvas(
         for id in selected_ids {
             if let Some(m) = doc.find_markup(id) {
                 draw_selection(&painter, origin, pan, zoom, m);
+            }
+        }
+    }
+
+    // Measurement labels on canvas.
+    if project.settings.show_measurements {
+        if let Some(doc) = project.active() {
+            let unit = page.scale.unit;
+            for m in doc.markups.iter().filter(|m| m.page == page.index) {
+                if let Some(meas) = m.measurement {
+                    let label = meas.label(unit);
+                    let anchor_page = measure_anchor(m);
+                    let anchor = to_screen(anchor_page, pan, zoom, origin);
+                    let font = FontId::proportional(12.0);
+                    let galley = ui
+                        .ctx()
+                        .fonts(|f| f.layout_no_wrap(label, font.clone(), Color32::WHITE));
+                    let text_rect = galley.rect.translate(Vec2::new(anchor.x, anchor.y));
+                    let bg = text_rect.expand(4.0);
+                    painter.rect_filled(bg, 4.0, Color32::from_black_alpha(180));
+                    painter.galley(anchor, galley, Color32::WHITE);
+                }
             }
         }
     }

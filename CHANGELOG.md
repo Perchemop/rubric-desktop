@@ -8,12 +8,14 @@ All notable changes to this project will be documented here. Format: semantic-is
 - Phase 1 requirement set and spec (`docs/spec/README.md`): 52 feature IDs across F-1xx…F-7xx with priorities mapped to implementation phases; `REQUIREMENTS_TRACEABILITY.md` extended with spec-level requirements R-S-001…R-S-017 and seven group rows.
 - Phase 2 slice A — interactive canvas: drag-to-draw with live preview (bounds/segment), ink freehand drawing, wheel zoom anchored on cursor (10–1600%), Space/middle-button pan, Del to delete selection.
 - Phase 2 slice B — multi-point drawing: click-to-append polyline/polygon/perimeter/area paths with rubber-band preview (commit via double-click/right-click/Enter, Esc cancels), three-click angle tool with live ray preview.
+- Phase 3 — measurement labels rendered on canvas (domain-formatted, geometry-anchored, screen-space size); inspector scale editor with presets (1:1, 1 in = 1/10/50 ft), display-unit combo, and custom paper-inches : real-units ratio; scale/unit edits recompute page measurements with one undo snapshot per commit.
 - Hit testing v2: filled shapes hit interior, stroke-only shapes hit outline only; elliptical edge test; polygon even-odd interior test; ink segment-based (incl. dot strokes) — 8 new unit tests.
 - Subagent suite (`.opencode/agents/`): `domain-dev`, `test-writer`, `ui-dev`, `reviewer`, `docs-writer`, `fixer` — all on free OpenCode models, restricted to `cargo fmt` + read-only git locally.
 - CI-first build policy: all heavy gates (`cargo test`, `clippy -D warnings`, `check`, release build) run only in GitHub Actions; workflow now caches builds with `Swatinem/rust-cache@v2`.
 
 ### Fixed
 - Area measurement rescaling: area values now scale with `units_per_point²` (previously used the linear factor, and carried an unnecessary cast).
+- Switching the display unit now preserves physical measurements (`Scale::with_display_unit` converts `units_per_point` via `points_per_unit`) instead of silently reinterpreting the scale ratio.
 - Undo history no longer spams snapshots during selection drags (one snapshot per completed drag instead of dozens).
 - Esc now abandons an in-progress drag-to-draw instead of re-anchoring the draft.
 - Tool switching now discards an in-progress multi-point draft (no ghost preview or stale Enter/right-click commits).

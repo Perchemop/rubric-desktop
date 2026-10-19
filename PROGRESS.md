@@ -167,13 +167,47 @@
   `wants_keyboard_input` guards; fmt clean.
 
 ### Active
-- Pushing slice B; CI is the compile/clippy/test gate.
+- Slice B CI-verified green (`8ea3e5c`); Phase 2 complete.
+
+### Blocked
+- None.
+
+## 2026-10-19 — Phase 3: measurement labels + scale editor
+**Status**: implemented + reviewed + fixed; awaiting CI verification
+
+### Completed
+- UI (`ui-dev`): measurement labels on canvas — screen-space 12 pt text with
+  semi-transparent rounded backing, formatted via domain
+  `Measurement::label(page.scale.unit)`, anchored to geometry (segment
+  midpoint, path centroid, angle vertex, count point), gated on
+  `settings.show_measurements`.
+- Inspector Scale section: preset buttons (1:1, 1 in = 1 ft, 1 in = 10 ft,
+  1 in = 50 ft), display-unit combo, custom ratio (paper inches : real units)
+  with editable DragValue + Apply. Scale/unit changes recompute the active
+  page's measurements and push one undo snapshot per committed edit (not per
+  keystroke).
+- Review (`reviewer`): 1 BLOCKER (E0499 overlapping borrows in the inspector
+  call), 1 MAJOR (display-unit switch silently rescaled physical
+  measurements), 1 MEDIUM (paper-inches display-only), 2 LOW (no-op preset
+  snapshots, dead per-frame describe block), 2 INFO (comment add had no
+  snapshot; missing tests).
+- Fixes (`fixer`): removed the redundant `status: &mut String` param (writes
+  `ui_state.status`); new domain helper `Scale::with_display_unit` preserving
+  physical length across unit switches (`upp_new = upp_old · ppu(old) /
+  ppu(new)`) with 3 unit tests (physical-length preservation, identity,
+  round-trip); real DragValue for paper inches; `same_scale` dedupe so no-op
+  clicks never snapshot; `edited` gate stops per-frame `touch()` churn;
+  comment add now snapshots once. fmt clean.
+
+### Active
+- Pushing Phase 3; CI is the compile/clippy/test gate (new units tests run
+  there).
 
 ### Blocked
 - None.
 
 ## Summary
-Phase 1 complete; Phase 2 slices A (drag-to-draw/zoom/pan/hit-testing) and B
-(multi-point polyline/polygon/angle) implemented via the subagent pipeline
-(domain → ui → reviewer → fixer → CI). Next: measurement labels + scale editor
-(Phase 3), then review-workflow UI (Phase 4).
+Phase 1 complete; Phase 2 slices A + B complete and CI-green; Phase 3
+(measurement labels, scale editor, unit selection) implemented through the
+pipeline (domain → ui → reviewer → fixer → CI). Next: precision/formatting
+preferences, then review-workflow UI (Phase 4).

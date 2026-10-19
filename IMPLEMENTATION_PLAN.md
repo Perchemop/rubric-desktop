@@ -43,9 +43,9 @@
 ## Phase 3 — Measurements + scale UI
 - [x] Scale per page, units_per_point, recompute on geometry change
 - [x] Measurement computation (length/perimeter/area/angle/diameter/radius/count)
-- [ ] Scale editor in inspector/settings (ratio presets: 1:1, 1 in=1 ft, 1 in=10 ft, custom)
-- [ ] Units dropdown in inspector (active doc/page scale unit)
-- [ ] Measurement labels rendered on canvas
+- [x] Scale editor in inspector/settings (ratio presets: 1:1, 1 in=1 ft, 1 in=10 ft, custom)
+- [x] Units dropdown in inspector (active doc/page scale unit)
+- [x] Measurement labels rendered on canvas
 - [ ] Precision/formatting preferences
 
 ## Phase 4 — Review workflow, layers, toolsets

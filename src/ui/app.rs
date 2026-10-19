@@ -7,7 +7,7 @@ use eframe::{App, CreationContext, Frame};
 use egui::{Align, Layout, Pos2, Ui, Vec2};
 
 use crate::data::{default_project_path, load_project, save_project};
-use crate::domain::{Document, History, MarkupKind, Page, Project, Pt, Scale, Tool};
+use crate::domain::{Document, History, MarkupKind, Project, Pt, Tool};
 use crate::ui::{canvas, inspector, theme, toolbar};
 
 #[allow(dead_code)]
@@ -78,6 +78,9 @@ pub(crate) struct UiState {
     /// True while a drag that began on a selected markup is moving it.
     pub(crate) move_selection: bool,
     dirty: bool,
+    /// Custom scale editor inputs (paper inches and real units).
+    pub(crate) scale_paper_inches: f64,
+    pub(crate) scale_real_units: f64,
 }
 
 impl Default for UiState {
@@ -96,6 +99,8 @@ impl Default for UiState {
             last_tool: Tool::Select,
             move_selection: false,
             dirty: false,
+            scale_paper_inches: 1.0,
+            scale_real_units: 10.0,
         }
     }
 }
@@ -132,16 +137,6 @@ impl RubricApp {
 
     fn active_doc_mut(&mut self) -> Option<&mut Document> {
         self.history.current_mut().active_mut()
-    }
-
-    fn page_of_active_doc(&self) -> Option<Page> {
-        self.active_doc().and_then(|d| d.primary_page())
-    }
-
-    fn measure_scale(&self) -> Scale {
-        self.page_of_active_doc()
-            .map(|p| p.scale)
-            .unwrap_or(Scale::PAPER)
     }
 
     fn clear_selection(&mut self) {
@@ -264,16 +259,13 @@ impl RubricApp {
         );
     }
 
-    fn right_panel(&mut self, ui: &mut Ui) {
-        let scale = self.measure_scale();
+    fn right_panel(&mut self, ui: &mut Ui) -> bool {
         inspector::draw_inspector(
             ui,
             self.history.current_mut(),
-            &mut self.ui.selected,
+            &mut self.ui,
             &mut self.comment_text,
-            scale,
-            &mut self.ui.status,
-        );
+        )
     }
 
     fn bottom_bar(&mut self, ui: &mut Ui) {
@@ -333,10 +325,13 @@ impl App for RubricApp {
             .default_size(200.0)
             .min_size(180.0)
             .show(ui, |ui| self.left_panel(ui));
+        let mut inspector_mutated = false;
         egui::Panel::right("inspector")
             .default_size(280.0)
             .min_size(240.0)
-            .show(ui, |ui| self.right_panel(ui));
+            .show(ui, |ui| {
+                inspector_mutated = self.right_panel(ui);
+            });
         egui::Panel::bottom("status").show(ui, |ui| self.bottom_bar(ui));
 
         let mut need_snapshot = false;
@@ -351,6 +346,9 @@ impl App for RubricApp {
         });
         if need_snapshot {
             self.push_snapshot("drawing");
+        }
+        if inspector_mutated {
+            self.push_snapshot("inspector edit");
         }
 
         ui.ctx()
