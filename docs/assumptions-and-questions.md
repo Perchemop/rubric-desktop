@@ -17,7 +17,7 @@
 - PDF rendering: attempt a **pure-Rust crate first** (keeps CI, cross-compilation and packaging free of native/system dependencies); the exact crate is decided in Phase 5 (see Questions 17).
 - Persistence MVP is **sidecar-only**: all markups/review data live in `.rubric.json`; the source PDF is never opened for writing.
 - Export MVP = **rendered image (PNG) + print**; PDF-embedded annotation export is excluded from the MVP and only revisited later (spec non-goal for now).
-- Review status target set is **Open / In review / Approved / Rejected** (spec F-301); the existing domain enum (None/Accepted/Rejected/Completed/Cancelled/Alert) gets remapped in Phase 4 — no released files exist, so the rename is free.
+- Review status set is **Open / In review / Approved / Rejected** (spec F-301); the domain enum was remapped in Phase 4 (2026-10-19), replacing the old variant set (None/Accepted/Rejected/Completed/Cancelled/Alert) — no released files exist, so the rename was free.
 - Spec-level requirement IDs **R-S-001…R-S-017** were added to REQUIREMENTS_TRACEABILITY.md, mapping spec areas → F-IDs → planned modules.
 - Non-goals recorded in the spec: cloud/collaboration, editing PDF content itself, proprietary/encrypted formats, mobile/web, digital signatures.
 

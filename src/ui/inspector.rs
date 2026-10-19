@@ -36,6 +36,32 @@ pub(crate) fn draw_inspector(
     ui.heading("Inspector");
     ui.separator();
 
+    // Status legend (spec F-305): one row per status with swatch + label + count.
+    ui.collapsing("Status legend", |ui| {
+        let mut counts = [0usize; ReviewStatus::ALL.len()];
+        if let Some(doc) = project.active() {
+            for m in &doc.markups {
+                for (i, s) in ReviewStatus::ALL.iter().enumerate() {
+                    if m.status == *s {
+                        counts[i] += 1;
+                    }
+                }
+            }
+        }
+        for (i, s) in ReviewStatus::ALL.iter().enumerate() {
+            ui.horizontal(|ui| {
+                let (rect, _) =
+                    ui.allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
+                ui.painter()
+                    .circle_filled(rect.center(), 5.0, domain_to_color32(s.color()));
+                ui.label(s.label());
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.small(counts[i].to_string());
+                });
+            });
+        }
+    });
+
     if project.active().is_none() {
         ui.small("No active document.");
         return false;
@@ -333,13 +359,25 @@ pub(crate) fn draw_inspector(
         });
 
         ComboBox::from_label("Status")
-            .selected_text(m.status.label())
+            .selected_text(
+                egui::RichText::new(m.status.label()).color(domain_to_color32(m.status.color())),
+            )
             .show_ui(ui, |ui| {
                 for s in ReviewStatus::ALL.iter() {
-                    if ui.selectable_value(&mut m.status, *s, s.label()).clicked() {
-                        ui_state.status = format!("Status → {}", s.label());
-                        edited = true;
-                    }
+                    ui.horizontal(|ui| {
+                        let (rect, _) =
+                            ui.allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
+                        ui.painter().circle_filled(
+                            rect.center(),
+                            5.0,
+                            domain_to_color32(s.color()),
+                        );
+                        if ui.selectable_label(m.status == *s, s.label()).clicked() {
+                            m.status = *s;
+                            ui_state.status = format!("Status → {}", s.label());
+                            edited = true;
+                        }
+                    });
                 }
             });
 

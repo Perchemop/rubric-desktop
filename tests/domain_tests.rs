@@ -86,7 +86,7 @@ fn review_status_and_style_defaults() {
         MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0)),
         "a",
     );
-    assert_eq!(m.status, ReviewStatus::None);
+    assert_eq!(m.status, ReviewStatus::Open);
     assert_eq!(m.style.stroke, palette::YELLOW);
 }
 

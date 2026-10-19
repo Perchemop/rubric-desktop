@@ -248,7 +248,7 @@ fn draw_markup(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup
         }
     }
 
-    if m.status != ReviewStatus::None {
+    if m.status != ReviewStatus::Open {
         let b = screen_rect(m.bounds(), origin, pan, zoom);
         let dot = Pos2::new(b.right() + 4.0, b.top() - 4.0);
         painter.circle_filled(dot, 5.0 * zoom.max(0.7), to_color32(m.status.color()));

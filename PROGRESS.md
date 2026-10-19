@@ -232,7 +232,7 @@
 - None.
 
 ## 2026-10-19 — Phase 4 slice 1: layer visibility/lock
-**Status**: implemented + reviewed + fixed; awaiting CI verification
+**Status**: CI-verified green (`dd4bbe8`) — fmt, clippy, all tests incl. 15 new layer tests, release build. 1 CI follow-up fix (test-module import path).
 
 ### Completed
 - Domain (`domain-dev`): `Layer { id, name, visible, locked, z }` +
@@ -267,8 +267,34 @@
 ### Blocked
 - None.
 
+## 2026-10-19 — Phase 4 slice 2: status remap + legend
+**Status**: implemented + reviewed clean; awaiting CI verification
+
+### Completed
+- Domain (`domain-dev`, src/domain/markup.rs): `ReviewStatus` remapped to the
+  spec F-301 set — `Open` (default) / `In review` / `Approved` / `Rejected`
+  (serde snake_case); old variant set (None/Accepted/Completed/Cancelled/Alert)
+  dropped under a recorded scope decision (no released files, rename is free).
+  Distinct palette colour mapping via `ReviewStatus::color()` (grey / amber /
+  green / red). One canvas break site fixed. 6 new domain tests incl.
+  legacy-string rejection.
+- UI (`ui-dev`): inspector "Status legend" section (swatch + label + live
+  count per status), colour swatches in the status ComboBox, canvas status
+  dots for non-Open markups (dot guard falls back to `Open`).
+- Review (`reviewer`): no material defects; push recommended. Findings: docs
+  drift (README, data-model, assumptions still listed the old status set —
+  fixed in this entry) + pre-existing status-snapshot follow-up (subject/
+  author/status inspector edits don't push an undo snapshot).
+
+### Active
+- Pushing slice 2; CI is the compile/clippy/test gate (6 new tests).
+
+### Blocked
+- None.
+
 ## Summary
 Phase 1 complete; Phase 2 complete and CI-green; Phase 3 complete
-(precision was the last item); Phase 4 slice 1 (layer visibility/lock)
-implemented through the pipeline (domain → ui → reviewer → fixer → CI).
-Next: status colours + legend, stamp library, callout text editing.
+(precision was the last item); Phase 4 slices 1–2 (layer visibility/lock;
+status colours + legend) implemented through the pipeline (domain → ui →
+reviewer → fixer → CI). Next: stamp library, callout text editing (rest of
+Phase 4), then Phase 5.

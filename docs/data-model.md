@@ -11,11 +11,12 @@
 - **Color**: r,g,b,a (u8)
 - **FillMode**: None/Solid/Highlight
 - **DashPattern**: Solid/Dashed/Dotted
-- **ReviewStatus**: None/Accepted/Rejected/Completed/Cancelled/Alert
+- **ReviewStatus**: Open/In review/Approved/Rejected
 - **Comment**: id, author, text, created (DateTime<Utc>)
 - **Measurement**: kind (MeasureKind), value (f64 in scale units), value_points (f64)
 - **ToolSet**: id, name, tools (MarkupKind[])
-- **Settings**: author, auto_save, auto_save_interval_secs, ui_scale, show_grid, show_measurements
+- **Layer**: id, name, visible, locked, z (Markup.layer_id None = per-document default layer)
+- **Settings**: author, auto_save, auto_save_interval_secs, ui_scale, show_grid, show_measurements, precision (0–6)
 - **Tool** (UI): Select + all markup kinds
 - **History**: snapshots[ProjectSnapshot], cursor (undo/redo)
 - **ProjectSnapshot**: project clone

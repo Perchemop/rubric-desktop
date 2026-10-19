@@ -52,7 +52,7 @@
 - [x] ReviewStatus, Comments, Subject/Author
 - [x] ToolSet presets (Review/Shapes/Measure)
 - [x] Layer visibility/lock (Layer model: visibility/lock, layers panel, mutation gates)
-- [ ] Status colours + legend
+- [x] Status colours + legend
 - [ ] Stamp library (basic presets)
 - [ ] Callout text editing in-canvas
 

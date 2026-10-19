@@ -304,48 +304,51 @@ impl MarkupGeometry {
     }
 }
 
-/// Review workflow status, mirroring a standard reviewer's status set.
+/// Review workflow status (spec F-301).
+///
+/// The four-state set is `Open` / `In review` / `Approved` / `Rejected`. It
+/// supersedes an earlier, larger enum; no released files exist, so old status
+/// strings are intentionally not accepted on load.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ReviewStatus {
+    /// Newly created and not yet picked up by a reviewer (default).
     #[default]
-    None,
-    Accepted,
+    Open,
+    /// Actively being reviewed.
+    InReview,
+    /// Signed off.
+    Approved,
+    /// Not accepted.
     Rejected,
-    Completed,
-    Cancelled,
-    Alert,
 }
 
 impl ReviewStatus {
-    pub const ALL: [ReviewStatus; 6] = [
-        ReviewStatus::None,
-        ReviewStatus::Accepted,
+    /// All statuses in display order (status picker / legend).
+    pub const ALL: [ReviewStatus; 4] = [
+        ReviewStatus::Open,
+        ReviewStatus::InReview,
+        ReviewStatus::Approved,
         ReviewStatus::Rejected,
-        ReviewStatus::Completed,
-        ReviewStatus::Cancelled,
-        ReviewStatus::Alert,
     ];
 
+    /// Human-readable label shown in the UI.
     pub fn label(self) -> &'static str {
         match self {
-            ReviewStatus::None => "None",
-            ReviewStatus::Accepted => "Accepted",
+            ReviewStatus::Open => "Open",
+            ReviewStatus::InReview => "In review",
+            ReviewStatus::Approved => "Approved",
             ReviewStatus::Rejected => "Rejected",
-            ReviewStatus::Completed => "Completed",
-            ReviewStatus::Cancelled => "Cancelled",
-            ReviewStatus::Alert => "Alert",
         }
     }
 
+    /// Legend/indicator colour (spec F-305). Every status has a distinct hue.
     pub fn color(self) -> Color {
         match self {
-            ReviewStatus::None => palette::GREY,
-            ReviewStatus::Accepted => palette::GREEN,
+            ReviewStatus::Open => palette::GREY,
+            ReviewStatus::InReview => palette::AMBER,
+            ReviewStatus::Approved => palette::GREEN,
             ReviewStatus::Rejected => palette::RED,
-            ReviewStatus::Completed => palette::BLUE,
-            ReviewStatus::Cancelled => palette::GREY,
-            ReviewStatus::Alert => palette::AMBER,
         }
     }
 }
@@ -446,7 +449,7 @@ impl Markup {
             style: kind.default_style(),
             author: author.into(),
             subject: kind.label().to_string(),
-            status: ReviewStatus::None,
+            status: ReviewStatus::Open,
             layer: None,
             layer_id: None,
             locked: false,
@@ -1052,5 +1055,110 @@ mod tests {
             assert_eq!(m.geometry, back.geometry);
             assert_eq!(m.style.fill_mode, back.style.fill_mode);
         }
+    }
+
+    #[test]
+    fn review_status_default_is_open() {
+        assert_eq!(ReviewStatus::default(), ReviewStatus::Open);
+        let m = Markup::new(
+            0,
+            MarkupKind::Note,
+            MarkupGeometry::Count {
+                at: Pt::new(1.0, 1.0),
+                number: 1,
+            },
+            "t",
+        );
+        assert_eq!(m.status, ReviewStatus::Open);
+    }
+
+    #[test]
+    fn review_status_all_matches_spec_set() {
+        assert_eq!(
+            ReviewStatus::ALL,
+            [
+                ReviewStatus::Open,
+                ReviewStatus::InReview,
+                ReviewStatus::Approved,
+                ReviewStatus::Rejected,
+            ]
+        );
+        assert_eq!(ReviewStatus::ALL.len(), 4);
+        assert_eq!(ReviewStatus::Open.label(), "Open");
+        assert_eq!(ReviewStatus::InReview.label(), "In review");
+        assert_eq!(ReviewStatus::Approved.label(), "Approved");
+        assert_eq!(ReviewStatus::Rejected.label(), "Rejected");
+    }
+
+    #[test]
+    fn review_status_colors_are_pairwise_distinct() {
+        for (i, a) in ReviewStatus::ALL.iter().enumerate() {
+            for b in ReviewStatus::ALL.iter().skip(i + 1) {
+                assert_ne!(a.color(), b.color(), "{a:?} and {b:?} share a colour");
+            }
+        }
+        assert_eq!(ReviewStatus::Open.color(), palette::GREY);
+        assert_eq!(ReviewStatus::InReview.color(), palette::AMBER);
+        assert_eq!(ReviewStatus::Approved.color(), palette::GREEN);
+        assert_eq!(ReviewStatus::Rejected.color(), palette::RED);
+    }
+
+    #[test]
+    fn review_status_serde_uses_snake_case() {
+        let cases = [
+            (ReviewStatus::Open, "\"open\""),
+            (ReviewStatus::InReview, "\"in_review\""),
+            (ReviewStatus::Approved, "\"approved\""),
+            (ReviewStatus::Rejected, "\"rejected\""),
+        ];
+        for (status, json) in cases {
+            assert_eq!(serde_json::to_string(&status).expect("serialize"), json);
+            let back: ReviewStatus = serde_json::from_str(json).expect("deserialize");
+            assert_eq!(back, status);
+        }
+        assert_eq!(
+            serde_json::from_str::<ReviewStatus>("\"in_review\"").expect("deserialize"),
+            ReviewStatus::InReview
+        );
+        assert_eq!(
+            serde_json::from_str::<ReviewStatus>("\"open\"").expect("deserialize"),
+            ReviewStatus::Open
+        );
+    }
+
+    #[test]
+    fn legacy_review_status_strings_no_longer_load() {
+        // The pre-Phase-4 variant set is intentionally rejected; files using it
+        // are re-saved. `"rejected"` is excluded because it remains valid.
+        for legacy in [
+            "\"none\"",
+            "\"accepted\"",
+            "\"completed\"",
+            "\"cancelled\"",
+            "\"alert\"",
+        ] {
+            assert!(
+                serde_json::from_str::<ReviewStatus>(legacy).is_err(),
+                "legacy status {legacy} should not deserialize"
+            );
+        }
+    }
+
+    #[test]
+    fn markup_status_serde_roundtrip_preserves_in_review() {
+        let mut m = Markup::new(
+            0,
+            MarkupKind::Note,
+            MarkupGeometry::Count {
+                at: Pt::new(3.0, 4.0),
+                number: 2,
+            },
+            "t",
+        );
+        m.status = ReviewStatus::InReview;
+        let json = serde_json::to_string(&m).expect("serialize");
+        assert!(json.contains("\"status\":\"in_review\""), "json = {json}");
+        let back: Markup = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.status, ReviewStatus::InReview);
     }
 }

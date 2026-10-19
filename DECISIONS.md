@@ -66,3 +66,8 @@ Record significant architectural/implementation decisions.
 - **Decision**: Adopted Phase 1 requirement set (`docs/spec/README.md`) as the canonical feature inventory; requirements use F-1xx…F-7xx groups and feed REQUIREMENTS_TRACEABILITY.md.
 - **Rationale**: one source of truth for scope and priorities; traceability links spec IDs → R-S requirement IDs → planned modules → tests.
 - **Impact**: `docs/spec/README.md` (52 F-IDs), REQUIREMENTS_TRACEABILITY.md (R-S-001…R-S-017 + seven group rows), IMPLEMENTATION_PLAN.md Phase 1 ticked.
+
+## 2026-10-19: ReviewStatus remapped to the spec status set
+- **Decision**: `ReviewStatus` remapped to the spec F-301 set — `Open` (default) / `In review` / `Approved` / `Rejected` (serde snake_case), superseding the earlier 6-variant enum (None/Accepted/Rejected/Completed/Cancelled/Alert). Each status gets a distinct palette colour (`ReviewStatus::color()`) surfaced via an inspector legend, status-combo swatches, and canvas status dots.
+- **Rationale**: the spec status set adopted in Phase 1 is canonical; legacy status strings are rejected by design — no released files existed, so the rename was free (scope decision).
+- **Impact**: src/domain/markup.rs (variant set, colour mapping, 6 new tests incl. legacy-string rejection), src/ui/inspector.rs (Status legend), src/ui/canvas.rs (status dots); `.rubric.json` files containing old status strings no longer load.

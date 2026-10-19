@@ -53,15 +53,15 @@ Each row maps a spec area to its feature IDs and the planned modules.
 | ID | Requirement | Spec IDs | Planned modules | Status |
 |---|-----------|----------|-----------------|--------|
 | R-S-001 | Markup tools: highlight, text markups, note, text, callout, shapes, cloud, polyline/polygon, line/arrow, ink, stamps | F-101–F-111 | src/domain/markup.rs, src/ui/toolbar.rs, src/ui/canvas.rs | PARTIAL |
-| R-S-002 | Drag-to-draw with live preview (bounds/segment/path/angle/ink) | F-112 | src/ui/canvas.rs (DrawState) | TODO |
+| R-S-002 | Drag-to-draw with live preview (bounds/segment/path/angle/ink) | F-112 | src/ui/canvas.rs (DrawState) | DONE |
 | R-S-003 | Selection editing: select/move/delete, copy properties, z-order | F-113–F-115 | src/ui/canvas.rs, src/ui/inspector.rs, src/domain/project.rs | PARTIAL |
-| R-S-004 | Layer visibility and lock | F-116 | src/domain/project.rs (ToolSet → Layer), src/ui/inspector.rs | TODO |
+| R-S-004 | Layer visibility and lock | F-116 | src/domain/project.rs (ToolSet → Layer), src/ui/inspector.rs | DONE |
 | R-S-005 | Measurements: length, perimeter, area, angle, diameter, radius, count | F-201–F-206 | src/domain/units.rs, src/domain/markup.rs | PARTIAL |
 | R-S-006 | Calibration and units: scale presets, custom ratio, unit selection | F-207, F-208 | src/domain/units.rs, src/domain/document.rs | PARTIAL |
-| R-S-007 | Measurement labels on canvas + precision/format preferences | F-209 | src/ui/canvas.rs, src/ui/inspector.rs | TODO |
-| R-S-008 | Review workflow: statuses (Open/In review/Approved/Rejected), comments, author/subject | F-301–F-303 | src/domain/markup.rs, src/domain/project.rs | PARTIAL |
+| R-S-007 | Measurement labels on canvas + precision/format preferences | F-209 | src/ui/canvas.rs, src/ui/inspector.rs | DONE |
+| R-S-008 | Review workflow: statuses (Open/In review/Approved/Rejected), comments, author/subject | F-301–F-303 | src/domain/markup.rs (ReviewStatus, remapped 2026-10-19), src/domain/project.rs | DONE |
 | R-S-009 | Summary report (markups by status/author/subject, exportable) | F-304 | src/domain/report.rs (new), src/ui/app.rs | TODO |
-| R-S-010 | Status colours and legend | F-305 | src/ui/theme.rs, src/ui/toolbar.rs | TODO |
+| R-S-010 | Status colours and legend | F-305 | src/ui/inspector.rs (Status legend + swatches), src/domain/markup.rs (`ReviewStatus::color()`), src/ui/canvas.rs (status dots) | DONE |
 | R-S-011 | Canvas navigation: zoom, pan, page navigation, thumbnails | F-401–F-404 | src/ui/app.rs, src/ui/canvas.rs | PARTIAL |
 | R-S-012 | Grid, snap, rulers | F-405, F-406 | src/ui/canvas.rs | TODO |
 | R-S-013 | Persistence: `.rubric.json` sidecar, autosave, recent files, native dialogs, schema version | F-501–F-503, F-506, F-507 | src/data/store.rs, src/ui/app.rs | PARTIAL |
@@ -78,14 +78,14 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 |---|--------|----------------|--------|-------|
 | F-001 | Markups (highlights, lines, shapes, text, callouts, stamps) | MarkupKind + Geometry | DONE (core) | expand tool set over time |
 | F-002 | Measurements (length/perimeter/area/angle/count) | Measurement + recompute | DONE | add diameter/radius UI polish |
-| F-003 | Review workflow (statuses, comments, subjects) | ReviewStatus, Comment | DONE | expand status set if needed |
-| F-004 | Layers/Toolsets | ToolSet + Layer field | PARTIAL | expand visibility/lock/sorting |
-| F-005 | Scale/calibration | Page.scale + units | DONE | UI editor needed |
+| F-003 | Review workflow (statuses, comments, subjects) | ReviewStatus, Comment | DONE | spec status set Open/In review/Approved/Rejected landed (F-301, 2026-10-19) |
+| F-004 | Layers/Toolsets | ToolSet + Layer field | PARTIAL | visibility/lock landed; rename/reorder pending |
+| F-005 | Scale/calibration | Page.scale + units | DONE | inspector UI editor landed (Phase 3) |
 | F-006 | Page navigation/thumbnails | Document.pages | TODO | add UI |
 | F-007 | Non-destructive markup (sidecar) | .rubric.json separate | DONE | PDF embedding later optional |
 | F-1xx | Markups/tools + selection/edit (spec) | MarkupKind, Geometry, ToolSet → Layer | PARTIAL | docs/spec/README.md F-101–F-116; R-S-001–R-S-004 |
 | F-2xx | Measurements + scale/calibration (spec) | Measurement, Page.scale, units | PARTIAL | docs/spec/README.md F-201–F-209; R-S-005–R-S-007 |
-| F-3xx | Review workflow (spec) | ReviewStatus, Comment, author/subject | PARTIAL | docs/spec/README.md F-301–F-305; R-S-008–R-S-010 |
+| F-3xx | Review workflow (spec) | ReviewStatus, Comment, author/subject | PARTIAL | docs/spec/README.md F-301–F-305; R-S-008–R-S-010; F-301/F-305 landed 2026-10-19, F-304 pending |
 | F-4xx | Navigation/pages (spec) | Document.pages, UiState camera | PARTIAL | docs/spec/README.md F-401–F-406; R-S-011–R-S-012 |
 | F-5xx | Persistence/I/O (spec) | .rubric.json store, PDF import, export/print | PARTIAL | docs/spec/README.md F-501–F-507; R-S-013–R-S-015 |
 | F-6xx | UI/UX polish (spec) | shortcuts, theme, history | PARTIAL | docs/spec/README.md F-601–F-605; R-S-016 |
@@ -95,8 +95,6 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 - Canonical inventory: `docs/spec/README.md` (52 F-IDs across F-1xx…F-7xx), adopted 2026-10-19; see Phase 1 requirement set above.
 - PDF rendering/import/export — TODO (Phase 5)
 - Multi-page UI — TODO
-- Advanced drawing (polygon/polyline/angle/ink with preview) — TODO
-- Zoom/pan with mouse wheel + space drag — TODO
 - Cloud/ink rendering polish — TODO
 - Packaging (AppImage/DMG/MSI) — TODO
 
