@@ -408,9 +408,18 @@ pub struct Markup {
     pub subject: String,
     #[serde(default)]
     pub status: ReviewStatus,
-    /// Optional group/layer name (used for tool sets and layers).
+    /// Legacy free-form group label (from early tool-set presets). Kept for
+    /// serialization compatibility; it is not the visibility/lock layer.
+    /// Use [`Markup::layer_id`] for layer membership.
     #[serde(default)]
     pub layer: Option<String>,
+    /// Id of the [`super::document::Layer`] this markup belongs to.
+    ///
+    /// `None` means the document's default layer. Legacy files have no such
+    /// field and therefore migrate onto the default layer automatically.
+    #[serde(default)]
+    pub layer_id: Option<Uuid>,
+    /// Per-markup lock. Layer locking lives on [`super::document::Layer`].
     #[serde(default)]
     pub locked: bool,
     #[serde(default)]
@@ -439,6 +448,7 @@ impl Markup {
             subject: kind.label().to_string(),
             status: ReviewStatus::None,
             layer: None,
+            layer_id: None,
             locked: false,
             comments: Vec::new(),
             measurement: None,
@@ -450,6 +460,13 @@ impl Markup {
     pub fn with_style(mut self, style: MarkupStyle) -> Self {
         self.style = style;
         self.style.font_size = self.style.font_size.max(6.0);
+        self
+    }
+
+    /// Assign this markup to a layer (builder form). `None` would mean the
+    /// default layer, so only explicit ids are accepted here.
+    pub fn with_layer(mut self, layer_id: Uuid) -> Self {
+        self.layer_id = Some(layer_id);
         self
     }
 

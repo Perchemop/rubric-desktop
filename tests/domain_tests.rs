@@ -108,3 +108,73 @@ fn project_save_load_roundtrip() {
     assert_eq!(proj2.documents.len(), 2);
     assert_eq!(proj2.active_document, 1);
 }
+
+fn rect_markup() -> Markup {
+    Markup::new(
+        0,
+        MarkupKind::Rectangle,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 50.0, 40.0)),
+        "a",
+    )
+}
+
+#[test]
+fn legacy_project_without_layer_data_loads_default_layer() {
+    let mut proj = Project::new("Legacy");
+    let mut doc = Document::empty("Doc");
+    doc.add_markup(rect_markup());
+    proj.add_document(doc);
+
+    let mut value = serde_json::to_value(&proj).expect("json");
+    let docs = value
+        .get_mut("documents")
+        .and_then(serde_json::Value::as_array_mut)
+        .expect("documents");
+    for doc in docs {
+        let obj = doc.as_object_mut().expect("document");
+        obj.remove("layers");
+        if let Some(markups) = obj
+            .get_mut("markups")
+            .and_then(serde_json::Value::as_array_mut)
+        {
+            for markup in markups {
+                if let Some(markup) = markup.as_object_mut() {
+                    markup.remove("layer_id");
+                }
+            }
+        }
+    }
+
+    let loaded: Project = serde_json::from_value(value).expect("deserialize legacy");
+    let active = loaded.active().expect("active document");
+    assert_eq!(active.layers.len(), 1);
+    let default = active.default_layer_id();
+    assert_eq!(active.markups.len(), 1);
+    assert_eq!(active.markups[0].layer_id, None);
+    assert_eq!(active.layer_id_for(&active.markups[0]), Some(default));
+    assert_eq!(active.markups_on_layer(default).len(), 1);
+}
+
+#[test]
+fn project_layers_and_membership_roundtrip() {
+    let mut proj = Project::new("Layered");
+    let layer = {
+        let doc = proj.active_mut().expect("active document");
+        let id = doc.add_layer("Markups");
+        doc.set_layer_locked(id, true);
+        doc.add_markup(rect_markup().with_layer(id));
+        id
+    };
+
+    let json = serde_json::to_string_pretty(&proj).expect("ser");
+    let back: Project = serde_json::from_str(&json).expect("de");
+    let doc = back.active().expect("active document");
+    assert_eq!(doc.layers.len(), 2);
+    assert_eq!(doc.layer(layer).map(|l| l.locked), Some(true));
+    assert_eq!(doc.markups_on_layer(layer).len(), 1);
+    assert!(
+        doc.is_markup_visible(&doc.markups[0]),
+        "locked stays visible"
+    );
+    assert!(!doc.is_markup_editable(&doc.markups[0]));
+}

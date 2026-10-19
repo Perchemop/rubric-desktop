@@ -28,7 +28,7 @@ fn pick_markup_id(project: &Project, page_idx: usize, p: Pt, tol: f32) -> Option
     let mut ids: Vec<Uuid> = doc
         .markups
         .iter()
-        .filter(|m| m.page == page_idx && m.hit_test(p, tol))
+        .filter(|m| m.page == page_idx && doc.is_markup_visible(m) && m.hit_test(p, tol))
         .map(|m| m.id)
         .collect();
     ids.reverse();
@@ -39,6 +39,22 @@ fn screen_rect(r: DRect, origin: Pos2, pan: Vec2, zoom: f32) -> egui::Rect {
     let min = to_screen(Pt::new(r.x, r.y), pan, zoom, origin);
     let max = to_screen(Pt::new(r.right(), r.bottom()), pan, zoom, origin);
     egui::Rect::from_min_max(min, max)
+}
+
+/// Refuse to begin a draft when the markup it would create could not be edited.
+///
+/// New markups always land on the default layer (`layer_id = None`), so a
+/// locked default layer would commit instantly uneditable markups. Fails open
+/// when no document is open or the document has no layers at all.
+fn creation_allowed(project: &Project, ui_state: &mut super::app::UiState) -> bool {
+    let locked = project
+        .active()
+        .and_then(|d| d.default_layer())
+        .is_some_and(|l| l.locked);
+    if locked {
+        ui_state.status = "Layer locked — new markups cannot be created".to_string();
+    }
+    locked
 }
 
 /// Whether a drafted path is worth committing: it must have enough points
@@ -303,17 +319,25 @@ pub(crate) fn draw_canvas(
 
     // Render markups (add order).
     if let Some(doc) = project.active() {
-        for m in doc.markups.iter().filter(|m| m.page == page.index) {
+        for m in doc
+            .markups
+            .iter()
+            .filter(|m| m.page == page.index && doc.is_markup_visible(m))
+        {
             draw_markup(&painter, origin, pan, zoom, m);
         }
     }
 
-    // Render selection.
+    // Render selection. Handles are not drawn for a selected markup whose
+    // layer has since been hidden: it cannot be picked or moved any more, and
+    // the selection itself is kept.
     if let Some(doc) = project.active() {
         let selected_ids: Vec<Uuid> = ui_state.selected.iter().copied().collect();
         for id in selected_ids {
             if let Some(m) = doc.find_markup(id) {
-                draw_selection(&painter, origin, pan, zoom, m);
+                if doc.is_markup_visible(m) {
+                    draw_selection(&painter, origin, pan, zoom, m);
+                }
             }
         }
     }
@@ -322,7 +346,11 @@ pub(crate) fn draw_canvas(
     if project.settings.show_measurements {
         if let Some(doc) = project.active() {
             let unit = page.scale.unit;
-            for m in doc.markups.iter().filter(|m| m.page == page.index) {
+            for m in doc
+                .markups
+                .iter()
+                .filter(|m| m.page == page.index && doc.is_markup_visible(m))
+            {
                 if let Some(meas) = m.measurement {
                     let label = meas.label_with(unit, project.settings.precision);
                     let anchor_page = measure_anchor(m);
@@ -538,6 +566,8 @@ pub(crate) fn draw_canvas(
                             super::app::DrawState::Path { points, .. } => {
                                 points.push(pp);
                             }
+                            // Refused: the default layer is locked.
+                            _ if !creation_allowed(project, ui_state) => {}
                             _ => {
                                 *draw_state = super::app::DrawState::Path {
                                     points: vec![pp],
@@ -580,16 +610,22 @@ pub(crate) fn draw_canvas(
                             *vertex = Some(pp);
                         }
                         _ => {
-                            *draw_state = super::app::DrawState::Angle {
-                                a: pp,
-                                vertex: None,
-                                kind,
-                            };
+                            // First click starts the sequence: refuse it when
+                            // the default layer is locked.
+                            if creation_allowed(project, ui_state) {
+                                *draw_state = super::app::DrawState::Angle {
+                                    a: pp,
+                                    vertex: None,
+                                    kind,
+                                };
+                            }
                         }
                     }
                 } else if is_segment_kind(kind) {
                     // Segment tools are drag-drawn; a bare click commits
                     // nothing (and pushes no snapshot).
+                } else if !creation_allowed(project, ui_state) {
+                    // Default layer locked: refuse to create an uneditable markup.
                 } else {
                     let author = project.settings.author.clone();
                     let inv = 1.0 / ui_state.zoom.max(0.1);
@@ -753,7 +789,12 @@ pub(crate) fn draw_canvas(
 
         if response.dragged() {
             // Start a new draw if idle and this drag was not cancelled.
-            if matches!(*draw_state, super::app::DrawState::Idle) && !ui_state.draw_cancelled {
+            // `creation_allowed` refuses the draft when the default layer is
+            // locked (and reports it in the status bar).
+            if matches!(*draw_state, super::app::DrawState::Idle)
+                && !ui_state.draw_cancelled
+                && creation_allowed(project, ui_state)
+            {
                 if let Some(pp) = page_pos {
                     if let Some(kind) = ui_state.active_tool.to_kind() {
                         match kind {
@@ -859,11 +900,23 @@ pub(crate) fn draw_canvas(
     // Drag to move the selection (when not drawing/panning).
     if !panning && matches!(ui_state.active_tool, Tool::Select) {
         if response.drag_started() {
-            // Only a drag that starts on a selected markup moves it; dragging
-            // from empty space must not touch the selection or the history.
-            ui_state.move_selection = page_pos
-                .and_then(|pp| pick_markup_id(project, page.index, pp, 6.0))
-                .is_some_and(|id| ui_state.selected.contains(&id));
+            // Only a drag that starts on a selected, editable markup moves it;
+            // dragging from empty space must not touch the selection or history.
+            let picked = page_pos.and_then(|pp| pick_markup_id(project, page.index, pp, 6.0));
+            let can_move = picked
+                .map(|id| {
+                    let editable = project
+                        .active()
+                        .and_then(|d| d.find_markup(id).map(|m| d.is_markup_editable(m)))
+                        .unwrap_or(false);
+                    ui_state.selected.contains(&id) && editable
+                })
+                .unwrap_or(false);
+            ui_state.move_selection = can_move;
+            // Nothing has moved yet in this drag. The flag lives in `UiState`
+            // because egui clears `dragged()` on the release frame, so the
+            // release frame itself cannot see whether the drag moved anything.
+            ui_state.move_changed = false;
         }
 
         if ui_state.move_selection {
@@ -878,17 +931,28 @@ pub(crate) fn draw_canvas(
                 let sel: Vec<Uuid> = ui_state.selected.iter().copied().collect();
                 if let Some(doc) = project.active_mut() {
                     for id in sel {
+                        let editable = doc
+                            .find_markup(id)
+                            .map(|m| doc.is_markup_editable(m))
+                            .unwrap_or(false);
+                        if !editable {
+                            continue;
+                        }
                         if let Some(m) = doc.find_markup_mut(id) {
                             m.geometry.translate(dx, dy);
                             m.touch();
+                            ui_state.move_changed = true;
                         }
                     }
                 }
             }
-            // Snapshot once, when the drag ends (never per frame).
+            // Snapshot once, when the drag ends (never per frame), and only
+            // when the drag actually moved a markup — a click-release on a
+            // selected markup with zero delta changes nothing.
             if response.drag_stopped() {
                 ui_state.move_selection = false;
-                mutated = true;
+                mutated |= ui_state.move_changed;
+                ui_state.move_changed = false;
             }
         }
     }

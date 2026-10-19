@@ -7,7 +7,7 @@ use eframe::egui::{self, ComboBox, Ui};
 use crate::domain::{
     style::Color,
     units::{MeasureUnit, MAX_PRECISION},
-    Project, ReviewStatus, Scale,
+    LayerError, Project, ReviewStatus, Scale,
 };
 use crate::ui::app::UiState;
 
@@ -40,6 +40,83 @@ pub(crate) fn draw_inspector(
         ui.small("No active document.");
         return false;
     }
+
+    // Layers panel (compact section). Always available.
+    ui.collapsing("Layers", |ui| {
+        if ui.button("Add layer").clicked() {
+            if let Some(doc) = project.active_mut() {
+                doc.add_layer("");
+                committed = true;
+                ui_state.status = "Layer added".to_string();
+            }
+        }
+        let layer_ids: Vec<Uuid> = project
+            .active()
+            .map(|d| d.layers.iter().map(|l| l.id).collect())
+            .unwrap_or_default();
+        let default_id = project
+            .active()
+            .map(|d| d.default_layer_id())
+            .unwrap_or_default();
+        for id in layer_ids {
+            let layer = project.active().and_then(|d| d.layer(id)).cloned();
+            let Some(layer) = layer else {
+                continue;
+            };
+            let is_default = id == default_id;
+            ui.horizontal(|ui| {
+                let visible = layer.visible;
+                let eye = if visible { "👁" } else { "·" };
+                if ui.button(eye).clicked() {
+                    if let Some(doc) = project.active_mut() {
+                        if doc.set_layer_visible(id, !visible) {
+                            committed = true;
+                            ui_state.status = if !visible {
+                                format!("Layer '{}' visible", layer.name)
+                            } else {
+                                format!("Layer '{}' hidden", layer.name)
+                            };
+                        }
+                    }
+                }
+                let locked = layer.locked;
+                let padlock = if locked { "🔒" } else { "🔓" };
+                if ui.button(padlock).clicked() {
+                    if let Some(doc) = project.active_mut() {
+                        if doc.set_layer_locked(id, !locked) {
+                            committed = true;
+                            ui_state.status = if !locked {
+                                format!("Layer '{}' locked", layer.name)
+                            } else {
+                                format!("Layer '{}' unlocked", layer.name)
+                            };
+                        }
+                    }
+                }
+                ui.label(&layer.name);
+                if is_default {
+                    ui.small("(default)");
+                } else if ui.button("Delete").clicked() {
+                    if let Some(doc) = project.active_mut() {
+                        match doc.remove_layer(id) {
+                            Ok(()) => {
+                                committed = true;
+                                ui_state.status = "Layer removed".to_string();
+                            }
+                            Err(LayerError::NotEmpty) => {
+                                ui_state.status =
+                                    "Layer not empty — move its markups first".to_string();
+                            }
+                            Err(LayerError::DefaultLayer) => {
+                                ui_state.status = "Cannot remove default layer".to_string();
+                            }
+                            Err(LayerError::NotFound) => {}
+                        }
+                    }
+                }
+            });
+        }
+    });
 
     let selected: Vec<Uuid> = ui_state.selected.iter().copied().collect();
 
@@ -227,6 +304,10 @@ pub(crate) fn draw_inspector(
     };
 
     let mut edited = false;
+    let editable = project
+        .active()
+        .map(|d| d.is_markup_editable(&m))
+        .unwrap_or(true);
 
     ui.collapsing("Properties", |ui| {
         ui.label(format!("ID: {}", m.id));
@@ -261,6 +342,38 @@ pub(crate) fn draw_inspector(
                     }
                 }
             });
+
+        // Layer assignment.
+        if editable {
+            let default_id = project
+                .active()
+                .map(|d| d.default_layer_id())
+                .unwrap_or_default();
+            let layers: Vec<(Uuid, String)> = project
+                .active()
+                .map(|d| d.layers.iter().map(|l| (l.id, l.name.clone())).collect())
+                .unwrap_or_default();
+            let current_id = m.layer_id.unwrap_or(default_id);
+            let current_name = layers
+                .iter()
+                .find(|(id, _)| *id == current_id)
+                .map(|(_, n)| n.clone())
+                .unwrap_or_else(|| "Layer 1".to_string());
+            ComboBox::from_label("Layer")
+                .selected_text(current_name)
+                .show_ui(ui, |ui| {
+                    for (id, name) in &layers {
+                        if ui.selectable_label(current_id == *id, name).clicked() {
+                            m.layer_id = if *id == default_id { None } else { Some(*id) };
+                            edited = true;
+                            committed = true;
+                            ui_state.status = format!("Layer → {}", name);
+                        }
+                    }
+                });
+        } else {
+            ui.small("Locked layer — edits disabled");
+        }
 
         ui.label("Stroke colour");
         let mut sc = domain_to_color32(m.style.stroke);
@@ -316,23 +429,30 @@ pub(crate) fn draw_inspector(
                 ui.separator();
             }
         }
-        ui.text_edit_multiline(comment_text);
-        if ui.button("Add Comment").clicked() && !comment_text.is_empty() {
-            m.comments.push(crate::domain::Comment::new(
-                project.settings.author.clone(),
-                comment_text.clone(),
-            ));
-            comment_text.clear();
-            ui_state.status = "Comment added".to_string();
-            edited = true;
-            // Adding a comment is a committed action: snapshot it once.
-            committed = true;
-        }
+        // Disabled while the markup is locked: a click would otherwise consume
+        // the typed text and the write-back guard would drop it, losing it
+        // with no feedback. The draft text is only cleared once added.
+        ui.add_enabled_ui(editable, |ui| {
+            ui.text_edit_multiline(comment_text);
+            let added = ui.button("Add Comment").clicked() && !comment_text.is_empty();
+            if added {
+                m.comments.push(crate::domain::Comment::new(
+                    project.settings.author.clone(),
+                    comment_text.clone(),
+                ));
+                comment_text.clear();
+                ui_state.status = "Comment added".to_string();
+                edited = true;
+                // Adding a comment is a committed action: snapshot it once.
+                committed = true;
+            }
+        });
     });
 
     // Write the markup back only when this frame actually edited it, otherwise
     // merely selecting a markup would churn `modified` on every frame.
-    if edited {
+    // Locked markups (per-markup or via a locked layer) are never written back.
+    if edited && editable {
         m.touch();
         if let Some(doc) = project.active_mut() {
             if let Some(slot) = doc.markups.iter().position(|x| x.id == m.id) {

@@ -7,7 +7,7 @@ pub mod project;
 pub mod style;
 pub mod units;
 
-pub use document::{Document, Page};
+pub use document::{Document, Layer, LayerError, Page};
 pub use geom::{angle_degrees, path_length, polygon_area, Pt, Rect};
 pub use markup::{
     Comment, Markup, MarkupGeometry, MarkupKind, Measurement, ReviewStatus, ToolGroup,

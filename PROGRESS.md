@@ -207,7 +207,7 @@
 - None.
 
 ## 2026-10-19 — Phase 3 completion: precision preference
-**Status**: implemented + reviewed clean; awaiting CI verification
+**Status**: CI-verified green (`b778f1c`) — fmt, clippy, all 11 new tests, release build. Phase 3 fully complete.
 
 ### Completed
 - Domain (`domain-dev`): `Settings::precision` (u8, serde default 3 — legacy
@@ -231,8 +231,44 @@
 ### Blocked
 - None.
 
+## 2026-10-19 — Phase 4 slice 1: layer visibility/lock
+**Status**: implemented + reviewed + fixed; awaiting CI verification
+
+### Completed
+- Domain (`domain-dev`): `Layer { id, name, visible, locked, z }` +
+  `LayerError` (NotFound/DefaultLayer/NotEmpty); `Markup.layer_id: Option<Uuid>`
+  with None = per-document default layer (legacy files migrate invisibly;
+  empty layer lists repaired on load); document ops incl. `add_layer`,
+  `remove_layer` (refuses default/populated), visibility/lock setters,
+  `is_markup_visible`/`is_markup_editable` (locked blocks editing; hidden
+  blocks paint/hit only; unknown ids fail open). Clarified `ToolSet` doc (it
+  is a palette preset, not a layer). 13 unit + 2 integration tests.
+- UI (`ui-dev`): inspector Layers section (eye/lock toggles, add, delete with
+  `LayerError` → status), layer ComboBox for selected markup; canvas paint,
+  labels, and pick filter on visibility; move-drag, Del, and inspector
+  write-back gated on editability.
+- Review (`reviewer`): HIGH unused `Layer` import (certain CI fail); MEDIUM
+  comment add on locked markup destroyed typed text; MEDIUM drawing on a
+  locked default layer created uneditable markups; LOW zero-delta drag
+  snapshot, stale-id delete snapshot, handles on hidden selection.
+- Fixes (`fixer`): all — import removed; `add_enabled_ui(editable)` for the
+  comment UI; new `creation_allowed` helper refuses draft starts with a
+  status message when the default layer is locked (incl. the click-placement
+  branch); `UiState::move_changed` flags real translations only (frame-local
+  flag would fail — egui clears DRAGGED on release); `delete_selected` skips
+  stale ids; selection handles skipped for invisible selections. fmt clean.
+- Follow-ups recorded: layer rename/reorder APIs missing in domain;
+  subject/author/status inspector edits don't snapshot (pre-existing
+  asymmetry); active-layer selection for new markups.
+
+### Active
+- Pushing layer slice; CI is the compile/clippy/test gate (15 new tests).
+
+### Blocked
+- None.
+
 ## Summary
-Phase 1 complete; Phase 2 slices A + B complete and CI-green; Phase 3
-(measurement labels, scale editor, unit selection, precision preference)
-implemented through the pipeline (domain → ui → reviewer → CI). Next: review
-workflow UI (Phase 4): layers, status colours/legend, stamps, callout editing.
+Phase 1 complete; Phase 2 complete and CI-green; Phase 3 complete
+(precision was the last item); Phase 4 slice 1 (layer visibility/lock)
+implemented through the pipeline (domain → ui → reviewer → fixer → CI).
+Next: status colours + legend, stamp library, callout text editing.

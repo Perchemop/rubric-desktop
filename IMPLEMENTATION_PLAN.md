@@ -51,7 +51,7 @@
 ## Phase 4 — Review workflow, layers, toolsets
 - [x] ReviewStatus, Comments, Subject/Author
 - [x] ToolSet presets (Review/Shapes/Measure)
-- [ ] Layer visibility/lock (expand ToolSet to Layer)
+- [x] Layer visibility/lock (Layer model: visibility/lock, layers panel, mutation gates)
 - [ ] Status colours + legend
 - [ ] Stamp library (basic presets)
 - [ ] Callout text editing in-canvas

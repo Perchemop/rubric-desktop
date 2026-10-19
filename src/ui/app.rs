@@ -77,6 +77,10 @@ pub(crate) struct UiState {
     pub(crate) last_tool: Tool,
     /// True while a drag that began on a selected markup is moving it.
     pub(crate) move_selection: bool,
+    /// True once the current move-selection drag has actually translated a
+    /// markup. Cleared when the drag starts and when it ends; drives the
+    /// "move markups" snapshot so a zero-delta drag pushes nothing.
+    pub(crate) move_changed: bool,
     dirty: bool,
     /// Custom scale editor inputs (paper inches and real units).
     pub(crate) scale_paper_inches: f64,
@@ -98,6 +102,7 @@ impl Default for UiState {
             draw_cancelled: false,
             last_tool: Tool::Select,
             move_selection: false,
+            move_changed: false,
             dirty: false,
             scale_paper_inches: 1.0,
             scale_real_units: 10.0,
@@ -149,13 +154,27 @@ impl RubricApp {
         if ids.is_empty() {
             return;
         }
+        let mut deleted = false;
         if let Some(doc) = self.active_doc_mut() {
             for id in ids {
+                // Skip ids that no longer exist (e.g. a stale selection after an
+                // undo): only a real removal counts as a deletion.
+                let Some(m) = doc.find_markup(id) else {
+                    continue;
+                };
+                if !doc.is_markup_editable(m) {
+                    continue;
+                }
                 doc.remove_markup(id);
+                deleted = true;
             }
         }
-        self.clear_selection();
-        self.push_snapshot("delete markups");
+        if deleted {
+            self.clear_selection();
+            self.push_snapshot("delete markups");
+        } else {
+            self.ui.status = "Selection is locked".to_string();
+        }
     }
 
     fn push_snapshot(&mut self, reason: &str) {

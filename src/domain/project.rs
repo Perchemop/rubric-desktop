@@ -57,7 +57,13 @@ impl Settings {
     }
 }
 
-/// A reusable tool set (layer/tool palette preset).
+/// A reusable toolbar preset grouping markup tools by family.
+///
+/// This is a tool-palette grouping only: it does not own markups and does not
+/// control visibility or z-order. Markup visibility/locking lives in
+/// [`super::document::Layer`] (one document owns many layers). The
+/// `visible`/`locked` fields are retained for serialization compatibility and
+/// future palette behaviour.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ToolSet {
     pub id: Uuid,
