@@ -7,9 +7,7 @@ use eframe::{App, CreationContext, Frame};
 use egui::{Align, Layout, Pos2, Ui, Vec2};
 
 use crate::data::{default_project_path, load_project, save_project};
-use crate::domain::{
-    Document, History, MarkupGeometry, MarkupKind, Page, Project, Pt, Scale, Tool,
-};
+use crate::domain::{Document, History, MarkupKind, Page, Project, Pt, Scale, Tool};
 use crate::ui::{canvas, inspector, theme, toolbar};
 
 #[allow(dead_code)]

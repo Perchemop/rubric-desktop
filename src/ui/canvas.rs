@@ -292,7 +292,7 @@ pub(crate) fn draw_canvas(
 
     // Wheel zoom centred on cursor (and horizontal-scroll pan).
     if response.hovered() {
-        let scroll = ui.ctx().input(|i| i.raw_scroll_delta);
+        let scroll = ui.ctx().input(|i| i.smooth_scroll_delta);
         if scroll != Vec2::ZERO {
             if scroll.x.abs() > scroll.y.abs() && scroll.y.abs() < 0.5 {
                 ui_state.pan.x += scroll.x;
