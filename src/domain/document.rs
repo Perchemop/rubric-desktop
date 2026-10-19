@@ -430,8 +430,8 @@ impl Document {
 
 #[cfg(test)]
 mod tests {
-    use super::markup::{MarkupGeometry, MarkupKind};
     use super::*;
+    use crate::domain::markup::{MarkupGeometry, MarkupKind};
 
     fn markup() -> Markup {
         Markup::new(
