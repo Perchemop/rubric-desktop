@@ -7,7 +7,7 @@ use eframe::egui::{self, ComboBox, Ui};
 use crate::domain::{
     style::Color,
     units::{MeasureUnit, MAX_PRECISION},
-    LayerError, Project, ReviewStatus, Scale,
+    LayerError, MarkupKind, Project, ReviewStatus, Scale, StampPreset,
 };
 use crate::ui::app::UiState;
 
@@ -319,6 +319,24 @@ pub(crate) fn draw_inspector(
             }
         });
 
+        // Compact stamp-preset selector for the active Stamp tool (UI state only).
+        if ui_state.active_tool.to_kind() == Some(MarkupKind::Stamp) {
+            ui.separator();
+            ui.label("Stamp preset (tool)");
+            ComboBox::from_label("Preset")
+                .selected_text(ui_state.active_stamp.label())
+                .show_ui(ui, |ui| {
+                    for preset in StampPreset::ALL.iter() {
+                        if ui
+                            .selectable_value(&mut ui_state.active_stamp, *preset, preset.label())
+                            .clicked()
+                        {
+                            ui_state.status = format!("Stamp tool → {}", preset.label());
+                        }
+                    }
+                });
+        }
+
         return committed;
     }
 
@@ -380,6 +398,23 @@ pub(crate) fn draw_inspector(
                     });
                 }
             });
+
+        // Stamp preset (spec F-111): only for stamp markups.
+        if editable && m.kind == MarkupKind::Stamp {
+            ui.label("Preset");
+            for preset in StampPreset::ALL.iter() {
+                let clicked = ui
+                    .selectable_label(m.stamp == Some(*preset), preset.label())
+                    .clicked();
+                if clicked && m.stamp != Some(*preset) {
+                    m.stamp = Some(*preset);
+                    m.style = m.style.with_stroke(preset.color());
+                    edited = true;
+                    committed = true;
+                    ui_state.status = format!("Stamp → {}", preset.label());
+                }
+            }
+        }
 
         // Layer assignment.
         if editable {

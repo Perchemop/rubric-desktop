@@ -65,6 +65,19 @@ fn path_points_ok(points: &[Pt], min: usize, _closed: bool) -> bool {
     points.len() >= min && points.windows(2).any(|w| w[0].distance(w[1]) > 0.5)
 }
 
+/// Apply the active stamp preset to a freshly created stamp markup. Non-stamp
+/// markups pass through untouched.
+fn finish_markup(m: Markup, ui_state: &super::app::UiState) -> Markup {
+    if m.kind == MarkupKind::Stamp {
+        let preset = ui_state.active_stamp;
+        let mut m = m.with_stamp(preset);
+        m.style = m.style.with_stroke(preset.color());
+        m
+    } else {
+        m
+    }
+}
+
 /// Anchor point in page space for a measurement label.
 fn measure_anchor(m: &Markup) -> Pt {
     match &m.geometry {
@@ -245,6 +258,30 @@ fn draw_markup(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup
                 FontId::proportional(10.0 * zoom.max(0.7)),
                 Color32::WHITE,
             );
+        }
+    }
+
+    // Stamp preset glyph (spec F-111): centred, colour-matched, shrink-to-fit.
+    if m.kind == MarkupKind::Stamp {
+        if let Some(preset) = m.stamp {
+            let sr = screen_rect(m.bounds(), origin, pan, zoom);
+            if sr.width() >= 12.0 && sr.height() >= 12.0 {
+                let color = to_color32(preset.color());
+                let glyph = preset.glyph();
+                let mut font_size = (sr.height() * 0.4).clamp(8.0, 64.0);
+                for _ in 0..8 {
+                    let fid = FontId::proportional(font_size);
+                    let g = painter.layout_no_wrap(glyph.to_string(), fid, color);
+                    if g.size().x <= sr.width() * 0.9 || font_size <= 6.0 {
+                        break;
+                    }
+                    font_size *= 0.85;
+                }
+                let fid = FontId::proportional(font_size);
+                let galley = painter.layout_no_wrap(glyph.to_string(), fid, color);
+                let pos = sr.center() - galley.size() * 0.5;
+                painter.galley(pos, galley, color);
+            }
         }
     }
 
@@ -552,7 +589,10 @@ pub(crate) fn draw_canvas(
                                 points: commit_points,
                                 closed,
                             };
-                            let m = Markup::new(page.index, kind, geom, author);
+                            let m = finish_markup(
+                                Markup::new(page.index, kind, geom, author),
+                                ui_state,
+                            );
                             if let Some(doc) = project.active_mut() {
                                 doc.add_markup(m);
                             }
@@ -596,7 +636,10 @@ pub(crate) fn draw_canvas(
                                     vertex: vertex_pt,
                                     b: b_pt,
                                 };
-                                let m = Markup::new(page.index, kind, geom, author);
+                                let m = finish_markup(
+                                    Markup::new(page.index, kind, geom, author),
+                                    ui_state,
+                                );
                                 if let Some(doc) = project.active_mut() {
                                     doc.add_markup(m);
                                 }
@@ -648,7 +691,7 @@ pub(crate) fn draw_canvas(
                         // bounds-like and default to a small rect.
                         _ => MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv)),
                     };
-                    let m = Markup::new(page.index, kind, geom, author);
+                    let m = finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
                     if let Some(doc) = project.active_mut() {
                         doc.add_markup(m);
                     }
@@ -674,7 +717,7 @@ pub(crate) fn draw_canvas(
                         points: points.clone(),
                         closed: *closed,
                     };
-                    let m = Markup::new(page.index, *kind, geom, author);
+                    let m = finish_markup(Markup::new(page.index, *kind, geom, author), ui_state);
                     if let Some(doc) = project.active_mut() {
                         doc.add_markup(m);
                     }
@@ -699,7 +742,8 @@ pub(crate) fn draw_canvas(
                             vertex: *v,
                             b: pp,
                         };
-                        let m = Markup::new(page.index, kind, geom, author);
+                        let m =
+                            finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
                         if let Some(doc) = project.active_mut() {
                             doc.add_markup(m);
                         }
@@ -731,7 +775,7 @@ pub(crate) fn draw_canvas(
                         points: points.clone(),
                         closed: *closed,
                     };
-                    let m = Markup::new(page.index, *kind, geom, author);
+                    let m = finish_markup(Markup::new(page.index, *kind, geom, author), ui_state);
                     if let Some(doc) = project.active_mut() {
                         doc.add_markup(m);
                     }
@@ -755,7 +799,8 @@ pub(crate) fn draw_canvas(
                             vertex: *v,
                             b: pp,
                         };
-                        let m = Markup::new(page.index, kind, geom, author);
+                        let m =
+                            finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
                         if let Some(doc) = project.active_mut() {
                             doc.add_markup(m);
                         }
@@ -855,7 +900,8 @@ pub(crate) fn draw_canvas(
                     super::app::DrawState::Bounds { start, end, kind } => {
                         let r = DRect::from_corners(start, end);
                         let geom = MarkupGeometry::Bounds(r);
-                        let m = Markup::new(page.index, kind, geom, author);
+                        let m =
+                            finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
                         if let Some(doc) = project.active_mut() {
                             doc.add_markup(m);
                         }
@@ -864,7 +910,8 @@ pub(crate) fn draw_canvas(
                     }
                     super::app::DrawState::Segment { start, end, kind } => {
                         let geom = MarkupGeometry::Segment { a: start, b: end };
-                        let m = Markup::new(page.index, kind, geom, author);
+                        let m =
+                            finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
                         if let Some(doc) = project.active_mut() {
                             doc.add_markup(m);
                         }
@@ -880,7 +927,10 @@ pub(crate) fn draw_canvas(
                         }
                         if !strokes.is_empty() {
                             let geom = MarkupGeometry::Ink { strokes };
-                            let m = Markup::new(page.index, MarkupKind::Ink, geom, author);
+                            let m = finish_markup(
+                                Markup::new(page.index, MarkupKind::Ink, geom, author),
+                                ui_state,
+                            );
                             if let Some(doc) = project.active_mut() {
                                 doc.add_markup(m);
                             }

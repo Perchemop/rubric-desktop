@@ -53,7 +53,7 @@
 - [x] ToolSet presets (Review/Shapes/Measure)
 - [x] Layer visibility/lock (Layer model: visibility/lock, layers panel, mutation gates)
 - [x] Status colours + legend
-- [ ] Stamp library (basic presets)
+- [x] Stamp library (5 presets: Approved/Rejected/Draft/Check/Cross, glyph rendering, preset picker)
 - [ ] Callout text editing in-canvas
 
 ## Phase 5 — Persistence + I/O + PDF (non-destructive)

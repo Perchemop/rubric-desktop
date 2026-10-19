@@ -268,7 +268,7 @@
 - None.
 
 ## 2026-10-19 — Phase 4 slice 2: status remap + legend
-**Status**: implemented + reviewed clean; awaiting CI verification
+**Status**: CI-verified green (`e2bff4d`) — fmt, clippy, all tests incl. 6 new status tests, release build. Reviewed clean; no fixer round needed.
 
 ### Completed
 - Domain (`domain-dev`, src/domain/markup.rs): `ReviewStatus` remapped to the
@@ -288,6 +288,37 @@
 
 ### Active
 - Pushing slice 2; CI is the compile/clippy/test gate (6 new tests).
+
+### Blocked
+- None.
+
+## 2026-10-19 — Phase 4 slice 3: stamp library
+**Status**: implemented + reviewed (push recommended) + one-line fix folded in; awaiting CI verification
+
+### Completed
+- Domain (`domain-dev`): `StampPreset { Approved, Rejected, Draft, Check,
+  Cross }` — `ALL`, word `label()`, drawn `glyph()` (words for status marks,
+  ✓/✗ for check/cross), meaning-grouped `color()` (green affirmative / red
+  negative / amber draft); `Markup.stamp: Option<StampPreset>` serde-defaulted
+  (legacy stamps load None → plain rect), `with_stamp` builder; 7 tests
+  (serde snake_case, legacy load, roundtrip, labels/glyphs/colours).
+- UI (`ui-dev`): `UiState.active_stamp` (default Approved); all 10
+  `Markup::new` creation sites route through `finish_markup` (preset +
+  stroke colour applied ONLY for Stamp kind — reviewer verified no data
+  pollution on other kinds); canvas glyph rendering centred with
+  shrink-to-fit, <12 px threshold, legacy None unchanged; inspector preset
+  list for selected stamps (editable-gated, one snapshot per real change)
+  and tool-options ComboBox for placement (UiState only, no snapshot).
+- Review (`reviewer`): push recommended; data-pollution check passed.
+  Findings: no-op preset re-click snapshot (fixed inline — single-condition
+  guard avoiding clippy collapsible_if), glyph re-layout perf nit + preset
+  colour vs custom-stroke disagreement (accepted: preset supplies colour),
+  and a manual check needed in-app that ✓/✗ render (egui default font
+  coverage not verifiable headlessly).
+- Follow-ups recorded: glyph re-layout nit; toolbar changes skipped.
+
+### Active
+- Pushing stamp slice; CI is the compile/clippy/test gate (7 new tests).
 
 ### Blocked
 - None.

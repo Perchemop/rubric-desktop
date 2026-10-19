@@ -7,7 +7,7 @@ use eframe::{App, CreationContext, Frame};
 use egui::{Align, Layout, Pos2, Ui, Vec2};
 
 use crate::data::{default_project_path, load_project, save_project};
-use crate::domain::{Document, History, MarkupKind, Project, Pt, Tool};
+use crate::domain::{Document, History, MarkupKind, Project, Pt, StampPreset, Tool};
 use crate::ui::{canvas, inspector, theme, toolbar};
 
 #[allow(dead_code)]
@@ -63,6 +63,7 @@ pub(crate) enum InspectorMode {
 pub(crate) struct UiState {
     pub(crate) selected: HashSet<uuid::Uuid>,
     pub(crate) active_tool: Tool,
+    pub(crate) active_stamp: StampPreset,
     inspector_mode: InspectorMode,
     pub(crate) zoom: f32,
     pub(crate) pan: Vec2,
@@ -92,6 +93,7 @@ impl Default for UiState {
         Self {
             selected: HashSet::new(),
             active_tool: Tool::Select,
+            active_stamp: StampPreset::Approved,
             inspector_mode: InspectorMode::Selection,
             zoom: 1.0,
             pan: Vec2::ZERO,
