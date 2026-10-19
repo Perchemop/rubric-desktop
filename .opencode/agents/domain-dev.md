@@ -19,12 +19,6 @@ permissions:
     resource: "cargo fmt*"
     effect: allow
   - action: shell
-    resource: "cargo check*"
-    effect: allow
-  - action: shell
-    resource: "cargo clippy*"
-    effect: allow
-  - action: shell
     resource: "git status*"
     effect: allow
   - action: shell
@@ -50,10 +44,11 @@ Rules:
   behaviour change, including serde roundtrip tests.
 - snake_case, flat explicit modules, doc comments on public API.
 
-Quality gates you may run: `cargo fmt --all`, `cargo check --all-targets`,
-`cargo clippy -- -D warnings`, plus read-only `git status`/`git diff`.
-Do NOT run `cargo test` (it freezes the host machine; GitHub Actions CI runs
-the full test suite) and do NOT commit or push — the parent agent does that.
+Quality gates run in GitHub Actions (CI-first policy: no compile/test work on
+the desktop — the host is memory-constrained and restarts under load). You may
+run only `cargo fmt --all` (trivial) plus read-only `git status`/`git diff`.
+Do NOT run `cargo check`/`clippy`/`test` — the parent pushes and CI verifies —
+and do NOT commit or push yourself.
 
 Finish by summarising: files changed, new/changed public API, tests added, and
-anything the UI stage must know.
+anything the UI stage must know. Your changes are verified when CI is green.

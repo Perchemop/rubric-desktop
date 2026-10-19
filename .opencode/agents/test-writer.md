@@ -19,9 +19,6 @@ permissions:
     resource: "cargo fmt*"
     effect: allow
   - action: shell
-    resource: "cargo check*"
-    effect: allow
-  - action: shell
     resource: "git status*"
     effect: allow
   - action: shell
@@ -48,10 +45,11 @@ Test conventions:
 - Measurement tests: length/radius/diameter/area/perimeter/angle/count must
   respect `Scale`, with area scaling by `units_per_point²`.
 
-Quality gates you may run: `cargo fmt --all`, `cargo check --all-targets`,
-plus read-only `git status`/`git diff`.
-Do NOT run `cargo test` (it freezes the host machine; GitHub Actions CI runs
-the suite and reports results) and do NOT commit or push.
+Quality gates run in GitHub Actions (CI-first policy: no compile/test work on
+the desktop — the host is memory-constrained and restarts under load). You may
+run only `cargo fmt --all` (trivial) plus read-only `git status`/`git diff`.
+Do NOT run `cargo check`/`test` — the parent pushes and CI runs the suite and
+reports results — and do NOT commit or push.
 
 Finish by summarising: tests added, what they cover, and any suspected bugs
 found (with file:line).

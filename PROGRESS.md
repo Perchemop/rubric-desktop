@@ -64,8 +64,31 @@
 ### Blocked
 - None.
 
+## 2026-10-19 — CI green + CI-first policy
+**Status**: Phase 0 fully verified by GitHub Actions
+
+### Completed
+- GitHub billing resolved; re-run of CI run `39121051225` passed all 8 steps:
+  fmt check, clippy (`-D warnings`), full test suite, and release build —
+  **first fully green run**; Phase 0 quality gates are verified.
+- CI-first policy adopted (user directive): all CPU/RAM-intensive steps
+  (`cargo test`, `clippy`, `check`, release builds) run only in GitHub Actions;
+  the desktop host runs at most `cargo fmt` and read-only git. Documented in
+  `AGENTS.md` and enforced in every subagent's permissions.
+- `Swatinem/rust-cache@v2` added to the workflow so CI compile steps are
+  cached across runs.
+- Local zombie processes from interrupted runs (stale cargo/rustc/clippy) were
+  identified as the cause of the memory pressure behind desktop restarts and
+  cleared.
+
+### Active
+- Phase 1: define the feature requirement set and update traceability.
+
+### Blocked
+- None.
+
 ## Summary
-Phase 0 is complete, committed, and pushed; CI is the source of truth for the
-quality gates. A free-model subagent suite now covers each build stage
-(domain → tests → UI → review → docs → fixes). Next: confirm CI green, then
-Phase 1 (feature requirement set + traceability) and Phase 2 (drawing/zoom UX).
+Phase 0 is complete, pushed, and CI-verified green on GitHub Actions. The
+build loop is now CI-first: edit → push → CI gates → fixer agent on failure.
+Next is Phase 1 (feature requirements + traceability), then Phase 2
+(drawing/zoom UX).

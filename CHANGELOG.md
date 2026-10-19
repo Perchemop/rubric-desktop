@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented here. Format: semantic-ish for this repo (Added/Changed/Fixed/Docs).
 
+## [Unreleased]
+
+### Fixed
+- Area measurement rescaling: area values now scale with `units_per_point²` (previously used the linear factor, and carried an unnecessary cast).
+
+### Added
+- Subagent suite (`.opencode/agents/`): `domain-dev`, `test-writer`, `ui-dev`, `reviewer`, `docs-writer`, `fixer` — all on free OpenCode models, restricted to `cargo fmt` + read-only git locally.
+- CI-first build policy: all heavy gates (`cargo test`, `clippy -D warnings`, `check`, release build) run only in GitHub Actions; workflow now caches builds with `Swatinem/rust-cache@v2`.
+
+### Changed
+- CI verified fully green (fmt, clippy, tests, release build) after billing resolution; process docs updated accordingly.
+
 ## [0.1.0] - 2026-10-17 — Phase 0
 
 ### Added

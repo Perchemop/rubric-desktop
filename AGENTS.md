@@ -36,9 +36,16 @@ Specialised subagents live in `.opencode/agents/` and split the build by stage:
 slices) → `reviewer` (read-only review) → `docs-writer` (process docs) →
 `fixer` (fmt/clippy/check failures). All run on free OpenCode models in
 `subagent` mode. Conventions: subagents never commit or push (the parent
-does), and never run `cargo test` locally (GitHub Actions CI runs the suite
-because local runs destabilise the host); they may run `cargo fmt`,
-`cargo check`, and `cargo clippy` plus read-only `git status`/`git diff`.
+does).
+
+## CI-first (no heavy local runs)
+All CPU/RAM-intensive work runs in **GitHub Actions**, never on the desktop
+host (it is memory-constrained and restarts under load): `cargo test`,
+`cargo clippy`, `cargo check`, and release builds are CI-only. Locally, run
+just `cargo fmt --all` (trivial) and read-only git. Workflow: edit → commit →
+push → read the CI run (`gh run view <id>`) → route any failures back through
+the `fixer` subagent. Every push to `main` runs fmt check, clippy
+(`-D warnings`), full tests, and a release build.
 
 ## Do not
 - Commit any notes about other products or external reference material.
