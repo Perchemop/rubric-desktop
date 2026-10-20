@@ -79,7 +79,7 @@ mod tests {
 
     fn temp_recent_path(tag: &str) -> PathBuf {
         std::env::temp_dir().join(format!(
-            "rubric_recent_test_{}_{}_{}",
+            "rubric_recent_test_{}_{}_{:?}",
             std::process::id(),
             tag,
             std::thread::current().id()
