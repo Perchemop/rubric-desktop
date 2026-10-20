@@ -202,15 +202,27 @@ fn draw_markup(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup
                 }
             }
         }
-        MarkupGeometry::Text { at, text, .. } => {
+        MarkupGeometry::Text { at, wrap, text } => {
             let sa = to_screen(*at, pan, zoom, origin);
-            painter.text(
-                sa,
-                Align2::LEFT_TOP,
-                text,
-                FontId::proportional(11.0 * zoom.max(0.8)),
-                stroke_c,
-            );
+            if text.is_empty() {
+                // Empty text paints no glyphs; draw the bounds as a faint
+                // outline so the markup stays visible where it hit-tests
+                // (e.g. a Text the user placed and immediately cancelled).
+                let sr = screen_rect(m.bounds(), origin, pan, zoom);
+                painter.rect_stroke(
+                    sr,
+                    egui::CornerRadius::same(4),
+                    egui::Stroke::new(1.0, Color32::from_rgba_unmultiplied(30, 144, 255, 89)),
+                    egui::StrokeKind::Middle,
+                );
+            } else {
+                // Wrap at `wrap` points (scaled to screen) to match the
+                // in-canvas editor; the `bounds()` line count is only an
+                // approximation of the wrapped height.
+                let font = FontId::proportional(11.0 * zoom.max(0.8));
+                let galley = painter.layout(text.clone(), font, stroke_c, *wrap * zoom);
+                painter.galley(sa, galley, stroke_c);
+            }
         }
         MarkupGeometry::Callout { rect, tail, text } => {
             let sr = screen_rect(*rect, origin, pan, zoom);
@@ -403,6 +415,79 @@ pub(crate) fn draw_canvas(
         }
     }
 
+    // In-canvas text editor overlay (Text/Callout markups). Rendered above all
+    // markups/labels; commits on focus loss.
+    let mut commit_edit = false;
+    if ui_state.text_edit.is_some() {
+        let edit_id = ui_state.text_edit.as_ref().unwrap().id;
+        let sr = project
+            .active()
+            .and_then(|doc| doc.find_markup(edit_id))
+            .map(|m| match &m.geometry {
+                MarkupGeometry::Text { at, wrap, text } => {
+                    let lines = (text.lines().count().max(1)) as f32;
+                    screen_rect(
+                        DRect::new(at.x, at.y, *wrap, lines * 16.0),
+                        origin,
+                        pan,
+                        zoom,
+                    )
+                }
+                MarkupGeometry::Callout { rect, .. } => screen_rect(*rect, origin, pan, zoom),
+                _ => screen_rect(m.bounds(), origin, pan, zoom),
+            });
+        if let Some(sr) = sr {
+            let mut edit = ui_state.text_edit.as_mut().unwrap();
+            let resp = ui.put(
+                sr,
+                egui::TextEdit::multiline(&mut edit.text)
+                    .id(egui::Id::new(("rubric_text_edit", edit.id))),
+            );
+            if !edit.focus_requested {
+                resp.request_focus();
+                edit.focus_requested = true;
+            }
+            if resp.lost_focus() {
+                commit_edit = true;
+            }
+        } else {
+            // Backstop: the markup being edited is gone from the active
+            // document (undo past its creation, menu delete, file switch).
+            // Drop the edit without a snapshot or commit; otherwise every
+            // interaction arm stays gated on a dead overlay.
+            ui_state.text_edit = None;
+        }
+    }
+    if commit_edit {
+        let (id, new_text, original) = {
+            let e = ui_state.text_edit.as_ref().unwrap();
+            (e.id, e.text.clone(), e.original.clone())
+        };
+        let editable = project
+            .active()
+            .and_then(|d| d.find_markup(id).map(|m| d.is_markup_editable(m)))
+            .unwrap_or(false);
+        let changed = new_text != original;
+        if changed && editable {
+            if let Some(doc) = project.active_mut() {
+                if let Some(m) = doc.find_markup_mut(id) {
+                    match &mut m.geometry {
+                        MarkupGeometry::Text { text, .. } => *text = new_text.clone(),
+                        MarkupGeometry::Callout { text, .. } => *text = new_text.clone(),
+                        _ => {}
+                    }
+                    m.touch();
+                }
+                doc.touch();
+            }
+            // Set a specific status here: the app shell preserves a status the
+            // canvas set this frame when it pushes the text-commit snapshot.
+            ui_state.status = "Text updated".to_string();
+            mutated = true;
+        }
+        ui_state.text_edit = None;
+    }
+
     // Pointer position in page space.
     let page_pos = response.hover_pos().map(|h| to_page(h, pan, zoom, origin));
     *last_page_pos = page_pos;
@@ -561,7 +646,8 @@ pub(crate) fn draw_canvas(
 
     // Click handling. `clicked_by` (not `clicked`) so a focused widget's fake
     // click cannot place or commit a markup on the canvas.
-    if response.clicked_by(egui::PointerButton::Primary) && !panning {
+    if ui_state.text_edit.is_none() && response.clicked_by(egui::PointerButton::Primary) && !panning
+    {
         if let Some(pp) = page_pos {
             if ui_state.active_tool == Tool::Select {
                 match pick_markup_id(project, page.index, pp, 6.0) {
@@ -569,6 +655,47 @@ pub(crate) fn draw_canvas(
                         ui_state.selected.clear();
                         ui_state.selected.insert(id);
                         ui_state.status = format!("Selected {}", id);
+                        // Enter edit mode on double-click for Text/Callout markups.
+                        if response.double_clicked() {
+                            let (kind_ok, editable, visible, original) = {
+                                let doc = project.active();
+                                let m = doc.and_then(|d| d.find_markup(id));
+                                let kind_ok = m
+                                    .map(|mk| {
+                                        matches!(mk.kind, MarkupKind::Text | MarkupKind::Callout)
+                                    })
+                                    .unwrap_or(false);
+                                let editable = doc
+                                    .and_then(|d| m.map(|mk| d.is_markup_editable(mk)))
+                                    .unwrap_or(false);
+                                let visible = doc
+                                    .and_then(|d| m.map(|mk| d.is_markup_visible(mk)))
+                                    .unwrap_or(false);
+                                let original = m
+                                    .and_then(|mk| match &mk.geometry {
+                                        MarkupGeometry::Text { text, .. } => Some(text.clone()),
+                                        MarkupGeometry::Callout { text, .. } => Some(text.clone()),
+                                        _ => None,
+                                    })
+                                    .unwrap_or_default();
+                                (kind_ok, editable, visible, original)
+                            };
+                            if kind_ok {
+                                if !editable {
+                                    ui_state.status = "Locked layer — edits disabled".to_string();
+                                } else if !visible {
+                                    // not pickable when hidden; nothing to do
+                                } else {
+                                    ui_state.text_edit = Some(super::app::TextEditState {
+                                        id,
+                                        original: original.clone(),
+                                        text: original,
+                                        focus_requested: false,
+                                    });
+                                    ui_state.status = "Editing text".to_string();
+                                }
+                            }
+                        }
                     }
                     None => ui_state.selected.clear(),
                 }
@@ -673,13 +800,21 @@ pub(crate) fn draw_canvas(
                     let author = project.settings.author.clone();
                     let inv = 1.0 / ui_state.zoom.max(0.1);
                     let geom = match kind {
+                        MarkupKind::Text => MarkupGeometry::Text {
+                            at: Pt::new(pp.x, pp.y),
+                            wrap: 40.0 * inv,
+                            text: String::new(),
+                        },
+                        MarkupKind::Callout => MarkupGeometry::Callout {
+                            rect: DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv),
+                            tail: Pt::new(pp.x + 20.0 * inv, pp.y + 24.0 * inv + 20.0 * inv),
+                            text: String::new(),
+                        },
                         MarkupKind::Rectangle
                         | MarkupKind::Ellipse
                         | MarkupKind::Cloud
-                        | MarkupKind::Text
                         | MarkupKind::Stamp
                         | MarkupKind::Note
-                        | MarkupKind::Callout
                         | MarkupKind::Highlight => {
                             MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv))
                         }
@@ -692,11 +827,22 @@ pub(crate) fn draw_canvas(
                         _ => MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv)),
                     };
                     let m = finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
+                    let new_id = m.id;
+                    let is_text = matches!(kind, MarkupKind::Text | MarkupKind::Callout);
                     if let Some(doc) = project.active_mut() {
                         doc.add_markup(m);
                     }
                     ui_state.status = format!("Added {}", kind.label());
                     mutated = true;
+                    if is_text {
+                        ui_state.text_edit = Some(super::app::TextEditState {
+                            id: new_id,
+                            original: String::new(),
+                            text: String::new(),
+                            focus_requested: false,
+                        });
+                        ui_state.status = "Editing text".to_string();
+                    }
                 }
             }
         }
@@ -825,7 +971,11 @@ pub(crate) fn draw_canvas(
                 | MarkupKind::MeasureAngle
         )
     });
-    if !panning && !matches!(ui_state.active_tool, Tool::Select) && !multi_tool {
+    if !panning
+        && !matches!(ui_state.active_tool, Tool::Select)
+        && !multi_tool
+        && ui_state.text_edit.is_none()
+    {
         // A drag cancelled with Esc stays cancelled until this drag ends; the
         // pointer is still down, so we must not spawn a fresh draft from it.
         if response.drag_started() || response.drag_stopped() {
@@ -899,14 +1049,39 @@ pub(crate) fn draw_canvas(
                 match std::mem::replace(draw_state, super::app::DrawState::Idle) {
                     super::app::DrawState::Bounds { start, end, kind } => {
                         let r = DRect::from_corners(start, end);
-                        let geom = MarkupGeometry::Bounds(r);
+                        let geom = match kind {
+                            MarkupKind::Text => MarkupGeometry::Text {
+                                at: Pt::new(r.x, r.y),
+                                wrap: r.w,
+                                text: String::new(),
+                            },
+                            MarkupKind::Callout => MarkupGeometry::Callout {
+                                rect: r,
+                                // The press point anchors the tail; the dragged
+                                // rect is the box (see doc comment in task).
+                                tail: start,
+                                text: String::new(),
+                            },
+                            _ => MarkupGeometry::Bounds(r),
+                        };
                         let m =
                             finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
+                        let new_id = m.id;
+                        let is_text = matches!(kind, MarkupKind::Text | MarkupKind::Callout);
                         if let Some(doc) = project.active_mut() {
                             doc.add_markup(m);
                         }
                         ui_state.status = format!("Added {}", kind.label());
                         mutated = true;
+                        if is_text {
+                            ui_state.text_edit = Some(super::app::TextEditState {
+                                id: new_id,
+                                original: String::new(),
+                                text: String::new(),
+                                focus_requested: false,
+                            });
+                            ui_state.status = "Editing text".to_string();
+                        }
                     }
                     super::app::DrawState::Segment { start, end, kind } => {
                         let geom = MarkupGeometry::Segment { a: start, b: end };
@@ -947,8 +1122,14 @@ pub(crate) fn draw_canvas(
         }
     }
 
+    // If an edit just started, silently drop any in-progress move drag so no
+    // stray snapshot is pushed for this gesture.
+    if ui_state.text_edit.is_some() {
+        ui_state.move_selection = false;
+        ui_state.move_changed = false;
+    }
     // Drag to move the selection (when not drawing/panning).
-    if !panning && matches!(ui_state.active_tool, Tool::Select) {
+    if !panning && matches!(ui_state.active_tool, Tool::Select) && ui_state.text_edit.is_none() {
         if response.drag_started() {
             // Only a drag that starts on a selected, editable markup moves it;
             // dragging from empty space must not touch the selection or history.

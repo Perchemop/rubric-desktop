@@ -1153,6 +1153,61 @@ mod tests {
     }
 
     #[test]
+    fn text_and_callout_geometry_roundtrip_and_hit_test() {
+        let text_m = Markup::new(
+            0,
+            MarkupKind::Text,
+            MarkupGeometry::Text {
+                at: Pt::new(10.0, 10.0),
+                wrap: 60.0,
+                text: "a\nb".to_string(),
+            },
+            "t",
+        );
+        let json = serde_json::to_string(&text_m).expect("serialize");
+        let back: Markup = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(text_m.geometry, back.geometry);
+
+        // Hit box (per `hit_test`): `at` is the top-left corner, width is
+        // `wrap`, height is the estimated 16 pt per line (2 lines = 32).
+        assert!(text_m.hit_test(Pt::new(10.0, 10.0), 2.0), "at the anchor");
+        assert!(
+            text_m.hit_test(Pt::new(40.0, 30.0), 2.0),
+            "inside the wrap box"
+        );
+        assert!(
+            !text_m.hit_test(Pt::new(80.0, 12.0), 2.0),
+            "beyond the wrap width"
+        );
+        assert!(!text_m.hit_test(Pt::new(200.0, 200.0), 2.0), "far away");
+
+        let callout_m = Markup::new(
+            0,
+            MarkupKind::Callout,
+            MarkupGeometry::Callout {
+                rect: Rect::new(0.0, 0.0, 50.0, 20.0),
+                tail: Pt::new(70.0, 40.0),
+                text: "callout".to_string(),
+            },
+            "t",
+        );
+        let json = serde_json::to_string(&callout_m).expect("serialize");
+        let back: Markup = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(callout_m.geometry, back.geometry);
+
+        assert!(
+            callout_m.hit_test(Pt::new(25.0, 10.0), 2.0),
+            "inside the rect"
+        );
+        // The tail is hit-tested as a point with a 4 pt minimum tolerance.
+        assert!(
+            callout_m.hit_test(Pt::new(70.0, 40.0), 2.0),
+            "the tail point hits within tolerance"
+        );
+        assert!(!callout_m.hit_test(Pt::new(200.0, 200.0), 2.0), "far away");
+    }
+
+    #[test]
     fn review_status_default_is_open() {
         assert_eq!(ReviewStatus::default(), ReviewStatus::Open);
         let m = Markup::new(

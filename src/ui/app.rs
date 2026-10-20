@@ -9,6 +9,7 @@ use egui::{Align, Layout, Pos2, Ui, Vec2};
 use crate::data::{default_project_path, load_project, save_project};
 use crate::domain::{Document, History, MarkupKind, Project, Pt, StampPreset, Tool};
 use crate::ui::{canvas, inspector, theme, toolbar};
+use uuid::Uuid;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
@@ -60,6 +61,15 @@ pub(crate) enum InspectorMode {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
+pub(crate) struct TextEditState {
+    pub(crate) id: Uuid,
+    pub(crate) original: String,
+    pub(crate) text: String,
+    pub(crate) focus_requested: bool,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct UiState {
     pub(crate) selected: HashSet<uuid::Uuid>,
     pub(crate) active_tool: Tool,
@@ -82,6 +92,9 @@ pub(crate) struct UiState {
     /// markup. Cleared when the drag starts and when it ends; drives the
     /// "move markups" snapshot so a zero-delta drag pushes nothing.
     pub(crate) move_changed: bool,
+    /// In-canvas text editor state (Text/Callout markups only). UI-only, no
+    /// serde: it never leaves the session.
+    pub(crate) text_edit: Option<TextEditState>,
     dirty: bool,
     /// Custom scale editor inputs (paper inches and real units).
     pub(crate) scale_paper_inches: f64,
@@ -105,6 +118,7 @@ impl Default for UiState {
             last_tool: Tool::Select,
             move_selection: false,
             move_changed: false,
+            text_edit: None,
             dirty: false,
             scale_paper_inches: 1.0,
             scale_real_units: 10.0,
@@ -185,6 +199,13 @@ impl RubricApp {
         self.ui.status = format!("Snapshot: {reason}");
     }
 
+    /// Push a snapshot without touching the status bar. Used when the canvas
+    /// already set a more specific status earlier in the same frame.
+    fn push_snapshot_quiet(&mut self) {
+        let proj = self.history.current().clone();
+        self.history.push(proj);
+    }
+
     fn menu_bar(&mut self, ui: &mut Ui) {
         use egui::MenuBar;
         MenuBar::new().ui(ui, |ui| {
@@ -223,20 +244,32 @@ impl RubricApp {
                 }
             });
             ui.menu_button("Edit", |ui| {
-                if ui.button("Undo").clicked() && self.history.undo() {
-                    self.ui.status = "Undo".to_string();
-                    self.clear_selection();
-                    ui.close();
+                if ui.button("Undo").clicked() {
+                    if self.ui.text_edit.is_some() {
+                        self.ui.status = "Finish or cancel text edit first".to_string();
+                    } else if self.history.undo() {
+                        self.ui.status = "Undo".to_string();
+                        self.clear_selection();
+                        ui.close();
+                    }
                 }
-                if ui.button("Redo").clicked() && self.history.redo() {
-                    self.ui.status = "Redo".to_string();
-                    self.clear_selection();
-                    ui.close();
+                if ui.button("Redo").clicked() {
+                    if self.ui.text_edit.is_some() {
+                        self.ui.status = "Finish or cancel text edit first".to_string();
+                    } else if self.history.redo() {
+                        self.ui.status = "Redo".to_string();
+                        self.clear_selection();
+                        ui.close();
+                    }
                 }
                 ui.separator();
                 if ui.button("Delete Selected").clicked() {
-                    self.delete_selected();
-                    ui.close();
+                    if self.ui.text_edit.is_some() {
+                        self.ui.status = "Finish or cancel text edit first".to_string();
+                    } else {
+                        self.delete_selected();
+                        ui.close();
+                    }
                 }
             });
             ui.menu_button("View", |ui| {
@@ -310,16 +343,24 @@ impl RubricApp {
 impl App for RubricApp {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut Frame) {
         ctx.input(|i| {
-            if i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace) {
+            let editing = self.ui.text_edit.is_some();
+            if (i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace)) && !editing
+            {
                 self.delete_selected();
             }
             if i.modifiers.ctrl && i.key_pressed(egui::Key::Z) {
-                if i.modifiers.shift {
+                // Never mutate history mid-edit: undoing past the markup's
+                // creation would leave a stale `text_edit` pointing at a
+                // markup that no longer exists.
+                if self.ui.text_edit.is_some() {
+                    self.ui.status = "Finish or cancel text edit first".to_string();
+                } else if i.modifiers.shift {
                     self.history.redo();
+                    self.clear_selection();
                 } else {
                     self.history.undo();
+                    self.clear_selection();
                 }
-                self.clear_selection();
             }
             if i.modifiers.ctrl && i.key_pressed(egui::Key::S) {
                 if let Some(p) = default_project_path(&self.current_project().name) {
@@ -329,12 +370,18 @@ impl App for RubricApp {
                 }
             }
             if i.key_pressed(egui::Key::Escape) {
-                // Abort the draft and consume the current (still held) drag, so
-                // canvas.rs does not immediately start a new one.
-                self.ui.draw_cancelled = true;
-                self.draw = DrawState::Idle;
-                self.ui.move_selection = false;
-                self.clear_selection();
+                if self.ui.text_edit.is_some() {
+                    // Discard the in-progress text edit, no snapshot.
+                    self.ui.text_edit = None;
+                    self.ui.status = "Text edit cancelled".to_string();
+                } else {
+                    // Abort the draft and consume the current (still held) drag, so
+                    // canvas.rs does not immediately start a new one.
+                    self.ui.draw_cancelled = true;
+                    self.draw = DrawState::Idle;
+                    self.ui.move_selection = false;
+                    self.clear_selection();
+                }
             }
         });
     }
@@ -355,6 +402,7 @@ impl App for RubricApp {
             });
         egui::Panel::bottom("status").show(ui, |ui| self.bottom_bar(ui));
 
+        let prior_status = self.ui.status.clone();
         let mut need_snapshot = false;
         egui::CentralPanel::default().show(ui, |ui| {
             need_snapshot = canvas::draw_canvas(
@@ -366,7 +414,15 @@ impl App for RubricApp {
             );
         });
         if need_snapshot {
-            self.push_snapshot("drawing");
+            // The canvas can set a more specific status this frame (e.g.
+            // "Text updated" from a text-edit commit); keep it instead of
+            // overwriting it with the generic snapshot message. Comparing
+            // against the pre-canvas status keeps the check frame-scoped.
+            if self.ui.status != prior_status {
+                self.push_snapshot_quiet();
+            } else {
+                self.push_snapshot("drawing");
+            }
         }
         if inspector_mutated {
             self.push_snapshot("inspector edit");

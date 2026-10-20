@@ -54,7 +54,7 @@
 - [x] Layer visibility/lock (Layer model: visibility/lock, layers panel, mutation gates)
 - [x] Status colours + legend
 - [x] Stamp library (5 presets: Approved/Rejected/Draft/Check/Cross, glyph rendering, preset picker)
-- [ ] Callout text editing in-canvas
+- [x] Callout text editing in-canvas (also Text boxes; auto-open after placement)
 
 ## Phase 5 — Persistence + I/O + PDF (non-destructive)
 - [x] JSON save/load (.rubric.json)

@@ -323,9 +323,43 @@
 ### Blocked
 - None.
 
+## 2026-10-20 — Phase 4 slice 4: in-canvas text editing (F-104/F-105)
+**Status**: implemented + reviewed + fixed; awaiting CI verification
+
+### Completed
+- UI (`ui-dev`, two rounds): double-click entry on Text/Callout in Select
+  mode (visibility/editability gated) → multiline `TextEdit` overlay anchored
+  to the markup's screen rect, focus requested once, commit on focus loss
+  (one snapshot only if text changed), Esc cancels; Enter stays a newline.
+  All interaction arms (click/draw/move/delete) gated on `text_edit.is_none()`;
+  move-drag silently cancelled when an edit starts mid-gesture.
+- Placement bug fixed: Text/Callout creation built bare `Bounds` geometry —
+  now builds `Text { at, wrap, text }` / `Callout { rect, tail, text }`
+  (callout drag anchors the tail at the press point), and placement auto-opens
+  the editor for both kinds.
+- Review (`reviewer`): findings — (1) MEDIUM stale `text_edit` after
+  undo/menu-delete mid-edit could dead-lock the canvas; (2) MEDIUM empty Text
+  markup invisible but hit-testable; (3) LOW wrap ignored in final render;
+  (4) LOW no roundtrip/hit-test tests for Text/Callout geometry; (5) NIT
+  status message clobbered same-frame.
+- Fixes (`fixer`, glm-5.3-flash-free): all five — undo/redo/menu-delete
+  gated during edit with status hint (plus proactive `collapsible_if` merge in
+  the adjacent Del block), stale-state backstop (`else` branch clears
+  `text_edit` when the markup is gone), empty-Text low-alpha outline,
+  `Painter::layout` wrap-width rendering (signature verified against vendored
+  egui 0.36.2), new `text_and_callout_geometry_roundtrip_and_hit_test` domain
+  test, and `push_snapshot_quiet` so "Text updated" survives the frame.
+  fmt clean. Agent def change: `fixer` repointed `space-bunny-free` →
+  `glm-5.3-flash-free#high` (model retired).
+
+### Active
+- Pushing slice 4; CI is the compile/clippy/test gate.
+
+### Blocked
+- None.
+
 ## Summary
-Phase 1 complete; Phase 2 complete and CI-green; Phase 3 complete
-(precision was the last item); Phase 4 slices 1–2 (layer visibility/lock;
-status colours + legend) implemented through the pipeline (domain → ui →
-reviewer → fixer → CI). Next: stamp library, callout text editing (rest of
-Phase 4), then Phase 5.
+Phases 1–3 complete and CI-green. Phase 4: slices 1–3 (layers; status remap
++ legend; stamp library) all CI-green; slice 4 (in-canvas text editing for
+Text/Callout) implemented, reviewed, fixes in progress → push → CI next.
+Then Phase 5 (file dialogs, PDF import, export).
