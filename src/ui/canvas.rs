@@ -437,7 +437,7 @@ pub(crate) fn draw_canvas(
                 _ => screen_rect(m.bounds(), origin, pan, zoom),
             });
         if let Some(sr) = sr {
-            let mut edit = ui_state.text_edit.as_mut().unwrap();
+            let edit = ui_state.text_edit.as_mut().unwrap();
             let resp = ui.put(
                 sr,
                 egui::TextEdit::multiline(&mut edit.text)
