@@ -59,10 +59,10 @@
 ## Phase 5 — Persistence + I/O + PDF (non-destructive)
 - [x] JSON save/load (.rubric.json)
 - [x] Autosave hook (stub exists)
-- [ ] Open file dialog (native) for .rubric.json and PDF
+- [x] Open file dialog (native, rfd) for .rubric.json (PDF filter arrives with import)
 - [ ] PDF import/rendering (lopdf or pdfium-render) — slice later; keep sidecar
 - [ ] Export/print
-- [ ] Recent files
+- [x] Recent files (app-level config store: `~/.config/rubric/recent.json`)
 
 ## Phase 6 — Polish, packaging, CI
 - [x] Basic UI panels, shortcuts (Ctrl+S/Z/Shift+Z/Esc/Del)

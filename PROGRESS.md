@@ -324,7 +324,7 @@
 - None.
 
 ## 2026-10-20 — Phase 4 slice 4: in-canvas text editing (F-104/F-105)
-**Status**: implemented + reviewed + fixed; awaiting CI verification
+**Status**: CI-verified green (`117bddb`) — fmt, clippy, all tests incl. new Text/Callout geometry test, release build. Phase 4 complete. 1 CI follow-up (unused `mut`).
 
 ### Completed
 - UI (`ui-dev`, two rounds): double-click entry on Text/Callout in Select
@@ -358,8 +358,46 @@
 ### Blocked
 - None.
 
+## 2026-10-20 — Phase 5 slice 1: native file dialogs + recent files
+**Status**: implemented + reviewed + fixed; awaiting CI verification
+
+### Completed
+- Parent: added `rfd = "0.15"` (MIT/Apache-2.0, pure-Rust xdg-portal backend
+  on Linux — no GTK).
+- Domain (`domain-dev` → reworked by `fixer`): recents started as
+  `Settings.recent_paths`, then — reviewer finding — were moved out of
+  project settings entirely to avoid writing local paths into shareable
+  files. Final shape: `RecentList` domain type (serde-transparent string
+  array, dedupe/move-to-front/cap at `MAX_RECENT = 10`, remove/clear) with
+  6 tests + a legacy-field load test.
+- Data (`fixer`): new `src/data/recent.rs` — `recent_config_path()` (OS
+  config dir via `directories`, mirroring `project_dir`), `load_recent()`
+  (soft-fails to empty), `save_recent()` (pretty JSON); `normalise_project_filename`
+  helper in store.rs (case-insensitive `.rubric.json` suffix, `.json`
+  replaced not stacked) with 3 tests.
+- UI (`ui-dev` → reworked by `fixer`): File menu rework — Open Project…
+  (Ctrl+O) via rfd, Save Project (Ctrl+S routes through current path, no
+  more false-success override), Save Project As…, Recent submenu (full path
+  on hover, self-pruning on missing files, Clear Recent), Quit via
+  `ViewportCommand::Close`; `current_path` session state + window title
+  "<file> — Rubric"; zero undo snapshots for any recents maintenance.
+- Review (`reviewer`): all rfd/egui APIs verified against published sources
+  (rfd 0.15.3, egui 0.36.2 — including ViewportCommand::Title and the
+  borrow-sensitive Recent submenu). Findings: false-success save status
+  (fixed), recents-in-settings design (reworked per parent decision),
+  process::exit Quit (fixed), extension edges (fixed), xdg-portal runtime
+  caveat (documented in DECISIONS.md + assumptions).
+- Parent decisions recorded in DECISIONS.md: recents are app-level config,
+  rfd for dialogs.
+
+### Active
+- Pushing slice 1; CI is the first-ever compile of rfd (expected green —
+  CI's ubuntu runner builds it; static review confirms).
+
+### Blocked
+- None.
+
 ## Summary
-Phases 1–3 complete and CI-green. Phase 4: slices 1–3 (layers; status remap
-+ legend; stamp library) all CI-green; slice 4 (in-canvas text editing for
-Text/Callout) implemented, reviewed, fixes in progress → push → CI next.
-Then Phase 5 (file dialogs, PDF import, export).
+Phases 1–4 complete and CI-green. Phase 5 started: native file dialogs +
+recent files implemented, reviewed, fixed (app-level recents store); awaiting
+CI (first compile of rfd). Next: PDF import/rendering, then export/print.

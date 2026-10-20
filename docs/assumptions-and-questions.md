@@ -54,3 +54,11 @@
 - History capped at 128 snapshots.
 - Phase 0 implements Slice 1: drawing, selection, move, undo/redo, inspector, save/load, tests.
 - Never commit external reference material or the build guide.
+
+## Runtime notes (Phase 5, 2026-10-20)
+- Native file dialogs use `rfd`'s pure-Rust xdg-portal backend on Linux. A running
+  `xdg-desktop-portal` service is required; on minimal window-manager setups the
+  Open/Save dialogs may not appear until one is installed (no code workaround —
+  documented limitation).
+- Recent files persist app-level in the OS config dir (`~/.config/rubric/recent.json`
+  on Linux), not in `.rubric.json`, so review documents never carry local paths.

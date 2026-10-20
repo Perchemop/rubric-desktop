@@ -1,12 +1,15 @@
 //! The main egui application: layout, state, and high-level orchestration.
 
 use std::collections::HashSet;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use eframe::{App, CreationContext, Frame};
 use egui::{Align, Layout, Pos2, Ui, Vec2};
 
-use crate::data::{default_project_path, load_project, save_project};
+use crate::data::{
+    load_project, load_recent, normalise_project_filename, save_project, save_recent,
+};
 use crate::domain::{Document, History, MarkupKind, Project, Pt, StampPreset, Tool};
 use crate::ui::{canvas, inspector, theme, toolbar};
 use uuid::Uuid;
@@ -133,6 +136,11 @@ pub struct RubricApp {
     /// The last pointer page position (for the status bar).
     last_page_pos: Option<Pt>,
     comment_text: String,
+    /// Session-only association with a file on disk. Not part of the project
+    /// snapshot, so it never undoes/redoes with history.
+    current_path: Option<PathBuf>,
+    /// Set when the window title needs to be re-synced with `current_path`.
+    title_dirty: bool,
 }
 
 impl RubricApp {
@@ -145,6 +153,8 @@ impl RubricApp {
             draw: DrawState::Idle,
             last_page_pos: None,
             comment_text: String::new(),
+            current_path: None,
+            title_dirty: true,
         }
     }
 
@@ -206,6 +216,87 @@ impl RubricApp {
         self.history.push(proj);
     }
 
+    /// Open (or re-open) a project file, replacing the current session.
+    fn open_project_path(&mut self, path: PathBuf) {
+        if !path.exists() {
+            // Drop the missing file from the app-level recents. App state,
+            // not project state — no undo snapshot, and a read-only config
+            // dir must not turn this into an open failure.
+            let pstr = path.to_string_lossy().to_string();
+            self.ui.status = format!("Missing: {pstr}");
+            let mut recent = load_recent();
+            recent.remove(&pstr);
+            let _ = save_recent(&recent);
+            return;
+        }
+        match load_project(&path) {
+            Ok(proj) => {
+                self.history = History::new(proj);
+                self.ui = UiState::default();
+                self.draw = DrawState::Idle;
+                self.current_path = Some(path.clone());
+                let name = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_else(|| path.to_string_lossy().to_string());
+                self.ui.status = format!("Opened {name}");
+                self.title_dirty = true;
+                // Record the open in the app-level recents store. A failed
+                // save (e.g. read-only config dir) must not fail the open.
+                let mut recent = load_recent();
+                recent.push(path.to_string_lossy().to_string());
+                let _ = save_recent(&recent);
+            }
+            Err(e) => {
+                self.ui.status = format!("Open failed: {e}");
+            }
+        }
+    }
+
+    /// Save the current project to `path`, updating session state on success.
+    fn save_project_to(&mut self, path: PathBuf) {
+        // Normalise the extension at the UI boundary: save_project writes
+        // exactly what it is given.
+        let path = PathBuf::from(normalise_project_filename(
+            path.to_string_lossy().into_owned(),
+        ));
+        match save_project(self.history.current(), &path) {
+            Ok(_) => {
+                self.current_path = Some(path.clone());
+                self.ui.dirty = false;
+                self.ui.status = "Saved".to_string();
+                self.title_dirty = true;
+                // Record the save in the app-level recents store. App state,
+                // not project state — no undo snapshot, and a failed save
+                // (e.g. read-only config dir) must not fail the save.
+                let mut recent = load_recent();
+                recent.push(path.to_string_lossy().to_string());
+                let _ = save_recent(&recent);
+            }
+            Err(e) => {
+                self.ui.status = format!("Save failed: {e}");
+            }
+        }
+    }
+
+    fn save_project_action(&mut self) {
+        if let Some(p) = self.current_path.clone() {
+            self.save_project_to(p);
+        } else {
+            self.save_project_as_action();
+        }
+    }
+
+    fn save_project_as_action(&mut self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("Rubric project", &["rubric.json"])
+            .set_file_name("project.rubric.json")
+            .save_file()
+        {
+            self.save_project_to(path);
+        }
+    }
+
     fn menu_bar(&mut self, ui: &mut Ui) {
         use egui::MenuBar;
         MenuBar::new().ui(ui, |ui| {
@@ -214,33 +305,63 @@ impl RubricApp {
                     self.history = History::new(Project::new("Untitled Rubric Project"));
                     self.ui = UiState::default();
                     self.draw = DrawState::Idle;
+                    self.current_path = None;
                     self.ui.status = "New project created".to_string();
+                    self.title_dirty = true;
                     ui.close();
                 }
-                if ui.button("Open...").clicked() {
-                    if let Some(p) = default_project_path(&self.current_project().name) {
-                        if p.exists() {
-                            if let Ok(proj) = load_project(&p) {
-                                self.history = History::new(proj);
-                                self.ui = UiState::default();
-                                self.draw = DrawState::Idle;
-                                self.ui.status = "Project loaded".to_string();
+                if ui.button("Open Project...").clicked() {
+                    if let Some(path) = rfd::FileDialog::new()
+                        .add_filter("Rubric project", &["rubric.json"])
+                        .pick_file()
+                    {
+                        self.open_project_path(path);
+                    }
+                    ui.close();
+                }
+                // Recent submenu: app-level recents (data layer), not project
+                // settings — reads/writes `recent.json` in the config dir.
+                ui.menu_button("Recent", |ui| {
+                    let recents = load_recent();
+                    if recents.is_empty() {
+                        ui.label("No recent projects");
+                    } else {
+                        for r in recents.as_slice() {
+                            let path = PathBuf::from(r);
+                            let label = path
+                                .file_name()
+                                .map(|n| n.to_string_lossy().to_string())
+                                .unwrap_or_else(|| r.clone());
+                            let resp = ui.button(&label);
+                            resp.clone().on_hover_text(r.as_str());
+                            if resp.clicked() {
+                                self.open_project_path(path);
+                                ui.close();
                             }
                         }
+                        ui.separator();
+                        if ui.button("Clear Recent").clicked() {
+                            let mut recent = load_recent();
+                            recent.clear();
+                            let _ = save_recent(&recent);
+                            self.ui.status = "Recent list cleared".to_string();
+                            ui.close();
+                        }
                     }
+                });
+                if ui.button("Save Project").clicked() {
+                    self.save_project_action();
                     ui.close();
                 }
-                if ui.button("Save").clicked() {
-                    if let Some(p) = default_project_path(&self.current_project().name) {
-                        let _ = save_project(self.current_project(), &p);
-                        self.ui.dirty = false;
-                        self.ui.status = "Project saved".to_string();
-                    }
+                if ui.button("Save Project As...").clicked() {
+                    self.save_project_as_action();
                     ui.close();
                 }
                 ui.separator();
                 if ui.button("Quit").clicked() {
-                    std::process::exit(0);
+                    // Let eframe tear down normally instead of exiting the
+                    // process outright.
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                 }
             });
             ui.menu_button("Edit", |ui| {
@@ -362,12 +483,20 @@ impl App for RubricApp {
                     self.clear_selection();
                 }
             }
-            if i.modifiers.ctrl && i.key_pressed(egui::Key::S) {
-                if let Some(p) = default_project_path(&self.current_project().name) {
-                    let _ = save_project(self.current_project(), &p);
-                    self.ui.dirty = false;
-                    self.ui.status = "Project saved (Ctrl+S)".to_string();
+            if i.modifiers.ctrl && i.key_pressed(egui::Key::O) {
+                // Native dialog must run on the main thread; the logic() handler
+                // runs on it, so calling rfd here is safe.
+                if let Some(path) = rfd::FileDialog::new()
+                    .add_filter("Rubric project", &["rubric.json"])
+                    .pick_file()
+                {
+                    self.open_project_path(path);
                 }
+            }
+            if i.modifiers.ctrl && i.key_pressed(egui::Key::S) {
+                // save_project_to sets an accurate "Saved" / "Save failed: …"
+                // status; no override here.
+                self.save_project_action();
             }
             if i.key_pressed(egui::Key::Escape) {
                 if self.ui.text_edit.is_some() {
@@ -387,6 +516,20 @@ impl App for RubricApp {
     }
 
     fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
+        if self.title_dirty {
+            let title = match &self.current_path {
+                Some(p) => format!(
+                    "{} — Rubric",
+                    p.file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_else(|| p.to_string_lossy().to_string())
+                ),
+                None => "Untitled — Rubric".to_string(),
+            };
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::Title(title));
+            self.title_dirty = false;
+        }
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(ui));
         egui::Panel::top("toolbar").show(ui, |ui| self.top_bar(ui));
         egui::Panel::left("tools")

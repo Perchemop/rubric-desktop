@@ -26,6 +26,61 @@ pub struct Settings {
     pub precision: u8,
 }
 
+/// Maximum number of entries retained in [`RecentList`].
+pub const MAX_RECENT: usize = 10;
+
+/// App-level list of recently opened project paths, most recent first.
+///
+/// Deliberately *not* part of [`Settings`] or [`Project`]: a project file is
+/// shareable, so it must never embed the user's absolute local paths.
+/// Recent projects live in the data layer instead (see `data::load_recent` /
+/// `data::save_recent`); this type is the pure container they persist.
+///
+/// Serde representation is a plain JSON array of strings.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct RecentList(Vec<String>);
+
+impl RecentList {
+    /// Record `path` as the most recently opened project.
+    ///
+    /// An existing entry with the same exact string is removed and the path is
+    /// moved to the front. The list is capped at [`MAX_RECENT`] entries; the
+    /// oldest entries are dropped.
+    pub fn push(&mut self, path: impl Into<String>) {
+        let path = path.into();
+        self.0.retain(|existing| existing != &path);
+        self.0.insert(0, path);
+        self.0.truncate(MAX_RECENT);
+    }
+
+    /// Drop every entry with the exact string `path` (e.g. a file that no
+    /// longer exists). No-op when it is not present.
+    pub fn remove(&mut self, path: &str) {
+        self.0.retain(|existing| existing != path);
+    }
+
+    /// Remove all entries from the list.
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
+
+    /// Iterate entries, most recent first.
+    pub fn iter(&self) -> std::slice::Iter<'_, String> {
+        self.0.iter()
+    }
+
+    /// Entries as a slice, most recent first.
+    pub fn as_slice(&self) -> &[String] {
+        &self.0
+    }
+
+    /// True when the list has no entries.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 /// Serde default for [`Settings::precision`], also used by projects saved
 /// before the preference existed.
 fn default_precision() -> u8 {
@@ -440,5 +495,83 @@ mod tests {
         let back: Settings = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, settings);
         assert_eq!(back.precision, 5);
+    }
+
+    #[test]
+    fn recent_list_default_is_empty() {
+        let recent = RecentList::default();
+        assert!(recent.is_empty());
+        assert!(recent.as_slice().is_empty());
+    }
+
+    #[test]
+    fn recent_list_push_dedupes_and_moves_to_front() {
+        let mut recent = RecentList::default();
+        recent.push("a.rubric.json");
+        recent.push("b.rubric.json");
+        recent.push("a.rubric.json");
+        assert_eq!(recent.as_slice(), &["a.rubric.json", "b.rubric.json"]);
+    }
+
+    #[test]
+    fn recent_list_remove_drops_only_matching_entry() {
+        let mut recent = RecentList::default();
+        recent.push("a.rubric.json");
+        recent.push("b.rubric.json");
+        recent.remove("missing.rubric.json"); // no-op
+        assert_eq!(recent.as_slice(), &["b.rubric.json", "a.rubric.json"]);
+        recent.remove("a.rubric.json");
+        assert_eq!(recent.as_slice(), &["b.rubric.json"]);
+    }
+
+    #[test]
+    fn recent_list_push_caps_at_max_recent_dropping_oldest() {
+        let mut recent = RecentList::default();
+        for i in 0..12 {
+            recent.push(format!("path_{i}.rubric.json"));
+        }
+        assert_eq!(recent.as_slice().len(), MAX_RECENT);
+        assert_eq!(recent.as_slice()[0], "path_11.rubric.json");
+        assert_eq!(recent.as_slice()[MAX_RECENT - 1], "path_2.rubric.json");
+        assert!(recent.iter().all(|p| p != "path_0.rubric.json"));
+        assert!(recent.iter().all(|p| p != "path_1.rubric.json"));
+    }
+
+    #[test]
+    fn recent_list_clear_empties_list() {
+        let mut recent = RecentList::default();
+        recent.push("a.rubric.json");
+        recent.push("b.rubric.json");
+        recent.clear();
+        assert!(recent.is_empty());
+    }
+
+    #[test]
+    fn recent_list_serde_roundtrip_is_json_array_of_strings() {
+        let mut recent = RecentList::default();
+        recent.push("first.rubric.json");
+        recent.push("second.rubric.json");
+        let json = serde_json::to_string(&recent).expect("serialize");
+        assert_eq!(json, r#"["second.rubric.json","first.rubric.json"]"#);
+        let back: RecentList = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, recent);
+    }
+
+    #[test]
+    fn settings_with_legacy_recent_paths_field_still_loads() {
+        // Transient project files recorded recents inside Settings; serde
+        // (no `deny_unknown_fields` in this codebase) ignores the now-unknown
+        // field instead of failing.
+        let json = r#"{
+            "author": "Reviewer",
+            "auto_save": false,
+            "auto_save_interval_secs": 60,
+            "ui_scale": 1.0,
+            "show_grid": false,
+            "show_measurements": true,
+            "recent_paths": ["old.rubric.json"]
+        }"#;
+        let settings: Settings = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(settings.precision, 3);
     }
 }

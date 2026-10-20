@@ -37,6 +37,29 @@ pub fn default_project_path(name: &str) -> Option<PathBuf> {
     project_dir().map(|d| d.join(format!("{safe}.rubric.json")))
 }
 
+/// Normalise a user-provided project file name so it always ends with the
+/// canonical `.rubric.json` extension.
+///
+/// - `a.rubric.json` (any casing) is returned unchanged.
+/// - a trailing `.json` (any casing) is *replaced* by `.rubric.json` rather
+///   than stacked (`a.json` → `a.rubric.json`).
+/// - anything else gets `.rubric.json` appended.
+pub fn normalise_project_filename(name: String) -> String {
+    // ASCII lowering preserves byte offsets and lengths, so suffix checks
+    // against the lowered copy line up with `name` itself.
+    let lower = name.to_ascii_lowercase();
+    if lower.ends_with(".rubric.json") {
+        name
+    } else if lower.ends_with(".json") {
+        // The matched suffix is ASCII regardless of original casing, so
+        // slicing at `len - 5` is always on a char boundary.
+        let stem = &name[..name.len() - ".json".len()];
+        format!("{stem}.rubric.json")
+    } else {
+        format!("{name}.rubric.json")
+    }
+}
+
 /// Ensure the project directory exists.
 fn ensure_dir(p: &Path) -> Result<(), DataError> {
     if let Some(parent) = p.parent() {
@@ -76,5 +99,36 @@ pub fn autosave(project: &Project) -> Result<Option<PathBuf>, DataError> {
         save_project(project, &p).map(Some)
     } else {
         Ok(None)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalise_project_filename;
+
+    #[test]
+    fn normalise_appends_rubric_json() {
+        assert_eq!(
+            normalise_project_filename("my_project".into()),
+            "my_project.rubric.json"
+        );
+    }
+
+    #[test]
+    fn normalise_replaces_plain_json_suffix_instead_of_stacking() {
+        assert_eq!(normalise_project_filename("a.json".into()), "a.rubric.json");
+        assert_eq!(normalise_project_filename("a.JSON".into()), "a.rubric.json");
+    }
+
+    #[test]
+    fn normalise_keeps_existing_rubric_json_any_casing() {
+        assert_eq!(
+            normalise_project_filename("a.rubric.json".into()),
+            "a.rubric.json"
+        );
+        assert_eq!(
+            normalise_project_filename("A.RUBRIC.JSON".into()),
+            "A.RUBRIC.JSON"
+        );
     }
 }
