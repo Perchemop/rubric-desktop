@@ -359,7 +359,7 @@
 - None.
 
 ## 2026-10-20 — Phase 5 slice 1: native file dialogs + recent files
-**Status**: implemented + reviewed + fixed; awaiting CI verification
+**Status**: CI-verified green (`dba80a6`) — fmt, clippy, all tests incl. `RecentList`/`normalise_project_filename`, release build. 1 CI follow-up (test formatted `ThreadId` with `{}` instead of `{:?}`).
 
 ### Completed
 - Parent: added `rfd = "0.15"` (MIT/Apache-2.0, pure-Rust xdg-portal backend
@@ -391,13 +391,13 @@
   rfd for dialogs.
 
 ### Active
-- Pushing slice 1; CI is the first-ever compile of rfd (expected green —
-  CI's ubuntu runner builds it; static review confirms).
+- Slice 1 complete. Next: Phase 5 slice 2 — PDF import/rendering (crate
+  choice: lopdf vs pdfium-render, assumptions Q2/Q6).
 
 ### Blocked
 - None.
 
 ## Summary
-Phases 1–4 complete and CI-green. Phase 5 started: native file dialogs +
-recent files implemented, reviewed, fixed (app-level recents store); awaiting
-CI (first compile of rfd). Next: PDF import/rendering, then export/print.
+Phases 1–4 complete and CI-green. Phase 5 slice 1 (native file dialogs +
+app-level recent files) CI-green. Next: PDF import/rendering, then
+export/print.
