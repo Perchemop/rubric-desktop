@@ -1,7 +1,7 @@
 ---
 description: Implements Rubric UI slices in egui/eframe (canvas, toolbar, inspector, app shell) on top of the domain layer
 mode: subagent
-model: opencode/minimax-m3.1-flash-free#high
+model: opencode/beam-free#high
 permissions:
   - action: edit
     resource: "*"
