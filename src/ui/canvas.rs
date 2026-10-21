@@ -356,6 +356,10 @@ pub(crate) fn commit_text_edit(ui_state: &mut super::app::UiState, project: &mut
 
 /// Draw and interact with the page canvas. Returns `true` when the caller
 /// should snapshot the project into undo history.
+// Rendering context, not business logic: the canvas needs live handles to
+// several UI-side caches at once; a bundled context struct is a later
+// refactor if more handles accumulate.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn draw_canvas(
     ui: &mut Ui,
     project: &mut Project,
