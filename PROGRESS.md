@@ -397,6 +397,25 @@
 ### Blocked
 - None.
 
+## 2026-10-21 — Phase 5 slice 4: page image export (F-505a)
+**Status**: complete, CI-green (`39577186482`, 1m41s, all steps)
+
+### Completed
+- Data: `src/data/render.rs` — `rasterize_primitives` (2×2 supersampled
+  triangle rasterizer with texture sampling + alpha blend + scissor clip) and
+  `render_page_to_png_bytes` (headless egui frame of `draw_canvas` over the
+  cached page image, PNG encode); 4 pure-math unit tests.
+- UI: File → Export Page Image… (rfd save dialog, suggested `rubric-page.png`)
+  + `export_page_image` method; honest status on success/failure/cancel;
+  session-state only, no snapshot/.rubric.json change.
+- Print intentionally deferred (R-S-015 stays PARTIAL — image export only).
+
+### Active
+- None.
+
+### Blocked
+- None.
+
 ## 2026-10-21 — Phase 5 slice 3: summary report + export (F-304)
 **Status**: complete, CI-green (`39576158411`, 1m41s, all steps)
 
