@@ -40,8 +40,8 @@ Check specifically for:
 - Tests: behaviour changes ship with unit tests or `tests/domain_tests.rs` coverage,
   including serialise-to-deserialise round-trips.
 - Quality gates: the heavy gates (`cargo test`, `clippy -D warnings`, release
-  build) run in GitHub Actions on every push — judge statically whether the
-  change will pass, run only `cargo fmt --all -- --check` yourself, and report
+  build) run in GitHub Actions, never on this machine — judge statically whether
+  the change will pass, run only `cargo fmt --all -- --check` yourself, and report
   what you could not verify.
 
 Report findings in severity order. Give each one a file and line reference, a short

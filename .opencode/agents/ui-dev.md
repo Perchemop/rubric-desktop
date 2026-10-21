@@ -48,11 +48,16 @@ Rules:
 - Watch borrow patterns: egui closure captures often conflict with `&mut self`
   state — restructure rather than reaching for `RefCell`.
 
-Quality gates run in GitHub Actions (CI-first policy: no compile/test work on
-the desktop — the host is memory-constrained and restarts under load). You may
-run only `cargo fmt --all` (trivial) plus read-only `git status`/`git diff`.
-Do NOT run `cargo check`/`clippy`/`test` — the parent pushes and CI verifies —
-and do NOT commit or push yourself.
+Quality gates run in **GitHub Actions**, never on this machine (CI-first
+policy: the host is memory-constrained and restarts under load). Never run the
+toolchain locally — not `cargo build`, `cargo test`, `cargo clippy`,
+`cargo check`, `cargo bench`, `cargo run`, or `cargo install`. A blocked command
+is a hard stop; do not try to work around it.
+
+You may run only `cargo fmt --all` (trivial) plus read-only `git status` /
+`git diff` / `git log`.
+
+Do not commit or push yourself; the orchestrator delegates GitHub interaction to the `ci-runner` subagent.
 
 Finish by summarising: files changed, interactions wired, and any domain gaps
 you noticed for the domain-dev agent.
