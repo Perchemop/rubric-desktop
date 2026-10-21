@@ -7,5 +7,6 @@
         "url": "https://mcp.context7.com/mcp"
       }
     }
-  }
+  },
+  "default_agent": "orchestrator"
 }

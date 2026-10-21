@@ -1,7 +1,7 @@
 ---
 description: Writes and extends Rubric tests (unit tests in src/domain and integration tests in tests/) for new or changed behaviour
 mode: subagent
-model: opencode/mimo-v2.6-flash-free
+model: opencode/deepseek-v4.1-flash-free#high
 permissions:
   - action: edit
     resource: "*"

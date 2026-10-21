@@ -1,7 +1,7 @@
 ---
 description: Reviews Rubric changes for correctness, regressions, and quality-gate failures
 mode: subagent
-model: opencode/glm-5.3-flash-free#high
+model: opencode/beam-free#high
 permissions:
   - action: edit
     resource: "*"
