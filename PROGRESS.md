@@ -416,6 +416,35 @@
 ### Blocked
 - None.
 
+## 2026-10-21 — Phase 5 slice 4: page image export + print (F-505)
+**Status**: complete, CI-green (`39589815002`, 1m50s, all steps; 131 tests pass)
+
+### Completed
+- Data: `src/data/render.rs` — `rasterize_primitives` (2×2 supersampled
+  barycentric triangle rasterizer: per-vertex colour interpolation, texture
+  sampling incl. the font atlas at `TextureId::default()`, partial texture
+  deltas, scissor clip, src-over alpha blend) and `render_page_to_png_bytes`
+  (headless egui frame of `draw_canvas` over the cached page image → PNG
+  encode); 4 pure-math unit tests.
+- Data: `src/data/print.rs` — pure `print_command` (lp / lpr / powershell
+  Start-Process-Print) + `print_image` (spawn + wait, honest error); 3 tests.
+- UI: File → Export Page Image… and Print… (rfd save dialog for the image,
+  direct print for the job); `export_page_image` / `print_page` methods with
+  honest status on success/failure/cancel; session-state only.
+- Traceability: R-S-015 → DONE. F-505 complete (image export + print).
+
+### Notes / risks
+- The renderer is CPU-only and re-uses the canvas drawing code, so exports
+  match the on-screen view (background + overlays + text labels).
+- Page-number semantics still use `Page.index` as the PDF page number; a
+  dedicated `Page::source_page` field is a planned follow-up.
+
+### Active
+- None.
+
+### Blocked
+- None.
+
 ## 2026-10-21 — Phase 5 slice 3: summary report + export (F-304)
 **Status**: complete, CI-green (`39576158411`, 1m41s, all steps)
 
