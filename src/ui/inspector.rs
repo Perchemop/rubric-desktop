@@ -179,8 +179,18 @@ pub(crate) fn draw_inspector(
 
         // Page / scale settings.
         ui.collapsing("Scale", |ui| {
-            // Determine active page index (first page).
-            let page_idx = 0usize;
+            // The page currently displayed on the canvas, clamped to the
+            // active document's page count.
+            let page_idx = if let Some(doc) = project.active() {
+                let count = doc.page_count();
+                if count == 0 {
+                    0
+                } else {
+                    ui_state.current_page.min(count - 1)
+                }
+            } else {
+                ui_state.current_page
+            };
             // Read current scale, keeping a copy so we can tell whether a
             // preset / unit / custom click actually changed anything.
             let before = project

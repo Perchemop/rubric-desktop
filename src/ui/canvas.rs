@@ -322,6 +322,38 @@ fn draw_selection(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Mar
     );
 }
 
+/// Commit a pending in-canvas text edit (if any) using focus-loss semantics.
+/// Returns `true` when the text actually changed and was written back.
+pub(crate) fn commit_text_edit(ui_state: &mut super::app::UiState, project: &mut Project) -> bool {
+    let Some(edit) = ui_state.text_edit.clone() else {
+        return false;
+    };
+    let id = edit.id;
+    let new_text = edit.text.clone();
+    let original = edit.original.clone();
+    let editable = project
+        .active()
+        .and_then(|d| d.find_markup(id).map(|m| d.is_markup_editable(m)))
+        .unwrap_or(false);
+    let changed = new_text != original;
+    if changed && editable {
+        if let Some(doc) = project.active_mut() {
+            if let Some(m) = doc.find_markup_mut(id) {
+                match &mut m.geometry {
+                    MarkupGeometry::Text { text, .. } => *text = new_text.clone(),
+                    MarkupGeometry::Callout { text, .. } => *text = new_text.clone(),
+                    _ => {}
+                }
+                m.touch();
+            }
+            doc.touch();
+        }
+        ui_state.status = "Text updated".to_string();
+    }
+    ui_state.text_edit = None;
+    changed && editable
+}
+
 /// Draw and interact with the page canvas. Returns `true` when the caller
 /// should snapshot the project into undo history.
 pub(crate) fn draw_canvas(
@@ -330,6 +362,9 @@ pub(crate) fn draw_canvas(
     ui_state: &mut super::app::UiState,
     draw_state: &mut super::app::DrawState,
     last_page_pos: &mut Option<Pt>,
+    page_textures: &mut std::collections::HashMap<String, egui::TextureHandle>,
+    failed_page_textures: &mut std::collections::HashSet<String>,
+    bg_error: &mut Option<String>,
 ) -> bool {
     let mut mutated = false;
 
@@ -349,7 +384,22 @@ pub(crate) fn draw_canvas(
         Color32::from_rgb(235, 238, 244),
     );
 
-    let page = match project.active().and_then(|d| d.primary_page()) {
+    // Clamp the displayed page defensively; never panic on an out-of-range index.
+    if let Some(doc) = project.active() {
+        let count = doc.page_count();
+        if count == 0 {
+            return false;
+        }
+        if ui_state.current_page >= count {
+            ui_state.current_page = count - 1;
+        }
+    } else {
+        return false;
+    }
+    let page = match project
+        .active()
+        .and_then(|d| d.pages.get(ui_state.current_page).copied())
+    {
         Some(p) => p,
         None => return false,
     };
@@ -358,7 +408,85 @@ pub(crate) fn draw_canvas(
     let zoom = ui_state.zoom;
 
     let page_rect = screen_rect(page.bounds(), origin, pan, zoom);
-    painter.rect_filled(page_rect, egui::CornerRadius::same(12), Color32::WHITE);
+    let source_pdf = project.source_pdf.clone();
+    // Paint the PDF page as a background texture when available; otherwise
+    // keep the existing flat white fill. NOTE: first paint of a page may hitch
+    // while PDFium rasterises + writes the cache PNG; the cache makes it
+    // one-time. No background threads this slice (pdfium is not thread-safe).
+    let mut painted_texture = false;
+    if let Some(pdf_path) = source_pdf {
+        let target_width = ((page.width * 2.0).round() as u32).max(64);
+        // Identity of one render attempt. A failed attempt is poisoned for the
+        // project session so it is never retried: without this, a broken page
+        // would re-rasterise (and re-report its error) on every repaint frame.
+        let attempt_key = format!("{pdf_path}:{page.index}:{target_width}");
+        if !failed_page_textures.contains(&attempt_key) {
+            match crate::data::pdf::render_page_to_cache(&pdf_path, page.index, target_width) {
+                Ok(cache_path) => {
+                    let key = cache_path.to_string_lossy().to_string();
+                    if !page_textures.contains_key(&key) {
+                        match std::fs::read(&cache_path) {
+                            Ok(bytes) => match image::load_from_memory(&bytes) {
+                                Ok(img) => {
+                                    let rgba = img.to_rgba8();
+                                    let (w, h) = rgba.dimensions();
+                                    let color_image = egui::ColorImage::from_rgba_unmultiplied(
+                                        [w as usize, h as usize],
+                                        rgba.as_raw(),
+                                    );
+                                    let tex = ui.ctx().load_texture(
+                                        key.clone(),
+                                        color_image,
+                                        egui::TextureOptions::LINEAR,
+                                    );
+                                    page_textures.insert(key.clone(), tex);
+                                }
+                                Err(e) => {
+                                    failed_page_textures.insert(attempt_key);
+                                    let msg = format!("PDF background unavailable: {e}");
+                                    if bg_error.as_ref() != Some(&msg) {
+                                        ui_state.status = msg.clone();
+                                        *bg_error = Some(msg);
+                                    }
+                                }
+                            },
+                            Err(e) => {
+                                failed_page_textures.insert(attempt_key);
+                                let msg = format!("PDF background unavailable: {e}");
+                                if bg_error.as_ref() != Some(&msg) {
+                                    ui_state.status = msg.clone();
+                                    *bg_error = Some(msg);
+                                }
+                            }
+                        }
+                    }
+                    if let Some(tex) = page_textures.get(&key) {
+                        painter.image(
+                            tex.id(),
+                            page_rect,
+                            egui::Rect::from_min_max(
+                                egui::Pos2::new(0.0, 0.0),
+                                egui::Pos2::new(1.0, 1.0),
+                            ),
+                            egui::Color32::WHITE,
+                        );
+                        painted_texture = true;
+                    }
+                }
+                Err(e) => {
+                    failed_page_textures.insert(attempt_key);
+                    let msg = format!("PDF background unavailable: {e}");
+                    if bg_error.as_ref() != Some(&msg) {
+                        ui_state.status = msg.clone();
+                        *bg_error = Some(msg);
+                    }
+                }
+            }
+        }
+    }
+    if !painted_texture {
+        painter.rect_filled(page_rect, egui::CornerRadius::same(12), Color32::WHITE);
+    }
     painter.rect_stroke(
         page_rect,
         egui::CornerRadius::same(12),
@@ -459,33 +587,11 @@ pub(crate) fn draw_canvas(
         }
     }
     if commit_edit {
-        let (id, new_text, original) = {
-            let e = ui_state.text_edit.as_ref().unwrap();
-            (e.id, e.text.clone(), e.original.clone())
-        };
-        let editable = project
-            .active()
-            .and_then(|d| d.find_markup(id).map(|m| d.is_markup_editable(m)))
-            .unwrap_or(false);
-        let changed = new_text != original;
-        if changed && editable {
-            if let Some(doc) = project.active_mut() {
-                if let Some(m) = doc.find_markup_mut(id) {
-                    match &mut m.geometry {
-                        MarkupGeometry::Text { text, .. } => *text = new_text.clone(),
-                        MarkupGeometry::Callout { text, .. } => *text = new_text.clone(),
-                        _ => {}
-                    }
-                    m.touch();
-                }
-                doc.touch();
-            }
-            // Set a specific status here: the app shell preserves a status the
-            // canvas set this frame when it pushes the text-commit snapshot.
-            ui_state.status = "Text updated".to_string();
+        // The app shell preserves a status the canvas set this frame when it
+        // pushes the text-commit snapshot.
+        if commit_text_edit(ui_state, project) {
             mutated = true;
         }
-        ui_state.text_edit = None;
     }
 
     // Pointer position in page space.

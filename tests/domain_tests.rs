@@ -6,6 +6,7 @@ use rubric::domain::{
     units::MeasureUnit,
     Document, Markup, MarkupGeometry, MarkupKind, Page, Project, Pt, Rect, ReviewStatus, Scale,
 };
+use rubric::{load_project, save_project};
 
 fn foot_scale() -> Scale {
     Scale::new(MeasureUnit::Foot, 1.0 / 72.0)
@@ -177,4 +178,73 @@ fn project_layers_and_membership_roundtrip() {
         "locked stays visible"
     );
     assert!(!doc.is_markup_editable(&doc.markups[0]));
+}
+
+fn temp_project_path(tag: &str) -> std::path::PathBuf {
+    std::env::temp_dir().join(format!(
+        "rubric_project_test_{}_{}_{:?}.rubric.json",
+        std::process::id(),
+        tag,
+        std::thread::current().id()
+    ))
+}
+
+#[test]
+fn from_pdf_pages_default_to_paper_scale_calibration() {
+    let project = Project::from_pdf(
+        "Site Plan",
+        "plans/site.pdf",
+        &[(612.0, 792.0), (595.28, 841.89)],
+    );
+
+    let document = &project.documents[0];
+    assert_eq!(document.pages.len(), 2);
+    for (index, page) in document.pages.iter().enumerate() {
+        assert_eq!(page.index, index, "page keeps its document-order index");
+        assert_eq!(page.rotation, 0);
+        // `from_pdf` must leave a real paper-space calibration: 1 pt = 1 pt.
+        assert_eq!(page.scale, Scale::PAPER, "page {index} scale");
+        assert_eq!(page.scale.unit, MeasureUnit::Point);
+        assert_eq!(page.scale.units_per_point, 1.0);
+    }
+}
+
+#[test]
+fn from_pdf_project_with_markup_survives_save_load_on_disk() {
+    let mut project = Project::from_pdf(
+        "Site Plan",
+        "plans/site.pdf",
+        &[(612.0, 792.0), (595.28, 841.89)],
+    );
+    project
+        .active_mut()
+        .expect("active document")
+        .add_markup(rect_markup());
+
+    let path = temp_project_path("from_pdf_roundtrip");
+    save_project(&project, &path).expect("save project");
+    let loaded = load_project(&path).expect("load project");
+    let _ = std::fs::remove_file(&path);
+
+    // Whole-project equality: ids, timestamps, pages, scale, source_pdf and
+    // the markup all survive the on-disk JSON roundtrip.
+    assert_eq!(loaded, project);
+
+    // Field-wise checks for clearer failure messages on regressions.
+    assert_eq!(loaded.source_pdf.as_deref(), Some("plans/site.pdf"));
+    assert_eq!(loaded.name, "Site Plan");
+    let document = loaded.active().expect("active document");
+    assert_eq!(document.source_path.as_deref(), Some("plans/site.pdf"));
+    assert_eq!(document.page_count(), 2);
+    assert_eq!(document.pages[0].index, 0);
+    assert_eq!(document.pages[0].width, 612.0);
+    assert_eq!(document.pages[0].height, 792.0);
+    assert_eq!(document.pages[0].scale, Scale::PAPER);
+    assert_eq!(document.pages[1].index, 1);
+    assert!((document.pages[1].width - 595.28).abs() < 1e-3);
+    assert!((document.pages[1].height - 841.89).abs() < 1e-3);
+    assert_eq!(document.pages[1].scale, Scale::PAPER);
+    assert_eq!(document.markups.len(), 1);
+    assert_eq!(document.markups[0].kind, MarkupKind::Rectangle);
+    assert_eq!(document.markups[0].page, 0);
 }

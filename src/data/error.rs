@@ -15,4 +15,10 @@ pub enum DataError {
 
     #[error("Project not found: {0}")]
     NotFound(String),
+
+    #[error("PDF error: {0}")]
+    Pdf(String),
+
+    #[error("PDFium library error: {0}")]
+    PdfLibrary(String),
 }

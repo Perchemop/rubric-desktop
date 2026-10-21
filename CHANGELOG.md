@@ -5,6 +5,7 @@ All notable changes to this project will be documented here. Format: semantic-is
 ## [Unreleased]
 
 ### Added
+- Phase 5 PDF import + page navigation (spec F-504/F-403): `Project::from_pdf` (per-page Letter/A4 sizing, read-only source path, serde-defaulted `source_pdf`), `data::pdf` runtime binding to PDFium via `pdfium-render` with a hash-keyed PNG render cache and `RUBRIC_PDFIUM_PATH` discovery, lazy background page textures (~144dpi, poisoned per cache key so failed pages aren't retried every frame), top-bar + PageUp/PageDown page navigation (guarded while in-canvas text editing), Import PDF… via native dialog, shared `install_project` path; 14 new tests. CI fetches the PDFium library and runs the lib-dependent tests against it.
 - Phase 1 requirement set and spec (`docs/spec/README.md`): 52 feature IDs across F-1xx…F-7xx with priorities mapped to implementation phases; `REQUIREMENTS_TRACEABILITY.md` extended with spec-level requirements R-S-001…R-S-017 and seven group rows.
 - Phase 2 slice A — interactive canvas: drag-to-draw with live preview (bounds/segment), ink freehand drawing, wheel zoom anchored on cursor (10–1600%), Space/middle-button pan, Del to delete selection.
 - Phase 2 slice B — multi-point drawing: click-to-append polyline/polygon/perimeter/area paths with rubber-band preview (commit via double-click/right-click/Enter, Esc cancels), three-click angle tool with live ray preview.

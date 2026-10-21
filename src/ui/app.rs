@@ -1,11 +1,11 @@
 //! The main egui application: layout, state, and high-level orchestration.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::Duration;
 
 use eframe::{App, CreationContext, Frame};
-use egui::{Align, Layout, Pos2, Ui, Vec2};
+use egui::{Align, Layout, Pos2, TextureHandle, Ui, Vec2};
 
 use crate::data::{
     load_project, load_recent, normalise_project_filename, save_project, save_recent,
@@ -98,6 +98,8 @@ pub(crate) struct UiState {
     /// In-canvas text editor state (Text/Callout markups only). UI-only, no
     /// serde: it never leaves the session.
     pub(crate) text_edit: Option<TextEditState>,
+    /// Currently displayed page index (session state; never snapshotted).
+    pub(crate) current_page: usize,
     dirty: bool,
     /// Custom scale editor inputs (paper inches and real units).
     pub(crate) scale_paper_inches: f64,
@@ -122,6 +124,7 @@ impl Default for UiState {
             move_selection: false,
             move_changed: false,
             text_edit: None,
+            current_page: 0,
             dirty: false,
             scale_paper_inches: 1.0,
             scale_real_units: 10.0,
@@ -141,6 +144,13 @@ pub struct RubricApp {
     current_path: Option<PathBuf>,
     /// Set when the window title needs to be re-synced with `current_path`.
     title_dirty: bool,
+    /// Cache of rendered PDF page textures, keyed by cache PNG path.
+    page_textures: HashMap<String, TextureHandle>,
+    /// Cache keys whose page render failed this project session. Poisoned so a
+    /// failed background render is not attempted again on every repaint frame.
+    failed_page_textures: HashSet<String>,
+    /// Last PDF background error shown, to avoid spamming status every frame.
+    bg_error: Option<String>,
 }
 
 impl RubricApp {
@@ -155,6 +165,9 @@ impl RubricApp {
             comment_text: String::new(),
             current_path: None,
             title_dirty: true,
+            page_textures: HashMap::new(),
+            failed_page_textures: HashSet::new(),
+            bg_error: None,
         }
     }
 
@@ -216,6 +229,33 @@ impl RubricApp {
         self.history.push(proj);
     }
 
+    /// Shared reset used by New / Open / Import: installs a project into the
+    /// session, clearing history, UI state, draw state, textures and clamping
+    /// the current page. `current_path` is `Some` only for an opened file.
+    fn install_project(&mut self, project: Project, current_path: Option<PathBuf>, status: String) {
+        self.history = History::new(project);
+        self.ui = UiState::default();
+        self.draw = DrawState::Idle;
+        self.current_path = current_path;
+        self.ui.status = status;
+        self.title_dirty = true;
+        self.page_textures.clear();
+        self.failed_page_textures.clear();
+        self.bg_error = None;
+        if let Some(doc) = self.active_doc() {
+            let count = doc.page_count();
+            if count > 0 && self.ui.current_page >= count {
+                self.ui.current_page = count - 1;
+            }
+        }
+    }
+
+    /// Commit a pending in-canvas text edit (if any) using focus-loss semantics.
+    /// Returns true when the text actually changed and was written back.
+    fn commit_text_edit(&mut self) -> bool {
+        canvas::commit_text_edit(&mut self.ui, self.history.current_mut())
+    }
+
     /// Open (or re-open) a project file, replacing the current session.
     fn open_project_path(&mut self, path: PathBuf) {
         if !path.exists() {
@@ -231,16 +271,11 @@ impl RubricApp {
         }
         match load_project(&path) {
             Ok(proj) => {
-                self.history = History::new(proj);
-                self.ui = UiState::default();
-                self.draw = DrawState::Idle;
-                self.current_path = Some(path.clone());
                 let name = path
                     .file_name()
                     .map(|n| n.to_string_lossy().to_string())
                     .unwrap_or_else(|| path.to_string_lossy().to_string());
-                self.ui.status = format!("Opened {name}");
-                self.title_dirty = true;
+                self.install_project(proj, Some(path.clone()), format!("Opened {name}"));
                 // Record the open in the app-level recents store. A failed
                 // save (e.g. read-only config dir) must not fail the open.
                 let mut recent = load_recent();
@@ -302,12 +337,11 @@ impl RubricApp {
         MenuBar::new().ui(ui, |ui| {
             ui.menu_button("File", |ui| {
                 if ui.button("New Project").clicked() {
-                    self.history = History::new(Project::new("Untitled Rubric Project"));
-                    self.ui = UiState::default();
-                    self.draw = DrawState::Idle;
-                    self.current_path = None;
-                    self.ui.status = "New project created".to_string();
-                    self.title_dirty = true;
+                    self.install_project(
+                        Project::new("Untitled Rubric Project"),
+                        None,
+                        "New project created".to_string(),
+                    );
                     ui.close();
                 }
                 if ui.button("Open Project...").clicked() {
@@ -316,6 +350,36 @@ impl RubricApp {
                         .pick_file()
                     {
                         self.open_project_path(path);
+                    }
+                    ui.close();
+                }
+                if ui.button("Import PDF...").clicked() {
+                    if let Some(path) = rfd::FileDialog::new()
+                        .add_filter("PDF document", &["pdf"])
+                        .pick_file()
+                    {
+                        match crate::data::pdf::read_pdf_info(&path) {
+                            Ok(info) => {
+                                let stem = path
+                                    .file_stem()
+                                    .map(|n| n.to_string_lossy().to_string())
+                                    .unwrap_or_else(|| "Imported PDF".to_string());
+                                let count = info.page_sizes.len().max(1);
+                                let project = Project::from_pdf(
+                                    stem,
+                                    path.to_string_lossy().to_string(),
+                                    &info.page_sizes,
+                                );
+                                self.install_project(
+                                    project,
+                                    None,
+                                    format!("Imported {count} page(s)"),
+                                );
+                            }
+                            Err(e) => {
+                                self.ui.status = format!("Import failed: {e}");
+                            }
+                        }
                     }
                     ui.close();
                 }
@@ -421,6 +485,34 @@ impl RubricApp {
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.label(self.ui.status.clone());
                 ui.label(format!("{:.0}%", self.ui.zoom * 100.0));
+                // Page navigation chrome.
+                let count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
+                if count > 0 {
+                    let current = self.ui.current_page.min(count - 1);
+                    if ui
+                        .add_enabled(current + 1 < count, egui::Button::new("▶"))
+                        .clicked()
+                    {
+                        let changed = self.commit_text_edit();
+                        if changed {
+                            self.push_snapshot_quiet();
+                        }
+                        self.ui.current_page = (current + 1).min(count - 1);
+                        self.draw = DrawState::Idle;
+                    }
+                    ui.label(format!("{}/{}", current + 1, count));
+                    if ui
+                        .add_enabled(current > 0, egui::Button::new("◀"))
+                        .clicked()
+                    {
+                        let changed = self.commit_text_edit();
+                        if changed {
+                            self.push_snapshot_quiet();
+                        }
+                        self.ui.current_page = current.saturating_sub(1);
+                        self.draw = DrawState::Idle;
+                    }
+                }
             });
         });
     }
@@ -498,6 +590,29 @@ impl App for RubricApp {
                 // status; no override here.
                 self.save_project_action();
             }
+            if i.key_pressed(egui::Key::PageUp) {
+                // Never switch pages mid-edit: the edit context would be lost
+                // and the text could be committed onto the wrong page.
+                if self.ui.text_edit.is_some() {
+                    self.ui.status = "Finish or cancel text edit first".to_string();
+                } else if self.ui.current_page > 0 {
+                    self.ui.current_page -= 1;
+                    self.draw = DrawState::Idle;
+                }
+            }
+            if i.key_pressed(egui::Key::PageDown) {
+                // Never switch pages mid-edit: the edit context would be lost
+                // and the text could be committed onto the wrong page.
+                if self.ui.text_edit.is_some() {
+                    self.ui.status = "Finish or cancel text edit first".to_string();
+                } else {
+                    let count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
+                    if count > 0 && self.ui.current_page + 1 < count {
+                        self.ui.current_page += 1;
+                        self.draw = DrawState::Idle;
+                    }
+                }
+            }
             if i.key_pressed(egui::Key::Escape) {
                 if self.ui.text_edit.is_some() {
                     // Discard the in-progress text edit, no snapshot.
@@ -554,6 +669,9 @@ impl App for RubricApp {
                 &mut self.ui,
                 &mut self.draw,
                 &mut self.last_page_pos,
+                &mut self.page_textures,
+                &mut self.failed_page_textures,
+                &mut self.bg_error,
             );
         });
         if need_snapshot {

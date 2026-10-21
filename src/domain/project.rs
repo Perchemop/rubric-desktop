@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::document::Document;
+use super::document::{Document, Page};
 use super::markup::MarkupKind;
 use super::units::{clamp_precision, DEFAULT_PRECISION};
 
@@ -191,6 +191,13 @@ impl ToolSet {
 pub struct Project {
     pub id: Uuid,
     pub name: String,
+    /// Absolute or relative path of the PDF backing this project.
+    ///
+    /// `None` means the project has no backing PDF (a blank, PDF-less project).
+    /// Older `.rubric.json` files saved before PDF import existed have no such
+    /// field and deserialize to `None` thanks to `#[serde(default)]`.
+    #[serde(default)]
+    pub source_pdf: Option<String>,
     pub documents: Vec<Document>,
     #[serde(default)]
     pub active_document: usize,
@@ -207,6 +214,7 @@ impl Project {
         let mut p = Self {
             id: Uuid::new_v4(),
             name: name.into(),
+            source_pdf: None,
             documents: vec![Document::empty("Untitled Document")],
             active_document: 0,
             tool_sets: vec![
@@ -223,6 +231,50 @@ impl Project {
             p.active_document = 0;
         }
         p
+    }
+
+    /// Build a project backed by a PDF whose page sizes are already known.
+    ///
+    /// `page_sizes` holds one `(width, height)` pair per PDF page, in document
+    /// order and in PDF points. Each pair becomes a [`Page`] with a zero-based
+    /// index, no rotation, and the paper-space scale used by [`Project::new`]
+    /// (one point = one point). Pages smaller than one point are clamped by
+    /// [`Page::with_size`].
+    ///
+    /// The single document is titled `name`, and both
+    /// [`Project::source_pdf`] and [`Document::source_path`] record
+    /// `source_pdf`.
+    ///
+    /// An empty `page_sizes` slice is degenerate (a zero-page document cannot
+    /// be edited), so defensively it produces a single A4 page instead of
+    /// panicking. Callers normally pass the page sizes returned by
+    /// [`crate::data::read_pdf_info`]; a PDF that reports no pages yields this
+    /// fallback rather than an empty document.
+    pub fn from_pdf(
+        name: impl Into<String>,
+        source_pdf: impl Into<String>,
+        page_sizes: &[(f32, f32)],
+    ) -> Self {
+        let name = name.into();
+        let source_pdf = source_pdf.into();
+        let pages: Vec<Page> = if page_sizes.is_empty() {
+            vec![Page::a4(0)]
+        } else {
+            page_sizes
+                .iter()
+                .enumerate()
+                .map(|(index, (width, height))| Page::letter(index).with_size(*width, *height))
+                .collect()
+        };
+
+        let mut document = Document::new(name.clone(), pages);
+        document.source_path = Some(source_pdf.clone());
+
+        let mut project = Self::new(name);
+        project.source_pdf = Some(source_pdf);
+        project.documents = vec![document];
+        project.active_document = 0;
+        project
     }
 
     pub fn add_document(&mut self, d: Document) {
@@ -573,5 +625,88 @@ mod tests {
         }"#;
         let settings: Settings = serde_json::from_str(json).expect("deserialize");
         assert_eq!(settings.precision, 3);
+    }
+
+    #[test]
+    fn project_new_has_no_source_pdf() {
+        assert_eq!(Project::new("Plan").source_pdf, None);
+    }
+
+    #[test]
+    fn project_source_pdf_serde_roundtrip() {
+        let mut project = Project::new("Plan");
+        project.source_pdf = Some("plans/site.pdf".into());
+        let json = serde_json::to_string(&project).expect("serialize");
+        let back: Project = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, project);
+        assert_eq!(back.source_pdf.as_deref(), Some("plans/site.pdf"));
+    }
+
+    #[test]
+    fn legacy_project_without_source_pdf_loads_none() {
+        let mut value = serde_json::to_value(Project::new("Legacy")).expect("project json");
+        value
+            .as_object_mut()
+            .expect("project object")
+            .remove("source_pdf");
+
+        let loaded: Project = serde_json::from_value(value).expect("deserialize legacy");
+        assert_eq!(loaded.source_pdf, None);
+    }
+
+    #[test]
+    fn from_pdf_builds_one_page_per_page_size() {
+        let sizes = [(612.0, 792.0), (595.28, 841.89)];
+        let project = Project::from_pdf("Site Plan", "plans/site.pdf", &sizes);
+
+        assert_eq!(project.name, "Site Plan");
+        assert_eq!(project.source_pdf.as_deref(), Some("plans/site.pdf"));
+        assert_eq!(project.documents.len(), 1);
+        assert_eq!(project.active_document, 0);
+
+        let document = &project.documents[0];
+        assert_eq!(document.title, "Site Plan");
+        assert_eq!(document.source_path.as_deref(), Some("plans/site.pdf"));
+        assert_eq!(document.page_count(), 2);
+
+        let first = document.pages[0];
+        assert_eq!(first.index, 0);
+        assert_eq!(first.width, 612.0);
+        assert_eq!(first.height, 792.0);
+        assert_eq!(first.rotation, 0);
+        assert_eq!(first.scale, Page::a4(0).scale);
+
+        let second = document.pages[1];
+        assert_eq!(second.index, 1);
+        assert!((second.width - 595.28).abs() < 0.001);
+        assert!((second.height - 841.89).abs() < 0.001);
+    }
+
+    #[test]
+    fn from_pdf_roundtrips_through_serde() {
+        let project = Project::from_pdf("Plan", "/tmp/plan.pdf", &[(100.0, 200.0)]);
+        let json = serde_json::to_string(&project).expect("serialize");
+        let back: Project = serde_json::from_str(&json).expect("deserialize");
+
+        assert_eq!(back, project);
+        assert_eq!(back.source_pdf.as_deref(), Some("/tmp/plan.pdf"));
+        assert_eq!(back.documents[0].pages[0].width, 100.0);
+        assert_eq!(back.documents[0].pages[0].height, 200.0);
+        assert_eq!(back.documents[0].pages[0].index, 0);
+    }
+
+    #[test]
+    fn from_pdf_with_no_pages_falls_back_to_one_a4_page_without_panicking() {
+        let project = Project::from_pdf("Empty", "empty.pdf", &[]);
+
+        assert_eq!(project.documents.len(), 1);
+        assert_eq!(project.documents[0].page_count(), 1);
+
+        let page = project.documents[0].primary_page().expect("primary page");
+        let a4 = Page::a4(0);
+        assert_eq!(page.index, 0);
+        assert_eq!(page.width, a4.width);
+        assert_eq!(page.height, a4.height);
+        assert_eq!(page.rotation, 0);
     }
 }

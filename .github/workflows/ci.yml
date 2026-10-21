@@ -17,7 +17,14 @@ jobs:
     - uses: Swatinem/rust-cache@v2
     - name: Clippy (no warnings)
       run: cargo clippy -- -D warnings
+    - name: Fetch PDFium runtime (PDF import tests bind to it at run time)
+      run: |
+        curl -fsSL -o /tmp/pdfium.tgz "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7881/pdfium-linux-x64.tgz"
+        mkdir -p "$HOME/pdfium"
+        tar -xzf /tmp/pdfium.tgz -C "$HOME/pdfium"
     - name: Tests
       run: cargo test --all
+      env:
+        RUBRIC_PDFIUM_PATH: /home/runner/pdfium/lib
     - name: Build release
       run: cargo build --release
