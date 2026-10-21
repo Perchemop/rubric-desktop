@@ -203,10 +203,10 @@ pub(crate) fn render_page_to_png_bytes(
     project: &mut Project,
     ui_state: &UiState,
     draw_state: &DrawState,
-    mut page_textures: &mut HashMap<String, TextureHandle>,
-    mut failed_page_textures: &mut HashSet<String>,
-    mut bg_error: &mut Option<String>,
-    mut last_page_pos: &mut Option<Pt>,
+    page_textures: &mut HashMap<String, TextureHandle>,
+    failed_page_textures: &mut HashSet<String>,
+    bg_error: &mut Option<String>,
+    last_page_pos: &mut Option<Pt>,
 ) -> Result<Vec<u8>, DataError> {
     let doc = project
         .active()
@@ -233,7 +233,8 @@ pub(crate) fn render_page_to_png_bytes(
             pdf::render_page_to_cache(pdf_path, ui_state.current_page, target_width)
         {
             let key = cache_path.to_string_lossy().to_string();
-            if !page_textures.contains_key(&key) {
+            let entry = page_textures.entry(key.clone());
+            if let std::collections::hash_map::Entry::Vacant(vacant) = entry {
                 if let Ok(bytes) = std::fs::read(&cache_path) {
                     if let Ok(img) = image::load_from_memory(&bytes) {
                         let rgba = img.to_rgba8();
@@ -246,7 +247,7 @@ pub(crate) fn render_page_to_png_bytes(
                             color_image,
                             egui::TextureOptions::LINEAR,
                         );
-                        page_textures.insert(key, handle);
+                        vacant.insert(handle);
                     }
                 }
             }
@@ -287,9 +288,8 @@ pub(crate) fn render_page_to_png_bytes(
     for (id, deltas) in &full_output.textures_delta.set {
         for delta in deltas {
             if delta.pos.is_none() {
-                if let egui::epaint::ImageData::Color(arc) = &delta.image {
-                    texture_images.insert(*id, arc.as_ref().clone());
-                }
+                let egui::epaint::ImageData::Color(arc) = &delta.image;
+                texture_images.insert(*id, arc.as_ref().clone());
             }
         }
     }
@@ -305,12 +305,8 @@ pub(crate) fn render_page_to_png_bytes(
     }
     let mut buf = Vec::new();
     let mut cursor = std::io::Cursor::new(&mut buf);
-    rgba.write_to(&mut cursor, ImageFormat::Png).map_err(|e| {
-        DataError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            e.to_string(),
-        ))
-    })?;
+    rgba.write_to(&mut cursor, ImageFormat::Png)
+        .map_err(|e| DataError::Io(std::io::Error::other(e.to_string())))?;
     Ok(buf)
 }
 

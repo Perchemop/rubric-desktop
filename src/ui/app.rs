@@ -279,8 +279,8 @@ impl RubricApp {
         let project = self.history.current_mut();
         let bytes = match render_page_to_png_bytes(
             project,
-            &mut self.ui,
-            &mut self.draw,
+            &self.ui,
+            &self.draw,
             &mut self.page_textures,
             &mut self.failed_page_textures,
             &mut self.bg_error,
@@ -311,8 +311,8 @@ impl RubricApp {
         let project = self.history.current_mut();
         let bytes = render_page_to_png_bytes(
             project,
-            &mut self.ui,
-            &mut self.draw,
+            &self.ui,
+            &self.draw,
             &mut self.page_textures,
             &mut self.failed_page_textures,
             &mut self.bg_error,

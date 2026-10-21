@@ -49,10 +49,9 @@ pub fn print_image(path: &Path) -> Result<(), DataError> {
     if status.success() {
         Ok(())
     } else {
-        Err(DataError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("print command `{program}` exited with {status}"),
-        )))
+        Err(DataError::Io(std::io::Error::other(format!(
+            "print command `{program}` exited with {status}"
+        ))))
     }
 }
 
