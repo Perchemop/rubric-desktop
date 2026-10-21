@@ -597,11 +597,13 @@ impl RubricApp {
                 ui.separator();
                 ui.menu_button("Theme", |ui| {
                     for option in Theme::ALL {
-                        let mut selected = self.theme == option;
-                        if ui.radio_value(&mut selected, option.label()).clicked()
-                            && self.theme != option
+                        let mut current = self.theme;
+                        if ui
+                            .radio_value(&mut current, option, option.label())
+                            .clicked()
+                            && current != self.theme
                         {
-                            self.set_theme(ui.ctx(), option);
+                            self.set_theme(ui.ctx(), current);
                         }
                     }
                 });
