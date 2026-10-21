@@ -37,10 +37,10 @@ pub fn rasterize_primitives(
     for cp in clipped {
         let clip = cp.clip_rect;
         match &cp.primitive {
-            egui::Primitive::Mesh(mesh) => {
+            egui::epaint::Primitive::Mesh(mesh) => {
                 rasterize_mesh(&mut img, mesh, clip, &texture_lookup);
             }
-            egui::Primitive::Callback(_) => {}
+            egui::epaint::Primitive::Callback(_) => {}
         }
     }
     img
@@ -264,29 +264,33 @@ pub fn render_page_to_png_bytes(
 
     let mut ui_state = ui_state.clone();
     let mut draw_state = draw_state.clone();
-    let full_output = ctx.run(raw_input, |ctx| {
-        egui::CentralPanel::default().show(ctx, |ui| {
+    let full_output = ctx.run_ui(raw_input, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             let _ = canvas::draw_canvas(
                 ui,
                 project,
                 &mut ui_state,
                 &mut draw_state,
                 last_page_pos,
-                &mut page_textures,
+                page_textures,
                 failed_page_textures,
                 bg_error,
             );
         });
     });
-    let _ = full_output;
 
-    // The above is wrong: page_textures ownership. Rework below impossible inline.
-    // Instead, do tessellation using full_output from ctx.run which we already have.
     let clipped = ctx.tessellate(full_output.shapes, pixels_per_point);
 
-    let texture_lookup = |id: TextureId| -> Option<ColorImage> {
-        ctx.tex_manager().get(id).map(|t| t.image.clone())
-    };
+    // Collect texture images produced during the pass (page background + font atlas).
+    let mut texture_images: HashMap<TextureId, ColorImage> = HashMap::new();
+    for (id, delta) in &full_output.textures_delta.set {
+        if delta.pos.is_none() {
+            if let egui::epaint::ImageData::Color(arc) = &delta.image {
+                texture_images.insert(*id, arc.as_ref().clone());
+            }
+        }
+    }
+    let texture_lookup = |id: TextureId| -> Option<ColorImage> { texture_images.get(&id).cloned() };
     let img = rasterize_primitives(&clipped, size, texture_lookup);
 
     // Encode PNG.
@@ -338,7 +342,7 @@ mod tests {
         mesh.indices = vec![0, 1, 2];
         let cp = egui::ClippedPrimitive {
             clip_rect: Rect::from_min_size(Pos2::ZERO, Vec2::new(12.0, 12.0)),
-            primitive: egui::Primitive::Mesh(mesh),
+            primitive: egui::epaint::Primitive::Mesh(mesh),
         };
         let img = rasterize_primitives(&[cp], [12, 12], |_| None);
         // centre-ish pixel of triangle should be red
@@ -369,7 +373,7 @@ mod tests {
         // clip rect excludes the triangle entirely
         let cp = egui::ClippedPrimitive {
             clip_rect: Rect::from_min_size(Pos2::new(100.0, 100.0), Vec2::new(10.0, 10.0)),
-            primitive: egui::Primitive::Mesh(mesh),
+            primitive: egui::epaint::Primitive::Mesh(mesh),
         };
         let img = rasterize_primitives(&[cp], [12, 12], |_| None);
         assert!(img.pixels.iter().all(|p| p.a() == 0));
@@ -410,7 +414,7 @@ mod tests {
         // vertex-colour (white) path is taken and the triangle is opaque white.
         let cp = egui::ClippedPrimitive {
             clip_rect: Rect::from_min_size(Pos2::ZERO, Vec2::new(12.0, 12.0)),
-            primitive: egui::Primitive::Mesh(mesh),
+            primitive: egui::epaint::Primitive::Mesh(mesh),
         };
         let img = rasterize_primitives(&[cp], [12, 12], |_| None);
         assert_eq!(img.pixels[1 * 12 + 1], Color32::WHITE);
