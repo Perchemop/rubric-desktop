@@ -397,6 +397,27 @@
 ### Blocked
 - None.
 
+## 2026-10-21 — Phase 5 slice 3: summary report + export (F-304)
+**Status**: complete, CI-green (`39576158411`, 1m41s, all steps)
+
+### Completed
+- Domain: `src/domain/report.rs` (Report/ReportSection/ReportEntry/StatusCounts;
+  grouping by Status/Author/Subject with empty→"(none)" last, deterministic
+  to_text, measurement detail via page scale + precision, 15 unit tests).
+- Data: `src/data/export.rs` writers (text + pretty JSON + trailing newline)
+  with temp-file round-trip/error tests; DataError reused (Io/Json variants).
+- UI: File → Export Report… window (grouping ComboBox, format radios,
+  project/markup summary) driving an rfd save dialog; honest status on
+  success/failure/cancel; session-state only, no undo snapshot.
+- Traceability: R-S-009 → DONE; R-S-014 → DONE (PDF import); R-S-015 →
+  PARTIAL (image+print still pending).
+
+### Active
+- None.
+
+### Blocked
+- None.
+
 ## 2026-10-21 — Phase 5 slice 2: PDF import, page rendering, page navigation
 **Status**: complete, CI-green (`39558422915`, 4m34s, all steps)
 

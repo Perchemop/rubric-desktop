@@ -60,13 +60,13 @@ Each row maps a spec area to its feature IDs and the planned modules.
 | R-S-006 | Calibration and units: scale presets, custom ratio, unit selection | F-207, F-208 | src/domain/units.rs, src/domain/document.rs | PARTIAL |
 | R-S-007 | Measurement labels on canvas + precision/format preferences | F-209 | src/ui/canvas.rs, src/ui/inspector.rs | DONE |
 | R-S-008 | Review workflow: statuses (Open/In review/Approved/Rejected), comments, author/subject | F-301–F-303 | src/domain/markup.rs (ReviewStatus, remapped 2026-10-19), src/domain/project.rs | DONE |
-| R-S-009 | Summary report (markups by status/author/subject, exportable) | F-304 | src/domain/report.rs (new), src/ui/app.rs | TODO |
+| R-S-009 | Summary report (markups by status/author/subject, exportable) | F-304 | src/domain/report.rs (new), src/data/export.rs (new), src/ui/app.rs | DONE |
 | R-S-010 | Status colours and legend | F-305 | src/ui/inspector.rs (Status legend + swatches), src/domain/markup.rs (`ReviewStatus::color()`), src/ui/canvas.rs (status dots) | DONE |
 | R-S-011 | Canvas navigation: zoom, pan, page navigation, thumbnails | F-401–F-404 | src/ui/app.rs, src/ui/canvas.rs | PARTIAL |
 | R-S-012 | Grid, snap, rulers | F-405, F-406 | src/ui/canvas.rs | TODO |
 | R-S-013 | Persistence: `.rubric.json` sidecar, autosave, recent files, native dialogs, schema version | F-501–F-503, F-506, F-507 | src/data/store.rs, src/ui/app.rs | PARTIAL |
-| R-S-014 | PDF import and page rendering | F-504 | src/data/pdf.rs (new), src/ui/canvas.rs | TODO |
-| R-S-015 | Export (rendered image) and print | F-505 | src/data/export.rs (new), src/ui/app.rs | TODO |
+| R-S-014 | PDF import and page rendering | F-504 | src/data/pdf.rs (new), src/ui/canvas.rs | DONE |
+| R-S-015 | Export (rendered image) and print | F-505 | src/data/export.rs (new), src/ui/app.rs | PARTIAL |
 | R-S-016 | UX polish: shortcuts, dark theme, context menus, undo/redo, accessibility | F-601–F-605 | src/ui/app.rs, src/ui/theme.rs, src/domain/project.rs | PARTIAL |
 | R-S-017 | Packaging: Linux AppImage, macOS DMG, Windows MSI, CI release artifacts | F-701–F-704 | packaging files, .github/workflows/ci.yml | TODO |
 
@@ -85,9 +85,9 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 | F-007 | Non-destructive markup (sidecar) | .rubric.json separate | DONE | PDF embedding later optional |
 | F-1xx | Markups/tools + selection/edit (spec) | MarkupKind, Geometry, ToolSet → Layer | PARTIAL | docs/spec/README.md F-101–F-116; R-S-001–R-S-004; drag/multi-point/ink, text+callout editing (F-104/F-105) and stamp library (F-111) landed 2026-10-19/20; note popover (F-103), copy properties, z-order pending |
 | F-2xx | Measurements + scale/calibration (spec) | Measurement, Page.scale, units | PARTIAL | docs/spec/README.md F-201–F-209; R-S-005–R-S-007 |
-| F-3xx | Review workflow (spec) | ReviewStatus, Comment, author/subject | PARTIAL | docs/spec/README.md F-301–F-305; R-S-008–R-S-010; F-301/F-305 landed 2026-10-19, F-304 pending |
+| F-3xx | Review workflow (spec) | ReviewStatus, Comment, author/subject | PARTIAL | docs/spec/README.md F-301–F-305; R-S-008–R-S-010; F-301/F-305 landed 2026-10-19, F-304 landed 2026-10-21 |
 | F-4xx | Navigation/pages (spec) | Document.pages, UiState camera | PARTIAL | docs/spec/README.md F-401–F-406; R-S-011–R-S-012 |
-| F-5xx | Persistence/I/O (spec) | .rubric.json store, PDF import, export/print | PARTIAL | docs/spec/README.md F-501–F-507; R-S-013–R-S-015; native dialogs + recent files landed 2026-10-20; PDF import/export pending |
+| F-5xx | Persistence/I/O (spec) | .rubric.json store, PDF import, export/print | PARTIAL | docs/spec/README.md F-501–F-507; R-S-013–R-S-015; native dialogs + recent files landed 2026-10-20; PDF import landed 2026-10-21; report export landed 2026-10-21; image+print pending |
 | F-6xx | UI/UX polish (spec) | shortcuts, theme, history | PARTIAL | docs/spec/README.md F-601–F-605; R-S-016 |
 | F-7xx | Packaging (spec) | CI release build, installers | TODO | docs/spec/README.md F-701–F-704; R-S-017 |
 
