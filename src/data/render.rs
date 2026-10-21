@@ -53,11 +53,9 @@ fn rasterize_mesh(
     clip: Rect,
     texture_lookup: &impl Fn(TextureId) -> Option<ColorImage>,
 ) {
-    let tex = if mesh.texture_id == TextureId::default() {
-        None
-    } else {
-        texture_lookup(mesh.texture_id)
-    };
+    // NB: the font atlas is `TextureId::default()`, so every mesh texture is
+    // looked up; a missing texture falls back to the plain vertex colour.
+    let tex = texture_lookup(mesh.texture_id);
     let w = img.size[0] as i32;
     let h = img.size[1] as i32;
     let clip_min_x = clip.min.x.floor() as i32;
@@ -287,9 +285,28 @@ pub(crate) fn render_page_to_png_bytes(
     let mut texture_images: HashMap<TextureId, ColorImage> = HashMap::new();
     for (id, deltas) in &full_output.textures_delta.set {
         for delta in deltas {
-            if delta.pos.is_none() {
-                let egui::epaint::ImageData::Color(arc) = &delta.image;
-                texture_images.insert(*id, arc.as_ref().clone());
+            let egui::epaint::ImageData::Color(arc) = &delta.image;
+            match delta.pos {
+                None => {
+                    texture_images.insert(*id, arc.as_ref().clone());
+                }
+                Some(pos) => {
+                    // Partial update (e.g. newly rasterised glyphs): copy the
+                    // changed region onto the image we already hold.
+                    if let Some(base) = texture_images.get_mut(id) {
+                        let src = arc.as_ref();
+                        for y in 0..src.size[1] {
+                            for x in 0..src.size[0] {
+                                let dx = pos[0] + x;
+                                let dy = pos[1] + y;
+                                if dx < base.size[0] && dy < base.size[1] {
+                                    base.pixels[dy * base.size[0] + dx] =
+                                        src.pixels[y * src.size[0] + x];
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -381,18 +398,14 @@ mod tests {
     #[test]
     fn rasterize_textured_triangle_samples_texture() {
         // 2x2 texture: top-left red, others blue
-        let mut tex = ColorImage::new([2, 2], Color32::BLUE);
+        let mut tex = ColorImage::new([2, 2], vec![Color32::BLUE; 4]);
         tex.pixels[0] = Color32::RED;
         let tex_clone = tex.clone();
         let lookup = move |_id: TextureId| Some(tex_clone.clone());
 
         let mut mesh = egui::Mesh::default();
-        mesh.texture_id = TextureId::default(); // will be overridden below
-                                                // Use a non-default texture id by storing in a var; egui TextureId is not easily constructed.
-                                                // Instead, set texture_id to a managed id is impossible in tests; use default and rely on
-                                                // the lookup being called only if texture_id != default. To exercise sampling, we instead
-                                                // build a mesh whose texture_id is default and pass a lookup that is never called, then
-                                                // assert vertex-colour path. (Texture sampling path is exercised by integration, not here.)
+        // A user texture id is constructible, so the sampling path is exercised.
+        mesh.texture_id = TextureId::User(7);
         mesh.vertices.push(egui::epaint::Vertex {
             pos: Pos2::new(1.0, 1.0),
             uv: egui::Pos2::new(0.0, 0.0),
@@ -409,16 +422,16 @@ mod tests {
             color: Color32::WHITE,
         });
         mesh.indices = vec![0, 1, 2];
-        // Force a non-default texture id is not possible without ctx; keep default so the
-        // vertex-colour (white) path is taken and the triangle is opaque white.
         let cp = egui::ClippedPrimitive {
             clip_rect: Rect::from_min_size(Pos2::ZERO, Vec2::new(12.0, 12.0)),
             primitive: egui::epaint::Primitive::Mesh(mesh),
         };
-        let img = rasterize_primitives(&[cp], [12, 12], |_| None);
-        assert_eq!(img.pixels[1 * 12 + 1], Color32::WHITE);
-        // texture_lookup closure unused in this path; silence unused warning
-        let _ = lookup;
-        let _ = tex;
+        let img = rasterize_primitives(&[cp], [12, 12], lookup);
+        // The sampled texture colour must show through the white vertex tint.
+        let centre = img.pixels[1 * 12 + 1];
+        assert!(
+            centre == Color32::RED || centre == Color32::BLUE,
+            "expected a texture-sampled colour, got {centre:?}"
+        );
     }
 }
