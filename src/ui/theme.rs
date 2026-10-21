@@ -72,7 +72,14 @@ pub fn apply_theme(ctx: &egui::Context, theme: Theme) {
     };
     visuals.widgets.open.bg_fill = visuals.widgets.active.bg_fill;
 
-    ctx.set_visuals(visuals);
+    // egui 0.36 keeps one style per theme: select the theme and install the
+    // palette in that theme's style slot.
+    let egui_theme = match theme {
+        Theme::Light => egui::Theme::Light,
+        Theme::Dark => egui::Theme::Dark,
+    };
+    ctx.set_theme(egui_theme);
+    ctx.set_visuals_of(egui_theme, visuals);
 }
 
 /// A small, ergonomic icon/label helper.
@@ -93,11 +100,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn apply_theme_sets_matching_visuals() {
+    fn apply_theme_selects_matching_theme_and_visuals() {
         let ctx = egui::Context::default();
         apply_theme(&ctx, Theme::Dark);
-        assert!(ctx.style().visuals.dark_mode);
+        assert_eq!(ctx.theme(), egui::Theme::Dark);
+        assert!(ctx.style_of(egui::Theme::Dark).visuals.dark_mode);
+
         apply_theme(&ctx, Theme::Light);
-        assert!(!ctx.style().visuals.dark_mode);
+        assert_eq!(ctx.theme(), egui::Theme::Light);
+        assert!(!ctx.style_of(egui::Theme::Light).visuals.dark_mode);
     }
 }

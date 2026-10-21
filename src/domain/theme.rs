@@ -66,7 +66,7 @@ mod tests {
     fn theme_serde_roundtrips() {
         for theme in Theme::ALL {
             let json = serde_json::to_string(&theme).expect("serialize");
-            assert!(json.contains(theme.label().to_lowercase()));
+            assert!(json.contains(&theme.label().to_lowercase()));
             let back: Theme = serde_json::from_str(&json).expect("deserialize");
             assert_eq!(back, theme);
         }
