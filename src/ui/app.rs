@@ -308,7 +308,7 @@ impl RubricApp {
     /// Send the currently displayed page to the default printer.
     fn print_page(&mut self) -> Result<(), DataError> {
         let mut last_page_pos: Option<Pos2> = None;
-        let project = self.history.current();
+        let project = self.history.current_mut();
         let bytes = render_page_to_png_bytes(
             project,
             &mut self.ui,
