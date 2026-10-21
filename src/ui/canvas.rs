@@ -380,13 +380,12 @@ pub(crate) fn draw_canvas(
         ui_state.last_tool = ui_state.active_tool;
     }
 
+    // The area around the page follows the application theme; the page itself
+    // always stays paper-white so exported images match what is measured.
+    let backdrop = ui.visuals().extreme_bg_color;
     let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
 
-    painter.rect_filled(
-        response.rect,
-        egui::CornerRadius::ZERO,
-        Color32::from_rgb(235, 238, 244),
-    );
+    painter.rect_filled(response.rect, egui::CornerRadius::ZERO, backdrop);
 
     // Clamp the displayed page defensively; never panic on an out-of-range index.
     if let Some(doc) = project.active() {

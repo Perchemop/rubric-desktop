@@ -8,11 +8,12 @@ use eframe::{App, CreationContext, Frame};
 use egui::{Align, Layout, Pos2, TextureHandle, Ui, Vec2};
 
 use crate::data::{
-    load_project, load_recent, normalise_project_filename, print_image, render_page_to_png_bytes,
-    save_project, save_recent, DataError,
+    load_prefs, load_project, load_recent, normalise_project_filename, print_image,
+    render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
 use crate::domain::{
-    Document, History, MarkupKind, Project, Pt, Report, ReportGroupKey, StampPreset, Tool,
+    AppPrefs, Document, History, MarkupKind, Project, Pt, Report, ReportGroupKey, StampPreset,
+    Theme, Tool,
 };
 use crate::ui::{canvas, inspector, theme, toolbar};
 use uuid::Uuid;
@@ -172,11 +173,14 @@ pub struct RubricApp {
     bg_error: Option<String>,
     /// Session-only report export dialog state (no undo snapshot).
     report_export: Option<ReportExportUi>,
+    /// Active colour theme (app-level preference, not project data).
+    theme: Theme,
 }
 
 impl RubricApp {
     pub fn new(cc: &CreationContext<'_>) -> Self {
-        theme::apply_theme(&cc.egui_ctx);
+        let prefs = load_prefs();
+        theme::apply_theme(&cc.egui_ctx, prefs.theme);
         let project = Project::new("Untitled Rubric Project");
         Self {
             history: History::new(project),
@@ -190,6 +194,7 @@ impl RubricApp {
             failed_page_textures: HashSet::new(),
             bg_error: None,
             report_export: None,
+            theme: prefs.theme,
         }
     }
 
@@ -270,6 +275,18 @@ impl RubricApp {
             if count > 0 && self.ui.current_page >= count {
                 self.ui.current_page = count - 1;
             }
+        }
+    }
+
+    /// Switch the colour theme, persist it as an app-level preference and
+    /// repaint the shell with the new palette.
+    fn set_theme(&mut self, ctx: &egui::Context, theme: Theme) {
+        self.theme = theme;
+        theme::apply_theme(ctx, theme);
+        let prefs = AppPrefs { theme };
+        match save_prefs(&prefs) {
+            Ok(()) => self.ui.status = format!("Theme: {}", theme.label()),
+            Err(e) => self.ui.status = format!("Theme changed, but saving failed: {e}"),
         }
     }
 
@@ -577,6 +594,17 @@ impl RubricApp {
                     self.ui.zoom = 1.0;
                     self.ui.pan = Vec2::ZERO;
                 }
+                ui.separator();
+                ui.menu_button("Theme", |ui| {
+                    for option in Theme::ALL {
+                        let mut selected = self.theme == option;
+                        if ui.radio_value(&mut selected, option.label()).clicked()
+                            && self.theme != option
+                        {
+                            self.set_theme(ui.ctx(), option);
+                        }
+                    }
+                });
             });
             ui.menu_button("Help", |ui| {
                 if ui.button("About Rubric").clicked() {

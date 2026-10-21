@@ -60,8 +60,8 @@
 - [x] JSON save/load (.rubric.json)
 - [x] Autosave hook (stub exists)
 - [x] Open file dialog (native, rfd) for .rubric.json (PDF filter arrives with import)
-- [ ] PDF import/rendering (lopdf or pdfium-render) — slice later; keep sidecar
-- [ ] Export/print
+- [x] PDF import/rendering (pdfium-render runtime binding; sidecar kept, PDF read-only)
+- [x] Export/print (page image PNG via CPU rasterizer + OS print command; report export txt/JSON)
 - [x] Recent files (app-level config store: `~/.config/rubric/recent.json`)
 
 ## Phase 6 — Polish, packaging, CI
@@ -72,7 +72,7 @@
 - [ ] Icon/desktop entry, AppImage/DMG/MSI
 - [x] CI workflow skeleton (.github/workflows/ci.yml)
 - [ ] Benchmarks/tests expansion
-- [ ] Changelog updates per slice
+- [x] Changelog updates per slice
 
 ## Slice strategy
 Build vertically: domain + tests → minimal UI → drawing + selection → save/load → measurements → review → polish. Keep each slice small, compiling, tested.

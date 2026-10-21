@@ -6,6 +6,7 @@ pub mod markup;
 pub mod project;
 pub mod report;
 pub mod style;
+pub mod theme;
 pub mod units;
 
 pub use document::{Document, Layer, LayerError, Page};
@@ -18,6 +19,7 @@ pub use project::{
 };
 pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCounts, NONE_LABEL};
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
+pub use theme::{AppPrefs, Theme};
 pub use units::{
     clamp_precision, format_value, format_value_precise, MeasureKind, MeasureUnit, Scale,
     DEFAULT_PRECISION, MAX_PRECISION,
