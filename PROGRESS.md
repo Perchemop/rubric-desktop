@@ -397,6 +397,17 @@
 ### Blocked
 - None.
 
+## 2026-10-21 — Guide-conformant discovery/tracking docs + inspiration policy
+**Status**: complete (docs-only, no code change)
+
+### Active
+- Phase 5 PDF-import slice still uncommitted; reviewer findings 3–4
+  (PageUp/Down guard while editing, background-retry perf) pending before
+  push.
+
+### Blocked
+- None.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 slice 1 (native file dialogs +
 app-level recent files) CI-green. Next: PDF import/rendering, then

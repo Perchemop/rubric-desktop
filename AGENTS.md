@@ -2,9 +2,6 @@
 
 This document provides guidance for AI coding agents working on **Rubric**.
 
-## Purpose
-Build a free, cross-platform Rust PDF markup/measurement desktop app (egui/eframe). Adhere to the build guide; never commit/push any notes about other products or the build guide itself. Maintain quality gates.
-
 ## Codebase rules
 - Rust only, 100% free OSS.
 - Domain-first: `src/domain/` is pure (no UI), fully serialisable with serde, testable headlessly.
@@ -48,7 +45,6 @@ the `fixer` subagent. Every push to `main` runs fmt check, clippy
 (`-D warnings`), full tests, and a release build.
 
 ## Do not
-- Commit any notes about other products or external reference material.
 - Introduce AGPL/GPL dependencies without approval.
 - Mix UI and business logic.
 - Push without running quality gates.

@@ -43,8 +43,6 @@ Update as appropriate:
   sync with structural changes.
 
 Rules:
-- Never mention other commercial products or external reference material
-  anywhere; never paste build-guide or conversation notes into docs.
 - Prefer small, factual entries with dates (use today's date) and commit
   references when available.
 - No trailing whitespace; docs are formatted Markdown.
