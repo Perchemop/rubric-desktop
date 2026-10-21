@@ -419,7 +419,8 @@ pub(crate) fn draw_canvas(
         // Identity of one render attempt. A failed attempt is poisoned for the
         // project session so it is never retried: without this, a broken page
         // would re-rasterise (and re-report its error) on every repaint frame.
-        let attempt_key = format!("{pdf_path}:{page.index}:{target_width}");
+        let page_no = page.index;
+        let attempt_key = format!("{pdf_path}:{page_no}:{target_width}");
         if !failed_page_textures.contains(&attempt_key) {
             match crate::data::pdf::render_page_to_cache(&pdf_path, page.index, target_width) {
                 Ok(cache_path) => {
