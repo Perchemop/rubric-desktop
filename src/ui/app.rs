@@ -8,7 +8,8 @@ use eframe::{App, CreationContext, Frame};
 use egui::{Align, Layout, Pos2, TextureHandle, Ui, Vec2};
 
 use crate::data::{
-    load_project, load_recent, normalise_project_filename, save_project, save_recent,
+    load_project, load_recent, normalise_project_filename, print_image, render_page_to_png_bytes,
+    save_project, save_recent,
 };
 use crate::domain::{
     Document, History, MarkupKind, Project, Pt, Report, ReportGroupKey, StampPreset, Tool,
@@ -272,6 +273,66 @@ impl RubricApp {
         }
     }
 
+    /// Export the currently displayed page as a PNG image.
+    fn export_page_image(&mut self, path: PathBuf) -> Result<(), DataError> {
+        let mut last_page_pos: Option<Pos2> = None;
+        let project = self.history.current();
+        let bytes = match render_page_to_png_bytes(
+            project,
+            &mut self.ui,
+            &mut self.draw,
+            &mut self.page_textures,
+            &mut self.failed_page_textures,
+            &mut self.bg_error,
+            &mut last_page_pos,
+        ) {
+            Ok(b) => b,
+            Err(e) => {
+                self.ui.status = format!("Export failed: {e}");
+                return Err(e);
+            }
+        };
+        match std::fs::write(&path, &bytes) {
+            Ok(()) => {
+                self.ui.status = format!("Page image exported: {}", path.display());
+                Ok(())
+            }
+            Err(e) => {
+                let err = DataError::Io(e);
+                self.ui.status = format!("Export failed: {err}");
+                Err(err)
+            }
+        }
+    }
+
+    /// Send the currently displayed page to the default printer.
+    fn print_page(&mut self) -> Result<(), DataError> {
+        let mut last_page_pos: Option<Pos2> = None;
+        let project = self.history.current();
+        let bytes = render_page_to_png_bytes(
+            project,
+            &mut self.ui,
+            &mut self.draw,
+            &mut self.page_textures,
+            &mut self.failed_page_textures,
+            &mut self.bg_error,
+            &mut last_page_pos,
+        )?;
+        let temp_path =
+            std::env::temp_dir().join(format!("rubric_print_{}.png", uuid::Uuid::new_v4()));
+        std::fs::write(&temp_path, &bytes)?;
+        match print_image(&temp_path) {
+            Ok(()) => {
+                self.ui.status = "Print job sent".to_string();
+                Ok(())
+            }
+            Err(e) => {
+                self.ui.status = format!("Print failed: {e}");
+                Err(e)
+            }
+        }
+    }
+
     /// Commit a pending in-canvas text edit (if any) using focus-loss semantics.
     /// Returns true when the text actually changed and was written back.
     fn commit_text_edit(&mut self) -> bool {
@@ -415,6 +476,20 @@ impl RubricApp {
                         project_title: project.name.clone(),
                         total_markups,
                     });
+                    ui.close();
+                }
+                if ui.button("Export Page Image...").clicked() {
+                    if let Some(path) = rfd::FileDialog::new()
+                        .set_file_name("rubric-page.png")
+                        .add_filter("PNG image", &["png"])
+                        .save_file()
+                    {
+                        let _ = self.export_page_image(path);
+                    }
+                    ui.close();
+                }
+                if ui.button("Print...").clicked() {
+                    let _ = self.print_page();
                     ui.close();
                 }
                 // Recent submenu: app-level recents (data layer), not project
