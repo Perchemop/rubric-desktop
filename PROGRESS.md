@@ -397,6 +397,34 @@
 ### Blocked
 - None.
 
+## 2026-10-21 — Phase 5 slice 2: PDF import, page rendering, page navigation
+**Status**: complete, CI-green (`39558422915`, 4m34s, all steps)
+
+### Completed
+- Domain: `Project.source_pdf` (serde-defaulted), `Project::from_pdf`
+  (Letter/A4 per page, empty→A4 fallback); 6 new domain tests.
+- Data: `src/data/pdf.rs` — runtime PDFium binding via `pdfium-render` 0.9,
+  hash-keyed PNG render cache with invalidation on PDF replacement, library
+  discovery (`RUBRIC_PDFIUM_PATH` → exe dir → system); `DataError::{Pdf,
+  PdfLibrary}`; 8 pdf tests incl. cache-key/invalidation and xref checks.
+- CI: workflow fetches the PDFium tarball to `$HOME/pdfium` and sets
+  `RUBRIC_PDFIUM_PATH` for the test step — verified live: all lib-dependent
+  tests ran and passed against real PDFium (96 + 10 tests total).
+- UI: Import PDF… (rfd), shared `install_project` path, `current_page` with
+  top-bar + PageUp/PageDown navigation (keys guarded during in-canvas text
+  editing — reviewer finding 3), lazy background page textures (~144dpi)
+  with per-cache-key failure poisoning (reviewer finding 4), inspector
+  follows the current page.
+- Reviewer gate findings 3+4 fixed; two compile-level CI failures
+  (format-string field access, `too_many_arguments`) fixed in follow-up
+  commits `7546082` and `b65831a`.
+
+### Active
+- None.
+
+### Blocked
+- None.
+
 ## 2026-10-21 — Guide-conformant discovery/tracking docs + inspiration policy
 **Status**: complete (docs-only, no code change)
 
