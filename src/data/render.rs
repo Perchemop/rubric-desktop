@@ -14,6 +14,7 @@ use image::ImageFormat;
 
 use crate::data::error::DataError;
 use crate::data::pdf;
+use crate::domain::geom::Pt;
 use crate::domain::Project;
 use crate::ui::app::{DrawState, UiState};
 use crate::ui::canvas;
@@ -30,7 +31,7 @@ pub fn rasterize_primitives(
     size: [usize; 2],
     texture_lookup: impl Fn(TextureId) -> Option<ColorImage>,
 ) -> ColorImage {
-    let mut img = ColorImage::new(size, Color32::TRANSPARENT);
+    let mut img = ColorImage::new(size, vec![Color32::TRANSPARENT; size[0] * size[1]]);
     if size[0] == 0 || size[1] == 0 {
         return img;
     }
@@ -198,14 +199,14 @@ fn rasterize_mesh(
 }
 
 /// Render the currently displayed page (+ markup overlays) to PNG bytes.
-pub fn render_page_to_png_bytes(
+pub(crate) fn render_page_to_png_bytes(
     project: &mut Project,
     ui_state: &UiState,
     draw_state: &DrawState,
     mut page_textures: &mut HashMap<String, TextureHandle>,
     mut failed_page_textures: &mut HashSet<String>,
     mut bg_error: &mut Option<String>,
-    mut last_page_pos: &mut Option<Pos2>,
+    mut last_page_pos: &mut Option<Pt>,
 ) -> Result<Vec<u8>, DataError> {
     let doc = project
         .active()
@@ -283,10 +284,12 @@ pub fn render_page_to_png_bytes(
 
     // Collect texture images produced during the pass (page background + font atlas).
     let mut texture_images: HashMap<TextureId, ColorImage> = HashMap::new();
-    for (id, delta) in &full_output.textures_delta.set {
-        if delta.pos.is_none() {
-            if let egui::epaint::ImageData::Color(arc) = &delta.image {
-                texture_images.insert(*id, arc.as_ref().clone());
+    for (id, deltas) in &full_output.textures_delta.set {
+        for delta in deltas {
+            if delta.pos.is_none() {
+                if let egui::epaint::ImageData::Color(arc) = &delta.image {
+                    texture_images.insert(*id, arc.as_ref().clone());
+                }
             }
         }
     }

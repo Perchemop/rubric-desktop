@@ -9,7 +9,7 @@ use egui::{Align, Layout, Pos2, TextureHandle, Ui, Vec2};
 
 use crate::data::{
     load_project, load_recent, normalise_project_filename, print_image, render_page_to_png_bytes,
-    save_project, save_recent,
+    save_project, save_recent, DataError,
 };
 use crate::domain::{
     Document, History, MarkupKind, Project, Pt, Report, ReportGroupKey, StampPreset, Tool,
@@ -275,8 +275,8 @@ impl RubricApp {
 
     /// Export the currently displayed page as a PNG image.
     fn export_page_image(&mut self, path: PathBuf) -> Result<(), DataError> {
-        let mut last_page_pos: Option<Pos2> = None;
-        let project = self.history.current();
+        let mut last_page_pos: Option<Pt> = None;
+        let project = self.history.current_mut();
         let bytes = match render_page_to_png_bytes(
             project,
             &mut self.ui,
@@ -307,7 +307,7 @@ impl RubricApp {
 
     /// Send the currently displayed page to the default printer.
     fn print_page(&mut self) -> Result<(), DataError> {
-        let mut last_page_pos: Option<Pos2> = None;
+        let mut last_page_pos: Option<Pt> = None;
         let project = self.history.current_mut();
         let bytes = render_page_to_png_bytes(
             project,

@@ -16,7 +16,8 @@ pub use pdf::{
 };
 pub use print::{print_command, print_image};
 pub use recent::{load_recent, recent_config_path, save_recent};
-pub use render::{rasterize_primitives, render_page_to_png_bytes};
+pub use render::rasterize_primitives;
+pub(crate) use render::render_page_to_png_bytes;
 pub use store::{
     default_project_path, load_project, normalise_project_filename, project_dir, save_project,
 };
