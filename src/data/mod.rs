@@ -1,11 +1,13 @@
 //! Data persistence (project save/load, app data dir, PDF import, errors).
 
 pub mod error;
+pub mod export;
 pub mod pdf;
 pub mod recent;
 pub mod store;
 
 pub use error::DataError;
+pub use export::{write_report_json, write_report_text};
 pub use pdf::{
     bind_pdfium, read_pdf_info, render_cache_dir, render_page_to_cache, PdfSourceInfo,
     PDFIUM_PATH_ENV,

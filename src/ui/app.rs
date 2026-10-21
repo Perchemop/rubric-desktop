@@ -10,7 +10,9 @@ use egui::{Align, Layout, Pos2, TextureHandle, Ui, Vec2};
 use crate::data::{
     load_project, load_recent, normalise_project_filename, save_project, save_recent,
 };
-use crate::domain::{Document, History, MarkupKind, Project, Pt, StampPreset, Tool};
+use crate::domain::{
+    Document, History, MarkupKind, Project, Pt, Report, ReportGroupKey, StampPreset, Tool,
+};
 use crate::ui::{canvas, inspector, theme, toolbar};
 use uuid::Uuid;
 
@@ -69,6 +71,22 @@ pub(crate) struct TextEditState {
     pub(crate) original: String,
     pub(crate) text: String,
     pub(crate) focus_requested: bool,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ReportExportFormat {
+    Text,
+    Json,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ReportExportUi {
+    pub(crate) group_key: ReportGroupKey,
+    pub(crate) format: ReportExportFormat,
+    pub(crate) project_title: String,
+    pub(crate) total_markups: usize,
 }
 
 #[allow(dead_code)]
@@ -151,6 +169,8 @@ pub struct RubricApp {
     failed_page_textures: HashSet<String>,
     /// Last PDF background error shown, to avoid spamming status every frame.
     bg_error: Option<String>,
+    /// Session-only report export dialog state (no undo snapshot).
+    report_export: Option<ReportExportUi>,
 }
 
 impl RubricApp {
@@ -168,6 +188,7 @@ impl RubricApp {
             page_textures: HashMap::new(),
             failed_page_textures: HashSet::new(),
             bg_error: None,
+            report_export: None,
         }
     }
 
@@ -242,6 +263,7 @@ impl RubricApp {
         self.page_textures.clear();
         self.failed_page_textures.clear();
         self.bg_error = None;
+        self.report_export = None;
         if let Some(doc) = self.active_doc() {
             let count = doc.page_count();
             if count > 0 && self.ui.current_page >= count {
@@ -381,6 +403,18 @@ impl RubricApp {
                             }
                         }
                     }
+                    ui.close();
+                }
+                if ui.button("Export Report...").clicked() {
+                    let project = self.history.current();
+                    let total_markups: usize =
+                        project.documents.iter().map(|d| d.markups.len()).sum();
+                    self.report_export = Some(ReportExportUi {
+                        group_key: ReportGroupKey::Status,
+                        format: ReportExportFormat::Text,
+                        project_title: project.name.clone(),
+                        total_markups,
+                    });
                     ui.close();
                 }
                 // Recent submenu: app-level recents (data layer), not project
@@ -614,7 +648,9 @@ impl App for RubricApp {
                 }
             }
             if i.key_pressed(egui::Key::Escape) {
-                if self.ui.text_edit.is_some() {
+                if self.report_export.is_some() {
+                    self.report_export = None;
+                } else if self.ui.text_edit.is_some() {
                     // Discard the in-progress text edit, no snapshot.
                     self.ui.text_edit = None;
                     self.ui.status = "Text edit cancelled".to_string();
@@ -687,6 +723,77 @@ impl App for RubricApp {
         }
         if inspector_mutated {
             self.push_snapshot("inspector edit");
+        }
+
+        // Report export dialog (session state only).
+        let mut do_export = false;
+        let mut open = true;
+        if let Some(state) = self.report_export.as_mut() {
+            egui::Window::new("Export Report")
+                .open(&mut open)
+                .show(ui.ctx(), |ui| {
+                    ui.label(format!(
+                        "Project: {}  ·  {} markups",
+                        state.project_title, state.total_markups
+                    ));
+                    ui.separator();
+                    egui::ComboBox::from_label("Group by")
+                        .selected_text(state.group_key.as_str())
+                        .show_ui(ui, |ui| {
+                            for key in ReportGroupKey::ALL {
+                                ui.selectable_value(&mut state.group_key, key, key.as_str());
+                            }
+                        });
+                    ui.label("Format");
+                    ui.radio_value(
+                        &mut state.format,
+                        ReportExportFormat::Text,
+                        "Plain text (.txt)",
+                    );
+                    ui.radio_value(&mut state.format, ReportExportFormat::Json, "JSON (.json)");
+                    if ui.button("Export…").clicked() {
+                        do_export = true;
+                    }
+                });
+        }
+        if self.report_export.is_some() && !open {
+            self.report_export = None;
+        }
+        if do_export {
+            let export_info = self.report_export.as_ref().map(|s| (s.group_key, s.format));
+            if let Some((key, format)) = export_info {
+                let report = Report::from_project(self.history.current(), key);
+                let (filter_name, ext, suggested) = match format {
+                    ReportExportFormat::Text => ("Plain text", "txt", "rubric-report.txt"),
+                    ReportExportFormat::Json => ("JSON", "json", "rubric-report.json"),
+                };
+                if let Some(path) = rfd::FileDialog::new()
+                    .add_filter(filter_name, &[ext])
+                    .set_file_name(suggested)
+                    .save_file()
+                {
+                    let result = match format {
+                        ReportExportFormat::Text => {
+                            crate::data::export::write_report_text(&path, &report)
+                        }
+                        ReportExportFormat::Json => {
+                            crate::data::export::write_report_json(&path, &report)
+                        }
+                    };
+                    match result {
+                        Ok(()) => {
+                            self.ui.status = format!("Report exported: {}", path.display());
+                            self.report_export = None;
+                        }
+                        Err(e) => {
+                            self.ui.status = format!("Export failed: {e}");
+                        }
+                    }
+                } else {
+                    // Cancelled: close without claiming success.
+                    self.report_export = None;
+                }
+            }
         }
 
         ui.ctx()
