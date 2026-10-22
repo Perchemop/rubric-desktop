@@ -47,3 +47,23 @@ happens):
 When OpenCode free is exhausted, the orchestrator notes it in `PROGRESS.md`,
 switches to NVIDIA free, re-discovers the available NVIDIA models, and
 reassigns each role to the best fit — then continues the same slice pipeline.
+
+## Verified availability (re-checked 2026-10-22)
+
+Live probes of the NVIDIA free tier, which is tier 2 in the provider order:
+
+| Model | Result |
+| --- | --- |
+| `nvidia/z-ai/glm-5.3-flash` | reachable |
+| `nvidia/stepfun-ai/step-5-preview` | reachable |
+| `nvidia/openai/gpt-oss-20b` | reachable, intermittently |
+| `nvidia/z-ai/glm-5.3` | **not reachable** — `socket connection was closed`; removed from the routing chains |
+
+`nvidia/meta/llama-guard-4-12b` and `nvidia/google/google-paligemma` are guard
+and vision models, not coding models, so they are not used for roles.
+
+The router in `~/.config/opencode/failover.json` (`fallbacks` +
+`fallbacksByAgent`) carries this order. It never re-chooses a model that has
+already failed in the same session, and a model that stops connecting is
+dropped after two attempts, so a stale ID degrades into the next tier instead
+of stalling the session.
