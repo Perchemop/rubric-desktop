@@ -39,6 +39,17 @@ cargo clippy -- -D warnings
 cargo fmt --all -- --check
 ```
 
+## Original development
+
+Every line of source code, every test, every asset, and every document in
+this repository is original work authored for this project. The
+implementation is informed only by publicly documented standards (e.g. the
+PDF page geometry conventions), the permissively licensed open-source
+crates listed in `Cargo.toml`, Rubric's own original requirement set
+(`docs/spec/README.md`), and capability-level feature inspiration recorded
+in `docs/inspiration.md`. Dependency licences are tracked in
+`ATTRIBUTION.md` (project licence: MIT).
+
 ## License
 
 MIT License. See [LICENSE](LICENSE).

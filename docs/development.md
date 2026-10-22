@@ -48,3 +48,10 @@ success states, change small and reviewable.
 
 - `RUBRIC_PDFIUM_PATH` — directory (or file) of the PDFium shared library
   for `data::pdf` (CI sets `/home/runner/pdfium/lib`).
+
+## Originality
+
+Rubric's code, docs and assets are original work, derived from public
+standards, our own spec (`docs/spec/README.md`) and capability-level
+inspiration (`docs/inspiration.md`). Third-party dependencies are
+permissively licensed and listed in `ATTRIBUTION.md`.

@@ -43,6 +43,7 @@ All notable changes to this project will be documented here. Format: semantic-is
 - Data layer: JSON persistence (`.rubric.json`), app data dir via directories, error types.
 - UI skeleton: app shell (panels, menu, shortcuts), canvas (page, markups, selection, basic place/move), toolbar (tool groups), inspector (properties/comments/measurements), theme/icons.
 - Tests: unit tests in domain modules + integration tests (6) covering geometry, measurements, serialisation, project lifecycle.
+- Tooling: .gitignore (excludes secrets/target/local notes), LICENSE (MIT), rust-toolchain.toml, CI skeleton, scripts/gen-icons.sh.
 - Docs: README, AGENTS, architecture, data model, test plan, assumptions/questions, implementation plan, requirements traceability, decisions, progress, changelog.
 
 ### Notes
