@@ -23,6 +23,9 @@ holds everything unconfirmed.
 
 ## B. Inspiration & scope
 
+4. **Feature inspiration**: Capability-level inspiration is recorded in
+   `docs/inspiration.md` — publicly observable features only.
+   `[Decision]`
 5. **Most important capabilities**: non-destructive markup (sidecar JSON),
    calibrated measurement toolset, review statuses/comments/stamps, native
    file dialogs, PDF import/rendering. `[Decision — mirrored in

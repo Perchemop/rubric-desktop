@@ -43,6 +43,9 @@ Update as appropriate:
   sync with structural changes.
 
 Rules:
+- Other products may appear **only** as capability-level inspiration in
+  `docs/inspiration.md`; never describe their internals or UI details, and
+  never paste build-guide or conversation notes into docs.
 - Prefer small, factual entries with dates (use today's date) and commit
   references when available.
 - No trailing whitespace; docs are formatted Markdown.

@@ -4,6 +4,8 @@
 
 Rubric is a free, local-first, cross-platform desktop app (Rust + egui/eframe) for marking up, reviewing and measuring PDF documents: users open a PDF, place non-destructive markups (highlights, notes, shapes, stamps) that are stored in a `.rubric.json` sidecar file and never alter the source PDF, run a review workflow with statuses/comments/author metadata, and take calibrated real-world measurements from a per-page scale. Everything runs offline — no cloud, no accounts, no collaboration server.
 
+This requirement set is **original material authored for Rubric**. It is derived solely from general domain knowledge of document review and measurement workflows and publicly documented standards — not from any other product's documentation, UI, or behaviour.
+
 ## Conventions
 
 - **ID groups**: F-1xx markups/tools · F-2xx measurements/scale · F-3xx review workflow · F-4xx navigation/pages · F-5xx persistence/I/O · F-6xx UI/UX polish · F-7xx packaging.

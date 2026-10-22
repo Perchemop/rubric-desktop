@@ -37,6 +37,15 @@ CI run.
       files in the tree (`.gitignore` respected).
 - [ ] LICENSE present; `ATTRIBUTION.md` complete and accurate.
 
+## Originality attestation (every phase)
+
+- [ ] All code, strings, icons, layouts and algorithms are original —
+      derived from the original spec (`docs/spec/README.md`), public
+      standards, and capability-level inspiration (`docs/inspiration.md`).
+- [ ] No proprietary code or assets; third-party dependencies listed in
+      `ATTRIBUTION.md`.
+- [ ] No absolute local paths or references to local-only files in code/docs.
+
 ## Manual QC spot-checks (when UI is touched)
 
 - [ ] Every control does something real; keyboard shortcuts work
@@ -47,3 +56,9 @@ CI run.
       implemented.
 - [ ] Undo/redo never exceeds the 128-snapshot cap; no history entries for
       ephemeral UI state.
+
+### Run log
+
+| Date | Scope | CI run | Outcome |
+|---|---|---|---|
+| 2026-10-18 | Phase 0 | `39121051225` | Pass (8/8 steps) |

@@ -1,5 +1,5 @@
 # Local-only files (never commit, never push)
-# guide/notes files and generated test documents live outside this repository
+# Personal notes and generated test documents live outside this repository
 # and must stay there.
 # Note: docs/spec/ holds Rubric's own original requirement set (Phase 1).
 *.pdf

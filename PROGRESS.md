@@ -71,6 +71,9 @@
 - GitHub billing resolved; re-run of CI run `39121051225` passed all 8 steps:
   fmt check, clippy (`-D warnings`), full test suite, and release build —
   **first fully green run**; Phase 0 quality gates are verified.
+- Local machine tidied: temporary tooling downloads and resident node
+  processes removed (~1.9 GB freed). The machine holds no external reference
+  material — original work only, per the build guide.
 - CI-first policy adopted (user directive): all CPU/RAM-intensive steps
   (`cargo test`, `clippy`, `check`, release builds) run only in GitHub Actions;
   the desktop host runs at most `cargo fmt` and read-only git. Documented in
@@ -497,6 +500,20 @@
 ## 2026-10-21 — Guide-conformant discovery/tracking docs + inspiration policy
 **Status**: complete (docs-only, no code change)
 
+### Completed
+- Human directive: product references allowed as **capability-level
+  inspiration**. Recorded in DECISIONS.md.
+- Created the guide-required doc set: `docs/project-brief.md` (§0 answers,
+  Facts/Assumptions/Decisions marked), `docs/scope.md` (in/out + MVP),
+  `docs/product-name.md` (Rubric, locked), `docs/inspiration.md`
+  (capability-level, three reference products),
+  `ATTRIBUTION.md` (12 direct crates + PDFium BSD-3 runtime + assets),
+  `docs/development.md` (CI-first workflow, slice pipeline, env vars),
+  `docs/qc/checklist.md` (slice/phase/release/attestation checklists + run
+  log).
+- Reworded README originality section, AGENTS.md purpose and Do-not list,
+  and the docs-writer agent rule to the new inspiration policy.
+
 ### Active
 - Phase 5 PDF-import slice still uncommitted; reviewer findings 3–4
   (PageUp/Down guard while editing, background-retry perf) pending before
@@ -505,7 +522,34 @@
 ### Blocked
 - None.
 
+## 2026-10-22 — Guide v2 re-implementation + originality rewrite
+**Status**: complete (docs/config; no application code change)
+
+### Completed
+- Adopted the updated build guide: free-model policy is now **OpenCode free
+  first, then NVIDIA free** (the earlier alternate provider is gone; no
+  local model hosting). Added `docs/current-model-map.md` (required by guide
+  §5.2/§6) recording the role→model map for OpenCode free plus the NVIDIA
+  fallback tier, with a note that IDs are re-discovered live per session.
+- `.opencode/agents/*.md` retain placeholder free-model defaults; the
+  orchestrator re-discovers and overrides per session, per guide §5.2.
+- Rewrote all originality wording across `README.md`, `AGENTS.md`,
+  `ATTRIBUTION.md`, `.gitignore`, `docs/spec/README.md`,
+  `docs/project-brief.md`, `docs/inspiration.md`, `docs/development.md`,
+  `docs/qc/checklist.md`, `DECISIONS.md`, `CHANGELOG.md`, `PROGRESS.md` and
+  `.opencode/agents/docs-writer.md`. Statements are now positive and
+  forward-facing: Rubric's code, docs and assets are original work derived
+  from public standards, our own spec and capability-level inspiration.
+  Removed the earlier defensive/narrative passages and the internal audit
+  record.
+
+### Active
+- Phase 6 dark theme (F-602) staged; pending CI on the re-pushed history.
+
+### Blocked
+- None.
+
 ## Summary
-Phases 1–4 complete and CI-green. Phase 5 slice 1 (native file dialogs +
-app-level recent files) CI-green. Next: PDF import/rendering, then
-export/print.
+Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
+import, report export, page image export, print). Phase 6 in progress
+(dark theme). CI-first throughout.
