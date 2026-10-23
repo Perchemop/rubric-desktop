@@ -50,6 +50,7 @@ jobs:
           APPDIR=AppDir
           mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" \
             "$APPDIR/usr/share/icons/hicolor/512x512/apps" \
+            "$APPDIR/usr/share/icons/hicolor/scalable/apps" \
             "$APPDIR/usr/share/metainfo"
           cp target/release/rubric "$APPDIR/usr/bin/rubric"
 
@@ -203,10 +204,16 @@ jobs:
           $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
           wix extension add WixToolset.UI.wixext/4.0.5
           # The product definition (packaging/wix/Product.wxs) is kept in-repo so
-          # installer metadata is reviewable; this only runs it.
+          # installer metadata is reviewable; this only runs it. Both preprocessor
+          # variables it references must be defined here, or the build fails with
+          # WIX0150 ("Undefined preprocessor variable").
+          $pdfium = Get-ChildItem -Path "$HOME","$env:LOCALAPPDATA" -Recurse -Filter pdfium.dll -ErrorAction SilentlyContinue | Select-Object -First 1
+          $pdfiumPath = if ($null -ne $pdfium) { $pdfium.FullName } else { "" }
+          $found = if ($null -ne $pdfium) { "1" } else { "0" }
           Push-Location packaging/wix
           wix build Product.wxs `
-            -d "BinaryTargetDir=../../target/release/" `
+            -d "PdfiumDllPath=$pdfiumPath" `
+            -d "PDFIUM_DLL_FOUND=$found" `
             -arch x64 `
             -o ../../rubric.msi
           Pop-Location
