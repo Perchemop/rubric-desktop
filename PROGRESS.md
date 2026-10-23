@@ -622,6 +622,22 @@
 ### Blocked
 - None.
 
+## 2026-10-23 — Phase 5 page thumbnails sidebar (F-404) CI-verified and merged
+**Status**: complete — CI SUCCESS on `0c25124` (GitHub Actions run `39940499803`, job `check`: fmt, clippy `-D warnings`, tests, release build). PR #10 (https://github.com/Perchemop/rubric-desktop/pull/10, base `main`) merged by rebase, `origin/main` updated.
+
+### Completed
+- Domain: new pure module `src/domain/thumbs.rs` — `thumb_layout(width, count, min_cell, gap)` returning per-column/per-row counts, cell width and cell height (thumbnail box + caption), plus `columns_needed` used by the tests as the "one more column would not fit" oracle. 6 new unit tests (always ≥1 column, columns never shrink as the panel widens, rows = ceil(count/per_row), caption/gap arithmetic).
+- UI: new `src/ui/pages.rs` — a resizable left "Pages" panel, shown only when the document has pages. PDF-backed projects render each thumbnail through the shared on-disk `data::pdf` page cache at a fixed 192 px width (a page the main canvas already rendered is a cache hit); non-PDF projects and render failures fall back to a numbered placeholder, so the control is never dead. Clicking a cell jumps.
+- App shell: `RubricApp::jump_to_page(index)` is now the single page-switch path — commits an in-flight text edit, snapshots only when text actually changed, abandons the draft. The top-bar arrows and Page Up/Down were refactored onto it, removing three divergent implementations of the same semantics.
+- Docs: F-404 done in spec, plan, traceability (R-S-011), CHANGELOG, DECISIONS and `docs/parity.md`.
+- Note: two CI runs failed first (`39940025456`, `39940317287`) — a `Debug` derive on a `TextureHandle`, an `Option<&Path>` vs `Option<&str>` mismatch and a mixed-error-type `and_then` chain. All fixed and re-verified green.
+
+### Active
+- Next: packaging (F-7xx).
+
+### Blocked
+- None.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
 import, report export, page image export, print). Phase 6 in progress: dark
