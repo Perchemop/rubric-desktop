@@ -638,6 +638,23 @@
 ### Blocked
 - None.
 
+## 2026-10-23 — Phase 6 packaging: CI release + Linux/macOS/Windows installers (F-701–F-704); CI pending
+**Status**: implemented — awaiting the GitHub Actions verdict.
+
+### Completed
+- `.github/workflows/release.yml` (F-704): builds the release binary for Linux x86_64, macOS arm64 and Windows x86_64 (a fail-fast:false matrix so one platform failing does not hide the others), archives each, and attaches them to a GitHub release on `v*` tags; `workflow_dispatch` publishes a pre-release so a test run never looks like a real release.
+- `.github/workflows/package.yml` (F-701/F-702/F-703): Linux **AppImage** via linuxdeploy over an AppDir containing a real `.desktop` entry and appstream metadata, plus a portable tarball fallback; macOS `Rubric.app` → `.dmg`; Windows MSI via WiX v4 with the product definition kept in-repo at `packaging/wix/Product.wxs` (MIT licence text included).
+- PDFium (the run-time dependency) is bundled next to the executable on all three platforms when present, and its contract — discovery order `RUBRIC_PDFIUM_PATH` → executable directory → system path, where to obtain binaries, what a failed import looks like — is documented in `docs/pdfium.md`.
+- Honesty gaps recorded rather than papered over: installers are **unsigned** (no signing secret in the repo → Q-PACK-1) and icons remain the repo's SVG (→ Q-PACK-2 raster follow-up).
+- Validation performed locally (lightweight, permitted): all three workflow YAMLs parse (`yaml.safe_load`), and `Product.wxs` is well-formed XML. No build/test was run locally — CI is the verifier.
+- Docs: spec F-701–F-704 and R-S-017 → done; `docs/parity.md`, IMPLEMENTATION_PLAN, CHANGELOG, DECISIONS updated; Q-PACK-1..3 added to assumptions.
+
+### Active
+- Next: verify this slice in CI, then the recorded follow-ups (installer signing, raster icon set).
+
+### Blocked
+- None.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
 import, report export, page image export, print). Phase 6 in progress: dark

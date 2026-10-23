@@ -68,7 +68,7 @@ Each row maps a spec area to its feature IDs and the planned modules.
 | R-S-014 | PDF import and page rendering | F-504 | src/data/pdf.rs (new), src/ui/canvas.rs | DONE |
 | R-S-015 | Export (rendered image) and print | F-505 | src/data/export.rs (new), src/data/render.rs (new), src/data/print.rs (new), src/ui/app.rs | DONE |
 | R-S-016 | UX polish: shortcuts, dark theme, context menus, undo/redo, accessibility | F-601–F-605 | src/ui/app.rs, src/ui/theme.rs, src/domain/project.rs, src/domain/theme.rs, src/data/prefs.rs | PARTIAL |
-| R-S-017 | Packaging: Linux AppImage, macOS DMG, Windows MSI, CI release artifacts | F-701–F-704 | packaging files, .github/workflows/ci.yml | TODO |
+| R-S-017 | Packaging: Linux AppImage, macOS DMG, Windows MSI, CI release artifacts | F-701–F-704 | .github/workflows/release.yml, .github/workflows/package.yml, packaging/wix/, docs/pdfium.md | DONE |
 
 ## Feature requirements
 
@@ -89,7 +89,7 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 | F-4xx | Navigation/pages (spec) | Document.pages, UiState camera | PARTIAL | docs/spec/README.md F-401–F-406; R-S-011–R-S-012; F-404 (thumbnails), F-405 (grid + snap) and F-406 (rulers) done 2026-10-23 |
 | F-5xx | Persistence/I/O (spec) | .rubric.json store, PDF import, export/print | PARTIAL | docs/spec/README.md F-501–F-507; R-S-013–R-S-015; native dialogs + recent files landed 2026-10-20; PDF import landed 2026-10-21; report export landed 2026-10-21; image export + print landed 2026-10-21 |
 | F-6xx | UI/UX polish (spec) | shortcuts, theme, history | PARTIAL | docs/spec/README.md F-601–F-605; R-S-016; F-601 (per-tool keys), F-602 (dark theme), F-603 (context menus) done 2026-10-23 |
-| F-7xx | Packaging (spec) | CI release build, installers | TODO | docs/spec/README.md F-701–F-704; R-S-017 |
+| F-7xx | Packaging (spec) | CI release build, installers | DONE | docs/spec/README.md F-701–F-704; R-S-017; release.yml + package.yml done 2026-10-23 (installers unsigned — see docs/assumptions-and-questions Q-PACK-1) |
 
 ## Gaps / exclusions
 - Canonical inventory: `docs/spec/README.md` (52 F-IDs across F-1xx…F-7xx), adopted 2026-10-19; see Phase 1 requirement set above.

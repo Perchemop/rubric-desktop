@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Rubric Windows installer (spec F-703).
+
+  WiX v4 definition, bundled by .github/workflows/package.yml. Everything here
+  is original metadata authored for Rubric.
+
+  Installer scope decisions:
+  - Per-machine install to %ProgramFiles%\Rubric (an office/graphics tool, not
+    a per-user gadget).
+  - PDFium is copied next to the executable when the packaging step found it,
+    because Windows has no standard system location for it (see docs/pdfium.md).
+  - Licensed under the project's MIT licence; the user may inspect LICENSE.
+  - Unsigned by default: no code-signing certificate is committed to this
+    repository. See docs/assumptions-and-questions.md (Q-PACK-1).
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="Rubric"
+      Manufacturer="Rubric contributors"
+      Version="0.1.0"
+      UpgradeCode="8A6E7B7E-6C1A-4ADD-9C14-2B9F5A5F1E10"
+      Scope="perMachine"
+      Language="1033"
+      Codepage="1252">
+    <SummaryInformation
+        Description="Rubric installer"
+        Manufacturer="Rubric contributors" />
+
+    <MajorUpgrade
+        DowngradeErrorMessage="A newer version of Rubric is already installed." />
+
+    <!-- Media: a single compressed cabinet keeps the MSI self-contained. -->
+    <MediaTemplate
+        EmbedCab="yes"
+        CompressionLevel="high" />
+
+    <!-- Directory layout. StdDirectory "ProgramFiles64Folder" is required for
+         a 64-bit per-machine install. -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Rubric">
+        <Directory Id="DocFolder" Name="docs" />
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Start-menu entry (not the desktop: a document tool that must not
+         clutter the desktop unless the user asks). -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppDir" Name="Rubric">
+        <Component Id="StartMenuShortcut" Guid="3C3B2A7B-1E42-4A9A-9B1F-6C0A7E24D001">
+          <Shortcut
+              Id="StartMenuRubric"
+              Name="Rubric"
+              Description="Free, cross-platform PDF markup, review and measurement"
+              Target="[INSTALLFOLDER]rubric.exe"
+              WorkingDirectory="INSTALLFOLDER" />
+          <RemoveFolder Id="AppDir" On="uninstall" />
+          <RegistryValue
+              Root="HKCU"
+              Key="Software\Rubric\Rubric"
+              Name="installed"
+              Type="integer"
+              Value="1"
+              KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- ARP metadata. -->
+    <Property Id="ARPPRODUCTICON" Value="rubric.exe" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Perchemop/rubric-desktop" />
+    <Property Id="ApplicationFolderName" Value="Rubric" />
+
+    <Feature Id="Main" Title="Rubric" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+
+    <!-- Minimal UI: the sequence skips interactive licence/customisation pages
+         but still shows progress. A full UI is a packaging follow-up. -->
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <ui:WixUI Id="WixUI_InstallDir" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui" />
+
+    <!-- EULA/licence: shipped as a file on disk rather than a rich-text dialog,
+         so the WiX build stays a plain dotnet tool invocation. -->
+    <WixVariable Id="WixUILicenseRtf" Value="packaging/wix/License.rtf" />
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Component Id="RubricExecutable" Guid="9F0E7C1D-2B34-4D5E-8A7B-1C9D7F0E2B34">
+        <File Id="rubricExe" Source="rubric.exe" KeyPath="yes">
+          <Shortcut
+              Id="StartMenuRubricFromExe"
+              Name="Rubric"
+              Description="Free, cross-platform PDF markup, review and measurement"
+              WorkingDirectory="INSTALLFOLDER" />
+        </File>
+      </Component>
+
+      <Component Id="RubricDocs" Guid="5A1B7C2D-8E4F-4A0B-9C3D-7E1A2B4C6D8E">
+        <File Id="LicenseTxt" Source="..\..\LICENSE" Name="LICENSE.txt" KeyPath="yes" />
+        <File Id="ReadmeMd" Source="..\..\README.md" Name="README.md" />
+        <File Id="AttributionMd" Source="..\..\ATTRIBUTION.md" Name="ATTRIBUTION.md" />
+        <File Id="PdfiumMd" Source="..\..\docs\pdfium.md" Name="pdfium.md" />
+      </Component>
+
+      <!-- PDFium runtime: only included when the packaging job located a
+           pdfium.dll. The MSI must install it beside rubric.exe (rule 2 in
+           docs/pdfium.md). -->
+      <Component Id="PdfiumRuntime" Guid="1D2C3B4A-5E6F-4A7B-8C9D-0E1F2A3B4C5D" Condition="PDFIUM_DLL_FOUND=1">
+        <File Id="PdfiumDll" Source="$(var.PdfiumDllPath)" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>
