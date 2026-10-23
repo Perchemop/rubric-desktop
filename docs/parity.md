@@ -15,7 +15,7 @@ implemented · **Todo** = not started · **Out of scope** = deliberately exclude
 
 | Capability (inspiration level) | Feature IDs | Status | Notes |
 |---|---|---|---|
-| Open & render PDF documents, page navigation | F-401–F-406, F-504 | Partial | PDF import + page rendering (Phase 5); grid + snap-to-grid (F-405) and rulers (F-406) done 2026-10-23; page thumbnails (F-404) pending |
+| Open & render PDF documents, page navigation | F-401–F-406, F-504 | Partial | PDF import + page rendering (Phase 5); page thumbnails (F-404), grid + snap-to-grid (F-405) and rulers (F-406) done 2026-10-23 |
 | Text & review markup (highlight, strikeout, underline, squiggly, text, callout, note, stamp) | F-101–F-111 | Partial | tool set landed; note popover (F-103) pending |
 | Shape & path markup (rectangle, ellipse, cloud, polygon, polyline, line, arrow, ink) | F-101–F-116 | Partial | shapes/paths + drag-to-draw landed; z-order / copy-properties (F-113–F-115) pending |
 | Selection editing (select, move, delete, layers) | F-113–F-116 | Partial | select/move/delete + layer visibility/lock (F-116) done |

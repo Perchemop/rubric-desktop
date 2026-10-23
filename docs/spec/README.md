@@ -67,7 +67,7 @@ This requirement set is **original material authored for Rubric**. It is derived
 | F-401 | Zoom (mouse wheel centred on cursor, fit, presets) | Ph 2 | button zoom done; wheel pending |
 | F-402 | Pan (Space-drag / middle-drag) | Ph 2 | pending |
 | F-403 | Page navigation (first/prev/next/jump to page) | Ph 5 | multi-page model exists; UI pending |
-| F-404 | Page thumbnails sidebar | Ph 5 | pending |
+| F-404 | Page thumbnails sidebar | Ph 5 | done (left panel, PDF previews via the shared render cache, numbered placeholders when not PDF-backed, click to jump) |
 | F-405 | Grid and snap-to-grid | Ph 6 | done (View > Show Grid / Snap to Grid / Grid Spacing; snap applies to creation anchors, hit-testing follows the pointer) |
 | F-406 | Rulers | Ph 6 | done (labelled page-point ticks on the top/left margins, spacing follows a 1/2/5 ladder) |
 
