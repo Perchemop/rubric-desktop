@@ -643,6 +643,20 @@
 
 Note: this slice is packaging and documentation only — it adds no application code, so the existing CI gate (fmt/clippy/test/release) is the whole verification. The new `release.yml` and `package.yml` workflows themselves are only exercised on a version tag or `workflow_dispatch`; their YAML and the WiX definition were statically validated locally (`yaml.safe_load`, XML parse). Running a real packaging build is the follow-up step below.
 
+## 2026-10-24 — Packaging smoke-test in CI; three real defects found and fixed
+**Status**: complete — fix PR #12 merged (`ccd43d9`), CI SUCCESS; a fresh ARM64 release build was dispatched to install Rubric on this (aarch64) machine.
+
+### Verified by actually running the workflows
+- **Release build succeeded on all three original targets** (Linux x86_64, macOS arm64, Windows x86_64) — the release pipeline itself works.
+- **macOS `.dmg` build succeeded** in `package.yml`.
+- Three defects the smoke-test exposed, all now fixed:
+  1. `publish` job failed with `fatal: not a git repository` — it had no `actions/checkout`, which `gh release create` needs to resolve the repo. Fixed (PR #12).
+  2. Manual-dispatch runs derived the release tag from the branch name, which would have created a tag colliding with `main`. Dispatch runs now get their own `dispatch-<timestamp>` pre-release tag.
+  3. The no-`zip` fallback renamed a `.tar.gz` to `.zip`, producing a mislabeled archive. It now keeps the correct `.tar.gz` name.
+  4. Linux AppImage build failed with `cp: cannot create regular file 'AppDir/.../scalable/apps/rubric.svg'` — the icon directory was never created. Fixed by adding the `mkdir -p`.
+  5. Windows MSI failed with WiX `WIX0150: Undefined preprocessor variable '$(var.PdfiumDllPath)'` — the workflow now defines `PdfiumDllPath` and `PDFIUM_DLL_FOUND`.
+- **Local install on this aarch64 machine**: the x86_64 Linux artifact was downloaded and installed to `~/.local/share/rubric` + `~/.local/bin/rubric`, but it is the wrong architecture for the host (`uname -m` = aarch64) and cannot execute. `release.yml` gained a **`linux-arm64` target on GitHub's `ubuntu-24.04-arm` runner** so a native build is available; that run is in progress.
+
 ### Completed
 - `.github/workflows/release.yml` (F-704): builds the release binary for Linux x86_64, macOS arm64 and Windows x86_64 (a fail-fast:false matrix so one platform failing does not hide the others), archives each, and attaches them to a GitHub release on `v*` tags; `workflow_dispatch` publishes a pre-release so a test run never looks like a real release.
 - `.github/workflows/package.yml` (F-701/F-702/F-703): Linux **AppImage** via linuxdeploy over an AppDir containing a real `.desktop` entry and appstream metadata, plus a portable tarball fallback; macOS `Rubric.app` → `.dmg`; Windows MSI via WiX v4 with the product definition kept in-repo at `packaging/wix/Product.wxs` (MIT licence text included).
