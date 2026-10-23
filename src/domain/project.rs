@@ -350,6 +350,83 @@ pub enum Tool {
 }
 
 impl Tool {
+    /// Every tool variant, in enum declaration order.
+    ///
+    /// Useful for tests, keyboard-shortcut legends and UI palette grids.
+    pub const ALL: [Tool; 24] = [
+        Tool::Select,
+        Tool::Highlight,
+        Tool::Strikeout,
+        Tool::Underline,
+        Tool::Squiggly,
+        Tool::Text,
+        Tool::Callout,
+        Tool::Note,
+        Tool::Stamp,
+        Tool::Rectangle,
+        Tool::Ellipse,
+        Tool::Cloud,
+        Tool::Polygon,
+        Tool::Polyline,
+        Tool::Line,
+        Tool::Arrow,
+        Tool::Ink,
+        Tool::MeasureLength,
+        Tool::MeasurePerimeter,
+        Tool::MeasureArea,
+        Tool::MeasureAngle,
+        Tool::MeasureDiameter,
+        Tool::MeasureRadius,
+        Tool::MeasureCount,
+    ];
+
+    /// Canonical single-key shortcut for this tool, as a lowercase [`char`].
+    ///
+    /// Markup and shape tools use letters; measurement tools use digits `1`
+    /// through `7`. These are *unmodified* keys, so the UI must ignore them
+    /// while a text field has focus and must not fire them when Ctrl/Alt/Super
+    /// is held. Returns `None` for tools that have no assigned key yet.
+    pub fn shortcut_key(self) -> Option<char> {
+        Some(match self {
+            Tool::Select => 'v',
+            Tool::Highlight => 'h',
+            Tool::Strikeout => 's',
+            Tool::Underline => 'u',
+            Tool::Squiggly => 'q',
+            Tool::Text => 't',
+            Tool::Callout => 'c',
+            Tool::Note => 'n',
+            Tool::Stamp => 'm',
+            Tool::Rectangle => 'r',
+            Tool::Ellipse => 'o',
+            Tool::Cloud => 'd',
+            Tool::Polygon => 'p',
+            Tool::Polyline => 'y',
+            Tool::Line => 'l',
+            Tool::Arrow => 'a',
+            Tool::Ink => 'i',
+            Tool::MeasureLength => '1',
+            Tool::MeasurePerimeter => '2',
+            Tool::MeasureArea => '3',
+            Tool::MeasureAngle => '4',
+            Tool::MeasureDiameter => '5',
+            Tool::MeasureRadius => '6',
+            Tool::MeasureCount => '7',
+        })
+    }
+
+    /// Resolve a single-key shortcut back to its tool.
+    ///
+    /// Matching is ASCII case-insensitive (`'V'` and `'v'` both select
+    /// [`Tool::Select`]); no other equivalence is applied. Returns `None` for
+    /// keys that are not bound to a tool.
+    pub fn from_shortcut_key(key: char) -> Option<Tool> {
+        let key = key.to_ascii_lowercase();
+        Self::ALL
+            .into_iter()
+            .find(|tool| tool.shortcut_key() == Some(key))
+    }
+
     pub fn from_kind(k: MarkupKind) -> Self {
         match k {
             MarkupKind::Highlight => Tool::Highlight,
@@ -708,5 +785,159 @@ mod tests {
         assert_eq!(page.width, a4.width);
         assert_eq!(page.height, a4.height);
         assert_eq!(page.rotation, 0);
+    }
+
+    #[test]
+    fn tool_all_contains_all_24_variants_exactly_once() {
+        assert_eq!(Tool::ALL.len(), 24);
+        for (i, tool) in Tool::ALL.iter().enumerate() {
+            for other in Tool::ALL.iter().skip(i + 1) {
+                assert_ne!(tool, other, "duplicate variant in Tool::ALL: {tool:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn tool_all_is_in_enum_declaration_order() {
+        assert_eq!(
+            Tool::ALL,
+            [
+                Tool::Select,
+                Tool::Highlight,
+                Tool::Strikeout,
+                Tool::Underline,
+                Tool::Squiggly,
+                Tool::Text,
+                Tool::Callout,
+                Tool::Note,
+                Tool::Stamp,
+                Tool::Rectangle,
+                Tool::Ellipse,
+                Tool::Cloud,
+                Tool::Polygon,
+                Tool::Polyline,
+                Tool::Line,
+                Tool::Arrow,
+                Tool::Ink,
+                Tool::MeasureLength,
+                Tool::MeasurePerimeter,
+                Tool::MeasureArea,
+                Tool::MeasureAngle,
+                Tool::MeasureDiameter,
+                Tool::MeasureRadius,
+                Tool::MeasureCount,
+            ]
+        );
+    }
+
+    #[test]
+    fn every_tool_has_a_shortcut_key() {
+        for tool in Tool::ALL {
+            assert!(
+                tool.shortcut_key().is_some(),
+                "tool {tool:?} has no shortcut key"
+            );
+        }
+    }
+
+    #[test]
+    fn tool_shortcut_keys_are_pairwise_unique() {
+        let mut keys: Vec<char> = Tool::ALL
+            .iter()
+            .map(|tool| tool.shortcut_key().expect("every tool has a key"))
+            .collect();
+        keys.sort_unstable();
+        let unique = {
+            let mut seen = keys.clone();
+            seen.dedup();
+            seen
+        };
+        assert_eq!(
+            keys.len(),
+            unique.len(),
+            "duplicate shortcut keys in {keys:?}"
+        );
+    }
+
+    #[test]
+    fn tool_shortcut_key_roundtrips_via_from_shortcut_key() {
+        for tool in Tool::ALL {
+            let key = tool.shortcut_key().expect("every tool has a key");
+            assert_eq!(
+                Tool::from_shortcut_key(key),
+                Some(tool),
+                "shortcut '{key}' did not round-trip to {tool:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn tool_from_shortcut_key_is_ascii_case_insensitive() {
+        assert_eq!(Tool::from_shortcut_key('V'), Tool::from_shortcut_key('v'));
+        for tool in Tool::ALL {
+            let key = tool.shortcut_key().expect("every tool has a key");
+            let upper = key.to_ascii_uppercase();
+            assert_eq!(Tool::from_shortcut_key(upper), Some(tool));
+            assert_eq!(Tool::from_shortcut_key(key), Some(tool));
+        }
+    }
+
+    #[test]
+    fn tool_from_shortcut_key_rejects_unknown_keys() {
+        for key in ['x', 'z', '0', '8', '9', ' ', '\n', 'é'] {
+            assert_eq!(
+                Tool::from_shortcut_key(key),
+                None,
+                "key {key:?} unexpectedly resolved to a tool"
+            );
+        }
+    }
+
+    #[test]
+    fn tool_shortcut_table_matches_documented_mapping() {
+        let expected = [
+            (Tool::Select, 'v'),
+            (Tool::Highlight, 'h'),
+            (Tool::Strikeout, 's'),
+            (Tool::Underline, 'u'),
+            (Tool::Squiggly, 'q'),
+            (Tool::Text, 't'),
+            (Tool::Callout, 'c'),
+            (Tool::Note, 'n'),
+            (Tool::Stamp, 'm'),
+            (Tool::Rectangle, 'r'),
+            (Tool::Ellipse, 'o'),
+            (Tool::Cloud, 'd'),
+            (Tool::Polygon, 'p'),
+            (Tool::Polyline, 'y'),
+            (Tool::Line, 'l'),
+            (Tool::Arrow, 'a'),
+            (Tool::Ink, 'i'),
+            (Tool::MeasureLength, '1'),
+            (Tool::MeasurePerimeter, '2'),
+            (Tool::MeasureArea, '3'),
+            (Tool::MeasureAngle, '4'),
+            (Tool::MeasureDiameter, '5'),
+            (Tool::MeasureRadius, '6'),
+            (Tool::MeasureCount, '7'),
+        ];
+        assert_eq!(expected.len(), Tool::ALL.len());
+        for (tool, key) in expected {
+            assert_eq!(tool.shortcut_key(), Some(key));
+            assert_eq!(Tool::from_shortcut_key(key), Some(tool));
+        }
+    }
+
+    #[test]
+    fn tool_serde_representation_is_unaffected_by_shortcuts() {
+        for tool in Tool::ALL {
+            let json = serde_json::to_string(&tool).expect("serialize tool");
+            let back: Tool = serde_json::from_str(&json).expect("deserialize tool");
+            assert_eq!(back, tool);
+        }
+        assert_eq!(
+            serde_json::to_string(&Tool::MeasureDiameter).expect("serialize"),
+            "\"measure_diameter\""
+        );
     }
 }
