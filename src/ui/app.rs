@@ -12,10 +12,10 @@ use crate::data::{
     render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
 use crate::domain::{
-    AppPrefs, Document, History, MarkupKind, Project, Pt, Report, ReportGroupKey, StampPreset,
-    Theme, Tool,
+    AppPrefs, Document, EditorAction, History, MarkupKind, Project, Pt, Report, ReportGroupKey,
+    StampPreset, Theme, Tool,
 };
-use crate::ui::{canvas, inspector, theme, toolbar};
+use crate::ui::{canvas, inspector, menu, theme, toolbar};
 use uuid::Uuid;
 
 #[allow(dead_code)]
@@ -118,6 +118,10 @@ pub(crate) struct UiState {
     /// In-canvas text editor state (Text/Callout markups only). UI-only, no
     /// serde: it never leaves the session.
     pub(crate) text_edit: Option<TextEditState>,
+    /// A context-menu action requested this frame (spec F-603). The canvas and
+    /// the inspector only *request* actions; `ui()` performs them so history
+    /// snapshots and status text follow a single path.
+    pub(crate) pending_action: Option<EditorAction>,
     /// Currently displayed page index (session state; never snapshotted).
     pub(crate) current_page: usize,
     dirty: bool,
@@ -144,6 +148,7 @@ impl Default for UiState {
             move_selection: false,
             move_changed: false,
             text_edit: None,
+            pending_action: None,
             current_page: 0,
             dirty: false,
             scale_paper_inches: 1.0,
@@ -240,6 +245,51 @@ impl RubricApp {
             self.push_snapshot("delete markups");
         } else {
             self.ui.status = "Selection is locked".to_string();
+        }
+    }
+
+    /// Perform a context-menu [`EditorAction`] (spec F-603). Shared by the
+    /// canvas and inspector context menus and by the Edit/View menu bar so a
+    /// command has exactly one implementation.
+    fn apply_editor_action(&mut self, action: EditorAction) {
+        match action {
+            EditorAction::Undo => {
+                if self.ui.text_edit.is_some() {
+                    self.ui.status = "Finish or cancel text edit first".to_string();
+                } else if self.history.undo() {
+                    self.ui.status = "Undo".to_string();
+                    self.clear_selection();
+                }
+            }
+            EditorAction::Redo => {
+                if self.ui.text_edit.is_some() {
+                    self.ui.status = "Finish or cancel text edit first".to_string();
+                } else if self.history.redo() {
+                    self.ui.status = "Redo".to_string();
+                    self.clear_selection();
+                }
+            }
+            EditorAction::DeleteSelection => {
+                if self.ui.text_edit.is_some() {
+                    self.ui.status = "Finish or cancel text edit first".to_string();
+                } else {
+                    self.delete_selected();
+                }
+            }
+            EditorAction::ClearSelection => {
+                self.clear_selection();
+                self.ui.status = "Selection cleared".to_string();
+            }
+            EditorAction::ZoomIn => {
+                self.ui.zoom = (self.ui.zoom * 1.25).clamp(0.1, 16.0);
+            }
+            EditorAction::ZoomOut => {
+                self.ui.zoom = (self.ui.zoom / 1.25).clamp(0.1, 16.0);
+            }
+            EditorAction::FitPage => {
+                self.ui.zoom = 1.0;
+                self.ui.pan = Vec2::ZERO;
+            }
         }
     }
 
@@ -556,43 +606,28 @@ impl RubricApp {
             });
             ui.menu_button("Edit", |ui| {
                 if ui.button("Undo").clicked() {
-                    if self.ui.text_edit.is_some() {
-                        self.ui.status = "Finish or cancel text edit first".to_string();
-                    } else if self.history.undo() {
-                        self.ui.status = "Undo".to_string();
-                        self.clear_selection();
-                        ui.close();
-                    }
+                    self.apply_editor_action(EditorAction::Undo);
+                    ui.close();
                 }
                 if ui.button("Redo").clicked() {
-                    if self.ui.text_edit.is_some() {
-                        self.ui.status = "Finish or cancel text edit first".to_string();
-                    } else if self.history.redo() {
-                        self.ui.status = "Redo".to_string();
-                        self.clear_selection();
-                        ui.close();
-                    }
+                    self.apply_editor_action(EditorAction::Redo);
+                    ui.close();
                 }
                 ui.separator();
                 if ui.button("Delete Selected").clicked() {
-                    if self.ui.text_edit.is_some() {
-                        self.ui.status = "Finish or cancel text edit first".to_string();
-                    } else {
-                        self.delete_selected();
-                        ui.close();
-                    }
+                    self.apply_editor_action(EditorAction::DeleteSelection);
+                    ui.close();
                 }
             });
             ui.menu_button("View", |ui| {
                 if ui.button("Zoom In").clicked() {
-                    self.ui.zoom = (self.ui.zoom * 1.25).clamp(0.1, 16.0);
+                    self.apply_editor_action(EditorAction::ZoomIn);
                 }
                 if ui.button("Zoom Out").clicked() {
-                    self.ui.zoom = (self.ui.zoom / 1.25).clamp(0.1, 16.0);
+                    self.apply_editor_action(EditorAction::ZoomOut);
                 }
                 if ui.button("Fit Page").clicked() {
-                    self.ui.zoom = 1.0;
-                    self.ui.pan = Vec2::ZERO;
+                    self.apply_editor_action(EditorAction::FitPage);
                 }
                 ui.separator();
                 ui.menu_button("Theme", |ui| {
@@ -876,12 +911,17 @@ impl App for RubricApp {
             .min_size(180.0)
             .show(ui, |ui| self.left_panel(ui));
         let mut inspector_mutated = false;
-        egui::Panel::right("inspector")
+        let inspector_response = egui::Panel::right("inspector")
             .default_size(280.0)
             .min_size(240.0)
             .show(ui, |ui| {
                 inspector_mutated = self.right_panel(ui);
-            });
+            })
+            .response;
+        // Inspector context menu (spec F-603): the same menu the canvas offers.
+        let _ = inspector_response.context_menu(|ui| {
+            menu::draw_editor_context_menu(ui, &mut self.ui);
+        });
         egui::Panel::bottom("status").show(ui, |ui| self.bottom_bar(ui));
 
         let prior_status = self.ui.status.clone();
@@ -911,6 +951,10 @@ impl App for RubricApp {
         }
         if inspector_mutated {
             self.push_snapshot("inspector edit");
+        }
+        // Execute any context-menu action requested this frame (spec F-603).
+        if let Some(action) = self.ui.pending_action.take() {
+            self.apply_editor_action(action);
         }
 
         // Report export dialog (session state only).

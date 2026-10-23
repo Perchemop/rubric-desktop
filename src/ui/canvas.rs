@@ -958,6 +958,15 @@ pub(crate) fn draw_canvas(
         }
     }
 
+    // Context menu (spec F-603). Attached only when no multi-point draft is in
+    // progress: a right-click during a draft commits that draft (below) rather
+    // than opening the menu.
+    if matches!(*draw_state, super::app::DrawState::Idle) {
+        let _ = response.context_menu(|ui| {
+            super::menu::draw_editor_context_menu(ui, ui_state);
+        });
+    }
+
     // Right-click commits an in-progress multi-point sequence.
     if response.clicked_by(egui::PointerButton::Secondary) && !panning {
         match draw_state {
