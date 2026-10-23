@@ -577,8 +577,8 @@
 ### Blocked
 - None.
 
-## 2026-10-23 — Phase 6 editor context menus (F-603) implemented; CI pending
-**Status**: implemented on branch `opencode/ci-f603` — awaiting the GitHub Actions verdict.
+## 2026-10-23 — Phase 6 editor context menus (F-603) CI-verified and merged
+**Status**: complete — CI SUCCESS on `c86120a` (GitHub Actions run `39902215086`, job `check` 1m56s: fmt, clippy `-D warnings`, tests, release build); PR #6 (https://github.com/Perchemop/rubric-desktop/pull/6, base `main`) merged by rebase 2026-10-23T04:50:36Z, `origin/main` = `0280ea5`.
 
 ### Completed
 - Domain: new `EditorAction` enum (`src/domain/action.rs`) with `ALL`, `label()` and `is_enabled(selection_count)` (delete/clear need a selection; history/view are always offered); 4 unit tests.
@@ -586,13 +586,13 @@
 - Docs: F-603 marked done in `docs/spec/README.md`, `REQUIREMENTS_TRACEABILITY.md` and `IMPLEMENTATION_PLAN.md`; CHANGELOG + DECISIONS entries added.
 
 ### Active
-- Next: run CI on `opencode/ci-f603` and merge once green; then grid/snap/rulers, packaging (F-7xx).
+- Next: grid/snap/rulers, packaging (F-7xx).
 
 ### Blocked
 - None.
 
-## 2026-10-23 — Process alignment with guide §5 (CTO.new-style free process); CI pending
-**Status**: implemented on a Pull Request — awaiting the GitHub Actions verdict and human review.
+## 2026-10-23 — Process alignment with guide §5 (CTO.new-style free process) CI-verified and merged
+**Status**: complete — CI SUCCESS on `7bf4f16` (GitHub Actions run `39923530068`, job `check` 1m54s); PR #7 (https://github.com/Perchemop/rubric-desktop/pull/7, base `main`) merged by rebase 2026-10-23T08:24:46Z, `origin/main` = `9d62937`.
 
 ### Completed
 - Adopted the guide §5 operating model `Chat (plan) → Task (execute) → Pull Request (review) → Merge` across `AGENTS.md`, `docs/development.md` and `docs/qc/checklist.md`; the Definition of Done now requires a Pull Request opened/updated for review and a human merge (trust but verify, guide §9).
@@ -601,7 +601,7 @@
 - Naming: GitHub Actions is described as the free cloud "Task Runner" wherever the CI-first rule appears.
 
 ### Active
-- Next: human review/merge of this PR; then grid/snap/rulers, packaging (F-7xx).
+- Next: grid/snap/rulers, packaging (F-7xx).
 
 ### Blocked
 - None.
