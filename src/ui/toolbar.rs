@@ -6,7 +6,10 @@ use crate::domain::{MarkupKind, Tool, ToolGroup, ToolSet};
 
 fn tool_button(ui: &mut Ui, active: &mut Tool, tool: Tool, label: &str) -> bool {
     let is_active = *active == tool;
-    let btn = ui.selectable_label(is_active, label);
+    let mut btn = ui.selectable_label(is_active, label);
+    if let Some(key) = tool.shortcut_key() {
+        btn = btn.on_hover_text(format!("{} ({})", label, key.to_ascii_uppercase()));
+    }
     if btn.clicked() {
         *active = tool;
         true
