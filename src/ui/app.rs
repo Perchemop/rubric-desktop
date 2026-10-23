@@ -749,8 +749,8 @@ fn key_to_shortcut_char(key: egui::Key) -> Option<char> {
 impl App for RubricApp {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut Frame) {
         // Computed before `ctx.input` so the immutable borrow of `ctx` for
-        // `wants_keyboard_input` does not overlap the input closure.
-        let wants_kb = ctx.wants_keyboard_input();
+        // `egui_wants_keyboard_input` does not overlap the input closure.
+        let wants_kb = ctx.egui_wants_keyboard_input();
         ctx.input(|i| {
             let editing = self.ui.text_edit.is_some();
             if (i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace)) && !editing
