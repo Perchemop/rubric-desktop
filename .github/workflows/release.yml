@@ -1,0 +1,136 @@
+name: Release
+
+# Runs on version tags and on manual dispatch, so a release never depends on a
+# human remembering the local build steps (the machine here is constrained).
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # Builds the release binary and uploads per-target zips as artefacts.
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset: rubric-linux-x86_64
+            archive: zip
+          - name: macos-arm64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            asset: rubric-macos-arm64
+            archive: zip
+          - name: windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset: rubric-windows-x86_64
+            archive: zip
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libxkbcommon-dev libssl-dev libgtk-3-dev libwayland-dev libxcb-shm0-dev \
+            libasound2-dev libudev-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # The release build is the same code CI already proved green; this only
+      # packages it, so no test re-run is needed here.
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }} --locked
+
+      - name: Prepare artifact (${{ matrix.name }})
+        shell: bash
+        run: |
+          BIN="target/${{ matrix.target }}/release/rubric"
+          if [ ! -f "$BIN" ] && [ -f "$BIN.exe" ]; then BIN="$BIN.exe"; fi
+          STAGE="${{ matrix.asset }}"
+          rm -rf "$STAGE" && mkdir -p "$STAGE"
+          cp "$BIN" "$STAGE/"
+          cp README.md "$STAGE/" 2>/dev/null || true
+          cp LICENSE "$STAGE/" 2>/dev/null || true
+          cp ATTRIBUTION.md "$STAGE/" 2>/dev/null || true
+          # PDFium is a run-time dependency (see Cargo.toml): point users at
+          # the supported discovery order instead of shipping a binary blob.
+          cp docs/pdfium.md "$STAGE/" 2>/dev/null || true
+          if command -v zip >/dev/null 2>&1; then
+            (cd "$STAGE" && zip -qr "../${{ matrix.asset }}.zip" .)
+          else
+            (cd "$STAGE" && tar -czf "../${{ matrix.asset }}.tar.gz" .)
+            mv "${{ matrix.asset }}.tar.gz" "${{ matrix.asset }}.zip"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}.zip
+          if-no-files-found: error
+
+  # Attaches the built artefacts to the GitHub release for the version tag.
+  # `workflow_dispatch` runs (no tag) publish as a pre-release so a manual run
+  # never looks like a real release.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Collect artifacts
+        id: collect
+        run: |
+          set -euo pipefail
+          files=$(find dist -type f \( -name '*.zip' -o -name '*.tar.gz' \) | sort)
+          echo "files<<EOF" >> "$GITHUB_OUTPUT"
+          for f in $files; do echo "$f" >> "$GITHUB_OUTPUT"; done
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          if [[ "$tag" == refs/* ]]; then tag="${GITHUB_REF#refs/tags/}"; fi
+          body="Automated release build for Rubric ${tag}."
+          if [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
+            # A manual dispatch is not a real release: keep it a pre-release so
+            # "Latest release" on the repo still points at a tagged version.
+            flags=(--prerelease)
+          else
+            flags=()
+          fi
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            if [[ "${#flags[@]}" -gt 0 ]]; then
+              gh release create "$tag" --title "Rubric ${tag}" --notes "$body" "${flags[@]}"
+            else
+              gh release create "$tag" --title "Rubric ${tag}" --notes "$body" --generate-notes
+            fi
+          else
+            echo "release $tag already exists; uploading assets"
+          fi
+          # --clobber makes re-runs idempotent.
+          gh release upload "$tag" ${{ steps.collect.outputs.files }} --clobber
