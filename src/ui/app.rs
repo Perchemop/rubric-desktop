@@ -690,10 +690,67 @@ impl RubricApp {
             }
         });
     }
+
+    /// Switch the active tool, abandoning any in-flight draft gesture exactly
+    /// like Escape does (but keeping the current selection). Used by the
+    /// unmodified-key tool shortcuts.
+    fn select_tool(&mut self, tool: Tool) {
+        if self.ui.active_tool == tool {
+            return;
+        }
+        self.ui.active_tool = tool;
+        self.ui.draw_cancelled = true;
+        self.draw = DrawState::Idle;
+        self.ui.move_selection = false;
+        let key = tool
+            .shortcut_key()
+            .map(|k| k.to_ascii_uppercase())
+            .unwrap_or('-');
+        self.ui.status = format!("{:?} ({key})", tool);
+    }
+}
+
+/// Map an egui [`Key`] to the char used by [`Tool::shortcut_key`] /
+/// [`Tool::from_shortcut_key`], or `None` when the key is not a tool shortcut.
+///
+/// Letters are the `Key::A`…`Key::Z` named variants (Shift is irrelevant:
+/// we match the key, not the typed character). Digits are the top-row
+/// `Key::Num1`…`Key::Num0` variants.
+fn key_to_shortcut_char(key: egui::Key) -> Option<char> {
+    match key {
+        egui::Key::V => Some('v'),
+        egui::Key::H => Some('h'),
+        egui::Key::S => Some('s'),
+        egui::Key::U => Some('u'),
+        egui::Key::Q => Some('q'),
+        egui::Key::T => Some('t'),
+        egui::Key::C => Some('c'),
+        egui::Key::N => Some('n'),
+        egui::Key::M => Some('m'),
+        egui::Key::R => Some('r'),
+        egui::Key::O => Some('o'),
+        egui::Key::D => Some('d'),
+        egui::Key::P => Some('p'),
+        egui::Key::Y => Some('y'),
+        egui::Key::L => Some('l'),
+        egui::Key::A => Some('a'),
+        egui::Key::I => Some('i'),
+        egui::Key::Num1 => Some('1'),
+        egui::Key::Num2 => Some('2'),
+        egui::Key::Num3 => Some('3'),
+        egui::Key::Num4 => Some('4'),
+        egui::Key::Num5 => Some('5'),
+        egui::Key::Num6 => Some('6'),
+        egui::Key::Num7 => Some('7'),
+        _ => None,
+    }
 }
 
 impl App for RubricApp {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut Frame) {
+        // Computed before `ctx.input` so the immutable borrow of `ctx` for
+        // `wants_keyboard_input` does not overlap the input closure.
+        let wants_kb = ctx.wants_keyboard_input();
         ctx.input(|i| {
             let editing = self.ui.text_edit.is_some();
             if (i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace)) && !editing
@@ -766,6 +823,32 @@ impl App for RubricApp {
                     self.draw = DrawState::Idle;
                     self.ui.move_selection = false;
                     self.clear_selection();
+                }
+            }
+
+            // Unmodified-key tool shortcuts (V = Select, R = Rectangle,
+            // 1 = Measure Length, ...). Blocked while editing text, while any
+            // widget wants the keyboard, or when Ctrl/Alt/Super is held (so
+            // Ctrl+Z/O/S etc. keep working). Shift is allowed: we match the
+            // egui `Key` variant, not the typed character.
+            if !editing
+                && !wants_kb
+                && !i.modifiers.ctrl
+                && !i.modifiers.alt
+                && !i.modifiers.command
+            {
+                for event in &i.events {
+                    if let egui::Event::Key {
+                        key, pressed: true, ..
+                    } = event
+                    {
+                        if let Some(c) = key_to_shortcut_char(*key) {
+                            if let Some(tool) = Tool::from_shortcut_key(c) {
+                                self.select_tool(tool);
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         });
