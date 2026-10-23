@@ -69,6 +69,7 @@
 - [x] Per-tool keyboard shortcuts (F-601: unmodified letter/digit keys, guarded)
 - [x] Context menus (F-603: shared canvas + inspector menu)
 - [x] Grid, snap, rulers (F-405/F-406: View > Show Grid / Snap to Grid / Grid Spacing; page-point rulers)
+- [x] Page thumbnails sidebar (F-404: PDF previews via the shared render cache, numbered placeholders, click to jump)
 - [x] Dark theme (F-602: View > Theme light/dark, persisted preference)
 - [ ] Icon/desktop entry, AppImage/DMG/MSI
 - [x] CI workflow skeleton (.github/workflows/ci.yml)

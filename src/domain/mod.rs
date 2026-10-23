@@ -9,6 +9,7 @@ pub mod project;
 pub mod report;
 pub mod style;
 pub mod theme;
+pub mod thumbs;
 pub mod units;
 
 pub use action::EditorAction;
@@ -24,6 +25,7 @@ pub use project::{
 pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCounts, NONE_LABEL};
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
 pub use theme::{AppPrefs, Theme};
+pub use thumbs::{thumb_layout, ThumbLayout};
 pub use units::{
     clamp_precision, format_value, format_value_precise, MeasureKind, MeasureUnit, Scale,
     DEFAULT_PRECISION, MAX_PRECISION,
