@@ -638,8 +638,10 @@
 ### Blocked
 - None.
 
-## 2026-10-23 — Phase 6 packaging: CI release + Linux/macOS/Windows installers (F-701–F-704); CI pending
-**Status**: implemented — awaiting the GitHub Actions verdict.
+## 2026-10-23 — Phase 6 packaging: CI release + Linux/macOS/Windows installers (F-701–F-704) CI-verified and merged
+**Status**: complete — CI SUCCESS on `f941d69` (GitHub Actions run `39949118025`, job `check`: fmt, clippy `-D warnings`, tests, release build). PR #11 (https://github.com/Perchemop/rubric-desktop/pull/11, base `main`) merged by rebase, `origin/main` updated.
+
+Note: this slice is packaging and documentation only — it adds no application code, so the existing CI gate (fmt/clippy/test/release) is the whole verification. The new `release.yml` and `package.yml` workflows themselves are only exercised on a version tag or `workflow_dispatch`; their YAML and the WiX definition were statically validated locally (`yaml.safe_load`, XML parse). Running a real packaging build is the follow-up step below.
 
 ### Completed
 - `.github/workflows/release.yml` (F-704): builds the release binary for Linux x86_64, macOS arm64 and Windows x86_64 (a fail-fast:false matrix so one platform failing does not hide the others), archives each, and attaches them to a GitHub release on `v*` tags; `workflow_dispatch` publishes a pre-release so a test run never looks like a real release.
