@@ -41,7 +41,7 @@ impl Grid {
     /// Snap a page point to the nearest grid intersection. Returns the point
     /// untouched when snapping is off or the spacing is not usable.
     pub fn snap(&self, p: Pt) -> Pt {
-        if !self.snap || !(self.spacing > 0.0) || !self.spacing.is_finite() {
+        if !self.snap || self.spacing <= 0.0 || !self.spacing.is_finite() {
             return p;
         }
         Pt::new(snap_value(p.x, self.spacing), snap_value(p.y, self.spacing))
@@ -88,7 +88,11 @@ pub fn nice_step(min_step: f64) -> f64 {
 /// The result is strictly ascending and empty for an empty, inverted or
 /// nonsensical range — a ruler must never loop forever.
 pub fn ruler_ticks(from: f64, to: f64, min_step: f64) -> Vec<f64> {
-    if !(to > from) || !(min_step > 0.0) || !min_step.is_finite() {
+    // NaN is not finite, so this also rejects NaN bounds outright.
+    if !from.is_finite() || !to.is_finite() || !min_step.is_finite() {
+        return Vec::new();
+    }
+    if to <= from || min_step <= 0.0 {
         return Vec::new();
     }
     let step = nice_step(min_step);
@@ -179,15 +183,16 @@ mod tests {
 
     #[test]
     fn ruler_ticks_cover_the_range_with_round_values() {
+        // A 30 pt minimum resolves to a 50 pt step on the 1/2/5 ladder.
         let ticks = ruler_ticks(0.0, 100.0, 30.0);
-        assert_eq!(ticks, vec![0.0, 35.0, 70.0]);
+        assert_eq!(ticks, vec![0.0, 50.0, 100.0]);
         assert!(ticks.windows(2).all(|w| w[0] < w[1]));
         for t in &ticks {
             assert!((0.0..=100.0).contains(t));
         }
         // Step is never finer than requested.
         let step = ticks[1] - ticks[0];
-        assert!(step >= 29.0);
+        assert!(step >= 30.0);
     }
 
     #[test]
