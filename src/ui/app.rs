@@ -15,7 +15,7 @@ use crate::domain::{
     AppPrefs, Document, EditorAction, Grid, History, MarkupKind, Project, Pt, Report,
     ReportGroupKey, StampPreset, Theme, Tool,
 };
-use crate::ui::{canvas, inspector, menu, theme, toolbar};
+use crate::ui::{canvas, inspector, menu, pages, theme, toolbar};
 use uuid::Uuid;
 
 #[allow(dead_code)]
@@ -179,6 +179,8 @@ pub struct RubricApp {
     /// Cache keys whose page render failed this project session. Poisoned so a
     /// failed background render is not attempted again on every repaint frame.
     failed_page_textures: HashSet<String>,
+    /// Page-thumbnail textures for the pages sidebar (spec F-404).
+    thumb_cache: pages::ThumbCache,
     /// Last PDF background error shown, to avoid spamming status every frame.
     bg_error: Option<String>,
     /// Session-only report export dialog state (no undo snapshot).
@@ -202,6 +204,7 @@ impl RubricApp {
             title_dirty: true,
             page_textures: HashMap::new(),
             failed_page_textures: HashSet::new(),
+            thumb_cache: pages::ThumbCache::default(),
             bg_error: None,
             report_export: None,
             theme: prefs.theme,
@@ -323,6 +326,7 @@ impl RubricApp {
         self.title_dirty = true;
         self.page_textures.clear();
         self.failed_page_textures.clear();
+        self.thumb_cache = pages::ThumbCache::default();
         self.bg_error = None;
         self.report_export = None;
         if let Some(doc) = self.active_doc() {
@@ -409,6 +413,22 @@ impl RubricApp {
     /// Returns true when the text actually changed and was written back.
     fn commit_text_edit(&mut self) -> bool {
         canvas::commit_text_edit(&mut self.ui, self.history.current_mut())
+    }
+
+    /// Switch to another page (spec F-404), committing any in-flight text edit
+    /// first. Shared by the top-bar arrows, Page Up/Down and the pages sidebar,
+    /// so all three agree on snapshot and draft-abandon semantics.
+    fn jump_to_page(&mut self, index: usize) -> bool {
+        let count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
+        if count == 0 || index >= count || index == self.ui.current_page {
+            return false;
+        }
+        if self.commit_text_edit() {
+            self.push_snapshot_quiet();
+        }
+        self.ui.current_page = index;
+        self.draw = DrawState::Idle;
+        true
     }
 
     /// Open (or re-open) a project file, replacing the current session.
@@ -702,24 +722,14 @@ impl RubricApp {
                         .add_enabled(current + 1 < count, egui::Button::new("▶"))
                         .clicked()
                     {
-                        let changed = self.commit_text_edit();
-                        if changed {
-                            self.push_snapshot_quiet();
-                        }
-                        self.ui.current_page = (current + 1).min(count - 1);
-                        self.draw = DrawState::Idle;
+                        self.jump_to_page(current + 1);
                     }
                     ui.label(format!("{}/{}", current + 1, count));
                     if ui
                         .add_enabled(current > 0, egui::Button::new("◀"))
                         .clicked()
                     {
-                        let changed = self.commit_text_edit();
-                        if changed {
-                            self.push_snapshot_quiet();
-                        }
-                        self.ui.current_page = current.saturating_sub(1);
-                        self.draw = DrawState::Idle;
+                        self.jump_to_page(current.saturating_sub(1));
                     }
                 }
             });
@@ -862,8 +872,7 @@ impl App for RubricApp {
                 if self.ui.text_edit.is_some() {
                     self.ui.status = "Finish or cancel text edit first".to_string();
                 } else if self.ui.current_page > 0 {
-                    self.ui.current_page -= 1;
-                    self.draw = DrawState::Idle;
+                    self.jump_to_page(self.ui.current_page - 1);
                 }
             }
             if i.key_pressed(egui::Key::PageDown) {
@@ -874,8 +883,7 @@ impl App for RubricApp {
                 } else {
                     let count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
                     if count > 0 && self.ui.current_page + 1 < count {
-                        self.ui.current_page += 1;
-                        self.draw = DrawState::Idle;
+                        self.jump_to_page(self.ui.current_page + 1);
                     }
                 }
             }
@@ -941,6 +949,28 @@ impl App for RubricApp {
         }
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(ui));
         egui::Panel::top("toolbar").show(ui, |ui| self.top_bar(ui));
+        // Pages sidebar (spec F-404). Only shown when the document has pages, so
+        // an empty project does not carry a dead strip.
+        let page_count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
+        if page_count > 0 {
+            let source_pdf = self.history.current().source_pdf.clone();
+            egui::Panel::left("pages")
+                .default_size(168.0)
+                .min_size(120.0)
+                .max_size(260.0)
+                .resizable(true)
+                .show(ui, |ui| {
+                    if let Some(index) = pages::draw_pages(
+                        ui,
+                        page_count,
+                        self.ui.current_page.min(page_count - 1),
+                        source_pdf.as_deref(),
+                        &mut self.thumb_cache,
+                    ) {
+                        self.jump_to_page(index);
+                    }
+                });
+        }
         egui::Panel::left("tools")
             .default_size(200.0)
             .min_size(180.0)
