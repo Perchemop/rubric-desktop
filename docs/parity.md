@@ -27,7 +27,7 @@ implemented · **Todo** = not started · **Out of scope** = deliberately exclude
 | Undo/redo | F-604 | Done | bounded 128 snapshots |
 | UI/UX polish (keyboard shortcuts, dark theme, context menus) | F-601–F-603 | Done (2026-10-23) | F-601 per-tool keys, F-602 dark theme, F-603 context menus |
 | Accessibility (contrast, keyboard reachability) | F-605 | Todo | reviewed later |
-| Packaging & installers (AppImage, DMG, MSI, CI artifacts) | F-701–F-704 | Todo | Phase 7 |
+| Packaging & installers (AppImage, DMG, MSI, CI artifacts) | F-701–F-704 | Done (2026-10-23) | CI release build for 3 targets + Linux AppImage, macOS DMG, Windows MSI; installers unsigned (Q-PACK-1) |
 | Web (WASM) target | — | Out of scope (v1) | see `docs/scope.md` |
 
 ## Notes

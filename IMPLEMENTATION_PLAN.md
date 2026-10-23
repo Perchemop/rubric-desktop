@@ -71,10 +71,12 @@
 - [x] Grid, snap, rulers (F-405/F-406: View > Show Grid / Snap to Grid / Grid Spacing; page-point rulers)
 - [x] Page thumbnails sidebar (F-404: PDF previews via the shared render cache, numbered placeholders, click to jump)
 - [x] Dark theme (F-602: View > Theme light/dark, persisted preference)
-- [ ] Icon/desktop entry, AppImage/DMG/MSI
+- [x] Icon/desktop entry, AppImage/DMG/MSI (F-701–F-704: `.github/workflows/package.yml` + `release.yml`; WiX definition in `packaging/wix/`)
 - [x] CI workflow skeleton (.github/workflows/ci.yml)
 - [ ] Benchmarks/tests expansion
 - [x] Changelog updates per slice
+- [x] PDFium runtime documented for users (docs/pdfium.md: discovery order, download, verification)
+- [ ] Follow-ups recorded as questions: installer code-signing (Q-PACK-1), raster icon set (Q-PACK-2)
 
 ## Slice strategy
 Build vertically: domain + tests → minimal UI → drawing + selection → save/load → measurements → review → polish. Keep each slice small, compiling, tested.

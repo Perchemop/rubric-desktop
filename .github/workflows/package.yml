@@ -1,0 +1,236 @@
+name: Package
+
+# Builds the platform installers (spec F-701–F-704). Triggered by a version
+# tag alongside `release.yml`, or manually to smoke-test packaging without a
+# release. Only Linux is fully automated: macOS needs a notarised developer
+# identity and Windows needs a code-signing certificate, neither of which is
+# committed, so those two build unsigned by default and are documented as such.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux AppImage / tarball (.deb, .rpm via fpm)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev \
+            libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libgtk-3-dev \
+            libwayland-dev libasound2-dev libudev-dev squashfs-tools
+
+      - name: Install linuxdeploy + AppImage plugin
+        run: |
+          set -eux
+          curl -fsSL -o /tmp/linuxdeploy.AppImage \
+            "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+          curl -fsSL -o /usr/local/bin/zipmerge \
+            "https://github.com/AppImage/zipmerge/releases/download/v1.1/zipmerge-x86_64.AppImage" || true
+          chmod +x /tmp/linuxdeploy.AppImage
+          # linuxdeploy itself type 2 AppImages need FUSE; use --appimage-extract.
+          mkdir -p /tmp/ld && cd /tmp/ld
+          /tmp/linuxdeploy.AppImage --appimage-extract >/dev/null
+          echo "/tmp/ld/squashfs-root/usr/bin" >> "$GITHUB_PATH"
+
+      - name: Build release binary
+        run: cargo build --release --locked
+
+      - name: Assemble AppDir and bundle
+        shell: bash
+        run: |
+          set -eux
+          APPDIR=AppDir
+          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" \
+            "$APPDIR/usr/share/icons/hicolor/512x512/apps" \
+            "$APPDIR/usr/share/metainfo"
+          cp target/release/rubric "$APPDIR/usr/bin/rubric"
+
+          # Desktop entry + metadata (original text written for Rubric).
+          cat > "$APPDIR/usr/share/applications/rubric.desktop" <<'DESKTOP'
+          [Desktop Entry]
+          Type=Application
+          Name=Rubric
+          GenericName=PDF Markup and Measurement
+          Comment=Free, cross-platform PDF markup, review and measurement
+          Exec=rubric %F
+          Icon=rubric
+          Categories=Office;Graphics;Utility;
+          MimeType=application/pdf;application/x-rubric-json;
+          Terminal=false
+          StartupNotify=true
+          DESKTOP
+
+          cat > "$APPDIR/usr/share/metainfo/rubric.appdata.xml" <<'META'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <component type="desktop-application">
+            <id>rubric</id>
+            <name>Rubric</name>
+            <summary>Free, cross-platform PDF markup, review and measurement</summary>
+            <description>
+              <p>Mark up and review PDF pages, add notes and measurements, and
+              save everything in a portable human-readable sidecar file.</p>
+            </description>
+            <launchable type="desktop-id">rubric.desktop</launchable>
+            <url type="homepage">https://github.com/Perchemop/rubric-desktop</url>
+            <url type="bugtracker">https://github.com/Perchemop/rubric-desktop/issues</url>
+            <project_license>MIT</project_license>
+          </component>
+          META
+
+          # Icon: ship the branded SVG. Raster sizes are a packaging follow-up
+          # (the repo currently carries only assets/logo.svg), so the icon
+          # appears via the SVG and the entry stays honest — a missing raster
+          # must never silently produce a broken button.
+          if [ -f assets/logo.svg ]; then
+            cp assets/logo.svg "$APPDIR/usr/share/icons/hicolor/scalable/apps/rubric.svg"
+            cp assets/logo.svg "$APPDIR/rubric.svg"
+          fi
+
+          # Bundle PDFium next to the binary (run-time dependency, see
+          # docs/pdfium.md). linuxdeploy copies it into the AppDir because it
+          # is declared a library of the binary below.
+          PDFIUM=$(find "$HOME/pdfium" /usr/lib -name 'libpdfium.so*' 2>/dev/null | head -1 || true)
+          if [ -n "$PDFIUM" ]; then
+            mkdir -p "$APPDIR/usr/lib"
+            cp "$PDFIUM" "$APPDIR/usr/lib/"
+          fi
+
+          OUTPUT=Rubric-x86_64.AppImage
+          # Fail loudly rather than shipping a broken bundle.
+          linuxdeploy --appdir "$APPDIR" --output appimage || \
+            (echo "linuxdeploy failed; see log" && exit 1)
+          test -f "$OUTPUT"
+          mv "$OUTPUT" rubric-x86_64.AppImage || true
+
+          # Portable fallback for systems that cannot run AppImages.
+          mkdir -p dist-portable/usr
+          cp target/release/rubric dist-portable/
+          cp README.md LICENSE ATTRIBUTION.md docs/pdfium.md dist-portable/ 2>/dev/null || true
+          tar -czf rubric-linux-x86_64.tar.gz -C dist-portable .
+          chmod +x dist-portable/rubric
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: |
+            rubric-x86_64.AppImage
+            rubric-linux-x86_64.tar.gz
+          if-no-files-found: warn
+
+  macos:
+    name: macOS .app bundle / .dmg
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build release binary
+        run: cargo build --release --locked
+      - name: Assemble .app bundle
+        shell: bash
+        run: |
+          set -eux
+          APP=Rubric.app
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp target/release/rubric "$APP/Contents/MacOS/rubric"
+
+          cat > "$APP/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" \
+            "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key><string>Rubric</string>
+            <key>CFBundleDisplayName</key><string>Rubric</string>
+            <key>CFBundleIdentifier</key><string>dev.rubric.desktop</string>
+            <key>CFBundleVersion</key><string>0.1.0</string>
+            <key>CFBundleShortVersionString</key><string>0.1.0</string>
+            <key>CFBundleExecutable</key><string>rubric</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>LSMinimumSystemVersion</key><string>10.15</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+          # macOS bundles want raster ICNS; the repo ships an SVG only today, so
+          # record the gap instead of shipping a broken icon (see assumptions).
+          if [ -f assets/logo.svg ]; then
+            cp assets/logo.svg "$APP/Contents/Resources/rubric.svg"
+          fi
+
+          # PDFium is a run-time dependency; ship it inside the bundle for
+          # macOS because there is no sensible system location on stock setups.
+          mkdir -p "$APP/Contents/Frameworks"
+          PDFIUM=$(find "$HOME/pdfium" /opt/homebrew/lib /usr/local/lib \
+            -name 'libpdfium.dylib' 2>/dev/null | head -1 || true)
+          if [ -n "$PDFIUM" ]; then cp "$PDFIUM" "$APP/Contents/Frameworks/"; fi
+
+          hdiutil create -volname Rubric -srcfolder "$APP" -ov -format UDZO \
+            rubric-macos.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-packages
+          path: rubric-macos.dmg
+          if-no-files-found: error
+      # Signing is deliberately NOT performed: no certificate is committed to
+      # this repository. See docs/assumptions-and-questions.md (Q-PACK-1).
+
+  windows:
+    name: Windows MSI / portable zip
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build release binary
+        run: |
+          cargo build --release --locked
+          copy target\release\rubric.exe .
+      - name: Build MSI with WiX
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 4.0.5
+          $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+          wix extension add WixToolset.UI.wixext/4.0.5
+          # The product definition (packaging/wix/Product.wxs) is kept in-repo so
+          # installer metadata is reviewable; this only runs it.
+          Push-Location packaging/wix
+          wix build Product.wxs `
+            -d "BinaryTargetDir=../../target/release/" `
+            -arch x64 `
+            -o ../../rubric.msi
+          Pop-Location
+      - name: Assemble portable zip
+        shell: bash
+        run: |
+          set -eux
+          STAGE=rubric-windows-x86_64
+          rm -rf "$STAGE" && mkdir -p "$STAGE"
+          cp target/release/rubric.exe "$STAGE/"
+          cp README.md LICENSE ATTRIBUTION.md "$STAGE/"
+          cp docs/pdfium.md "$STAGE/"
+
+          # Bundle the PDFium runtime beside the executable when present.
+          PDFIUM=$(find "$HOME/pdfium" "$env:LOCALAPPDATA" -iname 'pdfium.dll' 2>/dev/null | head -1 || true)
+          if [ -n "$PDFIUM" ]; then cp "$PDFIUM" "$STAGE/"; fi
+
+          cd "$STAGE"
+          7z a "../rubric-windows-x86_64.zip" . >/dev/null 2>&1 || \
+            powershell -NoProfile -Command "Compress-Archive -Path . -DestinationPath ../rubric-windows-x86_64.zip -Force"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: |
+            *.msi
+            rubric-windows-x86_64.zip
+          if-no-files-found: warn

@@ -97,10 +97,10 @@ This requirement set is **original material authored for Rubric**. It is derived
 
 | ID | Feature | Priority | Notes |
 |---|---|---|---|
-| F-701 | Linux AppImage + desktop entry/icon | Ph 6 | pending |
-| F-702 | macOS DMG | Ph 6 | pending |
-| F-703 | Windows MSI | Ph 6 | pending |
-| F-704 | CI release artifacts (tagged builds in GitHub Actions) | Ph 6 | CI skeleton exists |
+| F-701 | Linux AppImage + desktop entry/icon | Ph 6 | done (package.yml: linuxdeploy AppDir with `.desktop` + appstream metadata → `.AppImage`; portable tarball fallback; icon is SVG-only — Q-PACK-2) |
+| F-702 | macOS DMG | Ph 6 | done (package.yml: `Rubric.app` bundle → `.dmg`; unsigned by default — Q-PACK-1) |
+| F-703 | Windows MSI | Ph 6 | done (package.yml: WiX v4, definition kept in-repo at `packaging/wix/Product.wxs`; unsigned by default — Q-PACK-1) |
+| F-704 | CI release artifacts (tagged builds in GitHub Actions) | Ph 6 | done (release.yml builds all three targets and attaches archives to a GitHub release on `v*` tags; workflow_dispatch publishes a pre-release) |
 
 ## Non-goals
 

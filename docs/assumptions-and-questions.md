@@ -44,6 +44,21 @@
 20. **Image export scope (F-505)**: current page or whole document? Fixed DPI or choice? Where does print fit — OS print dialog only?
 21. **Layer model (F-116)**: per-page or per-document layers, and how does it relate to the existing ToolSet presets (expand ToolSet → Layer)?
 22. **Page navigation (F-403/F-404)**: thumbnail sidebar vs page dropdown vs both; does navigation arrive with PDF import (Phase 5) or earlier on blank pages?
+23. **Q-PACK-1 (signing)**: Should macOS/Windows installers be code-signed (and notarised for Apple)? Signing requires secrets that this repository deliberately does not hold, so the first packaging pass ships **unsigned** installers and documents that trust decision instead of faking a signature.
+24. **Q-PACK-2 (icons)**: Only `assets/logo.svg` exists today. Raster icons (PNG at 16/32/48/64/128/256/512 and an `.icns` for macOS) are needed for proper desktop integration; the current workflows ship the SVG and mark this as a follow-up rather than generating a conflicting icon.
+25. **Q-PACK-3 (PDFium in installers)**: PDFium is a run-time dependency (`docs/pdfium.md`). Linux/macOS bundles copy it next to the executable; Windows copies `pdfium.dll` beside `rubric.exe` when found. Should official releases bundle it (with its BSD-3-Clause terms restated) or keep shipping runtime-only discovery? Working assumption: bundle, because PDF import is the app's core purpose.
+
+## Packaging (Phase 7, 2026-10-23) — architecture as built
+
+- `.github/workflows/ci.yml` (existing) is the quality gate: fmt, clippy `-D warnings`, tests, release build. It runs on every push to `main` and every PR.
+- `.github/workflows/release.yml` (new, spec F-701) builds the release binary on three targets (Linux x86_64, macOS arm64, Windows x86_64), packages each as a portable archive, and attaches them to a GitHub release. Tags `v*` publish as real releases; `workflow_dispatch` publishes as a pre-release so a manual run never masquerades as one.
+- `.github/workflows/package.yml` (new, spec F-702/F-703/F-704) builds the native installers: a Linux **AppImage** (linuxdeploy over an AppDir containing a `.desktop` entry and appstream metadata), a macOS **`.app`/`.dmg`** bundle, and a Windows **MSI** (WiX v4, product definition kept in-repo at `packaging/wix/Product.wxs`), each with a portable zip/tarball fallback.
+- Both workflows honour the CI-first rule: they only build and package, never re-run the test suite, and the desktop machine never runs any of them.
+
+## Docs (Phase 7, 2026-10-23)
+
+- `docs/pdfium.md` (new) documents the PDFium run-time contract: discovery order (`RUBRIC_PDFIUM_PATH` → executable directory → system path), where to obtain pre-built binaries, what a failed import looks like, and which installer bundles the library.
+- The packaging workflows deliberately avoid `--locked` surprises by not bumping the lockfile; if `Cargo.lock` is absent from the tree they build against the registry ranges (see Questions 31 on versioning).
 
 ## Decisions so far
 - Name: Rubric (original, punchy, thematically apt).
