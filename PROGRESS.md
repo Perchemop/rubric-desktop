@@ -606,6 +606,22 @@
 ### Blocked
 - None.
 
+## 2026-10-23 — Phase 6 grid, snap-to-grid and rulers (F-405/F-406) CI-verified and merged
+**Status**: complete — CI SUCCESS on `cbc59cd` (GitHub Actions run `39934068905`, job `check`: fmt, clippy `-D warnings`, tests, release build). PR #9 (https://github.com/Perchemop/rubric-desktop/pull/9, base `main`) merged by rebase, `origin/main` updated.
+
+### Completed
+- Domain: new pure module `src/domain/grid.rs` — `Grid` (spacing / visible / snap) with nearest-intersection `snap`, `spacing_px`/`should_draw` (grid hidden below a 6 px pitch), and the 1/2/5 `nice_step` / `ruler_ticks` ladder for ruler labels. 10 new unit tests (snap rounding incl. halfway, disabled/invalid-spacing identity, draw gating, ladder values, tick coverage/offset/degeneracy/zoom).
+- UI: `src/ui/canvas.rs` draws `draw_grid` under the markups and `draw_rulers` as labelled page-point ticks on the top/left margins that follow pan and zoom. Snapping applies to markup **creation anchors** only; hit-testing (`pick_markup_id`) uses the exact pointer position so grid-unaligned markups stay selectable.
+- View menu: **Show Grid**, **Snap to Grid**, **Grid Spacing** (12/24/36/72 pt).
+- Docs: F-405/F-406 marked done in `docs/spec/README.md`, `REQUIREMENTS_TRACEABILITY.md` (R-S-012 → DONE) and `IMPLEMENTATION_PLAN.md`; CHANGELOG, DECISIONS and `docs/parity.md` updated.
+- Note: first CI run (`39932966001`) failed clippy (`neg_cmp_op_on_partial_ord` on the grid bounds guard) and a wrong tick expectation; both fixed and re-verified green.
+
+### Active
+- Next: page thumbnails (F-404), then packaging (F-7xx).
+
+### Blocked
+- None.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
 import, report export, page image export, print). Phase 6 in progress: dark
