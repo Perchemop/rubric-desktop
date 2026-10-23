@@ -591,8 +591,24 @@
 ### Blocked
 - None.
 
+## 2026-10-23 — Process alignment with guide §5 (CTO.new-style free process); CI pending
+**Status**: implemented on a Pull Request — awaiting the GitHub Actions verdict and human review.
+
+### Completed
+- Adopted the guide §5 operating model `Chat (plan) → Task (execute) → Pull Request (review) → Merge` across `AGENTS.md`, `docs/development.md` and `docs/qc/checklist.md`; the Definition of Done now requires a Pull Request opened/updated for review and a human merge (trust but verify, guide §9).
+- Reframed `.opencode/agents/orchestrator.md` as the Chat/planning role and added `.opencode/agents/coder.md` (Task execution). Subagents still never push; the parent agent commits, pushes and opens the PR.
+- Added the required `docs/parity.md` capability-parity tracker (a summary view over `REQUIREMENTS_TRACEABILITY.md`).
+- Naming: GitHub Actions is described as the free cloud "Task Runner" wherever the CI-first rule appears.
+
+### Active
+- Next: human review/merge of this PR; then grid/snap/rulers, packaging (F-7xx).
+
+### Blocked
+- None.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
 import, report export, page image export, print). Phase 6 in progress: dark
-theme (F-602) and per-tool keyboard shortcuts (F-601) merged; editor context
-menus (F-603) implemented pending CI. CI-first throughout.
+theme (F-602), per-tool keyboard shortcuts (F-601) and editor context menus
+(F-603) merged. Process follows guide §5 (Chat → Task → PR → Merge) with GitHub
+Actions as the free Task Runner. CI-first throughout.

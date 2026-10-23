@@ -4,18 +4,20 @@ Run these in order per phase / release. Record each run (date, phase, CI
 run ID, outcome) in `PROGRESS.md`; never claim completion without a green
 CI run.
 
-## Per slice (Definition of Done)
+## Per Task (Definition of Done)
 
-- [ ] Feature slice is vertical (domain + tests + UI + docs in one slice).
+- [ ] Task is one vertical slice (domain + tests + UI + docs).
 - [ ] Unit tests cover happy path, boundary, and failure/edge cases.
 - [ ] Headless domain tests need no display; no CPU-heavy work runs locally.
 - [ ] `cargo fmt --all -- --check` passes locally.
-- [ ] CI green on GitHub Actions: fmt → clippy `-D warnings` → `test --all`
-      → release build.
+- [ ] CI green on GitHub Actions (the free Task Runner): fmt → clippy
+      `-D warnings` → `test --all` → release build.
+- [ ] Pull Request opened/updated for review; **the human merges** (guide §5,
+      §9 — trust but verify).
 - [ ] No fake success states / dead controls / placeholder-only data.
 - [ ] `CHANGELOG.md`, `PROGRESS.md` updated with **exact** CI results.
 - [ ] `REQUIREMENTS_TRACEABILITY.md` statuses match reality.
-- [ ] Change is small and reviewable (per guide §6).
+- [ ] Change is small and reviewable (per guide §8).
 
 ## Per phase
 
