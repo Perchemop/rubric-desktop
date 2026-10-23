@@ -549,7 +549,21 @@
 ### Blocked
 - None.
 
+## 2026-10-23 — Phase 6 dark theme (F-602) CI-verified and merged; model map refreshed
+**Status**: complete — CI SUCCESS on `f8cf137` (GitHub Actions run `39775564387`, re-run `39776982743`); PR #1 merged 2026-10-22T12:16:23Z as fast-forward, `origin/main` = `f8cf137`.
+
+### Completed
+- CI verdict SUCCESS for commit `f8cf137` (branch `opencode/ci`): fmt check, clippy `-D warnings`, `cargo test`, release build all green. Closes out the "pending CI on the re-pushed history" item (guide-v2 model-policy docs, originality wording rewrite, CI-first subagent config, dark-theme test-only compile fix).
+- PR #1 (https://github.com/Perchemop/rubric-desktop/pull/1, base `main`) merged as fast-forward; Phase 6 dark theme (spec F-602) fully landed on main: View > Theme menu (Light/Dark), app-level preference persisted in project settings, egui 0.36 per-theme styles. Landing commits: `f9ec330` (feature), `89b3bca` (egui 0.36 `radio_value(current, alternative, atoms)` signature fix in the theme menu), `21357cd` (dark-theme test-only compile errors).
+- Provider note: the OpenCode free tier no longer offers `opencode/big-pickle` (was orchestrator + docs-writer). This session's orchestrator runs on NVIDIA free tier 2 (`nvidia/z-ai/glm-5.3`); worker subagents stay on OpenCode free. Role→model map refreshed in `docs/current-model-map.md` per guide §5.2.
+
+### Active
+- Next: Phase 6 slice — per-tool keyboard shortcuts (F-601); then context menus (F-603), grid/snap/rulers, packaging (F-7xx).
+
+### Blocked
+- None.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
-import, report export, page image export, print). Phase 6 in progress
-(dark theme). CI-first throughout.
+import, report export, page image export, print). Phase 6 in progress with dark
+theme (F-602) done and merged. CI-first throughout.
