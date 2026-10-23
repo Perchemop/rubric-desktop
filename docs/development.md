@@ -16,25 +16,35 @@
 | Read-only `git status/diff`, `gh run view` | Local |
 | `cargo check`, `clippy`, `test`, release build | **CI only** — never locally |
 
-## Slice workflow (guide §8)
+## Task workflow (guide §5, §8)
 
-1. Pick the next unfinished vertical slice (`PROGRESS.md`).
-2. Implement via the subagent pipeline in `.opencode/agents/`:
-   `domain-dev` (types + unit tests) → `test-writer` → `ui-dev` →
-   `reviewer` (read-only) → `docs-writer` → `fixer` (fmt/clippy/test
-   failures). Subagents never commit or push; the parent agent does.
-3. `cargo fmt --all`, commit a small focused slice, push to `main`.
-4. Watch CI (`gh run view <id>`): fmt → clippy `-D warnings` →
-   `cargo test --all` → release build. Route failures to `fixer`.
-5. Record exact results in `PROGRESS.md` / `CHANGELOG.md`; update
-   `REQUIREMENTS_TRACEABILITY.md`. Never claim a feature is done before CI
-   is green (guide §9).
+Every change is a **Task** in the CTO.new-style cycle
+`Chat (plan) → Task (execute) → Pull Request (review) → Merge`:
 
-## Definition of Done (per slice)
+1. **Chat / plan** — pick the next unfinished slice (`PROGRESS.md`,
+   `IMPLEMENTATION_PLAN.md`) and write a Task brief (requirement IDs, files
+   likely touched, acceptance criteria, definition of done).
+2. **Task / execute** — implement via the subagent pipeline in
+   `.opencode/agents/`: `coder` plus the stage specialists it needs
+   (`domain-dev` → `test-writer` → `ui-dev` → `docs-writer`), with `fixer`
+   handling fmt/clippy/test failures. Subagents never commit or push; the parent
+   agent does.
+3. `cargo fmt --all`, commit a small focused Task, push, and open/update a
+   **Pull Request** (the CI runner drives this).
+4. **Review** — GitHub Actions (the free Task Runner) runs fmt → clippy
+   `-D warnings` → `cargo test --all` → release build; the `reviewer` subagent
+   and the human review the PR. Route failures to `fixer`.
+5. **Merge** — the **human** merges once satisfied (trust but verify, guide
+   §9). Record exact results in `PROGRESS.md` / `CHANGELOG.md`; update
+   `REQUIREMENTS_TRACEABILITY.md` and `docs/parity.md`. Never claim a feature is
+   done before CI is green.
+
+## Definition of Done (per Task)
 
 See guide §8 and `docs/qc/checklist.md`: requirements implemented, tests
-covering normal + failure paths, CI green, tracking docs updated, no fake
-success states, change small and reviewable.
+covering normal + failure paths, CI green, **Pull Request opened/updated for
+review**, tracking docs updated, no fake success states, change small and
+reviewable, and no heavy work run locally.
 
 ## Testing
 
