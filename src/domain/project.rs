@@ -350,6 +350,83 @@ pub enum Tool {
 }
 
 impl Tool {
+    /// Every tool variant, in enum declaration order.
+    ///
+    /// Useful for tests, keyboard-shortcut legends and UI palette grids.
+    pub const ALL: [Tool; 24] = [
+        Tool::Select,
+        Tool::Highlight,
+        Tool::Strikeout,
+        Tool::Underline,
+        Tool::Squiggly,
+        Tool::Text,
+        Tool::Callout,
+        Tool::Note,
+        Tool::Stamp,
+        Tool::Rectangle,
+        Tool::Ellipse,
+        Tool::Cloud,
+        Tool::Polygon,
+        Tool::Polyline,
+        Tool::Line,
+        Tool::Arrow,
+        Tool::Ink,
+        Tool::MeasureLength,
+        Tool::MeasurePerimeter,
+        Tool::MeasureArea,
+        Tool::MeasureAngle,
+        Tool::MeasureDiameter,
+        Tool::MeasureRadius,
+        Tool::MeasureCount,
+    ];
+
+    /// Canonical single-key shortcut for this tool, as a lowercase [`char`].
+    ///
+    /// Markup and shape tools use letters; measurement tools use digits `1`
+    /// through `7`. These are *unmodified* keys, so the UI must ignore them
+    /// while a text field has focus and must not fire them when Ctrl/Alt/Super
+    /// is held. Returns `None` for tools that have no assigned key yet.
+    pub fn shortcut_key(self) -> Option<char> {
+        Some(match self {
+            Tool::Select => 'v',
+            Tool::Highlight => 'h',
+            Tool::Strikeout => 's',
+            Tool::Underline => 'u',
+            Tool::Squiggly => 'q',
+            Tool::Text => 't',
+            Tool::Callout => 'c',
+            Tool::Note => 'n',
+            Tool::Stamp => 'm',
+            Tool::Rectangle => 'r',
+            Tool::Ellipse => 'o',
+            Tool::Cloud => 'd',
+            Tool::Polygon => 'p',
+            Tool::Polyline => 'y',
+            Tool::Line => 'l',
+            Tool::Arrow => 'a',
+            Tool::Ink => 'i',
+            Tool::MeasureLength => '1',
+            Tool::MeasurePerimeter => '2',
+            Tool::MeasureArea => '3',
+            Tool::MeasureAngle => '4',
+            Tool::MeasureDiameter => '5',
+            Tool::MeasureRadius => '6',
+            Tool::MeasureCount => '7',
+        })
+    }
+
+    /// Resolve a single-key shortcut back to its tool.
+    ///
+    /// Matching is ASCII case-insensitive (`'V'` and `'v'` both select
+    /// [`Tool::Select`]); no other equivalence is applied. Returns `None` for
+    /// keys that are not bound to a tool.
+    pub fn from_shortcut_key(key: char) -> Option<Tool> {
+        let key = key.to_ascii_lowercase();
+        Self::ALL
+            .into_iter()
+            .find(|tool| tool.shortcut_key() == Some(key))
+    }
+
     pub fn from_kind(k: MarkupKind) -> Self {
         match k {
             MarkupKind::Highlight => Tool::Highlight,
