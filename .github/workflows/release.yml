@@ -24,6 +24,14 @@ jobs:
             target: x86_64-unknown-linux-gnu
             asset: rubric-linux-x86_64
             archive: zip
+          # ARM Linux (Raspberry Pi OS, ARM Chromebooks, Linux-on-Apple-silicon
+          # boxes). GitHub's free ARM runners make this native rather than an
+          # emulated cross-build.
+          - name: linux-arm64
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            asset: rubric-linux-arm64
+            archive: zip
           - name: macos-arm64
             os: macos-latest
             target: aarch64-apple-darwin
@@ -69,14 +77,16 @@ jobs:
           cp README.md "$STAGE/" 2>/dev/null || true
           cp LICENSE "$STAGE/" 2>/dev/null || true
           cp ATTRIBUTION.md "$STAGE/" 2>/dev/null || true
-          # PDFium is a run-time dependency (see Cargo.toml): point users at
-          # the supported discovery order instead of shipping a binary blob.
+          # PDFium is a run-time dependency (see Cargo.toml): ship the doc that
+          # explains discovery instead of a binary blob.
           cp docs/pdfium.md "$STAGE/" 2>/dev/null || true
+          # Use zip when available; otherwise emit a correctly-named tarball.
+          # (Renaming a .tar.gz to .zip would produce an archive most tools
+          # reject, so the fallback keeps its real extension.)
           if command -v zip >/dev/null 2>&1; then
             (cd "$STAGE" && zip -qr "../${{ matrix.asset }}.zip" .)
           else
             (cd "$STAGE" && tar -czf "../${{ matrix.asset }}.tar.gz" .)
-            mv "${{ matrix.asset }}.tar.gz" "${{ matrix.asset }}.zip"
           fi
 
       - uses: actions/upload-artifact@v4
@@ -93,6 +103,10 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !cancelled() && needs.build.result == 'success' }}
     steps:
+      # `gh release create` resolves the repository from the git remote, so the
+      # job must have a checkout even though it never builds anything.
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -113,19 +127,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
-          if [[ "$tag" == refs/* ]]; then tag="${GITHUB_REF#refs/tags/}"; fi
-          body="Automated release build for Rubric ${tag}."
-          if [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
-            # A manual dispatch is not a real release: keep it a pre-release so
-            # "Latest release" on the repo still points at a tagged version.
-            flags=(--prerelease)
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+            [[ "$tag" == refs/* ]] && tag="${GITHUB_REF#refs/tags/}"
+            prerelease=()
           else
-            flags=()
+            # A manual dispatch has no version to name. Reusing a branch name
+            # here would create a tag that collides with that branch, so the
+            # run gets its own clearly-not-a-release tag instead.
+            tag="dispatch-$(date -u +%Y%m%d-%H%M%S)"
+            prerelease=(--prerelease)
           fi
+          body="Automated release build for Rubric ${tag}."
           if ! gh release view "$tag" >/dev/null 2>&1; then
-            if [[ "${#flags[@]}" -gt 0 ]]; then
-              gh release create "$tag" --title "Rubric ${tag}" --notes "$body" "${flags[@]}"
+            if [[ "${#prerelease[@]}" -gt 0 ]]; then
+              # A manual dispatch is not a real release: keep it a pre-release so
+              # "Latest release" on the repo still points at a tagged version.
+              gh release create "$tag" --title "Rubric ${tag}" --notes "$body" "${prerelease[@]}"
             else
               gh release create "$tag" --title "Rubric ${tag}" --notes "$body" --generate-notes
             fi
