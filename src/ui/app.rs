@@ -12,8 +12,8 @@ use crate::data::{
     render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
 use crate::domain::{
-    AppPrefs, Document, EditorAction, History, MarkupKind, Project, Pt, Report, ReportGroupKey,
-    StampPreset, Theme, Tool,
+    AppPrefs, Document, EditorAction, Grid, History, MarkupKind, Project, Pt, Report,
+    ReportGroupKey, StampPreset, Theme, Tool,
 };
 use crate::ui::{canvas, inspector, menu, theme, toolbar};
 use uuid::Uuid;
@@ -128,6 +128,10 @@ pub(crate) struct UiState {
     /// Custom scale editor inputs (paper inches and real units).
     pub(crate) scale_paper_inches: f64,
     pub(crate) scale_real_units: f64,
+    /// Canvas grid / snap-to-grid settings (spec F-405). Session state: it
+    /// describes how the canvas behaves, never project data, so it is not
+    /// persisted into `.rubric.json`.
+    pub(crate) grid: Grid,
 }
 
 impl Default for UiState {
@@ -153,6 +157,7 @@ impl Default for UiState {
             dirty: false,
             scale_paper_inches: 1.0,
             scale_real_units: 10.0,
+            grid: Grid::default(),
         }
     }
 }
@@ -629,6 +634,36 @@ impl RubricApp {
                 if ui.button("Fit Page").clicked() {
                     self.apply_editor_action(EditorAction::FitPage);
                 }
+                ui.separator();
+                // Canvas guides (F-405): grid visibility, snapping and pitch.
+                // Grid lines are only drawn when the pitch resolves at the
+                // current zoom, so the tick stays honest even when off.
+                let mut grid_visible = self.ui.grid.visible;
+                if ui.checkbox(&mut grid_visible, "Show Grid").changed() {
+                    self.ui.grid.visible = grid_visible;
+                }
+                if ui
+                    .checkbox(&mut self.ui.grid.snap, "Snap to Grid")
+                    .clicked()
+                {
+                    self.ui.status = if self.ui.grid.snap {
+                        "Snap to grid on".to_string()
+                    } else {
+                        "Snap to grid off".to_string()
+                    };
+                }
+                ui.menu_button("Grid Spacing", |ui| {
+                    let mut spacing = self.ui.grid.spacing;
+                    for s in Grid::SPACINGS {
+                        if ui
+                            .selectable_value(&mut spacing, s, format!("{s} pt"))
+                            .clicked()
+                        {
+                            self.ui.grid.spacing = s;
+                            self.ui.status = format!("Grid spacing → {s} pt");
+                        }
+                    }
+                });
                 ui.separator();
                 ui.menu_button("Theme", |ui| {
                     for option in Theme::ALL {

@@ -4,8 +4,8 @@ use eframe::egui::{self, Align2, Color32, FontId, Painter, Pos2, Sense, Ui, Vec2
 use uuid::Uuid;
 
 use crate::domain::{
-    angle_degrees, Markup, MarkupGeometry, MarkupKind, Project, Pt, Rect as DRect, ReviewStatus,
-    Tool,
+    angle_degrees, ruler_ticks, Grid, Markup, MarkupGeometry, MarkupKind, Project, Pt,
+    Rect as DRect, ReviewStatus, Tool,
 };
 
 use super::theme::to_color32;
@@ -96,6 +96,112 @@ fn measure_anchor(m: &Markup) -> Pt {
         MarkupGeometry::Angle { vertex, .. } => *vertex,
         MarkupGeometry::Count { at, .. } => *at,
         _ => m.bounds().center(),
+    }
+}
+
+/// Canvas grid (spec F-405). Guides only: drawn under the markups and skipped
+/// entirely when the pitch would be too fine to resolve, so a far zoom never
+/// produces an unreadable wash.
+fn draw_grid(painter: &Painter, bounds: DRect, grid: Grid, pan: Vec2, zoom: f32, origin: Pos2) {
+    if !grid.should_draw(zoom) {
+        return;
+    }
+    let step = grid.spacing as f64;
+    let stroke = egui::Stroke::new(1.0, Color32::from_rgb(203, 209, 221));
+    let cols = (bounds.right() as f64 / step).ceil() as i32;
+    for k in 0..=cols {
+        let x = (k as f64 * step) as f32;
+        let a = to_screen(Pt::new(x, bounds.y), pan, zoom, origin);
+        let b = to_screen(Pt::new(x, bounds.bottom()), pan, zoom, origin);
+        painter.line_segment([a, b], stroke);
+    }
+    let rows = (bounds.bottom() as f64 / step).ceil() as i32;
+    for k in 0..=rows {
+        let y = (k as f64 * step) as f32;
+        let a = to_screen(Pt::new(bounds.x, y), pan, zoom, origin);
+        let b = to_screen(Pt::new(bounds.right(), y), pan, zoom, origin);
+        painter.line_segment([a, b], stroke);
+    }
+}
+
+/// Rulers (spec F-406): labelled ticks in the margin just outside the page, so a
+/// canvas position can be read in page points. Tick spacing follows the 1/2/5
+/// ladder in `domain::grid`, chosen from the zoom so labels never collide.
+fn draw_rulers(
+    painter: &Painter,
+    ui: &Ui,
+    page_rect: egui::Rect,
+    bounds: DRect,
+    pan: Vec2,
+    zoom: f32,
+    origin: Pos2,
+) {
+    const RULER_H: f32 = 18.0;
+    const RULER_W: f32 = 30.0;
+    let text_c = ui.visuals().text_color();
+    let tick_c = Color32::from_rgba_unmultiplied(
+        text_c.r(),
+        text_c.g(),
+        text_c.b(),
+        text_c.a().saturating_mul(6) / 10,
+    );
+    let tick = egui::Stroke::new(1.0, tick_c);
+    let font = FontId::proportional(9.0);
+    // Aim for labelled ticks at least ~72 px apart.
+    let min_step = 72.0 / (zoom as f64).max(1e-3);
+
+    // Top ruler: page x.
+    let base_y = page_rect.min.y;
+    let top = base_y - RULER_H;
+    if top > -RULER_H {
+        painter.line_segment(
+            [
+                Pos2::new(page_rect.min.x, base_y - 1.0),
+                Pos2::new(page_rect.max.x, base_y - 1.0),
+            ],
+            tick,
+        );
+        for v in ruler_ticks(bounds.x as f64, bounds.right() as f64, min_step) {
+            let x = to_screen(Pt::new(v as f32, bounds.y), pan, zoom, origin).x;
+            painter.line_segment(
+                [Pos2::new(x, base_y - 5.0), Pos2::new(x, base_y - 1.0)],
+                tick,
+            );
+            painter.text(
+                Pos2::new(x + 2.0, top + 2.0),
+                Align2::LEFT_TOP,
+                format!("{v:.0}"),
+                font.clone(),
+                text_c,
+            );
+        }
+    }
+
+    // Left ruler: page y.
+    let base_x = page_rect.min.x;
+    let left = base_x - RULER_W;
+    if left > -RULER_W {
+        painter.line_segment(
+            [
+                Pos2::new(base_x - 1.0, page_rect.min.y),
+                Pos2::new(base_x - 1.0, page_rect.max.y),
+            ],
+            tick,
+        );
+        for v in ruler_ticks(bounds.y as f64, bounds.bottom() as f64, min_step) {
+            let y = to_screen(Pt::new(bounds.x, v as f32), pan, zoom, origin).y;
+            painter.line_segment(
+                [Pos2::new(base_x - 5.0, y), Pos2::new(base_x - 1.0, y)],
+                tick,
+            );
+            painter.text(
+                Pos2::new(left + 2.0, y + 2.0),
+                Align2::LEFT_TOP,
+                format!("{v:.0}"),
+                font.clone(),
+                text_c,
+            );
+        }
     }
 }
 
@@ -498,6 +604,26 @@ pub(crate) fn draw_canvas(
         egui::StrokeKind::Middle,
     );
 
+    // Canvas grid (F-405) and rulers (F-406). Both are guides: they are painted
+    // before the markups so they always sit under the content.
+    draw_grid(
+        &painter,
+        page.bounds(),
+        ui_state.grid,
+        ui_state.pan,
+        ui_state.zoom,
+        origin,
+    );
+    draw_rulers(
+        &painter,
+        ui,
+        page_rect,
+        page.bounds(),
+        ui_state.pan,
+        ui_state.zoom,
+        origin,
+    );
+
     // Render markups (add order).
     if let Some(doc) = project.active() {
         for m in doc
@@ -598,8 +724,12 @@ pub(crate) fn draw_canvas(
         }
     }
 
-    // Pointer position in page space.
-    let page_pos = response.hover_pos().map(|h| to_page(h, pan, zoom, origin));
+    // Pointer position in page space. `raw_pos` is exact and drives
+    // hit-testing — a click must still pick a markup that is not grid-aligned.
+    // `page_pos` additionally honours snap-to-grid (F-405) and drives creation,
+    // so new markups land on grid intersections.
+    let raw_pos = response.hover_pos().map(|h| to_page(h, pan, zoom, origin));
+    let page_pos = raw_pos.map(|p| ui_state.grid.snap(p));
     *last_page_pos = page_pos;
 
     // Pan state.
@@ -760,7 +890,8 @@ pub(crate) fn draw_canvas(
     {
         if let Some(pp) = page_pos {
             if ui_state.active_tool == Tool::Select {
-                match pick_markup_id(project, page.index, pp, 6.0) {
+                // Hit-testing ignores the grid (F-405).
+                match pick_markup_id(project, page.index, raw_pos.unwrap_or(pp), 6.0) {
                     Some(id) => {
                         ui_state.selected.clear();
                         ui_state.selected.insert(id);
@@ -1252,7 +1383,9 @@ pub(crate) fn draw_canvas(
         if response.drag_started() {
             // Only a drag that starts on a selected, editable markup moves it;
             // dragging from empty space must not touch the selection or history.
-            let picked = page_pos.and_then(|pp| pick_markup_id(project, page.index, pp, 6.0));
+            // Hit-testing ignores the grid (F-405): a drag must grab the markup
+            // the pointer is actually over, grid-aligned or not.
+            let picked = raw_pos.and_then(|pp| pick_markup_id(project, page.index, pp, 6.0));
             let can_move = picked
                 .map(|id| {
                     let editable = project

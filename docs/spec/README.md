@@ -68,8 +68,8 @@ This requirement set is **original material authored for Rubric**. It is derived
 | F-402 | Pan (Space-drag / middle-drag) | Ph 2 | pending |
 | F-403 | Page navigation (first/prev/next/jump to page) | Ph 5 | multi-page model exists; UI pending |
 | F-404 | Page thumbnails sidebar | Ph 5 | pending |
-| F-405 | Grid and snap-to-grid | Ph 6 | pending |
-| F-406 | Rulers | Ph 6 | pending |
+| F-405 | Grid and snap-to-grid | Ph 6 | done (View > Show Grid / Snap to Grid / Grid Spacing; snap applies to creation anchors, hit-testing follows the pointer) |
+| F-406 | Rulers | Ph 6 | done (labelled page-point ticks on the top/left margins, spacing follows a 1/2/5 ladder) |
 
 ### F-5xx — Persistence and I/O
 

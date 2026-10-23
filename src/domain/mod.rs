@@ -3,6 +3,7 @@
 pub mod action;
 pub mod document;
 pub mod geom;
+pub mod grid;
 pub mod markup;
 pub mod project;
 pub mod report;
@@ -13,6 +14,7 @@ pub mod units;
 pub use action::EditorAction;
 pub use document::{Document, Layer, LayerError, Page};
 pub use geom::{angle_degrees, path_length, polygon_area, Pt, Rect};
+pub use grid::{nice_step, ruler_ticks, Grid};
 pub use markup::{
     Comment, Markup, MarkupGeometry, MarkupKind, Measurement, ReviewStatus, StampPreset, ToolGroup,
 };
