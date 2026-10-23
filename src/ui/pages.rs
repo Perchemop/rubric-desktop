@@ -13,7 +13,7 @@ use std::path::Path;
 /// State owned by the app for the sidebar: uploaded page thumbnails plus the
 /// pages whose render already failed, so a broken page is not retried every
 /// frame (same poisoning rule the main canvas uses).
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub(crate) struct ThumbCache {
     textures: HashMap<String, TextureHandle>,
     failed: std::collections::HashSet<String>,
@@ -143,8 +143,8 @@ fn load_thumb(
         return None;
     }
     let texture = match pdf::render_page_to_cache(path, page_index, THUMB_WIDTH_PX)
-        .and_then(|cache_path| std::fs::read(&cache_path))
         .map_err(|e| e.to_string())
+        .and_then(|cache_path| std::fs::read(&cache_path).map_err(|e| e.to_string()))
         .and_then(|bytes| {
             image::load_from_memory(&bytes)
                 .map(|img| img.to_rgba8())

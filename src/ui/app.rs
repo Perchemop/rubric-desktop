@@ -964,7 +964,7 @@ impl App for RubricApp {
                         ui,
                         page_count,
                         self.ui.current_page.min(page_count - 1),
-                        source_pdf.as_deref(),
+                        source_pdf.as_deref().map(PathBuf::as_path),
                         &mut self.thumb_cache,
                     ) {
                         self.jump_to_page(index);
