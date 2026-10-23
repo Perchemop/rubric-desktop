@@ -66,7 +66,8 @@
 
 ## Phase 6 — Polish, packaging, CI
 - [x] Basic UI panels, shortcuts (Ctrl+S/Z/Shift+Z/Esc/Del)
-- [ ] Keyboard/tool shortcuts, context menus
+- [x] Per-tool keyboard shortcuts (F-601: unmodified letter/digit keys, guarded)
+- [ ] Context menus (F-603)
 - [ ] Grid, snap, rulers
 - [x] Dark theme (F-602: View > Theme light/dark, persisted preference)
 - [ ] Icon/desktop entry, AppImage/DMG/MSI

@@ -563,7 +563,22 @@
 ### Blocked
 - None.
 
+## 2026-10-23 — Phase 6 per-tool keyboard shortcuts (F-601) implemented; CI pending
+**Status**: implemented on branch `opencode/ci-f601` — awaiting the GitHub Actions verdict.
+
+### Completed
+- Domain (`src/domain/project.rs`): `Tool::ALL` (24 variants, enum declaration order), `Tool::shortcut_key()` (letters for markup/shape tools, digits `1`–`7` for measurements, lowercase) and `Tool::from_shortcut_key()` (ASCII case-insensitive reverse lookup); 9 new unit tests (ALL completeness/order, every tool has a key, pairwise-unique keys, round-trip, case-insensitivity, unknown-key rejection, documented mapping table, serde representation unaffected).
+- UI (`src/ui/app.rs`): `select_tool()` switches the active tool and abandons any in-flight draft gesture exactly like Esc while keeping the selection; `key_to_shortcut_char()` maps egui `Key` variants; `logic()` fires tool keys only when unmodified — blocked while editing text, while a widget wants the keyboard, or when Ctrl/Alt/Super is held (Shift allowed).
+- Docs: F-601 marked done in `docs/spec/README.md`, `REQUIREMENTS_TRACEABILITY.md` and `IMPLEMENTATION_PLAN.md`; CHANGELOG entry added.
+
+### Active
+- Next: run CI on `opencode/ci-f601` and merge once green; then context menus (F-603), grid/snap/rulers, packaging (F-7xx).
+
+### Blocked
+- None.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
-import, report export, page image export, print). Phase 6 in progress with dark
-theme (F-602) done and merged. CI-first throughout.
+import, report export, page image export, print). Phase 6 in progress: dark
+theme (F-602) merged, per-tool keyboard shortcuts (F-601) implemented pending CI.
+CI-first throughout.
