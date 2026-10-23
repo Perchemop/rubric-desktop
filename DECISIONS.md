@@ -81,3 +81,8 @@ Record significant architectural/implementation decisions.
 - **Decision**: (a) Other products **may** be referenced as *feature inspiration*, but only at capability level. (b) Completed the guide's required doc set: `docs/project-brief.md`, `docs/scope.md`, `docs/product-name.md`, `docs/inspiration.md` (capability-level inspiration), `ATTRIBUTION.md` (crate + PDFium licences), `docs/development.md` (CI-first workflow), `docs/qc/checklist.md` (phase/release gates).
 - **Rationale**: the guide mandates discovery/scope/inspiration/attribution/QC docs; the human allowed capability-level inspiration references.
 - **Impact**: AGENTS.md (purpose + Do-not wording), README.md (originality paragraph citing `docs/inspiration.md` + `ATTRIBUTION.md`), `.opencode/agents/docs-writer.md` (agent rule), new docs listed above; scope unchanged for code.
+
+## 2026-10-23: Theme is an app-level preference
+- **Decision**: The colour theme is application-level state, not project data — persisted via the `AppPrefs` domain type (`src/domain/theme.rs`) to the platform config dir as `prefs.json` (`src/data/prefs.rs`), mirroring the 2026-10-20 recents decision that machine-local state never goes into shareable `.rubric.json` project files; loading soft-fails to the Light default so a missing/corrupt file never blocks startup.
+- **Rationale**: theme is a per-user/per-machine choice; `.rubric.json` files stay shareable and machine-agnostic.
+- **Impact**: `src/domain/theme.rs`, `src/data/prefs.rs`, `src/ui/theme.rs`, `src/ui/app.rs` (`set_theme`).
