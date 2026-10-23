@@ -577,7 +577,22 @@
 ### Blocked
 - None.
 
+## 2026-10-23 — Phase 6 editor context menus (F-603) implemented; CI pending
+**Status**: implemented on branch `opencode/ci-f603` — awaiting the GitHub Actions verdict.
+
+### Completed
+- Domain: new `EditorAction` enum (`src/domain/action.rs`) with `ALL`, `label()` and `is_enabled(selection_count)` (delete/clear need a selection; history/view are always offered); 4 unit tests.
+- UI: shared `src/ui/menu.rs` builder attached to the canvas page response (only when no multi-point draft is in progress) and to the inspector panel response; the tool submenu reuses the F-601 shortcut keys; `UiState::pending_action` requests the chosen command and `RubricApp::apply_editor_action` executes it (now also used by the Edit/View menu bar).
+- Docs: F-603 marked done in `docs/spec/README.md`, `REQUIREMENTS_TRACEABILITY.md` and `IMPLEMENTATION_PLAN.md`; CHANGELOG + DECISIONS entries added.
+
+### Active
+- Next: run CI on `opencode/ci-f603` and merge once green; then grid/snap/rulers, packaging (F-7xx).
+
+### Blocked
+- None.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
 import, report export, page image export, print). Phase 6 in progress: dark
-theme (F-602) and per-tool keyboard shortcuts (F-601) merged. CI-first throughout.
+theme (F-602) and per-tool keyboard shortcuts (F-601) merged; editor context
+menus (F-603) implemented pending CI. CI-first throughout.
