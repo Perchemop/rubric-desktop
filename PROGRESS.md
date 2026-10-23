@@ -563,8 +563,8 @@
 ### Blocked
 - None.
 
-## 2026-10-23 — Phase 6 per-tool keyboard shortcuts (F-601) implemented; CI pending
-**Status**: implemented on branch `opencode/ci-f601` — awaiting the GitHub Actions verdict.
+## 2026-10-23 — Phase 6 per-tool keyboard shortcuts (F-601) CI-verified and merged
+**Status**: complete — CI SUCCESS on `71568556` (GitHub Actions run `39895818631`, job `check` 1m51s: fmt, clippy `-D warnings`, tests, release build); PR #4 (https://github.com/Perchemop/rubric-desktop/pull/4, base `main`) merged by rebase 2026-10-23T03:41:54Z, `origin/main` = `2928bc9`.
 
 ### Completed
 - Domain (`src/domain/project.rs`): `Tool::ALL` (24 variants, enum declaration order), `Tool::shortcut_key()` (letters for markup/shape tools, digits `1`–`7` for measurements, lowercase) and `Tool::from_shortcut_key()` (ASCII case-insensitive reverse lookup); 9 new unit tests (ALL completeness/order, every tool has a key, pairwise-unique keys, round-trip, case-insensitivity, unknown-key rejection, documented mapping table, serde representation unaffected).
@@ -572,7 +572,7 @@
 - Docs: F-601 marked done in `docs/spec/README.md`, `REQUIREMENTS_TRACEABILITY.md` and `IMPLEMENTATION_PLAN.md`; CHANGELOG entry added.
 
 ### Active
-- Next: run CI on `opencode/ci-f601` and merge once green; then context menus (F-603), grid/snap/rulers, packaging (F-7xx).
+- Next: context menus (F-603), grid/snap/rulers, packaging (F-7xx).
 
 ### Blocked
 - None.
@@ -580,5 +580,4 @@
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
 import, report export, page image export, print). Phase 6 in progress: dark
-theme (F-602) merged, per-tool keyboard shortcuts (F-601) implemented pending CI.
-CI-first throughout.
+theme (F-602) and per-tool keyboard shortcuts (F-601) merged. CI-first throughout.
