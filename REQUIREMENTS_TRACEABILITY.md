@@ -67,7 +67,7 @@ Each row maps a spec area to its feature IDs and the planned modules.
 | R-S-013 | Persistence: `.rubric.json` sidecar, autosave, recent files, native dialogs, schema version | F-501–F-503, F-506, F-507 | src/data/store.rs, src/ui/app.rs | PARTIAL |
 | R-S-014 | PDF import and page rendering | F-504 | src/data/pdf.rs (new), src/ui/canvas.rs | DONE |
 | R-S-015 | Export (rendered image) and print | F-505 | src/data/export.rs (new), src/data/render.rs (new), src/data/print.rs (new), src/ui/app.rs | DONE |
-| R-S-016 | UX polish: shortcuts, dark theme, context menus, undo/redo, accessibility | F-601–F-605 | src/ui/app.rs, src/ui/theme.rs, src/domain/project.rs | PARTIAL |
+| R-S-016 | UX polish: shortcuts, dark theme, context menus, undo/redo, accessibility | F-601–F-605 | src/ui/app.rs, src/ui/theme.rs, src/domain/project.rs, src/domain/theme.rs, src/data/prefs.rs | PARTIAL |
 | R-S-017 | Packaging: Linux AppImage, macOS DMG, Windows MSI, CI release artifacts | F-701–F-704 | packaging files, .github/workflows/ci.yml | TODO |
 
 ## Feature requirements
