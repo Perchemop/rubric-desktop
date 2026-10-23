@@ -88,7 +88,7 @@ This requirement set is **original material authored for Rubric**. It is derived
 | ID | Feature | Priority | Notes |
 |---|---|---|---|
 | F-601 | Keyboard and tool shortcuts (Ctrl+S/Z/Shift+Z/Esc/Del, per-tool keys) | Ph 6 | core shortcuts done; tool keys pending |
-| F-602 | Dark theme (light/dark toggle) | Ph 6 | light theme done |
+| F-602 | Dark theme (light/dark toggle) | Ph 6 | done (View > Theme light/dark toggle, persisted preference) |
 | F-603 | Context menus (canvas + inspector) | Ph 6 | pending |
 | F-604 | Undo/redo (bounded history, 128 snapshots) | MVP | done |
 | F-605 | Accessibility (readable contrast, keyboard-reachable controls) | later | pending review |
