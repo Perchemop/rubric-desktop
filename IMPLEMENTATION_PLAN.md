@@ -68,7 +68,7 @@
 - [x] Basic UI panels, shortcuts (Ctrl+S/Z/Shift+Z/Esc/Del)
 - [ ] Keyboard/tool shortcuts, context menus
 - [ ] Grid, snap, rulers
-- [ ] Dark theme
+- [x] Dark theme (F-602: View > Theme light/dark, persisted preference)
 - [ ] Icon/desktop entry, AppImage/DMG/MSI
 - [x] CI workflow skeleton (.github/workflows/ci.yml)
 - [ ] Benchmarks/tests expansion

@@ -18,14 +18,15 @@ discipline, CI-first rule and tracking files stay identical.
 
 | Role | Model |
 |---|---|
-| Orchestrator / lead (plans & delegates, never edits) | `opencode/big-pickle` |
-| Domain dev (pure Rust types/logic/tests) | `opencode/deepseek-v4.1-flash-free#high` |
-| UI dev (egui/eframe slices) | `opencode/beam-free#high` |
-| Fixer (build-gate failures) | `opencode/glm-5.3-flash-free#high` |
-| Reviewer (read-only review) | `opencode/glm-5.3-flash-free#high` |
-| Test writer | `opencode/mimo-v2.6-flash-free` |
-| Docs writer | `opencode/big-pickle` |
-| Explorer (fast search) | `opencode/mimo-v2.6-flash-free` |
+| Orchestrator / lead (plans & delegates, never edits) | `nvidia/z-ai/glm-5.3` — NVIDIA free tier 2, used because `opencode/big-pickle` was retired from the OpenCode free tier |
+| Domain dev (pure Rust types/logic/tests) | `opencode/deepseek-v4.1-flash-free#high` (unchanged) |
+| UI dev (egui/eframe slices) | `opencode/nemotron-3.5-super-vl-free#high` — vision-capable per guide §5.3 for canvas-touching slices (previously `beam-free#high`) |
+| Fixer (build-gate failures) | `opencode/flint-40b-free#high` — newest OpenCode free code-generation model (previously `glm-5.3-flash-free#high`) |
+| Reviewer (read-only review) | `opencode/glm-5.3-flash-free#high` (unchanged) |
+| Test writer | `opencode/mimo-v2.6-flash-free` (unchanged) |
+| Docs writer | `opencode/beam-free#high` (big-pickle retired) |
+| Explorer (fast search) | `opencode/mimo-v2.6-flash-free` (unchanged) |
+| CI runner | `opencode/beam-free#high` (proven this session) |
 
 Model IDs are not load-bearing: they change over time, so the orchestrator
 re-discovers the currently available free models at session start and
@@ -35,20 +36,26 @@ reassigns the best fit per role (guide §5.2). `.opencode/agents/*.md`
 ## NVIDIA free (fallback, not currently active)
 
 Discovered via `opencode.models(provider = "nvidia")`. Representative free
-models available in the fallback tier (selection re-runs when the switch
-happens):
+models available in the fallback tier (re-checked 2026-10-23; selection
+re-runs when the switch happens):
 
-- `nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b` — strong reasoning/multi-file
+- `nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b` — strong reasoning, vision
+- `nvidia/stepfun-ai/step-5-preview`
 - `nvidia/deepseek-ai/deepseek-v4.1-flash` — coding
-- `nvidia/z-ai/glm-5.3-flash` — coding / fixer
-- `nvidia/openai/gpt-oss-20b` — general / review
-- `nvidia/meta/llama-guard-4-12b` — light/quick tasks
+- `nvidia/z-ai/glm-5.3-flash` — coding
+- `nvidia/z-ai/glm-5.3` — general reasoning (currently the orchestrator)
+- `nvidia/meta/muse-glimmer-30b`
+- `nvidia/poolside/laguna-xs-2.1`
+- `nvidia/google/diffusiongemma-26b-a4b-it`
+- `nvidia/openai/gpt-oss-20b`
+
+Guard/vision-only models (llama-guard, paligemma) are excluded from roles.
 
 When OpenCode free is exhausted, the orchestrator notes it in `PROGRESS.md`,
 switches to NVIDIA free, re-discovers the available NVIDIA models, and
 reassigns each role to the best fit — then continues the same slice pipeline.
 
-## Verified availability (re-checked 2026-10-22)
+## Verified availability (re-checked 2026-10-23)
 
 Live probes of the NVIDIA free tier, which is tier 2 in the provider order:
 
@@ -57,10 +64,19 @@ Live probes of the NVIDIA free tier, which is tier 2 in the provider order:
 | `nvidia/z-ai/glm-5.3-flash` | reachable |
 | `nvidia/stepfun-ai/step-5-preview` | reachable |
 | `nvidia/openai/gpt-oss-20b` | reachable, intermittently |
-| `nvidia/z-ai/glm-5.3` | **not reachable** — `socket connection was closed`; removed from the routing chains |
+| `nvidia/z-ai/glm-5.3` | reachable — active orchestrator model this session (earlier "not reachable" note was stale) |
 
 `nvidia/meta/llama-guard-4-12b` and `nvidia/google/google-paligemma` are guard
 and vision models, not coding models, so they are not used for roles.
+
+## Availability notes (2026-10-23)
+
+The free catalog churns within a single session: `opencode/big-pickle` was absent
+at session-start discovery (the orchestrator therefore runs on NVIDIA free tier 2)
+but reappeared in later listings; `opencode/minimax-m3.1-flash-free` was listed,
+returned "not available" when used, and vanished from the catalog the same day.
+Assignments are re-verified on first use, with failover chain OpenCode free →
+NVIDIA free → paid API keys and no mid-session switching.
 
 The router in `~/.config/opencode/failover.json` (`fallbacks` +
 `fallbacksByAgent`) carries this order. It never re-chooses a model that has
