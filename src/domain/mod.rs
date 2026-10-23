@@ -1,5 +1,6 @@
 //! Domain module re-exports and common types.
 
+pub mod action;
 pub mod document;
 pub mod geom;
 pub mod markup;
@@ -9,6 +10,7 @@ pub mod style;
 pub mod theme;
 pub mod units;
 
+pub use action::EditorAction;
 pub use document::{Document, Layer, LayerError, Page};
 pub use geom::{angle_degrees, path_length, polygon_area, Pt, Rect};
 pub use markup::{
