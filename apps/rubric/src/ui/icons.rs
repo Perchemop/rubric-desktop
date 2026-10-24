@@ -5,7 +5,7 @@ use std::sync::Arc;
 use egui::IconData;
 
 fn png_bytes() -> &'static [u8] {
-    include_bytes!("../../../assets/icons/icon_256.png")
+    include_bytes!("../../../../assets/icons/icon_256.png")
 }
 
 pub fn load_icon() -> IconData {
