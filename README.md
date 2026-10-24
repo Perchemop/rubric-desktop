@@ -39,6 +39,22 @@ cargo clippy -- -D warnings
 cargo fmt --all -- --check
 ```
 
+## Crash reports and update checks (privacy)
+
+Rubric phones home **only when you ask it to**:
+
+- **Crash / bug reports** (Help ▸ Report a Bug): the app captures your Rubric
+  version, OS, and a backtrace with file paths scrubbed, and shows you the
+  full text first. Nothing is sent until you press **Send**. Delivery is your
+  choice: open a pre-filled GitHub issue in your browser (no account needed in
+  the app), or paste a **personal** GitHub token, which is used once, kept only
+  in memory, and never written to disk or embedded in the app.
+- **Update check** (Help ▸ Check for Updates…): one HTTPS request to the
+  GitHub Releases API, on demand only — never automatic. Offline or
+  rate-limited, the app simply says it could not check.
+
+No telemetry, no analytics, no background polling, no identifiers.
+
 ## Original development
 
 Every line of source code, every test, every asset, and every document in

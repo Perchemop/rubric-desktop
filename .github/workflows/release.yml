@@ -117,13 +117,36 @@ jobs:
         run: |
           set -euo pipefail
           files=$(find dist -type f \( -name '*.zip' -o -name '*.tar.gz' \) | sort)
-          echo "files<<EOF" >> "$GITHUB_OUTPUT"
-          for f in $files; do echo "$f" >> "$GITHUB_OUTPUT"; done
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          # Checksums (guide §4, §6.3): one SHA256SUMS file over every archive.
+          : > dist/SHA256SUMS
+          for f in $files; do
+            (cd "$(dirname "$f")" && sha256sum "$(basename "$f")") >> dist/SHA256SUMS
+          done
+          cat dist/SHA256SUMS
+          {
+            echo "files<<EOF"
+            for f in $files dist/SHA256SUMS; do echo "$f"; done
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build release notes
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Release notes come from CHANGELOG (guide §6.3): the section matching
+          # this tag when present, otherwise an honest fallback. The rule lives
+          # in a small in-repo script so it is reviewable and testable.
+          {
+            echo "body<<CHANGELOG_EOF"
+            python3 scripts/release-notes.py "${GITHUB_REF_NAME#v}" || true
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTES_BODY: ${{ steps.notes.outputs.body }}
         shell: bash
         run: |
           set -euo pipefail
@@ -138,14 +161,17 @@ jobs:
             tag="dispatch-$(date -u +%Y%m%d-%H%M%S)"
             prerelease=(--prerelease)
           fi
-          body="Automated release build for Rubric ${tag}."
+          # Fall back to an honest one-liner when the CHANGELOG has no entry.
+          if [[ -z "${NOTES_BODY//[[:space:]]/}" ]]; then
+            NOTES_BODY="Automated release build for Rubric ${tag}."
+          fi
           if ! gh release view "$tag" >/dev/null 2>&1; then
             if [[ "${#prerelease[@]}" -gt 0 ]]; then
               # A manual dispatch is not a real release: keep it a pre-release so
               # "Latest release" on the repo still points at a tagged version.
-              gh release create "$tag" --title "Rubric ${tag}" --notes "$body" "${prerelease[@]}"
+              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY" "${prerelease[@]}"
             else
-              gh release create "$tag" --title "Rubric ${tag}" --notes "$body" --generate-notes
+              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
             fi
           else
             echo "release $tag already exists; uploading assets"

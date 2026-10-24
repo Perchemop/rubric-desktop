@@ -2,6 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use eframe::{App, CreationContext, Frame};
@@ -187,6 +188,45 @@ pub struct RubricApp {
     report_export: Option<ReportExportUi>,
     /// Active colour theme (app-level preference, not project data).
     theme: Theme,
+    /// In-progress bug report the user is reviewing before sending (guide §7.1).
+    report: Option<BugReportUi>,
+    /// Shared update-check state, written by the worker thread and read by the
+    /// UI each frame (guide §7.2).
+    update: Arc<Mutex<UpdateCheck>>,
+    /// Repository used for issue URLs and release checks.
+    repo: String,
+}
+
+/// Update-check progress shared between the worker thread and the UI.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub(crate) struct UpdateCheck {
+    /// A check has been started and has not finished yet.
+    pub(crate) running: bool,
+    /// Result of the most recent completed check.
+    pub(crate) result: Option<update_check::UpdateStatus>,
+}
+
+/// Session-only bug report dialog state (guide §7.1): the captured report plus
+/// the editable user notes. Never persisted, never uploaded without consent.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct BugReportUi {
+    pub(crate) report: crash_report::CrashReport,
+    pub(crate) notes: String,
+    /// User-supplied GitHub token; held in memory only, never written to disk.
+    pub(crate) token: String,
+    /// Use the browser fallback instead of a token submission.
+    pub(crate) open_in_browser: bool,
+}
+
+impl BugReportUi {
+    pub(crate) fn new(environment: crash_report::Environment, placeholder_summary: &str) -> Self {
+        Self {
+            report: crash_report::CrashReport::manual(environment, placeholder_summary),
+            notes: String::new(),
+            token: String::new(),
+            open_in_browser: true,
+        }
+    }
 }
 
 impl RubricApp {
@@ -208,7 +248,36 @@ impl RubricApp {
             bg_error: None,
             report_export: None,
             theme: prefs.theme,
+            report: None,
+            update: Arc::new(Mutex::new(UpdateCheck::default())),
+            repo: "Perchemop/rubric-desktop".to_string(),
         }
+    }
+
+    /// Kick off an update check on a worker thread (guide §7.2). The UI loop is
+    /// never blocked; the result arrives via the shared `update` state and the
+    /// thread requests a repaint when done.
+    fn begin_update_check(&mut self, ctx: &egui::Context) {
+        {
+            let mut state = self.update.lock().expect("update lock");
+            if state.running {
+                return;
+            }
+            state.running = true;
+            state.result = None;
+        }
+        let shared = Arc::clone(&self.update);
+        let repo = self.repo.clone();
+        let current = env!("CARGO_PKG_VERSION").to_string();
+        std::thread::spawn(move || {
+            let mut checker = update_check::UpdateChecker::new();
+            let status = checker.check(&repo, &current);
+            if let Ok(mut state) = shared.lock() {
+                state.running = false;
+                state.result = Some(status);
+            }
+            ctx.request_repaint();
+        });
     }
 
     fn current_project(&self) -> &Project {
@@ -298,6 +367,157 @@ impl RubricApp {
                 self.ui.zoom = 1.0;
                 self.ui.pan = Vec2::ZERO;
             }
+        }
+    }
+
+    /// Update-check status window (guide §7.2). Shows one honest state and a
+    /// link out to the release page; never blocks and never auto-installs.
+    fn draw_update_result(&mut self, ctx: &egui::Context) {
+        let snapshot = self.update.lock().expect("update lock").clone();
+        if !snapshot.running && snapshot.result.is_none() {
+            return; // Nothing to show until a check has been requested.
+        }
+        let mut open = true;
+        egui::Window::new("Check for Updates")
+            .open(&mut open)
+            .resizable(false)
+            .show(ctx, |ui| {
+                if snapshot.running {
+                    ui.spinner();
+                    ui.label("Checking GitHub Releases…");
+                    return;
+                }
+                match snapshot.result.as_ref() {
+                    Some(update_check::UpdateStatus::UpToDate) => {
+                        ui.label(format!(
+                            "Rubric {} is up to date.",
+                            env!("CARGO_PKG_VERSION")
+                        ));
+                    }
+                    Some(update_check::UpdateStatus::Available {
+                        latest_version,
+                        url,
+                    }) => {
+                        ui.label(format!(
+                            "A newer release is available: {} (running {}).",
+                            latest_version,
+                            env!("CARGO_PKG_VERSION")
+                        ));
+                        if ui.button("Open release page").clicked() {
+                            let _ = open_url(url);
+                        }
+                    }
+                    Some(update_check::UpdateStatus::Unknown) => {
+                        ui.label("Could not check for updates (offline or rate-limited).");
+                        if ui.button("Try again").clicked() {
+                            self.begin_update_check(ctx);
+                        }
+                    }
+                    None => {}
+                }
+            });
+        if !open {
+            self.update.lock().expect("update lock").result.take();
+        }
+    }
+
+    /// Bug report dialog (guide §7.1): review the captured report, add notes,
+    /// then choose how it is delivered. Nothing is sent without consent, and a
+    /// privileged token is never embedded in the app.
+    fn draw_bug_report(&mut self, ctx: &egui::Context) {
+        let Some(report_ui) = self.report.as_mut() else {
+            return;
+        };
+        let mut open = true;
+        let mut action: Option<BugReportAction> = None;
+        egui::Window::new("Report a Bug")
+            .open(&mut open)
+            .resizable(true)
+            .default_width(520.0)
+            .show(ctx, |ui| {
+                ui.label(
+                    "Everything below stays on this machine until you press Send. \
+                     Review it — the backtrace has paths scrubbed, but you know \
+                     your data best.",
+                );
+                ui.separator();
+                ui.label("What happened (your words):");
+                ui.text_edit_multiline(&mut report_ui.notes);
+                ui.separator();
+                ui.collapsing("Technical details (scrubbed)", |ui| {
+                    ui.monospace(report_ui.report.to_issue_body());
+                });
+
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.radio_value(
+                        &mut report_ui.open_in_browser,
+                        true,
+                        "Open pre-filled issue in browser",
+                    );
+                    ui.radio_value(
+                        &mut report_ui.open_in_browser,
+                        false,
+                        "Send with my GitHub token",
+                    );
+                });
+
+                if !report_ui.open_in_browser {
+                    ui.label(
+                        "Your token is used once, in memory, and never saved. \
+                         Leave this empty to use the browser instead.",
+                    );
+                    ui.add(
+                        egui::TextEdit::singleline(&mut report_ui.token)
+                            .password(true)
+                            .hint_text("ghp_… (optional)"),
+                    );
+                }
+
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    if ui.button("Cancel").clicked() {
+                        action = Some(BugReportAction::Cancel);
+                    }
+                    if ui.button("Send").clicked() {
+                        action = Some(BugReportAction::Send);
+                    }
+                });
+            });
+        if !open {
+            action = Some(BugReportAction::Cancel);
+        }
+        match action {
+            Some(BugReportAction::Cancel) => {
+                self.report = None;
+                self.ui.status = "Bug report cancelled — nothing was sent".to_string();
+            }
+            Some(BugReportAction::Send) => {
+                let report_ui = self.report.as_ref().expect("report open");
+                let mut report = report_ui.report.clone();
+                report.user_notes = report_ui.notes.clone();
+                let issue = crash_report::Issue::from_report(&report);
+                if report_ui.open_in_browser {
+                    let url = issue.new_issue_url(&self.repo);
+                    let _ = open_url(&url);
+                    self.ui.status = "Opening the pre-filled issue in your browser".to_string();
+                    self.report = None;
+                } else {
+                    let token = report_ui.token.clone();
+                    let repo = self.repo.clone();
+                    match crash_report::submit(&repo, &issue, Some(&token)) {
+                        Ok(()) => {
+                            self.ui.status = "Bug report sent — thank you".to_string();
+                            self.report = None;
+                        }
+                        Err(e) => {
+                            self.ui.status = format!("Could not send: {e}");
+                            // Keep the dialog open so nothing the user typed is lost.
+                        }
+                    }
+                }
+            }
+            None => {}
         }
     }
 
@@ -704,6 +924,18 @@ impl RubricApp {
                         "Rubric — free, cross-platform PDF markup & measurement".to_string();
                     ui.close();
                 }
+                if ui.button("Check for Updates…").clicked() {
+                    self.ui.status = "Checking for updates…".to_string();
+                    self.begin_update_check();
+                    ui.close();
+                }
+                if ui.button("Report a Bug…").clicked() {
+                    self.report = Some(BugReportUi::new(
+                        crash_report::Environment::capture(env!("CARGO_PKG_VERSION")),
+                        "describe what you were doing when the problem happened",
+                    ));
+                    ui.close();
+                }
             });
         });
     }
@@ -787,6 +1019,40 @@ impl RubricApp {
             .map(|k| k.to_ascii_uppercase())
             .unwrap_or('-');
         self.ui.status = format!("{:?} ({key})", tool);
+    }
+}
+
+/// What the user chose in the bug-report dialog this frame.
+enum BugReportAction {
+    Cancel,
+    Send,
+}
+
+/// Open a URL with the platform opener (browser for issue/release links).
+fn open_url(url: &str) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(url)
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("could not open browser: {e}"))
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(url)
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("could not open browser: {e}"))
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", url])
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("could not open browser: {e}"))
     }
 }
 
@@ -1021,6 +1287,14 @@ impl App for RubricApp {
         if let Some(action) = self.ui.pending_action.take() {
             self.apply_editor_action(action);
         }
+
+        // Update-check result (guide §7.2): honest state — running, up to date,
+        // available, or could-not-check. Never blocks the UI loop.
+        self.draw_update_result(ctx);
+
+        // Bug report dialog (guide §7.1): preview + editable notes; nothing is
+        // sent until the user explicitly chooses to.
+        self.draw_bug_report(ui.ctx());
 
         // Report export dialog (session state only).
         let mut do_export = false;

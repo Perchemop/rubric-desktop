@@ -12,8 +12,11 @@ CI run.
 - [ ] `cargo fmt --all -- --check` passes locally.
 - [ ] CI green on GitHub Actions (the free Task Runner): fmt → clippy
       `-D warnings` → `test --all` → release build.
-- [ ] Pull Request opened/updated for review; **the human merges** (guide §5,
+- [ ] Pull Request opened/updated for review using
+      `.github/PULL_REQUEST_TEMPLATE.md`; **the human merges** (guide §5, §8.3,
       §9 — trust but verify).
+- [ ] `ROADMAP.md` readiness % updated when a tracked item completes — from
+      evidence only (CI run or recorded hands-on check).
 - [ ] No fake success states / dead controls / placeholder-only data.
 - [ ] `CHANGELOG.md`, `PROGRESS.md` updated with **exact** CI results.
 - [ ] `REQUIREMENTS_TRACEABILITY.md` statuses match reality.
@@ -47,6 +50,20 @@ CI run.
 - [ ] No proprietary code or assets; third-party dependencies listed in
       `ATTRIBUTION.md`.
 - [ ] No absolute local paths or references to local-only files in code/docs.
+
+## Legal checklist (guide §2.5, before each public release)
+
+- [ ] Copyright: no proprietary source/assets or substantial copied text in tree
+- [ ] Clean-room: no RE tools or output used as implementation input
+- [ ] Trademarks: product name/logo original; no vendor marks in UI or installers
+- [ ] Trade dress: UI is original expression, not a slavish visual copy
+- [ ] Patents: public non-infringing alternatives preferred; public standards used
+- [ ] Licence: MIT OR Apache-2.0 clear; NOTICE/ATTRIBUTION complete
+- [ ] Secrets: no keys/tokens in git or release binaries; crash reports use user-supplied tokens only
+- [ ] Privacy: crash reports send only what the user consents to; documented in README
+- [ ] Research files: summaries + URLs only; human-approved (`docs/research/`)
+- [ ] Claims: no false certification/affiliation/"drop-in replacement" wording
+- [ ] Contributors: `CONTRIBUTING.md` states PR licence terms
 
 ## Manual QC spot-checks (when UI is touched)
 
