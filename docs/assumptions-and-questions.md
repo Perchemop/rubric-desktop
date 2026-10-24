@@ -48,6 +48,13 @@
 24. **Q-PACK-2 (icons)**: Only `assets/logo.svg` exists today. Raster icons (PNG at 16/32/48/64/128/256/512 and an `.icns` for macOS) are needed for proper desktop integration; the current workflows ship the SVG and mark this as a follow-up rather than generating a conflicting icon.
 25. **Q-PACK-3 (PDFium in installers)**: PDFium is a run-time dependency (`docs/pdfium.md`). Linux/macOS bundles copy it next to the executable; Windows copies `pdfium.dll` beside `rubric.exe` when found. Should official releases bundle it (with its BSD-3-Clause terms restated) or keep shipping runtime-only discovery? Working assumption: bundle, because PDF import is the app's core purpose.
 
+## Suite questions (guide v4, answered 2026-10-24)
+
+- **Q4 (Is this a multi-app suite?)**: Rubric is currently a **single app**, but the repository is laid out as a suite from now on: `apps/rubric` plus shared crates, so a second app inherits crash reporting and update checking without duplication.
+- **Q18 (Shared crash-report + update-check crates?)**: **Yes — implemented 2026-10-24** as `crates/crash-report` (panic hook, scrubbed capture, review-and-cancel dialog, user-token or pre-filled-URL submission) and `crates/update-check` (GitHub Releases API, semantic version compare, fail-soft offline, 1-hour cache). See DECISIONS.md "Suite-ready restructure".
+- **Q26 (Crash-report privacy)**: reports are captured locally, shown to the user in full, and only transmitted after an explicit Send. Delivery is browser-based by default (no token in the app); a user-supplied token is used once in memory and never persisted. Documented in `README.md`.
+- **Q27 (Research method)**: recorded per note in `docs/research/`; preferred ladder is browse-capable model → CI text fetch → human assist (guide §2.4). No research notes exist yet — the implemented feature set was designed from the original spec, not from vendor research.
+
 ## Packaging (Phase 7, 2026-10-23) — architecture as built
 
 - `.github/workflows/ci.yml` (existing) is the quality gate: fmt, clippy `-D warnings`, tests, release build. It runs on every push to `main` and every PR.

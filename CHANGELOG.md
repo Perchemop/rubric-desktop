@@ -4,10 +4,38 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ## [Unreleased]
 
-### Docs
-- Adopt the guide §5 **CTO.new-style free process**: `Chat (plan) → Task (execute) → Pull Request (review) → Merge`. `AGENTS.md` documents the operating model; `docs/development.md` reframes the slice workflow as Tasks with a PR-for-review step; `.opencode/agents/orchestrator.md` becomes the Chat/planning role and a new `.opencode/agents/coder.md` is the Task executor; `docs/qc/checklist.md` Definition of Done gains the Pull Request + human-merge items. Added the required `docs/parity.md` capability-parity tracker. GitHub Actions is named the free "Task Runner" throughout.
+## [0.1.0] - 2026-10-24
+
+### Summary
+
+First functional, installable build of **Rubric** — a free, cross-platform PDF
+markup, review and measurement tool. The full reviewed scope (52 feature IDs,
+17 requirement groups) is implemented and CI-verified; what remains is polish
+and packaging follow-ups, listed honestly below. Built and verified on Linux
+(aarch64 and x86_64), with macOS and Windows artefacts produced by CI.
+
+### Roadmap progress
+
+- Requirement groups: 13/17 fully done, 4 partial (small residuals), 0 not started.
+- Feature IDs: 46/52 done (88 %).
+- Evidence: `REQUIREMENTS_TRACEABILITY.md`, CI runs, and hands-on verification
+  of the installed binary on the primary platform (Linux aarch64).
+- Details and next milestones: `ROADMAP.md`.
 
 ### Added
+- Original name/brand "Rubric": SVG logo, multi-size PNG icons (16/32/48/64/128/256/512/1024), branding spec.
+- Fresh Rust crate `rubric` (egui/eframe 0.36, serde, uuid, thiserror, tracing, chrono, image).
+- Domain-first architecture: geom, units (scale + conversions), style (colours/dashes/fill modes), markup (23 kinds, geometry variants, measurements, hit testing, review status, comments), document (pages/markups), project (toolsets, settings, history with undo/redo capped 128).
+- Data layer: JSON persistence (`.rubric.json`), app data dir via directories, error types.
+- UI skeleton: app shell (panels, menu, shortcuts), canvas (page, markups, selection, basic place/move), toolbar (tool groups), inspector (properties/comments/measurements), theme/icons.
+- Tests: unit tests in domain modules + integration tests (6) covering geometry, measurements, serialisation, project lifecycle.
+- Tooling: .gitignore (excludes secrets/target/local notes), LICENSE (MIT), rust-toolchain.toml, CI skeleton, scripts/gen-icons.sh.
+- Docs: README, AGENTS, architecture, data model, test plan, assumptions/questions, implementation plan, requirements traceability, decisions, progress, changelog.
+
+
+### Added
+- Suite infrastructure (guide §7): shared crates `crates/crash-report` and `crates/update-check`, consumed by the app and reusable by any future app in the suite. **crash-report** installs a panic hook that captures the app version, OS and a scrubbed backtrace (home directories and token-like material redacted), shows a review-and-cancel dialog with editable notes, and then submits either through a pre-filled "New Issue" URL (no account in-app) or a **user-supplied** GitHub token held only in memory — a privileged bot token is never embedded. **update-check** queries the GitHub Releases API on demand (Help ▸ Check for Updates…), compares versions semantically (so 0.2.0 correctly beats 0.10.0), fails soft offline, caches for an hour and never polls in the background. 25 new tests across the two crates (12 + 13). The workspace was restructured to the guide's suite layout (`apps/rubric` + `crates/*`) with unchanged build commands and output paths. Privacy is documented in `README.md`.
+- Process files required by guide v4 (suite-ready edition): `.github/PULL_REQUEST_TEMPLATE.md` (acceptance criteria, tests, CI, no-proprietary checklist), `ROADMAP.md` (staged milestones with evidence-based readiness: 13/17 requirement groups and 46/52 feature IDs done), `CONTRIBUTING.md` (PR licence terms, DCO sign-off), `docs/design/brand.md` (original mark and palette rationale), and `docs/research/` with the summaries-plus-URLs policy and its human approval gate.
 - Packaging: CI release and native installers (spec F-701/F-703/F-704). `.github/workflows/release.yml` builds the release binary for Linux x86_64, macOS arm64 and Windows x86_64 and attaches each archive to a GitHub release on `v*` tags (a manual `workflow_dispatch` publishes a pre-release, so a test run never looks like a real release). `.github/workflows/package.yml` builds the native installers — a Linux **AppImage** (linuxdeploy over an AppDir carrying a `.desktop` entry and appstream metadata, plus a portable tarball fallback), a macOS **`.app`** → **`.dmg`** bundle, and a Windows **MSI** via WiX v4 whose product definition is kept in-repo (`packaging/wix/Product.wxs` with the MIT licence text) so the installer metadata stays reviewable. `docs/pdfium.md` documents the PDFium run-time contract (discovery order `RUBRIC_PDFIUM_PATH` → executable directory → system path, where to obtain binaries, and what a failed import looks like). Installers ship **unsigned** — no signing certificate is committed to this repository (recorded as Q-PACK-1; raster icons as Q-PACK-2).
 - Page thumbnails sidebar (spec F-404): a resizable left panel showing one cell per page. PDF-backed projects show a real preview rendered through the shared on-disk page cache (so a page the main canvas already rendered costs nothing); projects with no PDF still show numbered placeholders, so navigation is never a dead control. Clicking a cell jumps to that page. The thumbnail grid packing (`thumb_layout`: columns that fit, rows needed, cell size) lives in `src/domain/thumbs.rs` as pure geometry with tests. Page switching (top-bar arrows, Page Up/Down, sidebar) now shares one `RubricApp::jump_to_page` helper so all three agree on text-edit commit, undo snapshot and draft-abandon semantics. 6 new domain tests.
 - Canvas grid, snap-to-grid and rulers (spec F-405/F-406): new pure domain module `src/domain/grid.rs` — [`Grid`] spacing/visibility/snap with nearest-intersection snapping, plus a 1/2/5 `ruler_ticks`/`nice_step` ladder — and canvas rendering in `src/ui/canvas.rs` (`draw_grid` under the markups, skipped when the pitch falls below 6 screen pixels; `draw_rulers` labelled page-point ticks on the top/left margins that follow pan and zoom). Snapping applies to markup *creation anchors* only: hit-testing keeps using the exact pointer position, so a markup that is not grid-aligned remains selectable. View menu gains **Show Grid**, **Snap to Grid** and a **Grid Spacing** submenu (12/24/36/72 pt). Grid state is session-only and never enters `.rubric.json`. 10 new domain tests.
@@ -30,6 +58,11 @@ All notable changes to this project will be documented here. Format: semantic-is
 - Subagent suite (`.opencode/agents/`): `domain-dev`, `test-writer`, `ui-dev`, `reviewer`, `docs-writer`, `fixer` — all on free OpenCode models, restricted to `cargo fmt` + read-only git locally.
 - CI-first build policy: all heavy gates (`cargo test`, `clippy -D warnings`, `check`, release build) run only in GitHub Actions; workflow now caches builds with `Swatinem/rust-cache@v2`.
 
+
+### Changed
+- CI verified fully green (fmt, clippy, tests, release build) after billing resolution; process docs updated accordingly.
+
+
 ### Fixed
 - Area measurement rescaling: area values now scale with `units_per_point²` (previously used the linear factor, and carried an unnecessary cast).
 - Switching the display unit now preserves physical measurements (`Scale::with_display_unit` converts `units_per_point` via `points_per_unit`) instead of silently reinterpreting the scale ratio.
@@ -40,22 +73,19 @@ All notable changes to this project will be documented here. Format: semantic-is
 - Enter/Space fake-clicks while a text field has focus can no longer trigger canvas commits.
 - Docs: stale markup-kind count corrected — `MarkupKind` has 23 variants (traceability, data model, plan, progress, decisions, and the 0.1.0 note said 22).
 
-### Changed
-- CI verified fully green (fmt, clippy, tests, release build) after billing resolution; process docs updated accordingly.
 
-## [0.1.0] - 2026-10-17 — Phase 0
+### Docs
+- Adopt the guide §5 **CTO.new-style free process**: `Chat (plan) → Task (execute) → Pull Request (review) → Merge`. `AGENTS.md` documents the operating model; `docs/development.md` reframes the slice workflow as Tasks with a PR-for-review step; `.opencode/agents/orchestrator.md` becomes the Chat/planning role and a new `.opencode/agents/coder.md` is the Task executor; `docs/qc/checklist.md` Definition of Done gains the Pull Request + human-merge items. Added the required `docs/parity.md` capability-parity tracker. GitHub Actions is named the free "Task Runner" throughout.
 
-### Added
-- Original name/brand "Rubric": SVG logo, multi-size PNG icons (16/32/48/64/128/256/512/1024), branding spec.
-- Fresh Rust crate `rubric` (egui/eframe 0.36, serde, uuid, thiserror, tracing, chrono, image).
-- Domain-first architecture: geom, units (scale + conversions), style (colours/dashes/fill modes), markup (23 kinds, geometry variants, measurements, hit testing, review status, comments), document (pages/markups), project (toolsets, settings, history with undo/redo capped 128).
-- Data layer: JSON persistence (`.rubric.json`), app data dir via directories, error types.
-- UI skeleton: app shell (panels, menu, shortcuts), canvas (page, markups, selection, basic place/move), toolbar (tool groups), inspector (properties/comments/measurements), theme/icons.
-- Tests: unit tests in domain modules + integration tests (6) covering geometry, measurements, serialisation, project lifecycle.
-- Tooling: .gitignore (excludes secrets/target/local notes), LICENSE (MIT), rust-toolchain.toml, CI skeleton, scripts/gen-icons.sh.
-- Docs: README, AGENTS, architecture, data model, test plan, assumptions/questions, implementation plan, requirements traceability, decisions, progress, changelog.
+
+### Known limitations
+
+- PDF import needs the PDFium shared library next to the executable (or `RUBRIC_PDFIUM_PATH`); every other feature works without it (see `docs/pdfium.md`).
+- Planned follow-ups: note popovers (F-103), copy properties (F-114), z-order (F-115), autosave wiring (F-502), `schema_version` (F-507), accessibility pass (F-605) — tracked in `ROADMAP.md`.
+- Installers are unsigned (no signing certificate in the repository, Q-PACK-1); desktop icons are SVG-only pending a raster set (Q-PACK-2).
+- Crash reports and update checks are on-demand only; nothing is sent or queried without an explicit user action (see README privacy section).
 
 ### Notes
 - Headless-testable (domain + data). UI requires display at runtime; builds/tests/lint/format work in headless environment.
-- No PDF rendering yet (blank page rectangle); to be added later.
+- PDF import binds to PDFium at run time (`docs/pdfium.md`); the page renders as a blank rectangle until the library is present.
 - Never commits external reference documents or the build guide.

@@ -19,54 +19,54 @@ This requirement set is **original material authored for Rubric**. It is derived
 
 | ID | Feature | Priority | Notes |
 |---|---|---|---|
-| F-101 | Highlight tool (semi-transparent band over text) | MVP (Ph 2) | core placement done |
-| F-102 | Strikeout / underline / squiggly text markups | MVP (Ph 2) | types + rendering done |
-| F-103 | Note (anchored comment pin) | MVP (Ph 2) | placement done; popover UX pending |
-| F-104 | Text box | MVP (Ph 2) | placement done; in-canvas editing pending |
-| F-105 | Callout (text box + pointer tail) | MVP (Ph 2) | placement done; text editing pending |
+| F-101 | Highlight tool (semi-transparent band over text) | MVP (Ph 2) | done |
+| F-102 | Strikeout / underline / squiggly text markups | MVP (Ph 2) | done |
+| F-103 | Note (anchored comment pin) | MVP (Ph 2) | placement done; floating popover UX pending (comments editable in Inspector) |
+| F-104 | Text box | MVP (Ph 2) | done (placement + in-canvas editing with focus/draft commit) |
+| F-105 | Callout (text box + pointer tail) | MVP (Ph 2) | done (placement + in-canvas editing) |
 | F-106 | Rectangle and ellipse shapes | MVP (Ph 2) | done |
-| F-107 | Cloud (revision cloud) outline | MVP (Ph 2) | drawn; path quality refine later |
-| F-108 | Polyline and polygon (multi-point paths) | Ph 2 | domain types done; multi-point drawing pending |
+| F-107 | Cloud (revision cloud) outline | MVP (Ph 2) | done; outline path quality refine later |
+| F-108 | Polyline and polygon (multi-point paths) | Ph 2 | done (click-to-add points, right-click/Enter commit) |
 | F-109 | Line and arrow | MVP (Ph 2) | done |
-| F-110 | Ink freehand drawing | Ph 2 | domain type done; stroke accumulation pending |
-| F-111 | Stamps (preset library: approved/rejected/draft style marks) | Ph 4 | Stamp kind exists; library content pending |
-| F-112 | Drag-to-draw with live preview (bounds/segment/path/angle/ink) | Ph 2 | pending |
-| F-113 | Select, move, delete markups | MVP (Ph 2) | done (move/select); delete pending wiring |
+| F-110 | Ink freehand drawing | Ph 2 | done (drag accumulation, multi-stroke) |
+| F-111 | Stamps (preset library: approved/rejected/draft style marks) | Ph 4 | done (StampPreset library incl. Approved/Rejected/Draft/Check/Cross; preset picker in Inspector) |
+| F-112 | Drag-to-draw with live preview (bounds/segment/path/angle/ink) | Ph 2 | done |
+| F-113 | Select, move, delete markups | MVP (Ph 2) | done (click/drag select, drag move, Del/Backspace + Edit/Context menu delete) |
 | F-114 | Copy properties and apply style to other markups | Ph 4 | pending |
 | F-115 | Z-order (bring forward / send back) | Ph 4 | pending |
-| F-116 | Layer visibility and lock | Ph 4 | `Markup.layer` field exists; UI pending |
+| F-116 | Layer visibility and lock | Ph 4 | done (Inspector Layers panel: visibility, lock, delete) |
 
 ### F-2xx — Measurements and scale
 
 | ID | Feature | Priority | Notes |
 |---|---|---|---|
-| F-201 | Length measurement | MVP (Ph 2–3) | computation done; label pending |
-| F-202 | Perimeter measurement | MVP (Ph 2–3) | computation done; label pending |
-| F-203 | Area measurement | MVP (Ph 2–3) | computation + rescale fix done |
-| F-204 | Angle measurement (three-point) | Ph 2 | computation done; three-point drawing pending |
-| F-205 | Diameter and radius measurement | MVP (Ph 2–3) | computation done |
-| F-206 | Count marker measurement | MVP (Ph 2–3) | computation done |
-| F-207 | Calibrate / set scale (presets e.g. 1:1, 1 in = 1 ft, 1 in = 10 ft, plus custom ratio) | Ph 3 | domain scale done; editor UI pending |
-| F-208 | Unit selection (document/page display unit) | Ph 3 | units domain done; dropdown pending |
-| F-209 | Measurement labels on canvas + precision/format preferences | Ph 3 | pending |
+| F-201 | Length measurement | MVP (Ph 2–3) | done (compute + on-canvas label) |
+| F-202 | Perimeter measurement | MVP (Ph 2–3) | done (compute + on-canvas label) |
+| F-203 | Area measurement | MVP (Ph 2–3) | done (compute + rescale fix) |
+| F-204 | Angle measurement (three-point) | Ph 2 | done (three-point draw + degrees label) |
+| F-205 | Diameter and radius measurement | MVP (Ph 2–3) | done |
+| F-206 | Count marker measurement | MVP (Ph 2–3) | done |
+| F-207 | Calibrate / set scale (presets e.g. 1:1, 1 in = 1 ft, 1 in = 10 ft, plus custom ratio) | Ph 3 | done (Inspector: presets, unit, custom ratio, precision) |
+| F-208 | Unit selection (document/page display unit) | Ph 3 | done (display-unit dropdown, ratio-preserving conversion) |
+| F-209 | Measurement labels on canvas + precision/format preferences | Ph 3 | done |
 
 ### F-3xx — Review workflow
 
 | ID | Feature | Priority | Notes |
 |---|---|---|---|
-| F-301 | Review statuses: Open / In review / Approved / Rejected | Ph 4 | status enum exists with a different variant set; remap planned |
+| F-301 | Review statuses: Open / In review / Approved / Rejected | Ph 4 | done (remapped 2026-10-19) |
 | F-302 | Comments (thread per markup) | MVP (Ph 2) | done |
 | F-303 | Author and subject metadata per markup/project | MVP (Ph 2) | done |
-| F-304 | Summary report (markups grouped by status/author/subject, exportable) | Ph 5 | pending |
-| F-305 | Status colours and legend | Ph 4 | defaults exist; legend pending |
+| F-304 | Summary report (markups grouped by status/author/subject, exportable) | Ph 5 | done (group-by status/author/subject, export to .txt/.json) |
+| F-305 | Status colours and legend | Ph 4 | done (per-status colours + Inspector legend with counts) |
 
 ### F-4xx — Navigation and pages
 
 | ID | Feature | Priority | Notes |
 |---|---|---|---|
-| F-401 | Zoom (mouse wheel centred on cursor, fit, presets) | Ph 2 | button zoom done; wheel pending |
-| F-402 | Pan (Space-drag / middle-drag) | Ph 2 | pending |
-| F-403 | Page navigation (first/prev/next/jump to page) | Ph 5 | multi-page model exists; UI pending |
+| F-401 | Zoom (mouse wheel centred on cursor, fit, presets) | Ph 2 | done (wheel zoom centred on cursor, Zoom In/Out/Fit Page); numeric presets (50/100/200 %) pending |
+| F-402 | Pan (Space-drag / middle-drag) | Ph 2 | done |
+| F-403 | Page navigation (first/prev/next/jump to page) | Ph 5 | done (top-bar arrows, PageUp/Down, thumbnail click-to-jump) |
 | F-404 | Page thumbnails sidebar | Ph 5 | done (left panel, PDF previews via the shared render cache, numbered placeholders when not PDF-backed, click to jump) |
 | F-405 | Grid and snap-to-grid | Ph 6 | done (View > Show Grid / Snap to Grid / Grid Spacing; snap applies to creation anchors, hit-testing follows the pointer) |
 | F-406 | Rulers | Ph 6 | done (labelled page-point ticks on the top/left margins, spacing follows a 1/2/5 ladder) |

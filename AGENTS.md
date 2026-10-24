@@ -22,6 +22,9 @@ models and GitHub Actions:
 - **Pull Request (review)** — the change lands as a PR; the CI run plus the
   `reviewer` subagent and the human review it (trust but verify, guide §9).
 - **Merge** — the **human** merges. Agents prepare PRs; they do not self-merge.
+- **PR template** — every PR uses `.github/PULL_REQUEST_TEMPLATE.md` (acceptance criteria, tests, CI, no proprietary material); reviewers reject PRs that fail its checklist (guide §8.3).
+- **Roadmap** — `ROADMAP.md` tracks staged milestones and readiness %; percentages move **only from verified evidence** (guide §6.2).
+- **Research gate** — public research lives in `docs/research/*.md` as original summaries + URLs, and needs explicit human approval before dependent implementation Tasks (guide §2.3, §8.4).
 
 ## Codebase rules
 - Rust only, 100% free OSS.
@@ -57,6 +60,18 @@ into `domain-dev` (types + unit tests) → `test-writer` (coverage) → `ui-dev`
 Task Runner. All run on free OpenCode models in `subagent` mode. Conventions:
 subagents never commit or push — the parent agent does, and it opens the Pull
 Request.
+
+## Suite infrastructure (guide §7)
+`crates/crash-report` and `crates/update-check` are shared crates consumed by
+the app; a future suite app reuses them rather than reinventing crash/update
+behaviour.
+
+- **crash-report**: installs the panic hook, captures app version / OS /
+  scrubbed backtrace, shows a review-and-cancel dialog, then either creates a
+  GitHub issue with a **user-supplied** token or opens a pre-filled New Issue
+  URL. A privileged bot token must never be embedded in the client.
+- **update-check**: queries the GitHub Releases API, compares against the
+  running version, fails soft offline, and caches briefly (no API abuse).
 
 ## CI-first (no heavy local runs)
 All CPU/RAM-intensive work runs in **GitHub Actions** — the free cloud Task

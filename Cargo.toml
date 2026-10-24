@@ -1,32 +1,15 @@
-[package]
-name = "rubric"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.82"
-description = "Rubric — free, cross-platform PDF markup, review & measurement."
-license = "MIT"
-readme = "README.md"
-default-run = "rubric"
+# Rubric workspace (guide §7.3): the desktop app plus shared suite crates that
+# any future app in the suite consumes instead of re-implementing crash
+# reporting and update checking.
+[workspace]
+resolver = "2"
+members = [
+    "apps/rubric",
+    "crates/crash-report",
+    "crates/update-check",
+]
 
-[dependencies]
-eframe = "0.36"
-egui = "0.36"
-egui_extras = "0.36"
-image = { version = "0.25", default-features = false, features = ["png"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-uuid = { version = "1", features = ["v4", "serde"] }
-thiserror = "2"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-directories = "6"
-chrono = { version = "0.4", features = ["serde"] }
-rfd = "0.15"
-# MIT OR Apache-2.0. Bindings only: the PDFium shared library (BSD-3-Clause)
-# is located at run time (RUBRIC_PDFIUM_PATH / exe dir / system), so builds
-# stay pure Rust. See DECISIONS.md 2026-10-20 (PDF crate choice).
-pdfium-render = "0.9"
-
+# One shared profile keeps release artefacts identical across the suite.
 [profile.release]
 lto = "thin"
 codegen-units = 1

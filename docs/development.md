@@ -36,14 +36,15 @@ Every change is a **Task** in the CTO.new-style cycle
    and the human review the PR. Route failures to `fixer`.
 5. **Merge** — the **human** merges once satisfied (trust but verify, guide
    §9). Record exact results in `PROGRESS.md` / `CHANGELOG.md`; update
-   `REQUIREMENTS_TRACEABILITY.md` and `docs/parity.md`. Never claim a feature is
+   `REQUIREMENTS_TRACEABILITY.md`, `docs/parity.md` and `ROADMAP.md`. Never claim a feature is
    done before CI is green.
 
 ## Definition of Done (per Task)
 
 See guide §8 and `docs/qc/checklist.md`: requirements implemented, tests
 covering normal + failure paths, CI green, **Pull Request opened/updated for
-review**, tracking docs updated, no fake success states, change small and
+review** (using `.github/PULL_REQUEST_TEMPLATE.md`), ROADMAP/CHANGELOG/parity
+updated when a tracked item completes, no fake success states, change small and
 reviewable, and no heavy work run locally.
 
 ## Testing
