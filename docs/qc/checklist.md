@@ -21,6 +21,11 @@ CI run.
 - [ ] `CHANGELOG.md`, `PROGRESS.md` updated with **exact** CI results.
 - [ ] `REQUIREMENTS_TRACEABILITY.md` statuses match reality.
 - [ ] Change is small and reviewable (per guide §8).
+- [ ] UI changes only: the PR template's accessibility items are checked
+      (keyboard path, visible focus, announced labels/errors, non-colour
+      signals, reduced motion) — see `ACCESSIBILITY.md`.
+- [ ] New dependencies: allowed licence class (`deny.toml` gate), recorded
+      in `ATTRIBUTION.md`; no secrets in the diff (secret scan clean).
 
 ## Per phase
 

@@ -90,17 +90,44 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 | F-5xx | Persistence/I/O (spec) | .rubric.json store, PDF import, export/print | PARTIAL | docs/spec/README.md F-501–F-507; R-S-013–R-S-015; native dialogs + recent files landed 2026-10-20; PDF import landed 2026-10-21; report export landed 2026-10-21; image export + print landed 2026-10-21 |
 | F-6xx | UI/UX polish (spec) | shortcuts, theme, history | PARTIAL | docs/spec/README.md F-601–F-605; R-S-016; F-601 (per-tool keys), F-602 (dark theme), F-603 (context menus) done 2026-10-23 |
 | F-7xx | Packaging (spec) | CI release build, installers | DONE | docs/spec/README.md F-701–F-704; R-S-017; release.yml + package.yml done 2026-10-23 (installers unsigned — see docs/assumptions-and-questions Q-PACK-1) |
+| F-8xx | Community/security/ops readiness (operating guide Part II — not product-spec scope; tracked as R-C-*) | — | DONE (initial wave) | see "Community, security and operating-hygiene requirements" below |
 
 ## Gaps / exclusions
 - Canonical inventory: `docs/spec/README.md` (52 F-IDs across F-1xx…F-7xx), adopted 2026-10-19; see Phase 1 requirement set above.
-- PDF rendering/import/export — TODO (Phase 5)
-- Multi-page UI — TODO
-- Cloud/ink rendering polish — TODO
-- Packaging (AppImage/DMG/MSI) — TODO
+- PDF import — DONE 2026-10-21 (F-503); report/image export + print — DONE 2026-10-21 (F-505/F-506, F-504 printer dialog pending re-verify on CI artefacts)
+- Open product residuals: F-103 (note popover), F-114/F-115 (copy props/z-order), F-502, F-507, F-605 (+F-401 zoom presets, F-004 layer rename) — see Roadmap.
+- Community/security/ops: done as of 2026-10-24 (R-C-001…R-C-012 below); ongoing duties (Dependabot triage, CodeQL findings triage) recorded in GOVERNANCE.md.
 
 ## Verification
-- All domain unit tests pass: `cargo test --lib`
-- Integration tests pass: `cargo test --tests`
-- Clippy clean: `cargo clippy -- -D warnings`
-- Formatted: `cargo fmt --all -- --check`
-- Builds: `cargo build` (debug/release)
+- CI gate (the only execution environment for the Rust toolchain here):
+  fmt `--check`, clippy `-D warnings`, full workspace tests, release build
+  (`.github/workflows/ci.yml`). Contributor machines follow the same
+  commands from `CONTRIBUTING.md` on unconstrained hardware.
+- Security gate: `secrets`, `dependency-review`, `cargo-deny`, `sbom`,
+  `codeql` (`.github/workflows/security.yml`).
+- Packaging: `release.yml` (tag builds + GitHub Release publishing) and
+  `package.yml` (AppImage/DMG/MSI).
+
+## Community, security and operating-hygiene requirements (guide Part II)
+Adopted 2026-10-24 from the operating guide's opensource.guide alignment
+(Part II §16–§25). These are process/ops requirements, not product features:
+they do not change the 52-product-feature readiness numerator. Ongoing-duty
+items stay marked LIVE and are re-verified per release (§2.5-style check).
+
+| ID | Requirement | Status | Trace |
+|---|-----------|--------|------|
+| R-C-001 | CODE_OF_CONDUCT.md present, original, with enforcement + report path | DONE | CODE_OF_CONDUCT.md |
+| R-C-002 | SECURITY.md: private reporting, scope, threat model, incident response | DONE | SECURITY.md; private vulnerability reporting enabled (repo settings, 2026-10-24) |
+| R-C-003 | ACCESSIBILITY.md: standard, priorities, limits, report path; a11y issue template + labels | DONE | ACCESSIBILITY.md; .github/ISSUE_TEMPLATE/accessibility_report.yml; labels `a11y`, `accessibility` |
+| R-C-004 | Vision/roadmap published; scope-creep anchor | DONE | VISION.md; ROADMAP.md |
+| R-C-005 | Governance recorded: decision model, roles, tiebreaker, agent least-privilege, org/bus-factor trigger | DONE | GOVERNANCE.md |
+| R-C-006 | Contributor recognition + org backup-admin note | DONE | CONTRIBUTORS.md; GOVERNANCE.md |
+| R-C-007 | Issue/PR templates incl. a11y checklist for UI changes | DONE | .github/ISSUE_TEMPLATE/*.yml, config.yml; .github/PULL_REQUEST_TEMPLATE.md |
+| R-C-008 | CONTRIBUTING covers bug/feature/setup/local-test commands, response expectations | DONE | CONTRIBUTING.md |
+| R-C-009 | CI secret scanning (push protection + in-CI pattern scan) | DONE | repo settings (push protection on, 2026-10-24); scripts/scan-secrets.sh; security.yml `secrets` job |
+| R-C-010 | Dependency licence classes + SBOM in CI | DONE/LIVE | deny.toml; security.yml cargo-deny + sbom jobs; ATTRIBUTION.md policy section |
+| R-C-011 | SAST/SCA: CodeQL on schedule+main; Dependabot versions; dependency-review on PRs; branch protection, required check, security updates | DONE/LIVE | security.yml; .github/dependabot.yml; repo settings (branch protection + Dependabot security updates enabled 2026-10-24) |
+| R-C-012 | Launch/name/metrics hygiene: name-conflict check recorded, one home URL, metrics statement | DONE | docs/assumptions-and-questions.md Q28; README links; docs/metrics.md |
+
+Verification evidence for the settings rows: GitHub API read-outs recorded in
+`PROGRESS.md` (2026-10-24).

@@ -1,0 +1,49 @@
+name: Accessibility report
+description: A barrier affecting people with disabilities (see ACCESSIBILITY.md)
+labels: ["a11y", "accessibility"]
+body:
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should be possible, entirely with your setup.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour / barrier
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Impact severity
+      description: Accessibility triage treats High like a High-severity bug.
+      options:
+        - High - prevents using the app or a core workflow at all
+        - Medium - workflow possible but with painful workarounds
+        - Low - efficiency/cleanliness, still usable
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Platform, assistive technology and version, input method, window size/zoom.
+      placeholder: "Linux arm64, keyboard-only, 200% display scale, OS accessibility settings active"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope-link
+    attributes:
+      label: Reference
+      options:
+        - label: I have read ACCESSIBILITY.md and understand what is and is not supported today.
+          required: true

@@ -18,6 +18,10 @@
 - [ ] ROADMAP / CHANGELOG / parity updated if this completes a tracked item
 - [ ] Secrets and tokens not committed
 - [ ] User-facing strings and UI are original (no copied trade dress)
+- [ ] UI changes only: keyboard path works; focus visible and logical;
+      labels/errors announced; colour is not the only signal; reduced-motion
+      respected; screen-reader spot check where a platform offers one
+      (details in ACCESSIBILITY.md)
 
 ## Local verification
 <!-- How a human can try this on the primary OS -->
