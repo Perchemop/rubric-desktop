@@ -52,12 +52,12 @@ Each row maps a spec area to its feature IDs and the planned modules.
 
 | ID | Requirement | Spec IDs | Planned modules | Status |
 |---|-----------|----------|-----------------|--------|
-| R-S-001 | Markup tools: highlight, text markups, note, text, callout, shapes, cloud, polyline/polygon, line/arrow, ink, stamps | F-101–F-111 | src/domain/markup.rs, src/ui/toolbar.rs, src/ui/canvas.rs | PARTIAL |
+| R-S-001 | Markup tools: highlight, text markups, note, text, callout, shapes, cloud, polyline/polygon, line/arrow, ink, stamps | F-101–F-111 | src/domain/markup.rs, src/ui/toolbar.rs, src/ui/canvas.rs | PARTIAL (only F-103 note popover open) |
 | R-S-002 | Drag-to-draw with live preview (bounds/segment/path/angle/ink) | F-112 | src/ui/canvas.rs (DrawState) | DONE |
-| R-S-003 | Selection editing: select/move/delete, copy properties, z-order | F-113–F-115 | src/ui/canvas.rs, src/ui/inspector.rs, src/domain/project.rs | PARTIAL |
+| R-S-003 | Selection editing: select/move/delete, copy properties, z-order | F-113–F-115 | src/ui/canvas.rs, src/ui/inspector.rs, src/domain/project.rs | PARTIAL (F-114 copy properties, F-115 z-order open) |
 | R-S-004 | Layer visibility and lock | F-116 | src/domain/project.rs (ToolSet → Layer), src/ui/inspector.rs | DONE |
-| R-S-005 | Measurements: length, perimeter, area, angle, diameter, radius, count | F-201–F-206 | src/domain/units.rs, src/domain/markup.rs | PARTIAL |
-| R-S-006 | Calibration and units: scale presets, custom ratio, unit selection | F-207, F-208 | src/domain/units.rs, src/domain/document.rs | PARTIAL |
+| R-S-005 | Measurements: length, perimeter, area, angle, diameter, radius, count | F-201–F-206 | src/domain/units.rs, src/domain/markup.rs | DONE |
+| R-S-006 | Calibration and units: scale presets, custom ratio, unit selection | F-207, F-208 | src/domain/units.rs, src/domain/document.rs, src/ui/inspector.rs | DONE |
 | R-S-007 | Measurement labels on canvas + precision/format preferences | F-209 | src/ui/canvas.rs, src/ui/inspector.rs | DONE |
 | R-S-008 | Review workflow: statuses (Open/In review/Approved/Rejected), comments, author/subject | F-301–F-303 | src/domain/markup.rs (ReviewStatus, remapped 2026-10-19), src/domain/project.rs | DONE |
 | R-S-009 | Summary report (markups by status/author/subject, exportable) | F-304 | src/domain/report.rs (new), src/data/export.rs (new), src/ui/app.rs | DONE |
