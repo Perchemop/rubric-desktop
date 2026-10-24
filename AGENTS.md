@@ -29,7 +29,7 @@ models and GitHub Actions:
 ## Codebase rules
 - Rust only, 100% free OSS.
 - Domain-first: `src/domain/` is pure (no UI), fully serialisable with serde, testable headlessly.
-- Formatting: `cargo fmt --all -- --check` and formatted code. No trailing whitespace.
+- Formatting: rustfmt conventions, checked by CI. No trailing whitespace.
 - Linting: `cargo clippy -- -D warnings` (treat warnings as errors).
 - Testing: `cargo test` before committing. Add/extend tests when changing behaviour or fixing bugs.
 - Error handling: use `thiserror` for domain/data errors; avoid panics in logic; prefer `Result`.
@@ -74,14 +74,27 @@ behaviour.
   running version, fails soft offline, and caches briefly (no API abuse).
 
 ## CI-first (no heavy local runs)
-All CPU/RAM-intensive work runs in **GitHub Actions** — the free cloud Task
-Runner — never on the desktop host (it is memory-constrained and restarts under
-load): `cargo test`, `cargo clippy`, `cargo check`, and release builds are
-CI-only. Locally, run just `cargo fmt --all` (trivial) and read-only git.
+**No cargo command is ever run on the local machine — not even `cargo fmt`,
+`cargo check`, or a "small" test.** All Rust toolchain work (format check,
+lint, tests, builds, packaging) runs in **GitHub Actions** — the free cloud
+Task Runner. The desktop host is memory-constrained and must never execute the
+toolchain. Formatting problems reported by CI are fixed by editing files by
+hand and re-running CI.
+
 Workflow: edit → commit → push → open/update a **Pull Request** → read the CI
-run (`gh run view <id>`) → route any failures back through the `fixer`
-subagent. The human reviews and merges the Pull Request. Every PR runs fmt
-check, clippy (`-D warnings`), full tests, and a release build.
+run (`gh run view <id>`) → fix failures by editing the source → push again.
+The human reviews and merges the Pull Request. Every PR runs fmt check,
+clippy (`-D warnings`), full tests, and a release build.
+
+## Local machine (hard rule)
+
+- Read-only git, file editing, `gh`, and reading CI logs are the only local
+  activities.
+- **Never run any `cargo` command locally** (no fmt/check/test/build/clippy),
+  and never launch the GUI here as part of "testing" more than a quick
+  user-driven check the human asks for.
+- If CI reports a formatting or lint failure, fix it by editing the source and
+  pushing again — CI is both the checker and the fixer of record.
 
 ## Do not
 - Commit external reference material or notes about other products;
