@@ -1,13 +1,16 @@
 //! Domain module re-exports and common types.
 
 pub mod action;
+pub mod diff;
 pub mod document;
 pub mod geom;
 pub mod grid;
 pub mod markup;
+pub mod markup_list;
 pub mod project;
 pub mod report;
 pub mod style;
+pub mod style_preset;
 pub mod theme;
 pub mod thumbs;
 pub mod units;
@@ -22,8 +25,11 @@ pub use markup::{
 pub use project::{
     History, Project, ProjectSnapshot, RecentList, Settings, Tool, ToolSet, MAX_RECENT,
 };
+pub use diff::{DiffResult, MarkupChange, MarkupSummaryRow, diff_documents, diff_projects};
+pub use markup_list::{MarkupGroupKey, MarkupList, MarkupListFilter, MarkupListSort, MarkupRow};
 pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCounts, NONE_LABEL};
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
+pub use style_preset::{StylePreset, StylePresetLibrary};
 pub use theme::{AppPrefs, Theme};
 pub use thumbs::{thumb_layout, ThumbLayout};
 pub use units::{

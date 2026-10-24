@@ -83,5 +83,16 @@
 - [x] PDFium runtime documented for users (docs/pdfium.md: discovery order, download, verification)
 - [ ] Follow-ups recorded as questions: installer code-signing (Q-PACK-1), raster icon set (Q-PACK-2)
 
+## Phase 7 — Rubric v0.2 discovery & design
+- [x] Discovery approved: continue Rubric v0.2 slice for reviewers/auditors
+- [x] Research captured in docs/research/bluebeam-studio-capabilities.md and docs/research/adobe-acrobat-capabilities.md – capability-level summaries with URLs
+- [x] Discovery brief created: docs/discovery/v0.2-discovery.md
+- [x] Open questions recorded: Q-V02-1 CSV export, Q-V02-2 diff presentation, Q-V02-3 markup style favorites
+- [x] Human approval received 2026-10-24
+- [x] Task brief created: docs/tasks/v0.2-01-markup-list-domain.md
+- [ ] Task execution pending – domain types MarkupList, MarkupStyle, DiffResult
+- [ ] UI slice: Markups List panel with filter/sort/group
+- [ ] Tests for list, filter, diff logic in src/domain
+
 ## Slice strategy
 Build vertically: domain + tests → minimal UI → drawing + selection → save/load → measurements → review → polish. Keep each slice small, compiling, tested.
