@@ -57,7 +57,11 @@ and `coder` (Task execution) are the process roles; the build is split by stage
 into `domain-dev` (types + unit tests) → `test-writer` (coverage) → `ui-dev`
 (egui slices) → `reviewer` (read-only review) → `docs-writer` (process docs) →
 `fixer` (fmt/clippy/check failures), with `ci-runner` driving the GitHub Actions
-Task Runner. All run on free OpenCode models in `subagent` mode. Conventions:
+Task Runner, plus `designer` — the dedicated UI/UX owner: it owns the visual
+identity (logo, app icons, illustrations, brand tokens) and continuously reviews
+every user-visible slice for a **minimalistic, beautiful, professional and
+polished** result and for perceived performance (guide §5.3, Part II §27).
+All run on free OpenCode models in `subagent` mode. Conventions:
 subagents never commit or push — the parent agent does, and it opens the Pull
 Request.
 
