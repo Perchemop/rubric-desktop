@@ -1,0 +1,55 @@
+name: Bug report
+description: Something in Rubric does not work as documented
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect to happen, and what actually happened?
+      placeholder: "Saving a project with an empty layer name corrupted the file."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal, numbered steps starting from launching the app.
+      placeholder: |
+        1. Open a one-page PDF
+        2. Draw a length measurement
+        3. Switch unit, save, reopen
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Rubric version
+      description: Help ▸ About (or the release you downloaded).
+      placeholder: "v0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Linux x86_64
+        - Linux arm64
+        - macOS (Apple silicon)
+        - Windows x86_64
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: secrets
+    attributes:
+      label: Sensitive material
+      options:
+        - label: My report (including attachments) contains no secrets, no documents I am not allowed to share.
+          required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots you made yourself are welcome; do not paste content from commercial PDF tools.

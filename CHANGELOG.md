@@ -4,6 +4,39 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ## [Unreleased]
 
+### Added
+- Community and governance files (operating guide Part II / opensource.guide
+  alignment): `CODE_OF_CONDUCT.md`, `SECURITY.md` (private reporting, threat
+  model, incident response), `ACCESSIBILITY.md`, `VISION.md`,
+  `GOVERNANCE.md`, `CONTRIBUTORS.md`, and issue templates for bugs, feature
+  requests and accessibility reports (`accessibility_report.yml`).
+- CI security workflow `.github/workflows/security.yml`: secret-pattern
+  scan (`scripts/scan-secrets.sh`), PR dependency review, `cargo-deny`
+  licence/advisory gate (`deny.toml`), SBOM generation (SPDX + CycloneDX),
+  and CodeQL SAST for the workspace.
+- `.github/dependabot.yml`: weekly cargo + GitHub-Actions update PRs.
+- Repository security posture: branch protection on `main` (required check,
+  admin-enforced), private vulnerability reporting, Dependabot security
+  updates, Discussions enabled, area/a11y labels.
+- `docs/metrics.md` — which project metrics are tracked and why.
+
+### Changed
+- `.github/PULL_REQUEST_TEMPLATE.md`: UI changes now must pass the
+  accessibility checklist items.
+- `CONTRIBUTING.md`: links the conduct/security/accessibility paths.
+- Global workflows pin every GitHub Action to a commit SHA (supply-chain
+  hardening, guide Part II §20.3).
+- `ATTRIBUTION.md`: adds the CI-enforced dependency licence policy and the
+  AI-tooling terms record; `docs/current-model-map.md` records the research
+  method and model-terms rules.
+- Crate `license` metadata unified on `MIT` to match `LICENSE`; dual
+  "MIT OR Apache-2.0" adoption is open question Q-LIC-1.
+
+### Fixed
+- `release.yml`: the publish step finalises a draft release after uploading
+  assets (a re-created tag turns the existing Release entry into a draft,
+  which had left v0.1.0 unpublished until edited).
+
 ## [0.1.0] - 2026-10-24
 
 ### Summary

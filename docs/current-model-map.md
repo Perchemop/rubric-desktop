@@ -100,3 +100,21 @@ No research notes exist yet — Rubric's implemented feature set was designed
 from its own spec (`docs/spec/README.md`), not from vendor research. When notes
 are added, the method used is recorded in the note itself, and the human gate
 in guide §8.4 applies before dependent implementation.
+
+## Model terms record (Part II §19.7 / §2.4)
+
+Every model and API used during the build is accounted for, so the
+redistribution terms stay auditable:
+
+- **Providers:** OpenCode (free tier) and NVIDIA (free tier) only — no paid
+  generation, no local model hosting. Terms of use are the sites' own
+  standard free-tier terms; nothing forbids redistribution of generated
+  *project* material in this repository, which is reviewed as original work
+  before commit.
+- **Record of record:** the licence/terms summary lives in
+  `ATTRIBUTION.md` ("AI tooling used during the build"), next to the
+  dependency SBOMs — kept together so attribution review sees both humans'
+  and machines' inputs in one place.
+- **Rule in force:** model outputs whose terms forbid redistribution are
+  never committed; anything committed must satisfy the clean-room review
+  bar regardless of who (or what) authored the first draft.

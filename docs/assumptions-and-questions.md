@@ -54,6 +54,9 @@
 - **Q18 (Shared crash-report + update-check crates?)**: **Yes — implemented 2026-10-24** as `crates/crash-report` (panic hook, scrubbed capture, review-and-cancel dialog, user-token or pre-filled-URL submission) and `crates/update-check` (GitHub Releases API, semantic version compare, fail-soft offline, 1-hour cache). See DECISIONS.md "Suite-ready restructure".
 - **Q26 (Crash-report privacy)**: reports are captured locally, shown to the user in full, and only transmitted after an explicit Send. Delivery is browser-based by default (no token in the app); a user-supplied token is used once in memory and never persisted. Documented in `README.md`.
 - **Q27 (Research method)**: recorded per note in `docs/research/`; preferred ladder is browse-capable model → CI text fetch → human assist (guide §2.4). No research notes exist yet — the implemented feature set was designed from the original spec, not from vendor research.
+- **Q28 (Name/handle conflicts, §18)**: checked 2026-10-24 — an unrelated, dormant (last update 2020) `rubric` crate exists on crates.io (grade/academia automation; nothing to do with PDF review), and an unrelated PyPI package of the same common-English name. No trademark claim on either side; Rubric is distributed via GitHub Releases, not crates.io/PyPI. Handles in use: `Perchemop/rubric-desktop` (the project home URL). Verdict: keep the name; revisit only if a trademark dispute ever arrives. Evidence: crates.io API and PyPI queried on 2026-10-24.
+- **Q29 (Employer/IP policy, §19.6)**: the single maintainer builds this project personally; no employer claims over it. If any contributor works under an employer IP policy, they must confirm their own situation before contributing — CONTRIBUTING links the DCO sign-off for this reason.
+- **Q-LIC-1 (Licence: single MIT vs dual "MIT OR Apache-2.0")**: `LICENSE` is MIT-only, and README/ATTRIBUTION/app crate match. The Rust convention and the build guide prefer dual; dual adoption additionally brings a patent grant. **Decision needed from the human:** stay MIT-only (default until changed), or adopt dual everywhere (requires: LICENSE OR expression or stacked LICENSE-MIT + LICENSE-APACHE files, Cargo metadata update, CONTRIBUTING/README/ATTRIBUTION text). Until then all crate `license` fields read `MIT` so crate metadata matches the licence file (crate fields were aligned 2026-10-24).
 
 ## Packaging (Phase 7, 2026-10-23) — architecture as built
 
@@ -76,6 +79,43 @@
 - History capped at 128 snapshots.
 - Phase 0 implements Slice 1: drawing, selection, move, undo/redo, inspector, save/load, tests.
 - Never commit external reference material or the build guide.
+
+## Open-conflict decisions from the operating guide, Part II §26 (2026-10-24)
+
+Resolutions below adopt each item's **recommended resolution** and state it
+publicly; the human may overrule any of them by editing this list.
+
+- **§26.1 local tests vs no heavy local work:** the maintainer's machine is
+  constrained, so CI is authoritative for *this project's* verification —
+  but `CONTRIBUTING.md` documents the exact commands contributors run
+  locally on unconstrained machines. Both statements live unqualified-side-
+  by-side on purpose: the restriction is about this machine, never about
+  contributors' machines. **Adopted.**
+- **§26.2 public-day-one vs security practice:** resolved as option (a) —
+  the repository stays public from day one, compensated by: secret scanning
+  + push protection (enabled), a secrets scan in CI, branch protection with
+  required checks (enabled 2026-10-24), private vulnerability reporting
+  (enabled 2026-10-24), and README/SECURITY transparency. **Adopted.**
+- **§26.3 direct pushes vs branch protection:** branch protection on `main`
+  was enabled on 2026-10-24: required status check `check`, no force
+  pushes, admin-enforced, conversation resolution required. Every change —
+  docs included — now lands through a PR with green CI. The direct-push
+  habit for small doc commits is retired. **Adopted.**
+- **§26.4 agent credentials vs two-admins/least privilege:** agent
+  credentials are a scoped push-only token committing as `Rubric Dev
+  <dev@example.com>` (repository-local identity); no admin capabilities.
+  At least two human admins is deferred as long as a single human maintainer
+  exists — the accepted residual risk is recorded in `GOVERNANCE.md` with
+  the trigger to fix it (org move on repo growth / grant say). **Adopted as
+  recorded.**
+- **§26.5 never-commit-the-guide vs public process docs:** the operating
+  guide stays local forever; the project's public docs
+  (`CONTRIBUTING.md`, `GOVERNANCE.md`, `AGENTS.md`, `docs/metrics.md`,
+  this file) carry everything contributors need. Repository contents are
+  reviewed for guide-internal references before pushing. **Standing rule.**
+- **§26.6 licence choice:** recorded as open question **Q-LIC-1** above;
+  until decided, single MIT everywhere so every surface (crate metadata,
+  README, ATTRIBUTION, CONTRIBUTING) states the same true fact.
 
 ## Runtime notes (Phase 5, 2026-10-20)
 - Native file dialogs use `rfd`'s pure-Rust xdg-portal backend on Linux. A running
