@@ -25,6 +25,18 @@ than left implicit (opensource.guide, leadership-and-governance):
 | **Contributor** | Anyone whose work was merged — code, docs, tests, issue triage, accessibility feedback. Recorded in `CONTRIBUTORS.md`. |
 | **Committer** | Commit access is held by the maintainer and by the agent pipeline's narrow write token (below). |
 
+### How to grow into a governance role (written path)
+
+- Sustained, trusted contributions (merged work in code, docs, triage, or
+  a11y/security work) plus a track record of good issue conduct.
+- A maintainer path opens when the project's arms grow past the one
+  maintainer's honest capacity: the existing maintainer nominates the new
+  maintainer publicly (issue + commit to this file), and the nomination
+  follows the consensus-seeking rule above. Self-nomination is welcome —
+  sustained work is the qualification, not seniority.
+- Commit access may be granted earlier than full maintainer status, only
+  paired with branch protection so nothing bypasses review (§20.2).
+
 ## Agent automation (least privilege, documented)
 
 The Rubric build is agent-assisted (see `AGENTS.md`). Governance-relevant
