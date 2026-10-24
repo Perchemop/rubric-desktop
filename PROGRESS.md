@@ -671,6 +671,25 @@ Note: this slice is packaging and documentation only — it adds no application 
 ### Blocked
 - None.
 
+## 2026-10-24 — Guide v4 (suite-ready) alignment: workspace + shared crates + process files; CI running
+**Status**: implemented — awaiting the GitHub Actions verdict.
+
+### Completed
+- **Workspace restructure (guide §7.3/§12)**: repo is now a Cargo workspace — `apps/rubric` (the app, package name and build output unchanged) plus shared crates. Icons path adjusted for the new depth; CI commands (`cargo fmt/test/clippy --all`) unchanged.
+- **`crates/crash-report`** (guide §7.1, 12 tests): panic hook capturing app version / OS / backtrace with home paths and token-like material redacted; report → issue title/body/labels; pre-filled New Issue URL fallback; submission requires a **user-supplied** token (never embedded); truncation is char-boundary safe.
+- **`crates/update-check`** (guide §7.2, 13 tests): GitHub Releases API query, semantic version comparison (0.2.0 > 0.10.0), drafts/prereleases ignored, fail-soft `Unknown` for offline/rate-limit/bad payloads, 1-hour in-memory cache.
+- **App wiring**: panic hook installed at startup (report parked in the config dir for review); Help ▸ **Check for Updates…** runs on a worker thread with an honest result window (running / up to date / available with release link / could-not-check, retry); Help ▸ **Report a Bug…** shows a review-and-cancel dialog with editable notes and a browser-first delivery default. Privacy documented in `README.md`.
+- **Process files**: `.github/PULL_REQUEST_TEMPLATE.md` (guide §8.3, verbatim), `ROADMAP.md` (evidence-based: 13/17 requirement groups, 46/52 feature IDs done), `CONTRIBUTING.md` (PR licence terms + DCO sign-off), `docs/design/brand.md`, `docs/research/` policy with the §8.4 human gate.
+- **Spec reconciliation for honest readiness**: 20 feature-ID notes updated against code evidence (e.g. F-104/F-105 in-canvas editing, F-108 multi-point, F-110 ink, F-112 drag preview, F-207/F-208 scale editor, F-304 report export, F-401 wheel zoom, F-402 pan are all implemented); traceability R-S-005/R-S-006 → DONE. Genuine remaining gaps: F-103, F-114, F-115, F-502, F-507, F-605.
+- **Release notes standard (guide §6.3)**: `scripts/release-notes.py` extracts the tagged version's CHANGELOG section (with an explicit disclosure line when falling back to [Unreleased]); `release.yml` now attaches a `SHA256SUMS` file and publishes notes with Summary / Roadmap progress / Added / Changed / Fixed / Known limitations. CHANGELOG restructured: Unreleased work folded into a dated `[0.1.0] - 2026-10-24` section with Summary, Roadmap progress and Known limitations; stale "no PDF rendering" note corrected.
+- Docs: AGENTS.md (PR template, roadmap, research gate, suite crates), `docs/development.md`, `docs/qc/checklist.md` (legal checklist §2.5), `docs/current-model-map.md` (research-method ladder), assumptions Q4/Q18/Q26/Q27 answered, DECISIONS entry.
+
+### Active
+- Next: verify in CI, merge, then tag **v0.1.0** and confirm the GitHub Release publishes with artefacts + checksums + notes.
+
+### Blocked
+- None.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
 import, report export, page image export, print). Phase 6 in progress: dark

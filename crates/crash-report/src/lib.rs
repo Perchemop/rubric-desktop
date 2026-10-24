@@ -192,7 +192,7 @@ fn redact_tokens(s: &str) -> String {
             // Keep the key, redact what follows an `=`, `:` or space.
             out.push_str(&s[i..at]);
             let after = &s[at..];
-            let (key_end, sep_len) = match after.find(|c| c == '=' || c == ':') {
+            let (key_end, sep_len) = match after.find(['=', ':']) {
                 Some(p) if p < 16 => (at + p, 1),
                 _ => (at, 0),
             };

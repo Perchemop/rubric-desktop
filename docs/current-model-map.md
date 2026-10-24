@@ -83,3 +83,20 @@ The router in `~/.config/opencode/failover.json` (`fallbacks` +
 already failed in the same session, and a model that stops connecting is
 dropped after two attempts, so a stale ID degrades into the next tier instead
 of stalling the session.
+
+## Research method (guide §2.4)
+
+Public research for `docs/research/*.md` uses the least-human-input ladder:
+
+1. **Preferred:** a browse-capable free model or MCP fetches public pages; the
+   Orchestrator assigns it to research Tasks.
+2. **CI / script assist:** an Action or script fetches **text** from URLs listed
+   in the note; the agent then writes an original behavioural summary (no bulk
+   copyright dump in git).
+3. **Human assist (last resort):** the human pastes URLs or short excerpts; the
+   agent writes behavioural notes only.
+
+No research notes exist yet — Rubric's implemented feature set was designed
+from its own spec (`docs/spec/README.md`), not from vendor research. When notes
+are added, the method used is recorded in the note itself, and the human gate
+in guide §8.4 applies before dependent implementation.
