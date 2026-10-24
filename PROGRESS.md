@@ -701,6 +701,15 @@ Note: this slice is packaging and documentation only — it adds no application 
 ### Blocked
 - None.
 
+## 2026-10-24 — Packaging smoke-test: Windows artefact step fixed twice, v0.1.0 re-tagged
+**Status**: fix pushed as `7198393`; tag re-created at that commit; release run `40048805198` monitoring in progress.
+
+### Found by smoke-testing the release path
+- **First Windows failure**: Windows runners have no `zip` on `PATH` inside bash, so the old fallback produced `rubric-windows-x86_64.tar.gz` while `upload-artifact` demanded `rubric-windows-x86_64.zip` → job failed, `publish` (correctly) skipped. Fixed with a `zip` → `7z` → PowerShell `Compress-Archive` chain plus a `test -f` assertion.
+- **Second Windows failure (same step, silent)**: the job aborted ~2s after the build finished with exit code 1 and no captured error. Root cause was diagnosed from the job log: the `command -v powershell.exe` probe is unreliable in git-bash on the Windows runner, and the previous script had no `set -e`/pipefail, so the failure mode was opaque.
+- **Final fix** (`release.yml`, commit `7198393`): `set -euo pipefail`; the binary is located by probing both `rubric` and `rubric.exe` (copy fails loudly with a directory listing if neither exists); zip creation uses `zip` when present and otherwise calls `powershell.exe` directly (with a `powershell` fallback), and every branch echoes which tool it used.
+- **Release-path lesson**: a `workflow_dispatch` re-run reuses the workflow file *from the tag's commit*, so workflow fixes must move the tag. `v0.1.0` was therefore deleted and re-created at the fixed commit (twice), rather than re-running the existing run.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
 import, report export, page image export, print). Phase 6 in progress: dark
