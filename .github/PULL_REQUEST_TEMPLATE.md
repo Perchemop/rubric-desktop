@@ -12,7 +12,7 @@
 - [ ] Acceptance criteria for the Task are met with **real** behaviour (no fake UI)
 - [ ] Tests added or updated
 - [ ] CI is green (or will be after merge of required base)
-- [ ] No unbounded local full builds used to "verify" on a constrained machine
+- [ ] Verification is done in CI; no full builds run locally on a constrained machine
 - [ ] No proprietary source, assets, or RE material introduced
 - [ ] Public research notes are original summaries + URLs only (if applicable)
 - [ ] ROADMAP / CHANGELOG / parity updated if this completes a tracked item

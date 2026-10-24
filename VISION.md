@@ -13,7 +13,7 @@ and exports a clean record of what was reviewed and why.
   machine. Optional networking exists only for two user-triggered features
   (update check, optional crash/bug report) and sends only what the user
   has seen and approved.
-- **Free and open.** MIT OR Apache-2.0 code, no telemetry, no account, no
+- **Free and open.** MIT code, no telemetry, no account, no
   subscription. Heavy building happens in public CI; anyone can rebuild
   every artefact.
 - **Honest.** Roadmap percentages move only from verified evidence; release

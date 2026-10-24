@@ -69,6 +69,14 @@ requires a token to be embedded in the app. See the privacy note in `README.md`.
   `VISION.md`.
 - Every merged contribution is credited in `CONTRIBUTORS.md`.
 
+## What to expect
+
+- Issues are triaged regularly; accessibility reports are treated with the
+  same priority as high-severity bugs.
+- PRs are reviewed by CI + the reviewer subagent; a human merges.
+- Security vulnerabilities are handled privately per `SECURITY.md` (no public
+  issues). Typical first response is within 7 days.
+
 ## Questions
 
 

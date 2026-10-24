@@ -18,10 +18,9 @@ URLs or manual checks, not by assertion.
 ## Priorities (in order)
 
 1. **Full keyboard operation** — every panel, tool, dialog, and menu is
-   usable without a mouse. The keyboard map lives in the README and inside
-   the app (Help ▸ Keyboard Shortcuts). Shortcuts are single-key when safe
-   (Esc, Delete, Space) and Ctrl/Cmd-prefixed when they collide with text
-   entry (Save, Undo, Redo).
+   usable without a mouse. The keyboard map is documented in the README.
+   Shortcuts are single-key when safe (Esc, Delete, Space) and Ctrl/Cmd-prefixed
+   when they collide with text entry (Save, Undo, Redo).
 2. **Visible focus and cancel** — the active tool, hovered surfaces, and
    in-progress input always have a visible state; Esc is a managed escape
    from every modal state (drag-in-progress, dialogs, popups) — it never
@@ -30,7 +29,7 @@ URLs or manual checks, not by assertion.
    shape/text (tool icons differ in silhouette; error states add text, not
    just red flashes; grid/snap/ruler states toggle visible controls).
 4. **Contrast** — UI text is kept comfortably above contrast requirements in
-   both the light (F-601 precursor) and dark (F-602) themes; report anything
+   both the light and dark (F-602) themes; report anything
    that reads badly and it will be fixed in the theme tokens, not locally.
 5. **Screen-reader semantics** — egui exposes widgets' roles to OS
    accessibility on supported platforms; text labels are real text, images
