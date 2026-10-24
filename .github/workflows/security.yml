@@ -1,0 +1,94 @@
+# Security checks — secret scanning, dependency licence/advisory review,
+# SBOM, and SAST. Extends the CI design (Part I §4) per the security
+# requirements adopted from opensource.guide (guide Part II §20.7):
+# a gap here is treated like a broken CI — fix it before feature work.
+
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly full pass (CodeQL + SBOM) even without activity.
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  # Secret detection over tracked content — no third-party action, so the
+  # security gate itself adds no supply-chain surface. Push protection is
+  # enabled at repository level and catches the push-time case.
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Scan tracked files for credential patterns
+        run: bash scripts/scan-secrets.sh
+
+  # PR-time dependency review: fails when new dependencies carry licences we
+  # ban or known vulnerabilities (GitHub advisory database).
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4
+        with:
+          # Ban-strong-copyleft mirrors AGENTS.md; allow list details live in
+          # deny.toml which also gates every main-branch push.
+          fail-on-severity: high
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0
+
+  # Licence classes + advisory database over the whole workspace, gated on
+  # every push and PR (deny.toml is the policy of record).
+  cargo-deny:
+    name: Cargo deny (licences, advisories)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: EmbarkStudios/cargo-deny-action@c3bbe7e4e3f7baeee1a3dd9aec0a3b2aded580fb # v2.1.1
+        with:
+          command: check
+          arguments: --all-features --workspace
+
+  # Software Bill of Materials (legally mandated in some jurisdictions,
+  # requested in procurement; Part II §19.4). SPDX + CycloneDX of the
+  # dependency tree, attached as artefacts.
+  sbom:
+    name: SBOM (SPDX + CycloneDX)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: anchore/sbom-action@fffec3d851af758d56fee099cf3fbf8aa8779843 # v0.24.3
+        with:
+          format: spdx-json
+          file: ./Cargo.lock
+      - uses: anchore/sbom-action@fffec3d851af758d56fee099cf3fbf8aa8779843 # v0.24.3
+        with:
+          format: cyclonedx-json
+          file: ./Cargo.lock
+
+  # Static analysis (SAST) over first-party Rust code. Scheduled + main
+  # pushes rather than PRs: findings surface here first and are triaged in
+  # review (Part II §20.2), so the required PR check stays "check".
+  codeql:
+    name: CodeQL (SAST)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: github/codeql-action/init@8498dc4c2b27cdd99baf0f87955b29ebbf30c78d # v4.39.1
+        with:
+          languages: rust
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - name: Build for extraction
+        run: cargo build --workspace --all-features
+      - uses: github/codeql-action/analyze@8498dc4c2b27cdd99baf0f87955b29ebbf30c78d # v4.39.1
+        with:
+          category: "/language:rust"

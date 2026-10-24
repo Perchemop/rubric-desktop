@@ -1,0 +1,36 @@
+# cargo-deny configuration — dependency licence class + advisory gate in CI
+# (guide Part II §19.2/§19.4/§20.3). Licence policy mirrors AGENTS.md and
+# ATTRIBUTION.md: permissive licences allowed, weak copyleft (MPL-2.0)
+# allowed per the project rule, strong copyleft (GPL/AGPL) banned without
+# explicit maintainer approval — a deny here makes that rule enforceable.
+
+[graph]
+all-features = true
+
+[licenses]
+version = 2
+confidence-threshold = 0.93
+allow = [
+    "MIT", "MIT-0",
+    "Apache-2.0", "Apache-2.0 WITH LLVM-exception",
+    "ISC", "BSD-2-Clause", "BSD-3-Clause", "BSL-1.0", "Zlib",
+    "Unicode-3.0", "Unicode-DFS-2016",
+    "CC0-1.0", "CDLA-Permissive-2.0",
+    "MPL-2.0",
+]
+
+[bans]
+# Duplicate crates are a size concern, not a legal one: warn, don't block.
+multiple-versions = "warn"
+wildcards = "deny"
+
+[advisories]
+version = 2
+vulnerability = "deny"
+unmaintained = "warn"
+yanked = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

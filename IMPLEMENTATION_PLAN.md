@@ -73,6 +73,11 @@
 - [x] Dark theme (F-602: View > Theme light/dark, persisted preference)
 - [x] Icon/desktop entry, AppImage/DMG/MSI (F-701–F-704: `.github/workflows/package.yml` + `release.yml`; WiX definition in `packaging/wix/`)
 - [x] CI workflow skeleton (.github/workflows/ci.yml)
+- [x] Security/community wave 2026-10-24 (guide Part II): security.yml
+      (secrets / dependency-review / cargo-deny / SBOM / CodeQL),
+      dependabot.yml, deny.toml, branch protection + private vulnerability
+      reporting, conduct/security/a11y/vision/governance/contributors docs,
+      issue templates, a11y PR checklist, pinned action SHAs
 - [ ] Benchmarks/tests expansion
 - [x] Changelog updates per slice
 - [x] PDFium runtime documented for users (docs/pdfium.md: discovery order, download, verification)

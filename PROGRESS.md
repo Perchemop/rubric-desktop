@@ -701,6 +701,54 @@ Note: this slice is packaging and documentation only — it adds no application 
 ### Blocked
 - None.
 
+## 2026-10-24 — v0.1.0 published; operating-guide Part II (opensource.guide alignment) implemented
+**Status**: Release **v0.1.0 is live** (not draft, not prerelease, "Latest");
+Part II requirements implemented and tracked as R-C-001…R-C-012; PR-based
+flow now enforced by branch protection.
+
+### v0.1.0 release (final resolution)
+- Run `40048805198` failed in `publish` with exit 126: the multi-line
+  `steps.collect.outputs.files` value was substituted inline into `run:`,
+  the shell executed the second path as a command (one asset landed:
+  `rubric-linux-arm64.zip`).
+- Fix `1a6ef10` (run `40049997043`, SUCCESS): artefact list passes via env
+  var + `mapfile`; all four platform zips + `SHA256SUMS` uploaded.
+- The release was in **draft** because deleting the old tag turned the
+  existing Release entry into one; finalised via `gh release edit
+  --draft=false`; `release.yml` now always finalises drafts after upload
+  (commit `7a47a75`, PR #16).
+
+### Part II implementation (this wave)
+- Files added: `CODE_OF_CONDUCT.md`, `SECURITY.md` (threat model +
+  incident response), `ACCESSIBILITY.md`, `VISION.md`, `GOVERNANCE.md`,
+  `CONTRIBUTORS.md`, `.github/ISSUE_TEMPLATE/{bug_report,feature_request,
+  accessibility_report,config}.yml`, `.github/dependabot.yml`, `deny.toml`,
+  `scripts/scan-secrets.sh`, `.github/workflows/security.yml`,
+  `docs/metrics.md`.
+- Files updated: PR template (a11y checklist), CONTRIBUTING (links +
+  honest licence terms), README (community table), ATTRIBUTION (licence
+  policy + AI tooling record), docs/current-model-map (§2.4 + §19.7),
+  docs/assumptions-and-questions (Q28 name check, Q29 employer/IP,
+  Q-LIC-1, six §26 resolutions), ROADMAP, REQUIREMENTS_TRACEABILITY
+  (R-C-001…R-C-012), CHANGELOG, IMPLEMENTATION_PLAN, docs/qc/checklist.
+- Repo settings (GitHub API, verified): branch protection on `main`
+  (required check `check`, enforce_admins, no force pushes, conversation
+  resolution); private vulnerability reporting (204); Dependabot security
+  updates enabled; Discussions enabled; labels `security`, `core`, `ui`,
+  `a11y` created (existing: good first issue, help wanted, documentation,
+  accessibility, bug).
+- CI hardening: every workflow action pinned to a commit SHA; new actions
+  pinned at v4 (dependency-review `2031cfc0…`, CodeQL `8498dc4c…`,
+  sbom-action `fffec3d8…`, cargo-deny-action `c3bbe7e4…`).
+- Name check (Q28): unrelated dormant `rubric` crate on crates.io (2020,
+  grade/academia) + unrelated PyPI package; no trademark conflict; home
+  URL stays `Perchemop/rubric-desktop`.
+
+### Process change (effective immediately)
+- Branch protection enforces CI + PR on `main` for everyone (admins
+  included): **no more direct pushes**, including docs. All future waves go
+  through the Chat → Task → PR → Merge cycle via `ci.sh`.
+
 ## 2026-10-24 — Packaging smoke-test: Windows artefact step fixed twice, v0.1.0 re-tagged
 **Status**: fix pushed as `7198393`; tag re-created at that commit; release run `40048805198` monitoring in progress.
 

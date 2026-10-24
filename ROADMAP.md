@@ -44,7 +44,7 @@ in `PROGRESS.md`.
 | CI green (fmt, lint, tests, primary OS build) | ✅ | every push to `main` |
 | Docs (README build/run, CHANGELOG 0.1.0 entry) | ✅ | README, CHANGELOG |
 | Legal baseline (LICENSE, ATTRIBUTION, no secrets/assets) | ✅ | MIT; `ATTRIBUTION.md`; legal checklist §2.5 |
-| Tag `v0.1.0` published as GitHub Release with honest notes | ⏳ | this milestone's final action |
+| Tag `v0.1.0` published as GitHub Release with honest notes | ✅ | [Release](https://github.com/Perchemop/rubric-desktop/releases/tag/v0.1.0) — 4 platform zips + SHA256SUMS, release run `40049997043` |
 
 ### v0.1.x — polish the shipped core
 
@@ -66,7 +66,9 @@ Small, low-risk completions; each its own Task + release.
 
 - [ ] F-605: accessibility pass (contrast audit, full keyboard reachability, screen-reader labels)
 - [ ] Empty / error states for every panel; no dead controls
-- [ ] `gitleaks` (or GitHub secret scanning) enabled in CI
+- [x] ~~`gitleaks` (or GitHub secret scanning) in CI~~ — done early 2026-10-24:
+      push-protected secret scanning at repo level plus an in-CI pattern scan
+      (`security.yml`, R-C-009) and CodeQL SAST (R-C-011)
 
 ### v1.0.0 — finished (guide §9)
 
@@ -74,6 +76,27 @@ Small, low-risk completions; each its own Task + release.
 - [ ] Multi-platform installers verified hands-on (Linux ✅, macOS, Windows)
 - [ ] §2.5 legal checklist clean for a public release
 - [ ] README/ROADMAP claims re-audited (no over-claiming)
+
+### Community, security and operating hygiene — done 2026-10-24 (guide Part II)
+
+Not product features: tracked as R-C-001…R-C-012 in
+`REQUIREMENTS_TRACEABILITY.md`, so the 52-feature readiness above is
+unchanged by this work.
+
+- Community files: `CODE_OF_CONDUCT.md`, `SECURITY.md` (threat model +
+  incident response), `ACCESSIBILITY.md`, `VISION.md`, `GOVERNANCE.md`,
+  `CONTRIBUTORS.md`; issue templates (bug / feature / **accessibility**)
+  and the PR template gained the accessibility checklist.
+- CI security: `security.yml` — secret-pattern scan, PR dependency review,
+  `cargo-deny` licence/advisory gate (`deny.toml`), SBOM (SPDX + CycloneDX),
+  CodeQL SAST; `.github/dependabot.yml` (cargo + actions, weekly).
+- Repository posture: branch protection on `main` (required check `check`,
+  admin-enforced, no force pushes), private vulnerability reporting,
+  Dependabot security updates — all enabled and API-verified 2026-10-24.
+- Governance/API hygiene: a11y/area labels created; Discussions enabled;
+  name-conflict check (Q28), employer/IP note (Q29), licence question
+  (Q-LIC-1) and the six Part II §26 decisions recorded in
+  `docs/assumptions-and-questions.md`; metrics statement in `docs/metrics.md`.
 
 ---
 
