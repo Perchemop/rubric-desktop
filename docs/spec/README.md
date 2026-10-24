@@ -115,5 +115,7 @@ This requirement set is **original material authored for Rubric**. It is derived
 ## Links
 
 - Priorities → `IMPLEMENTATION_PLAN.md` phases.
-- Requirement mapping → `REQUIREMENTS_TRACEABILITY.md` (R-S-001…R-S-017).
+- Requirement mapping → `REQUIREMENTS_TRACEABILITY.md` (R-S-001…R-S-017 for
+  product requirements, plus the separate R-C-001…R-C-012 community/security
+  hygiene set that is process scope, not product scope).
 - Scope decisions/open questions → `docs/assumptions-and-questions.md`; decision log → `DECISIONS.md`.

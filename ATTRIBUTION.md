@@ -39,9 +39,13 @@ prohibited (AGENTS.md); all crates above are permissively licensed.
 
 ## Fonts and assets
 
-- No third-party font binaries are shipped. UI text uses egui's built-in
-  fonts (MIT/Apache-2.0) and system fonts; branding typography suggestions
-  in `assets/branding.md` are optional references, not bundled files.
+- UI text uses **egui's bundled fonts** (`epaint_default_fonts` crate): a
+  small set of open-licence fonts (OFL-1.1 and Ubuntu Font Licence v1.0
+  terms) carried inside the egui/eframe dependency tree — recorded here per
+  the asset-attribution rule; not shipped as separate files by Rubric, and
+  permitted for bundling/redistribution by their terms. System fonts beyond
+  those are not bundled. Branding typography suggestions in
+  `assets/branding.md` are optional references, not bundled files.
 - `assets/logo.svg`, `assets/icons/*` and the generated icon set are
   original Rubric artwork (`scripts/gen-icons.sh`).
 - No Creative-Commons or "non-commercial" licensed assets are bundled
