@@ -50,7 +50,7 @@ toolchain locally — not `cargo build`, `cargo test`, `cargo clippy`,
 `cargo check`, `cargo bench`, `cargo run`, or `cargo install`. A blocked command
 is a hard stop; do not try to work around it.
 
-You may run only `cargo fmt --all` (trivial) plus read-only `git status` /
+You may run **no cargo commands at all** (not even fmt) — plus read-only `git status` /
 `git diff` / `git log`.
 
 Do not commit or push yourself; the orchestrator delegates GitHub interaction to the `ci-runner` subagent.
