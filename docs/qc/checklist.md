@@ -9,7 +9,7 @@ CI run.
 - [ ] Task is one vertical slice (domain + tests + UI + docs).
 - [ ] Unit tests cover happy path, boundary, and failure/edge cases.
 - [ ] Headless domain tests need no display; no CPU-heavy work runs locally.
-- [ ] `cargo fmt --all -- --check` passes locally.
+- [ ] CI reports the fmt check green (never run locally — no cargo on this machine).
 - [ ] CI green on GitHub Actions (the free Task Runner): fmt → clippy
       `-D warnings` → `test --all` → release build.
 - [ ] Pull Request opened/updated for review using

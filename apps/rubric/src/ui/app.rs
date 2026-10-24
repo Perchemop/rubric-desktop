@@ -256,7 +256,8 @@ impl RubricApp {
 
     /// Kick off an update check on a worker thread (guide §7.2). The UI loop is
     /// never blocked; the result arrives via the shared `update` state and the
-    /// thread requests a repaint when done.
+    /// thread requests a repaint when done. `egui::Context` is cheap to clone,
+    /// so the worker keeps its own handle for the repaint signal.
     fn begin_update_check(&mut self, ctx: &egui::Context) {
         {
             let mut state = self.update.lock().expect("update lock");
@@ -267,6 +268,7 @@ impl RubricApp {
             state.result = None;
         }
         let shared = Arc::clone(&self.update);
+        let ctx = ctx.clone();
         let repo = self.repo.clone();
         let current = env!("CARGO_PKG_VERSION").to_string();
         std::thread::spawn(move || {
@@ -926,7 +928,7 @@ impl RubricApp {
                 }
                 if ui.button("Check for Updates…").clicked() {
                     self.ui.status = "Checking for updates…".to_string();
-                    self.begin_update_check();
+                    self.begin_update_check(ui.ctx());
                     ui.close();
                 }
                 if ui.button("Report a Bug…").clicked() {
@@ -1290,7 +1292,7 @@ impl App for RubricApp {
 
         // Update-check result (guide §7.2): honest state — running, up to date,
         // available, or could-not-check. Never blocks the UI loop.
-        self.draw_update_result(ctx);
+        self.draw_update_result(ui.ctx());
 
         // Bug report dialog (guide §7.1): preview + editable notes; nothing is
         // sent until the user explicitly chooses to.

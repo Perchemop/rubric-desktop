@@ -9,12 +9,16 @@
 
 ## Local vs CI
 
+**No `cargo` command runs on this machine — ever** (user directive
+2026-10-24, superseding the earlier "fmt locally is fine" exception). Format
+check, clippy, tests, and builds are all CI-only. When CI reports a fmt or
+clippy failure, fix the source by hand and push again.
+
 | Task | Where |
 |---|---|
 | Editing, reading, docs | Local |
-| `cargo fmt --all` (+ `--check`) | Local (trivial) |
 | Read-only `git status/diff`, `gh run view` | Local |
-| `cargo check`, `clippy`, `test`, release build | **CI only** — never locally |
+| `cargo fmt --check`, `clippy`, `test`, release build | **CI only** — never locally |
 
 ## Task workflow (guide §5, §8)
 
@@ -29,7 +33,7 @@ Every change is a **Task** in the CTO.new-style cycle
    (`domain-dev` → `test-writer` → `ui-dev` → `docs-writer`), with `fixer`
    handling fmt/clippy/test failures. Subagents never commit or push; the parent
    agent does.
-3. `cargo fmt --all`, commit a small focused Task, push, and open/update a
+3. Commit a small focused Task, push, and open/update a
    **Pull Request** (the CI runner drives this).
 4. **Review** — GitHub Actions (the free Task Runner) runs fmt → clippy
    `-D warnings` → `cargo test --all` → release build; the `reviewer` subagent
