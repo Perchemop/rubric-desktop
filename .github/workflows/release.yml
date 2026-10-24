@@ -207,3 +207,7 @@ jobs:
           # array so newline-separated values survive as data, not source.
           mapfile -t artefacts <<< "$ARTEFACTS"
           gh release upload "$tag" "${artefacts[@]}" --clobber
+          # If the release exists as a draft (e.g. its tag was deleted and the
+          # re-created tag made GitHub turn it into one), finalise it so the
+          # upload actually amounts to publishing.
+          gh release edit "$tag" --draft=false
