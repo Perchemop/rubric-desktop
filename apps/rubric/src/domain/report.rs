@@ -67,7 +67,7 @@ impl ReportGroupKey {
 
 /// Trim a group value, mapping empty (or whitespace-only) values to
 /// [`NONE_LABEL`].
-fn normalise_group_value(value: &str) -> String {
+pub(crate) fn normalise_group_value(value: &str) -> String {
     let trimmed = value.trim();
     if trimmed.is_empty() {
         NONE_LABEL.to_string()
