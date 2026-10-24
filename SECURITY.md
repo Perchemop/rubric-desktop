@@ -36,7 +36,7 @@ Please include:
 - Anything executed or loaded from a document the user opened: PDF page
   data rendered through PDFium, embedded markup geometry.
 - The update-check client (`crates/update-check`): response handling must
-  not misinterpret a spoofed/.non-GitHub response beyond showing an error.
+  not misinterpret a spoofed / non-GitHub response beyond showing an error.
 - The crash-report client (`crates/crash-report`): must never embed or leak
   credentials, must scrub paths from the captured text.
 
