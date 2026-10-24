@@ -44,3 +44,34 @@ prohibited (AGENTS.md); all crates above are permissively licensed.
   in `assets/branding.md` are optional references, not bundled files.
 - `assets/logo.svg`, `assets/icons/*` and the generated icon set are
   original Rubric artwork (`scripts/gen-icons.sh`).
+- No Creative-Commons or "non-commercial" licensed assets are bundled
+  anywhere in the tree.
+
+## Dependency licence policy (Part II §19.2/§19.3 automated)
+
+Licence classes are enforced in CI, not just documented:
+
+- **Allowed:** permissive — MIT, MIT-0, Apache-2.0, ISC, BSD-2/3, Zlib,
+  BSL-1.0, Unicode-3.0, CC0-1.0, CDLA-Permissive-2.0.
+- **Allowed with conditions:** weak/limited copyleft — MPL-2.0.
+- **Denied without maintainer approval:** strong copyleft (GPL-2.0,
+  GPL-3.0, AGPL-3.0) and source-available/proprietary terms.
+- Gate: `cargo-deny` runs on every push/PR (`.github/workflows/security.yml`
+  against `deny.toml`), and PR-time `dependency-review` blocks high-severity
+  advisories and denied licences. A software bill of materials (SPDX +
+  CycloneDX JSON over `Cargo.lock`) is generated as workflow artefacts.
+
+## AI tooling used during the build (Part II §19.7)
+
+Recorded so redistribution rights are transparent:
+
+- **Models:** free-tier hosted models only (OpenCode free tier and NVIDIA
+  free tier; identifiers and role mapping live in `docs/current-model-map.md`).
+  No local model hosting.
+- **Terms:** provider terms of use apply to generation-time use; withheld
+  outputs whose terms forbid redistribution are not committed. All source,
+  documents and assets in this repository are treated as original project
+  work authored for it, and met the same review bar as human contributions.
+- **Provenance basis:** original code + public standards + capability-level
+  inspiration only (`docs/inspiration.md`); no scraped corpora, no
+  reverse-engineering output, no copied trade dress.

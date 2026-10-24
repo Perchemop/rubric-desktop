@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability (private)
+    url: https://github.com/Perchemop/rubric-desktop/security/advisories/new
+    about: Report a vulnerability privately - never a public issue (see SECURITY.md).
+  - name: In-app bug report
+    url: https://github.com/Perchemop/rubric-desktop/issues/new?template=bug_report.yml
+    about: The same bug template; the app's Help menu opens it pre-filled (nothing is sent without your review).
+  - name: Discussions / usage questions
+    url: https://github.com/Perchemop/rubric-desktop/discussions
+    about: Questions about using Rubric; the issue tracker is for concrete bugs and feature requests.

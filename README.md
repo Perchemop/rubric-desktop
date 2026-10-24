@@ -66,6 +66,19 @@ crates listed in `Cargo.toml`, Rubric's own original requirement set
 in `docs/inspiration.md`. Dependency licences are tracked in
 `ATTRIBUTION.md` (project licence: MIT).
 
+## Community and project docs
+
+| File | What it covers |
+|---|---|
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to report bugs, propose features, set up and test |
+| [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | Behaviour expectations and report path |
+| [`SECURITY.md`](SECURITY.md) | Private vulnerability reporting, threat model, incident response |
+| [`ACCESSIBILITY.md`](ACCESSIBILITY.md) | Accessibility commitment, known limits, barrier reports |
+| [`VISION.md`](VISION.md) | What Rubric is for — and what it is not |
+| [`GOVERNANCE.md`](GOVERNANCE.md) | Who decides what, and how |
+| [`CONTRIBUTORS.md`](CONTRIBUTORS.md) | Everyone credited |
+| [`ROADMAP.md`](ROADMAP.md) | Staged plan with evidence-based readiness |
+
 ## License
 
 MIT License. See [LICENSE](LICENSE).

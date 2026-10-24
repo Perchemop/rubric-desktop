@@ -1,0 +1,23 @@
+# Automated dependency maintenance (opensource.guide / Part II §20.3).
+# Security updates additionally flow through GitHub's Dependabot security
+# updates (enabled in repository settings); this file covers the routine
+# version-bump PRs, which are treated like any normal change: branch, CI,
+# review, merge.
+
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels: ["dependencies"]
+    # Routine bumps stay open automatically; deliberately low noise.
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "infrastructure"]
+    open-pull-requests-limit: 5

@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest a capability that does not exist yet
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem you are trying to solve
+      description: Frame it through your workflow, not through an existing product's feature list.
+      placeholder: "I re-measure the same region across many pages and want to copy a scale between pages."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you imagine the solution looking like
+      description: Behaviour and outcome; designers will pick the details.
+    validations:
+      required: true
+  - type: checkboxes
+    id: research
+    attributes:
+      label: Scope
+      options:
+        - label: I checked ROADMAP.md and SEARCHED existing issues first, and this is not already tracked.
+          required: true
+        - label: I understand features included by other products only describe the capability - the request must not ask for cloned UI or branding.
+          required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or workarounds you use today
