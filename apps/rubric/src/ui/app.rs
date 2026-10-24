@@ -1105,7 +1105,7 @@ impl App for RubricApp {
             {
                 self.delete_selected();
             }
-            if i.modifiers.ctrl && i.key_pressed(egui::Key::Z) {
+            if i.modifiers.command && i.key_pressed(egui::Key::Z) {
                 // Never mutate history mid-edit: undoing past the markup's
                 // creation would leave a stale `text_edit` pointing at a
                 // markup that no longer exists.
@@ -1119,7 +1119,7 @@ impl App for RubricApp {
                     self.clear_selection();
                 }
             }
-            if i.modifiers.ctrl && i.key_pressed(egui::Key::O) {
+            if i.modifiers.command && i.key_pressed(egui::Key::O) {
                 // Native dialog must run on the main thread; the logic() handler
                 // runs on it, so calling rfd here is safe.
                 if let Some(path) = rfd::FileDialog::new()
@@ -1129,7 +1129,7 @@ impl App for RubricApp {
                     self.open_project_path(path);
                 }
             }
-            if i.modifiers.ctrl && i.key_pressed(egui::Key::S) {
+            if i.modifiers.command && i.key_pressed(egui::Key::S) {
                 // save_project_to sets an accurate "Saved" / "Save failed: …"
                 // status; no override here.
                 self.save_project_action();

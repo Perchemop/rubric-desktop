@@ -17,6 +17,7 @@ tests, docs, and branding assets are original work.
 | `thiserror` | 2.x | MIT OR Apache-2.0 | Domain/data error types |
 | `tracing` / `tracing-subscriber` | 0.1 / 0.3 | MIT OR Apache-2.0 | Diagnostics |
 | `directories` | 6.x | MIT OR Apache-2.0 | OS config/data directories |
+| `ureq` | 2.x | MIT OR Apache-2.0 | HTTP client for update checks (sync) |
 | `rfd` | 0.15 | MIT | Native file dialogs (xdg-portal backend on Linux) |
 | `pdfium-render` | 0.9 | MIT OR Apache-2.0 | Rust bindings to PDFium (runtime binding only) |
 
