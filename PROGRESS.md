@@ -671,6 +671,17 @@ Note: this slice is packaging and documentation only — it adds no application 
 ### Blocked
 - None.
 
+## 2026-10-24 — v0.1.0 tagged; packaging smoke-tests exposed and fixed two more release defects
+**Status**: v0.1.0 tag pushed; release build `40047819071` in progress on the fixed workflow.
+
+### Found by smoke-testing the release path
+- **Windows artefact never existed**: on Windows runners `zip` is not on `PATH`, so the "fallback" created a `.tar.gz` while `upload-artifact` demanded `rubric-windows-x86_64.zip` — the job failed and `publish` (correctly) skipped. Fixed in `release.yml`: the archive step now uses `zip`, else `7z`, else PowerShell `Compress-Archive`, and asserts the file exists before finishing.
+- First v0.1.0 tag run was discarded: the tag was deleted and re-created at the fixed commit, because a re-run would have reused the tag's original (broken) workflow file.
+- **`.opencode/` is in ci.sh's ignore list**: changes to agent definitions are silently excluded from ci.sh commits. The agent "no cargo locally" edits were therefore lost in a `git reset --hard` and had to be reapplied and committed with plain `git add`/`commit` on a branch (PR #15). Lesson recorded: anything under `.opencode/` must be committed explicitly.
+
+### State
+- v0.1.0 gate (guide §6.1) is otherwise satisfied and evidence-backed; the remaining step is the published GitHub Release from this run.
+
 ## 2026-10-24 — Guide v4 (suite-ready) alignment: workspace + shared crates + process files; CI verified
 **Status**: complete — CI SUCCESS on `e27ba35` (runs `40045627083` and `40045810962` failed first: a clippy `manual_pattern_char_comparison`, the moved icons path, and an egui `Context` lifetime escaping into the update-check worker; all fixed). PR #14 (https://github.com/Perchemop/rubric-desktop/pull/14, base `main`) merged by rebase, `origin/main` updated.
 
