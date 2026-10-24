@@ -169,6 +169,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NOTES_BODY: ${{ steps.notes.outputs.body }}
+          # Newline-separated list of artefacts. Read into an array below rather
+          # than substituted straight into the shell: a multi-line value placed
+          # directly in a `run:` block is re-parsed as shell source, which makes
+          # the shell try to *execute* the path (exit 126, Permission denied).
+          ARTEFACTS: ${{ steps.collect.outputs.files }}
         shell: bash
         run: |
           set -euo pipefail
@@ -198,5 +203,7 @@ jobs:
           else
             echo "release $tag already exists; uploading assets"
           fi
-          # --clobber makes re-runs idempotent.
-          gh release upload "$tag" ${{ steps.collect.outputs.files }} --clobber
+          # --clobber makes re-runs idempotent. Read the artefact list into an
+          # array so newline-separated values survive as data, not source.
+          mapfile -t artefacts <<< "$ARTEFACTS"
+          gh release upload "$tag" "${artefacts[@]}" --clobber
