@@ -25,9 +25,13 @@ multiple-versions = "warn"
 wildcards = "deny"
 
 [advisories]
-version = 2
-vulnerability = "deny"
-unmaintained = "warn"
+# Cargo-deny current schema: vulnerability advisories always error (no key),
+# `unmaintained`/`unsound` take a scope (all/workspace/transitive/none),
+# `yanked` takes a lint level. Unmaintained crates are only an error when a
+# workspace crate directly depends on them; transitive unmaintained crates
+# surface as warnings.
+unmaintained = "workspace"
+unsound = "workspace"
 yanked = "deny"
 
 [sources]
