@@ -80,14 +80,22 @@ jobs:
           # PDFium is a run-time dependency (see Cargo.toml): ship the doc that
           # explains discovery instead of a binary blob.
           cp docs/pdfium.md "$STAGE/" 2>/dev/null || true
-          # Use zip when available; otherwise emit a correctly-named tarball.
-          # (Renaming a .tar.gz to .zip would produce an archive most tools
-          # reject, so the fallback keeps its real extension.)
+          # Always produce a real .zip named for the asset: `zip` where present,
+          # else 7-Zip, else PowerShell's Compress-Archive (Windows runners have
+          # no `zip` in their bash). Renaming a .tar.gz to .zip would produce an
+          # archive most tools reject, so that "fallback" is not an option.
           if command -v zip >/dev/null 2>&1; then
             (cd "$STAGE" && zip -qr "../${{ matrix.asset }}.zip" .)
+          elif command -v 7z >/dev/null 2>&1; then
+            7z a -tzip "../${{ matrix.asset }}.zip" "./$STAGE" >/dev/null
+          elif command -v powershell.exe >/dev/null 2>&1; then
+            powershell.exe -NoProfile -Command \
+              "Compress-Archive -Path '$STAGE/*' -DestinationPath '${{ matrix.asset }}.zip' -Force"
           else
-            (cd "$STAGE" && tar -czf "../${{ matrix.asset }}.tar.gz" .)
+            echo "no zip tooling found on this runner" >&2
+            exit 1
           fi
+          test -f "${{ matrix.asset }}.zip"
 
       - uses: actions/upload-artifact@v4
         with:
