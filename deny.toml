@@ -17,6 +17,10 @@ allow = [
     "Unicode-3.0", "Unicode-DFS-2016",
     "CC0-1.0", "CDLA-Permissive-2.0",
     "MPL-2.0",
+    # Font licences bundled inside egui/epaint_default_fonts (UI text, data
+    # not code): OFL + Ubuntu Font License are free, redistribution-allowing
+    # font licences — see ATTRIBUTION.md "Fonts and assets".
+    "OFL-1.1", "Ubuntu-font-1.0",
 ]
 
 [bans]
