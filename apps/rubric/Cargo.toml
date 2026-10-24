@@ -27,5 +27,7 @@ rfd = "0.15"
 # stay pure Rust. See DECISIONS.md 2026-10-20 (PDF crate choice).
 pdfium-render = "0.9"
 # Shared suite crates (guide §7): crash reporting and update checks.
-crash-report = { path = "../../crates/crash-report" }
-update-check = { path = "../../crates/update-check" }
+# Explicit `version` alongside `path`: cargo-deny treats a versionless
+# dependency spec as a wildcard, which the dependency-hygiene gate forbids.
+crash-report = { path = "../../crates/crash-report", version = "0.1.0" }
+update-check = { path = "../../crates/update-check", version = "0.1.0" }

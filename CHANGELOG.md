@@ -36,6 +36,11 @@ All notable changes to this project will be documented here. Format: semantic-is
 - `release.yml`: the publish step finalises a draft release after uploading
   assets (a re-created tag turns the existing Release entry into a draft,
   which had left v0.1.0 unpublished until edited).
+- Dependency hygiene findings from the new `cargo-deny` gate: yanked
+  `clipboard-win` 5.4.1 → 5.4.3 in `Cargo.lock`; explicit `version` on the
+  two workspace path dependencies (cargo-deny treats versionless specs as
+  wildcards); `epaint_default_fonts` font licences (OFL-1.1,
+  Ubuntu-font-1.0) documented in `deny.toml` and `ATTRIBUTION.md`.
 
 ## [0.1.0] - 2026-10-24
 

@@ -27,6 +27,7 @@ discipline, CI-first rule and tracking files stay identical.
 | Docs writer | `opencode/beam-free#high` (big-pickle retired) |
 | Explorer (fast search) | `opencode/mimo-v2.6-flash-free` (unchanged) |
 | CI runner | `opencode/beam-free#high` (proven this session) |
+| designer (UI/UX) | `opencode/nemotron-3.5-super-vl-free#high` | vision-capable; design + performance review |
 
 Model IDs are not load-bearing: they change over time, so the orchestrator
 re-discovers the currently available free models at session start and

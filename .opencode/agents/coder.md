@@ -1,5 +1,5 @@
 ---
-description: Rubric Coder (Task mode). Executes one bounded Task: implements, tests, updates tracking docs. Relies on GitHub Actions. Never runs heavy local builds.
+description: "Rubric Coder (Task mode). Executes one bounded Task - implements, tests, updates tracking docs. Relies on GitHub Actions. Never runs heavy local builds."
 mode: subagent
 model: opencode/big-pickle
 ---
