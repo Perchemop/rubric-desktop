@@ -63,7 +63,7 @@ CI run.
 - [ ] Trademarks: product name/logo original; no vendor marks in UI or installers
 - [ ] Trade dress: UI is original expression, not a slavish visual copy
 - [ ] Patents: public non-infringing alternatives preferred; public standards used
-- [ ] Licence: MIT OR Apache-2.0 clear; NOTICE/ATTRIBUTION complete
+- [ ] Licence: MIT clear; NOTICE/ATTRIBUTION complete
 - [ ] Secrets: no keys/tokens in git or release binaries; crash reports use user-supplied tokens only
 - [ ] Privacy: crash reports send only what the user consents to; documented in README
 - [ ] Research files: summaries + URLs only; human-approved (`docs/research/`)

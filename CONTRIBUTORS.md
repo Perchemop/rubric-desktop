@@ -31,5 +31,4 @@ to add you. Nobody is listed without their own explicit request.
 ## A note on sign-off
 
 Sign-off (DCO) is optional but encouraged; see `CONTRIBUTING.md`. The
-project licence (MIT OR Apache-2.0) covers all contributions regardless of
-sign-off.
+project licence (MIT) covers all contributions regardless of sign-off.

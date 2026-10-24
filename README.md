@@ -79,6 +79,19 @@ in `docs/inspiration.md`. Dependency licences are tracked in
 | [`CONTRIBUTORS.md`](CONTRIBUTORS.md) | Everyone credited |
 | [`ROADMAP.md`](ROADMAP.md) | Staged plan with evidence-based readiness |
 
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| Ctrl/Cmd + S | Save project |
+| Ctrl/Cmd + O | Open project |
+| Ctrl + Z / Shift+Ctrl+Z | Undo / Redo |
+| Delete / Backspace | Delete selection |
+| Esc | Cancel current action / close dialog |
+| Page Up / Page Down | Previous / next page |
+
+See `ACCESSIBILITY.md` for the full accessibility commitment and `apps/rubric/src/ui/app.rs` for the implementation.
+
 ## License
 
 MIT License. See [LICENSE](LICENSE).
