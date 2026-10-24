@@ -19,7 +19,8 @@ Rules:
   `REQUIREMENTS_TRACEABILITY.md`, `docs/parity.md`, and `DECISIONS.md` for
   significant choices.
 - GitHub Actions is the free **Task Runner**: never run full local builds or
-  test suites. Locally only `cargo fmt --all` and read-only git are allowed.
+  test suites. Locally: read-only git and file editing only — **no cargo
+  commands at all** (not even fmt); the CI run is the verifier.
 - Repo convention: subagents do not commit or push — hand the finished change
   back to the parent agent, which commits, pushes, and opens the Pull Request.
 - All work is original (public standards + our spec + capability-level

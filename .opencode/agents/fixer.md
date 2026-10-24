@@ -37,7 +37,8 @@ Rules:
   lint is genuinely a false positive and you add a comment justifying it.
 - Keep behaviour unchanged unless the failure is a genuine bug — in that case
   fix the bug and say so explicitly.
-- Preserve existing formatting style; run `cargo fmt --all` after editing.
+- Preserve existing formatting style; match rustfmt conventions by hand —
+  never run cargo locally, push and let CI check instead.
 - Do not refactor beyond what the fix requires.
 - Never touch `.git/` or `target/`.
 
@@ -47,7 +48,7 @@ toolchain locally — not `cargo build`, `cargo test`, `cargo clippy`,
 `cargo check`, `cargo bench`, `cargo run`, or `cargo install`. A blocked command
 is a hard stop; do not try to work around it.
 
-You may run only `cargo fmt --all` (trivial) plus read-only `git status` /
+You may run **no cargo commands at all** (not even fmt) — plus read-only `git status` /
 `git diff` / `git log`.
 
 To verify a change, trigger CI:
