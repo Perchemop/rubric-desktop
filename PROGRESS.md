@@ -671,8 +671,8 @@ Note: this slice is packaging and documentation only — it adds no application 
 ### Blocked
 - None.
 
-## 2026-10-24 — Guide v4 (suite-ready) alignment: workspace + shared crates + process files; CI running
-**Status**: implemented — awaiting the GitHub Actions verdict.
+## 2026-10-24 — Guide v4 (suite-ready) alignment: workspace + shared crates + process files; CI verified
+**Status**: complete — CI SUCCESS on `e27ba35` (runs `40045627083` and `40045810962` failed first: a clippy `manual_pattern_char_comparison`, the moved icons path, and an egui `Context` lifetime escaping into the update-check worker; all fixed). PR #14 (https://github.com/Perchemop/rubric-desktop/pull/14, base `main`) merged by rebase, `origin/main` updated.
 
 ### Completed
 - **Workspace restructure (guide §7.3/§12)**: repo is now a Cargo workspace — `apps/rubric` (the app, package name and build output unchanged) plus shared crates. Icons path adjusted for the new depth; CI commands (`cargo fmt/test/clippy --all`) unchanged.
