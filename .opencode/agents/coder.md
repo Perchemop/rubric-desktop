@@ -2,8 +2,47 @@
 description: "Rubric Coder (Task mode). Executes one bounded Task - implements, tests, updates tracking docs. Relies on GitHub Actions. Never runs heavy local builds."
 mode: subagent
 model: opencode/big-pickle
+permissions:
+  - action: edit
+    resource: "*"
+    effect: allow
+  - action: edit
+    resource: ".git/**"
+    effect: deny
+  - action: edit
+    resource: "target/**"
+    effect: deny
+  - action: shell
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "git status*"
+    effect: allow
+  - action: shell
+    resource: "git diff*"
+    effect: allow
+  - action: shell
+    resource: "git log*"
+    effect: allow
+  - action: shell
+    resource: "git show*"
+    effect: allow
+  - action: shell
+    resource: "/home/leonardolscinto/.config/opencode/scripts/ci.sh *"
+    effect: allow
+  - action: shell
+    resource: "~/.config/opencode/scripts/ci.sh *"
+    effect: allow
+  - action: shell
+    resource: "bash /home/leonardolscinto/.config/opencode/scripts/ci.sh *"
+    effect: allow
+  - action: shell
+    resource: "bash ~/.config/opencode/scripts/ci.sh *"
+    effect: allow
+  - action: subagent
+    resource: "*"
+    effect: deny
 ---
-
 You execute exactly one bounded **Task** for **Rubric**, a Rust PDF
 markup/review/measurements desktop app (egui/eframe).
 
