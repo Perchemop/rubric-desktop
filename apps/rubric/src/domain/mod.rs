@@ -16,17 +16,17 @@ pub mod thumbs;
 pub mod units;
 
 pub use action::EditorAction;
+pub use diff::{diff_documents, diff_projects, DiffResult, MarkupChange, MarkupSummaryRow};
 pub use document::{Document, Layer, LayerError, Page};
 pub use geom::{angle_degrees, path_length, polygon_area, Pt, Rect};
 pub use grid::{nice_step, ruler_ticks, Grid};
 pub use markup::{
     Comment, Markup, MarkupGeometry, MarkupKind, Measurement, ReviewStatus, StampPreset, ToolGroup,
 };
+pub use markup_list::{MarkupGroupKey, MarkupList, MarkupListFilter, MarkupListSort, MarkupRow};
 pub use project::{
     History, Project, ProjectSnapshot, RecentList, Settings, Tool, ToolSet, MAX_RECENT,
 };
-pub use diff::{DiffResult, MarkupChange, MarkupSummaryRow, diff_documents, diff_projects};
-pub use markup_list::{MarkupGroupKey, MarkupList, MarkupListFilter, MarkupListSort, MarkupRow};
 pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCounts, NONE_LABEL};
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
 pub use style_preset::{StylePreset, StylePresetLibrary};

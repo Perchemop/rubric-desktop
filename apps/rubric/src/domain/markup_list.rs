@@ -12,8 +12,8 @@ use uuid::Uuid;
 use super::document::Document;
 use super::markup::{Markup, MarkupKind, ReviewStatus};
 use super::project::Project;
-use super::report::NONE_LABEL;
 use super::report::normalise_group_value;
+use super::report::NONE_LABEL;
 
 /// A filter describing an inclusive query over markups.
 ///
@@ -52,7 +52,10 @@ impl MarkupListFilter {
             }
         }
         if let Some(authors) = &self.authors {
-            if !authors.iter().any(|a| a.eq_ignore_ascii_case(&markup.author)) {
+            if !authors
+                .iter()
+                .any(|a| a.eq_ignore_ascii_case(&markup.author))
+            {
                 return false;
             }
         }
@@ -221,24 +224,14 @@ impl MarkupListSort {
 
     fn compare(&self, a: &MarkupRow, b: &MarkupRow) -> std::cmp::Ordering {
         use std::cmp::Ordering;
-        let id_cmp = |a: &MarkupRow, b: &MarkupRow| {
-            a.id.to_string().cmp(&b.id.to_string())
-        };
+        let id_cmp = |a: &MarkupRow, b: &MarkupRow| a.id.to_string().cmp(&b.id.to_string());
         match self {
-            MarkupListSort::CreatedAsc => {
-                a.created.cmp(&b.created).then_with(|| id_cmp(a, b))
-            }
-            MarkupListSort::CreatedDesc => {
-                b.created.cmp(&a.created).then_with(|| id_cmp(a, b))
-            }
+            MarkupListSort::CreatedAsc => a.created.cmp(&b.created).then_with(|| id_cmp(a, b)),
+            MarkupListSort::CreatedDesc => b.created.cmp(&a.created).then_with(|| id_cmp(a, b)),
             MarkupListSort::PageAsc => a.page.cmp(&b.page),
             MarkupListSort::PageDesc => b.page.cmp(&a.page),
-            MarkupListSort::KindAsc => {
-                a.kind.label().cmp(&b.kind.label())
-            }
-            MarkupListSort::KindDesc => {
-                b.kind.label().cmp(&a.kind.label())
-            }
+            MarkupListSort::KindAsc => a.kind.label().cmp(&b.kind.label()),
+            MarkupListSort::KindDesc => b.kind.label().cmp(&a.kind.label()),
             MarkupListSort::ModifiedDesc => b.modified.cmp(&a.modified),
         }
     }
@@ -295,7 +288,11 @@ impl MarkupGroupKey {
 
     /// Group value for a [`MarkupRow`]; layer name is resolved via `layer_name`
     /// when present.
-    pub fn group_value_for_row(&self, row: &MarkupRow, layer_name: Option<&dyn Fn(Uuid) -> String>) -> String {
+    pub fn group_value_for_row(
+        &self,
+        row: &MarkupRow,
+        layer_name: Option<&dyn Fn(Uuid) -> String>,
+    ) -> String {
         match self {
             MarkupGroupKey::Status => row.status.label().to_string(),
             MarkupGroupKey::Author => normalise_group_value(&row.author),
@@ -358,11 +355,7 @@ impl MarkupList {
 
     /// Build a list from `doc`, preserving markup order.
     pub fn from_document(doc: &Document) -> Self {
-        let rows = doc
-            .markups
-            .iter()
-            .map(MarkupRow::from_markup)
-            .collect();
+        let rows = doc.markups.iter().map(MarkupRow::from_markup).collect();
         Self { rows }
     }
 
@@ -412,7 +405,11 @@ impl MarkupList {
     /// Group rows by `key`, resolving layer names via `layer_names`.
     ///
     /// Groups are ordered alphabetically by the group label string.
-    pub fn group(&self, key: MarkupGroupKey, layer_names: &dyn Fn(Uuid) -> String) -> Vec<(String, MarkupList)> {
+    pub fn group(
+        &self,
+        key: MarkupGroupKey,
+        layer_names: &dyn Fn(Uuid) -> String,
+    ) -> Vec<(String, MarkupList)> {
         let mut map: BTreeMap<String, MarkupList> = BTreeMap::new();
         for row in &self.rows {
             let label = key.group_value_for_row(row, Some(layer_names));
@@ -439,8 +436,20 @@ mod tests {
     use crate::domain::markup::{Markup, MarkupGeometry, MarkupKind, ReviewStatus};
     use crate::domain::project::Project;
 
-    fn make_markup(id_u128: u128, page: usize, kind: MarkupKind, author: &str, subject: &str, status: ReviewStatus) -> Markup {
-        let mut m = Markup::new(page, kind, MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)), author);
+    fn make_markup(
+        id_u128: u128,
+        page: usize,
+        kind: MarkupKind,
+        author: &str,
+        subject: &str,
+        status: ReviewStatus,
+    ) -> Markup {
+        let mut m = Markup::new(
+            page,
+            kind,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+            author,
+        );
         m.id = Uuid::from_u128(id_u128);
         m.subject = subject.to_string();
         m.status = status;
@@ -457,9 +466,30 @@ mod tests {
     #[test]
     fn markup_list_filter_status_author_subject_kind_page() {
         let mut doc = Document::empty("D");
-        doc.add_markup(make_markup(1, 0, MarkupKind::Highlight, "Alice", "Elec", ReviewStatus::Open));
-        doc.add_markup(make_markup(2, 1, MarkupKind::Rectangle, "Bob", "Plumb", ReviewStatus::Approved));
-        doc.add_markup(make_markup(3, 0, MarkupKind::Highlight, "alice", "Elec", ReviewStatus::Open));
+        doc.add_markup(make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "Alice",
+            "Elec",
+            ReviewStatus::Open,
+        ));
+        doc.add_markup(make_markup(
+            2,
+            1,
+            MarkupKind::Rectangle,
+            "Bob",
+            "Plumb",
+            ReviewStatus::Approved,
+        ));
+        doc.add_markup(make_markup(
+            3,
+            0,
+            MarkupKind::Highlight,
+            "alice",
+            "Elec",
+            ReviewStatus::Open,
+        ));
 
         let list = MarkupList::from_document(&doc);
         let mut filter = MarkupListFilter::default();
@@ -560,9 +590,30 @@ mod tests {
     #[test]
     fn group_ordering_and_membership() {
         let mut doc = Document::empty("D");
-        doc.add_markup(make_markup(1, 0, MarkupKind::Highlight, "Alice", "Elec", ReviewStatus::Open));
-        doc.add_markup(make_markup(2, 0, MarkupKind::Rectangle, "Bob", "Plumb", ReviewStatus::Approved));
-        doc.add_markup(make_markup(3, 0, MarkupKind::Highlight, "Alice", "Elec", ReviewStatus::Approved));
+        doc.add_markup(make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "Alice",
+            "Elec",
+            ReviewStatus::Open,
+        ));
+        doc.add_markup(make_markup(
+            2,
+            0,
+            MarkupKind::Rectangle,
+            "Bob",
+            "Plumb",
+            ReviewStatus::Approved,
+        ));
+        doc.add_markup(make_markup(
+            3,
+            0,
+            MarkupKind::Highlight,
+            "Alice",
+            "Elec",
+            ReviewStatus::Approved,
+        ));
 
         let list = MarkupList::from_document(&doc);
         let groups = list.group(MarkupGroupKey::Author, &|_| "X".to_string());
@@ -575,9 +626,30 @@ mod tests {
     #[test]
     fn counts_by_status() {
         let mut doc = Document::empty("D");
-        doc.add_markup(make_markup(1, 0, MarkupKind::Highlight, "A", "S", ReviewStatus::Open));
-        doc.add_markup(make_markup(2, 0, MarkupKind::Highlight, "A", "S", ReviewStatus::Approved));
-        doc.add_markup(make_markup(3, 0, MarkupKind::Highlight, "A", "S", ReviewStatus::Approved));
+        doc.add_markup(make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+        ));
+        doc.add_markup(make_markup(
+            2,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Approved,
+        ));
+        doc.add_markup(make_markup(
+            3,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Approved,
+        ));
         let list = MarkupList::from_document(&doc);
         let counts = list.counts_by_status();
         assert_eq!(*counts.get(&ReviewStatus::Open).unwrap(), 1);
@@ -587,7 +659,14 @@ mod tests {
     #[test]
     fn markup_list_serialize_roundtrip() {
         let mut doc = Document::empty("D");
-        doc.add_markup(make_markup(1, 0, MarkupKind::Highlight, "A", "S", ReviewStatus::Open));
+        doc.add_markup(make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+        ));
         let list = MarkupList::from_document(&doc);
         let json = serde_json::to_string(&list).unwrap();
         let back: MarkupList = serde_json::from_str(&json).unwrap();
