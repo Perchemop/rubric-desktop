@@ -223,7 +223,6 @@ impl MarkupListSort {
     }
 
     fn compare(&self, a: &MarkupRow, b: &MarkupRow) -> std::cmp::Ordering {
-        use std::cmp::Ordering;
         let id_cmp = |a: &MarkupRow, b: &MarkupRow| a.id.to_string().cmp(&b.id.to_string());
         match self {
             MarkupListSort::CreatedAsc => a.created.cmp(&b.created).then_with(|| id_cmp(a, b)),
@@ -415,7 +414,7 @@ impl MarkupList {
             let label = key.group_value_for_row(row, Some(layer_names));
             map.entry(label).or_default().rows.push(row.clone());
         }
-        map.into_iter().map(|(k, v)| (k, v)).collect()
+        map.into_iter().collect()
     }
 
     /// Count rows per review status.
