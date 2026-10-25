@@ -229,8 +229,8 @@ impl MarkupListSort {
             MarkupListSort::CreatedDesc => b.created.cmp(&a.created).then_with(|| id_cmp(a, b)),
             MarkupListSort::PageAsc => a.page.cmp(&b.page),
             MarkupListSort::PageDesc => b.page.cmp(&a.page),
-            MarkupListSort::KindAsc => a.kind.label().cmp(&b.kind.label()),
-            MarkupListSort::KindDesc => b.kind.label().cmp(&a.kind.label()),
+            MarkupListSort::KindAsc => a.kind.label().cmp(b.kind.label()),
+            MarkupListSort::KindDesc => b.kind.label().cmp(a.kind.label()),
             MarkupListSort::ModifiedDesc => b.modified.cmp(&a.modified),
         }
     }
