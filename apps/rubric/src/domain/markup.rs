@@ -309,7 +309,9 @@ impl MarkupGeometry {
 /// The four-state set is `Open` / `In review` / `Approved` / `Rejected`. It
 /// supersedes an earlier, larger enum; no released files exist, so old status
 /// strings are intentionally not accepted on load.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum ReviewStatus {
     /// Newly created and not yet picked up by a reviewer (default).
