@@ -31,6 +31,14 @@ jobs:
         with:
           tool: cargo-mutants
 
+      # The rubric test suite imports PDFs, so the baseline run needs the same
+      # PDFium runtime the CI job fetches (ci.yml).
+      - name: Fetch PDFium runtime
+        run: |
+          curl -fsSL -o /tmp/pdfium.tgz "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7881/pdfium-linux-x64.tgz"
+          mkdir -p "$HOME/pdfium"
+          tar -xzf /tmp/pdfium.tgz -C "$HOME/pdfium"
+
       # Cheap sanity check: a wrong path fails in seconds, not after an hour.
       - name: List the mutants in scope
         run: |
@@ -40,6 +48,8 @@ jobs:
             --file apps/rubric/src/domain/markup.rs
 
       - name: Mutate the geometry, units and markup domain
+        env:
+          RUBRIC_PDFIUM_PATH: /home/runner/pdfium/lib
         run: |
           cargo mutants \
             --file apps/rubric/src/domain/geom.rs \
