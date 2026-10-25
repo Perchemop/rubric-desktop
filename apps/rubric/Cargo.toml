@@ -7,6 +7,7 @@ description = "Rubric — free, cross-platform PDF markup, review & measurement.
 license = "MIT"
 readme = "../../README.md"
 default-run = "rubric"
+repository = "https://github.com/Perchemop/rubric-desktop"
 
 [dependencies]
 eframe = "0.36"
