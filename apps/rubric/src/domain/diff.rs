@@ -66,7 +66,7 @@ impl DiffResult {
     }
 
     pub fn added_by_page(&self) -> BTreeMap<usize, Vec<MarkupSummaryRow>> {
-        let mut map = BTreeMap::new();
+        let mut map: BTreeMap<usize, Vec<MarkupSummaryRow>> = BTreeMap::new();
         for row in &self.added {
             map.entry(row.page).or_default().push(row.clone());
         }
@@ -74,7 +74,7 @@ impl DiffResult {
     }
 
     pub fn removed_by_page(&self) -> BTreeMap<usize, Vec<MarkupSummaryRow>> {
-        let mut map = BTreeMap::new();
+        let mut map: BTreeMap<usize, Vec<MarkupSummaryRow>> = BTreeMap::new();
         for row in &self.removed {
             map.entry(row.page).or_default().push(row.clone());
         }
@@ -82,7 +82,7 @@ impl DiffResult {
     }
 
     pub fn changed_by_page(&self) -> BTreeMap<usize, Vec<MarkupChange>> {
-        let mut map = BTreeMap::new();
+        let mut map: BTreeMap<usize, Vec<MarkupChange>> = BTreeMap::new();
         for change in &self.changed {
             let page = change
                 .after
