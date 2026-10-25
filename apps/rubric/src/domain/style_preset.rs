@@ -45,12 +45,12 @@ impl StylePreset {
     }
 
     /// Apply this preset to `markup`.
-///
-/// - Replaces the visual [`MarkupStyle`].
-/// - Sets `subject` only if the target's subject is empty.
-/// - Sets `author` only if the target's author is empty.
-/// - Overwrites `status` and `locked`.
-/// - Does not modify geometry, id, page, comments, measurement or `created`.
+    ///
+    /// - Replaces the visual [`MarkupStyle`].
+    /// - Sets `subject` only if the target's subject is empty.
+    /// - Sets `author` only if the target's author is empty.
+    /// - Overwrites `status` and `locked`.
+    /// - Does not modify geometry, id, page, comments, measurement or `created`.
     pub fn apply_to(&self, markup: &mut Markup) {
         markup.style = self.style;
         if markup.subject.is_empty() {
@@ -145,7 +145,7 @@ mod tests {
     use super::*;
     use crate::domain::geom::{Pt, Rect};
     use crate::domain::markup::{Markup, MarkupGeometry, MarkupKind};
-    use crate::domain::style::{FillMode, MarkupStyle, palette};
+    use crate::domain::style::{palette, FillMode, MarkupStyle};
 
     fn sample_markup() -> Markup {
         let mut m = Markup::new(
@@ -195,7 +195,12 @@ mod tests {
         source.author = "Carol".to_string();
         source.subject = "Keep Me".to_string();
         let preset = StylePreset::from_markup(&source, "Keep");
-        let mut target = Markup::new(0, MarkupKind::Rectangle, MarkupGeometry::Bounds(Rect::new(1.0, 1.0, 1.0, 1.0)), "David");
+        let mut target = Markup::new(
+            0,
+            MarkupKind::Rectangle,
+            MarkupGeometry::Bounds(Rect::new(1.0, 1.0, 1.0, 1.0)),
+            "David",
+        );
         target.subject = "Existing Subject".to_string();
         preset.apply_to(&mut target);
         // Author not overwritten
