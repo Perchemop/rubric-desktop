@@ -1,0 +1,57 @@
+# Mutation testing (guide §9): cargo-mutants injects small faults and fails
+# when the suite still passes — the only cheap evidence that the assertions
+# constrain the behaviour instead of restating it. Coverage cannot show this.
+#
+# Weekly, not per pull request: a full run is hours. Scope is the pure domain
+# layer (geometry, units, markup), where wrong arithmetic silently ships bad
+# measurements into a review.
+name: Mutation tests
+
+on:
+  schedule:
+    - cron: "7 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutants-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      - uses: taiki-e/install-action@c1952a69c392b2c5f2eaa845b56120fff5fe49d3 # v2.48.5
+        with:
+          tool: cargo-mutants
+
+      # Cheap sanity check: a wrong path fails in seconds, not after an hour.
+      - name: List the mutants in scope
+        run: |
+          cargo mutants --list \
+            --file apps/rubric/src/domain/geom.rs \
+            --file apps/rubric/src/domain/units.rs \
+            --file apps/rubric/src/domain/markup.rs
+
+      - name: Mutate the geometry, units and markup domain
+        run: |
+          cargo mutants \
+            --file apps/rubric/src/domain/geom.rs \
+            --file apps/rubric/src/domain/units.rs \
+            --file apps/rubric/src/domain/markup.rs \
+            --timeout 300 -j 2
+
+      - name: Upload the mutant report
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: mutants-report
+          path: mutants.out
+          if-no-files-found: warn
+          retention-days: 30
