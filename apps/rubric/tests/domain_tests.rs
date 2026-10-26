@@ -248,3 +248,120 @@ fn from_pdf_project_with_markup_survives_save_load_on_disk() {
     assert_eq!(document.markups[0].kind, MarkupKind::Rectangle);
     assert_eq!(document.markups[0].page, 0);
 }
+
+#[test]
+fn markup_list_filter_and_sort_from_document() {
+    use rubric::domain::{MarkupList, MarkupListFilter, MarkupListSort};
+
+    let mut doc = Document::empty("Review");
+    doc.add_page(Page::a4(1));
+    let mut approved = Markup::new(
+        0,
+        MarkupKind::Highlight,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0)),
+        "Alice",
+    );
+    approved.status = ReviewStatus::Approved;
+    doc.add_markup(approved);
+    doc.add_markup(
+        Markup::new(
+            1,
+            MarkupKind::Rectangle,
+            MarkupGeometry::Bounds(Rect::new(5.0, 5.0, 10.0, 10.0)),
+            "Bob",
+        ),
+    );
+
+    let list = MarkupList::from_document(&doc);
+    assert_eq!(list.rows.len(), 2);
+
+    let mut filter = MarkupListFilter::default();
+    filter.statuses = Some([ReviewStatus::Open].into_iter().collect());
+    assert_eq!(list.filter(&filter).rows.len(), 1);
+    assert_eq!(list.filter(&filter).rows[0].author, "Bob");
+
+    let mut sorted = list.rows.clone();
+    MarkupListSort::PageAsc.apply(&mut sorted);
+    assert_eq!(sorted[0].page, 0);
+
+    // Serde round trip through the re-exported type.
+    let json = serde_json::to_string(&list).unwrap();
+    let back: MarkupList = serde_json::from_str(&json).unwrap();
+    assert_eq!(list, back);
+}
+
+#[test]
+fn diff_documents_reports_add_remove_change() {
+    use rubric::domain::diff_documents;
+    use uuid::Uuid;
+
+    let mut a = Document::empty("A");
+    let mut highlight = Markup::new(
+        0,
+        MarkupKind::Highlight,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0)),
+        "Alice",
+    );
+    highlight.id = Uuid::from_u128(1);
+    a.add_markup(highlight);
+
+    let mut b = Document::empty("B");
+    b.add_page(Page::a4(1));
+    let mut reviewed = Markup::new(
+        0,
+        MarkupKind::Highlight,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0)),
+        "Alice",
+    );
+    reviewed.id = Uuid::from_u128(1);
+    reviewed.status = ReviewStatus::Approved;
+    b.add_markup(reviewed);
+    let mut fresh = Markup::new(
+        1,
+        MarkupKind::Rectangle,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 5.0, 5.0)),
+        "Bob",
+    );
+    fresh.id = Uuid::from_u128(2);
+    b.add_markup(fresh);
+
+    let diff = diff_documents(&a, &b);
+    assert_eq!(diff.added.len(), 1, "the page-1 rectangle is new");
+    assert_eq!(diff.added[0].id, Uuid::from_u128(2));
+    assert_eq!(diff.removed.len(), 0);
+    assert_eq!(diff.changed.len(), 1, "status changed on the highlight");
+    assert_eq!(diff.changed[0].id, Uuid::from_u128(1));
+    assert_eq!(
+        diff.changed[0].after.as_ref().unwrap().status,
+        ReviewStatus::Approved
+    );
+    assert_eq!(diff.total_changes(), 2);
+}
+
+#[test]
+fn style_preset_apply_and_roundtrip() {
+    use rubric::domain::StylePreset;
+
+    let mut source = Markup::new(
+        0,
+        MarkupKind::Highlight,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        "Carol",
+    );
+    source.style = source.style.with_stroke(palette::GREEN);
+
+    let preset = StylePreset::from_markup(&source, "Keep");
+    let mut target = Markup::new(
+        0,
+        MarkupKind::Rectangle,
+        MarkupGeometry::Bounds(Rect::new(2.0, 2.0, 1.0, 1.0)),
+        "David",
+    );
+    preset.apply_to(&mut target);
+    assert_eq!(target.style, source.style);
+    assert_eq!(target.status, source.status);
+
+    let json = serde_json::to_string(&preset).unwrap();
+    let back: StylePreset = serde_json::from_str(&json).unwrap();
+    assert_eq!(preset, back);
+}

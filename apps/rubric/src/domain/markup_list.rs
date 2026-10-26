@@ -42,43 +42,45 @@ pub struct MarkupListFilter {
 }
 
 impl MarkupListFilter {
-    /// Returns true if `markup` satisfies every active criterion in this filter.
-    ///
-    /// Comment texts are included in the `search` substring test.
-    pub fn matches(&self, markup: &Markup) -> bool {
+    /// Shared criteria for [`Self::matches`] and [`Self::matches_row`]; the
+    /// two predicates differ only in their `search` haystacks (full markups
+    /// search comment texts, rows search the summary line).
+    fn matches_core(
+        &self,
+        status: ReviewStatus,
+        author: &str,
+        subject: &str,
+        kind: MarkupKind,
+        page: usize,
+        layer_id: Option<Uuid>,
+    ) -> bool {
         if let Some(statuses) = &self.statuses {
-            if !statuses.contains(&markup.status) {
+            if !statuses.contains(&status) {
                 return false;
             }
         }
         if let Some(authors) = &self.authors {
-            if !authors
-                .iter()
-                .any(|a| a.eq_ignore_ascii_case(&markup.author))
-            {
+            if !authors.iter().any(|a| a.eq_ignore_ascii_case(author)) {
                 return false;
             }
         }
         if let Some(subjects) = &self.subjects {
-            if !subjects
-                .iter()
-                .any(|s| s.eq_ignore_ascii_case(&markup.subject))
-            {
+            if !subjects.iter().any(|s| s.eq_ignore_ascii_case(subject)) {
                 return false;
             }
         }
         if let Some(kinds) = &self.kinds {
-            if !kinds.contains(&markup.kind) {
+            if !kinds.contains(&kind) {
                 return false;
             }
         }
         if let Some(pages) = &self.pages {
-            if !pages.contains(&markup.page) {
+            if !pages.contains(&page) {
                 return false;
             }
         }
         if let Some(layers) = &self.layers {
-            match markup.layer_id {
+            match layer_id {
                 Some(id) => {
                     if !layers.contains(&id) {
                         return false;
@@ -90,6 +92,23 @@ impl MarkupListFilter {
                     }
                 }
             }
+        }
+        true
+    }
+
+    /// Returns true if `markup` satisfies every active criterion in this filter.
+    ///
+    /// Comment texts are included in the `search` substring test.
+    pub fn matches(&self, markup: &Markup) -> bool {
+        if !self.matches_core(
+            markup.status,
+            &markup.author,
+            &markup.subject,
+            markup.kind,
+            markup.page,
+            markup.layer_id,
+        ) {
+            return false;
         }
         if let Some(q) = &self.search {
             let query = q.to_lowercase();
@@ -116,47 +135,15 @@ impl MarkupListFilter {
     /// Predicate over a [`MarkupRow`]; comment texts are not available so
     /// `search` checks only author, subject and the row's `summary`.
     pub fn matches_row(&self, row: &MarkupRow) -> bool {
-        if let Some(statuses) = &self.statuses {
-            if !statuses.contains(&row.status) {
-                return false;
-            }
-        }
-        if let Some(authors) = &self.authors {
-            if !authors.iter().any(|a| a.eq_ignore_ascii_case(&row.author)) {
-                return false;
-            }
-        }
-        if let Some(subjects) = &self.subjects {
-            if !subjects
-                .iter()
-                .any(|s| s.eq_ignore_ascii_case(&row.subject))
-            {
-                return false;
-            }
-        }
-        if let Some(kinds) = &self.kinds {
-            if !kinds.contains(&row.kind) {
-                return false;
-            }
-        }
-        if let Some(pages) = &self.pages {
-            if !pages.contains(&row.page) {
-                return false;
-            }
-        }
-        if let Some(layers) = &self.layers {
-            match row.layer_id {
-                Some(id) => {
-                    if !layers.contains(&id) {
-                        return false;
-                    }
-                }
-                None => {
-                    if !self.include_default_layer {
-                        return false;
-                    }
-                }
-            }
+        if !self.matches_core(
+            row.status,
+            &row.author,
+            &row.subject,
+            row.kind,
+            row.page,
+            row.layer_id,
+        ) {
+            return false;
         }
         if let Some(q) = &self.search {
             let query = q.to_lowercase();
@@ -414,7 +401,18 @@ impl MarkupList {
             let label = key.group_value_for_row(row, Some(layer_names));
             map.entry(label).or_default().rows.push(row.clone());
         }
-        map.into_iter().collect()
+        let mut out: Vec<(String, MarkupList)> = map.into_iter().collect();
+        // Page labels are human page numbers; sort them numerically so the
+        // panel reads "1, 2, 10" instead of "1, 10, 2". Other keys sort
+        // alphabetically by label.
+        if matches!(key, MarkupGroupKey::Page) {
+            out.sort_by(|a, b| {
+                let pa = a.0.parse::<usize>().unwrap_or(usize::MAX);
+                let pb = b.0.parse::<usize>().unwrap_or(usize::MAX);
+                pa.cmp(&pb).then_with(|| a.0.cmp(&b.0))
+            });
+        }
+        out
     }
 
     /// Count rows per review status.
@@ -683,5 +681,91 @@ mod tests {
         let json = serde_json::to_string(&filter).unwrap();
         let back: MarkupListFilter = serde_json::from_str(&json).unwrap();
         assert_eq!(filter, back);
+    }
+
+    #[test]
+    fn page_groups_sort_numerically() {
+        let mut doc = Document::empty("D");
+        // Pages 2..=10 (human labels "2".."10") so a lexicographic sort would
+        // order them "1", "10", "2", ... but the numeric sort must not.
+        for _ in 0..9 {
+            doc.add_page(Page::a4(0));
+        }
+        doc.add_markup(make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+        ));
+        doc.add_markup(make_markup(
+            2,
+            1,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+        ));
+        doc.add_markup(make_markup(
+            3,
+            2,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+        ));
+        doc.add_markup(make_markup(
+            4,
+            9,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+        ));
+        let list = MarkupList::from_document(&doc);
+        let groups = list.group(MarkupGroupKey::Page, &|_| "X".to_string());
+        let labels: Vec<&str> = groups.iter().map(|(l, _)| l.as_str()).collect();
+        assert_eq!(labels, vec!["1", "2", "3", "10"]);
+    }
+
+    #[test]
+    fn sort_page_asc_keeps_insertion_order_on_ties() {
+        let mut doc = Document::empty("D");
+        doc.add_markup(make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+        ));
+        doc.add_markup(make_markup(
+            2,
+            0,
+            MarkupKind::Rectangle,
+            "B",
+            "T",
+            ReviewStatus::Open,
+        ));
+        doc.add_markup(make_markup(
+            3,
+            0,
+            MarkupKind::Note,
+            "C",
+            "U",
+            ReviewStatus::Open,
+        ));
+        let list = MarkupList::from_document(&doc);
+        let mut rows = list.rows.clone();
+        // Equal sort keys must keep insertion order (Rust sorts are stable).
+        MarkupListSort::PageAsc.apply(&mut rows);
+        assert_eq!(rows[0].id, Uuid::from_u128(1));
+        assert_eq!(rows[1].id, Uuid::from_u128(2));
+        assert_eq!(rows[2].id, Uuid::from_u128(3));
+        MarkupListSort::PageDesc.apply(&mut rows);
+        assert_eq!(rows[0].id, Uuid::from_u128(1));
+        assert_eq!(rows[1].id, Uuid::from_u128(2));
+        assert_eq!(rows[2].id, Uuid::from_u128(3));
     }
 }

@@ -21,3 +21,13 @@ CycloneDX SBOM, dependency review, Dependabot, SHA-pinned actions.
 | `LaurenzV/hayro` | **watch** | A pure-Rust PDF renderer would remove the PDFium runtime fetch from CI and the packaging problem that goes with it. It is not a drop-in for the annotation/coordinate work already built on `pdfium-render`; re-check when a renderer change is scoped, or if PDFium packaging becomes a blocker. |
 
 Re-check date for the radar as a whole: 2027-01-25.
+
+## 2026-10-26 — inspiration addendum (Stirling PDF)
+
+Scope: client added Stirling PDF as a capability-level inspiration product.
+Radar relevance checked even though this is inspiration-only, not a dependency:
+
+| Candidate | Verdict | Reason |
+| --- | --- | --- |
+| `Stirling-Tools/Stirling-PDF` (as dependency) | **reject** | Java/Spring server platform — wrong stack (§4A.3 Fit) and a server runtime Rubric does not want. As *inspiration only* it is adopted (client-directed): capability analysis in `docs/research/stirling-pdf-capabilities.md`; core is MIT, proprietary directories not consulted. |
+| `Stirling-Tools/Stirling-PDF` (compare/redaction/signature capabilities) | **watch** | Compare validates the v0.2-01 `DiffResult` model and may seed a UI slice; redaction/signatures/page-ops need PDF *writing*, which contradicts the read-only PDF decision until that scope decision is revisited. |
