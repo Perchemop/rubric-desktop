@@ -799,7 +799,7 @@ flow now enforced by branch protection.
 - CI runs on the feature branch (`CI_BRANCH=opencode/v0.2-02-markups-list-ui`) so the PR is the record; PR #34 replaces the earlier shared-branch pattern. The merge follows the 2026-10-26 owner directive without a manual merge step.
 
 ## 2026-10-26 — v0.2-03 editing commands (F-114/F-115)
-**Status**: implemented on `opencode/v0.2-03-editing-commands`; CI green on implementation commit `86305a1` (run `40315238211`). Reviewer FIX FIRST findings were addressed in the final docs/test commit; the final CI run is recorded with the PR. The slice closes the two remaining selection-editing commands from R-S-003.
+**Status**: implemented on `opencode/v0.2-03-editing-commands`; implementation commit `86305a1` was CI-green (run `40315238211`), and the final reviewer-fix commit `3b0fcda` is also CI-green (run `40316051901`, security run `40316051812`). The slice closes the two remaining selection-editing commands from R-S-003.
 
 ### Completed
 - Copy/Paste Properties: a session-only `MarkupStyle` clipboard. Copy works on one markup (including a locked one, because it is read-only); paste applies the style to every selected editable markup, skips locked/missing targets, refreshes `modified`, and pushes one undo snapshot.
@@ -808,6 +808,12 @@ flow now enforced by branch protection.
 - Redo is now **Ctrl+Y**; `Ctrl+Z` remains undo and `Ctrl+Shift+Z` no longer undoes. The hint bar, CHANGELOG, spec F-601, `AGENTS.md` and `.opencode/agents/ui-dev.md` all record the new shortcut.
 - Tests: domain z-order invariants (including cross-page isolation and boundary no-ops), style application only touching style/`modified`, locked-target skipping, and the action enablement matrix.
 - Scope decision: copy/paste is visual-style only; review status and lock state are never silently overwritten. A future preset-library apply that changes them must be an explicit, gated affordance (recorded in `DECISIONS.md`).
+
+### Reviewer verdict (FIX FIRST) — all closed
+- **MEDIUM**: `AGENTS.md` and `.opencode/agents/ui-dev.md` still named Ctrl+Shift+Z; both now say Ctrl+Y.
+- **MEDIUM**: the ROADMAP readiness table was stale; now 48/52 feature IDs done (92%), 14/17 requirement groups (82%), 4 open IDs, dated 2026-10-26.
+- **LOW**: the z-order test did not exercise a same-page neighbour skipped across a page boundary; the test now interleaves two page-1 markups and asserts both cross-page isolation and boundary no-ops.
+- **LOW**: status lines were stale; both this entry and the task brief record the final green run.
 
 ### Next
 - Run CI on the feature branch, address reviewer findings, and merge automatically per the 2026-10-26 owner directive.
