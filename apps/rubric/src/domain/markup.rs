@@ -941,7 +941,7 @@ mod tests {
         );
         m.author = "Author".to_string();
         m.subject = "Subject".to_string();
-        m.status = ReviewStatus::Accepted;
+        m.status = ReviewStatus::Approved;
         m.locked = true;
         let geometry = m.geometry.clone();
         let before = m.modified;
@@ -955,7 +955,7 @@ mod tests {
         assert_eq!(m.geometry, geometry);
         assert_eq!(m.author, "Author");
         assert_eq!(m.subject, "Subject");
-        assert_eq!(m.status, ReviewStatus::Accepted);
+        assert_eq!(m.status, ReviewStatus::Approved);
         assert!(m.locked);
         assert!(m.modified >= before);
     }

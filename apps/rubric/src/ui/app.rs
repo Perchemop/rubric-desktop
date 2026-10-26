@@ -169,7 +169,7 @@ impl Default for UiState {
             zoom: 1.0,
             pan: Vec2::ZERO,
             page_origin: Pos2::new(40.0, 40.0),
-            hint: "Ctrl+S: Save  ·  Ctrl+Z: Undo  ·  Ctrl+Shift+Z: Redo  ·  Del: Delete"
+            hint: "Ctrl+S: Save  ·  Ctrl+Z: Undo  ·  Ctrl+Y: Redo  ·  Del: Delete"
                 .to_string(),
             status: "Ready".to_string(),
             draw_cancelled: false,
@@ -1246,17 +1246,22 @@ impl App for RubricApp {
             {
                 self.delete_selected();
             }
-            if i.modifiers.command && i.key_pressed(egui::Key::Z) {
+            if i.modifiers.command && i.key_pressed(egui::Key::Z) && !i.modifiers.shift {
                 // Never mutate history mid-edit: undoing past the markup's
                 // creation would leave a stale `text_edit` pointing at a
                 // markup that no longer exists.
                 if self.ui.text_edit.is_some() {
                     self.ui.status = "Finish or cancel text edit first".to_string();
-                } else if i.modifiers.shift {
-                    self.history.redo();
-                    self.clear_selection();
                 } else {
                     self.history.undo();
+                    self.clear_selection();
+                }
+            }
+            if i.modifiers.command && i.key_pressed(egui::Key::Y) {
+                if self.ui.text_edit.is_some() {
+                    self.ui.status = "Finish or cancel text edit first".to_string();
+                } else {
+                    self.history.redo();
                     self.clear_selection();
                 }
             }
