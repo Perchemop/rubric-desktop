@@ -85,7 +85,8 @@ hand and re-running CI.
 
 Workflow: edit → commit → push → open/update a **Pull Request** → read the CI
 run (`gh run view <id>`) → fix failures by editing the source → push again.
-The human reviews and merges the Pull Request. Every PR runs fmt check,
+The agent merges the Pull Request once CI is green and review findings are
+addressed (owner directive 2026-10-26). Every PR runs fmt check,
 clippy (`-D warnings`), full tests, and a release build.
 
 ## Local machine (hard rule)
