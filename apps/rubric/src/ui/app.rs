@@ -13,9 +13,8 @@ use crate::data::{
     render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
 use crate::domain::{
-    AppPrefs, Document, EditorAction, Grid, History, MarkupGroupKey, MarkupKind,
-    MarkupListSort, Project, Pt, Report, ReportGroupKey, ReviewStatus, StampPreset,
-    Theme, Tool,
+    AppPrefs, Document, EditorAction, Grid, History, MarkupGroupKey, MarkupKind, MarkupListSort,
+    Project, Pt, Report, ReportGroupKey, ReviewStatus, StampPreset, Theme, Tool,
 };
 use crate::ui::{canvas, inspector, markups_list, menu, pages, theme, toolbar};
 use uuid::Uuid;
@@ -1308,15 +1307,13 @@ impl App for RubricApp {
                 .max_size(420.0)
                 .resizable(true)
                 .show(ui, |ui| {
-                    list_action =
-                        markups_list::draw_markups_list(ui, project, ui_state);
+                    list_action = markups_list::draw_markups_list(ui, project, ui_state);
                 });
         }
         if let Some(action) = list_action {
             self.ui.selected.clear();
             self.ui.selected.insert(action.id);
-            self.ui.status =
-                format!("Selected markup on page {}", action.page + 1);
+            self.ui.status = format!("Selected markup on page {}", action.page + 1);
             if action.page != self.ui.current_page {
                 self.jump_to_page(action.page);
             }
