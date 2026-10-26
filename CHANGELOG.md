@@ -5,6 +5,16 @@ All notable changes to this project will be documented here. Format: semantic-is
 ## [Unreleased]
 
 ### Added
+- v0.2-01 domain foundation for reviewer workflows: `MarkupList` snapshot
+  (case-insensitive filters incl. comment/summary search, stable sorts,
+  grouping with numeric page order), `StylePreset`/`StylePresetLibrary`
+  (capture/apply, 64-entry cap, upsert dedupe) and `DiffResult`
+  (`diff_documents`/`diff_projects`, 2-dp geometry fingerprints,
+  style/locked-aware change detection). All serde-serialisable and
+  headless-tested, plus integration coverage in `tests/domain_tests.rs`.
+- Stirling PDF added as capability-level inspiration (client-directed):
+  original capability summary in `docs/research/stirling-pdf-capabilities.md`,
+  inspiration table row and radar addendum; no code or dependency adopted.
 - Community and governance files (operating guide Part II / opensource.guide
   alignment): `CODE_OF_CONDUCT.md`, `SECURITY.md` (private reporting, threat
   model, incident response), `ACCESSIBILITY.md`, `VISION.md`,
@@ -33,6 +43,10 @@ All notable changes to this project will be documented here. Format: semantic-is
   "MIT OR Apache-2.0" adoption is open question Q-LIC-1.
 
 ### Fixed
+- Markup diff no longer misses style-only or lock-only changes; `StylePreset::apply_to`
+  refreshes `modified`; `diff_projects` treats a project without an active
+  document as empty instead of reporting "no changes"; Page groups sort
+  numerically (1, 2, 10); duplicate IDs in malformed documents are diffed once.
 - `release.yml`: the publish step finalises a draft release after uploading
   assets (a re-created tag turns the existing Release entry into a draft,
   which had left v0.1.0 unpublished until edited).

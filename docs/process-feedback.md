@@ -30,3 +30,18 @@ Workaround I used (if any): CI_BRANCH=opencode/v0.2-01-markup-list-domain
 Confirm: did NOT violate clean-room / v0.1.0 gate / no-secrets /
   CI-before-client-try / no meta-guide push
 ```
+
+```text
+PROCESS FEEDBACK (follow-up)
+Date / session: 2026-10-26 (same slice, final PR hygiene)
+Resolution of the duplicate-PR friction above: #30 was closed as superseded
+  and #32 (opencode/ci) was retitled/re-bodied as the authoritative slice PR,
+  because it already carried the reviewer fixes and docs on top of the slice.
+  This is a workaround, not a fix for the underlying ci.sh default.
+Still recommended: make ci.sh detect an open PR for the checked-out branch and
+  push to that branch by default, or print the `CI_BRANCH=<branch>` hint when a
+  second PR would be created. Until then, the workaround is to pass
+  `CI_BRANCH` explicitly and keep one PR per slice.
+Severity: slows-work (open)
+Confirm: no clean-room, gate or secrets issue; no force-push; human still merges.
+```

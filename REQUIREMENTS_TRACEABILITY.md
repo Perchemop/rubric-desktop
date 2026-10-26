@@ -92,6 +92,13 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 | F-7xx | Packaging (spec) | CI release build, installers | DONE | docs/spec/README.md F-701–F-704; R-S-017; release.yml + package.yml done 2026-10-23 (installers unsigned — see docs/assumptions-and-questions Q-PACK-1) |
 | F-8xx | Community/security/ops readiness (operating guide Part II — not product-spec scope; tracked as R-C-*) | — | DONE (initial wave) | see "Community, security and operating-hygiene requirements" below |
 
+## v0.2 requirements (reviewer/auditor milestone)
+
+| ID | Requirement | Status | Trace |
+|---|-----------|--------|-------|
+| R-V02-01 | Markups List: snapshot from project/document; filters (status/author/subject/kind/page/layer/search); stable sorts; grouping | PARTIAL (domain DONE; UI panel pending) | `src/domain/markup_list.rs`; `tests/domain_tests.rs::markup_list_filter_and_sort_from_document`; `docs/tasks/v0.2-01-markup-list-domain.md`; CI `40304244261` |
+| R-V02-02 | Status workflow audit metadata: reusable style presets (capture/apply + library) and project diff with added/removed/changed by stable id | PARTIAL (domain DONE; UI pending) | `src/domain/style_preset.rs`, `src/domain/diff.rs`; `tests/domain_tests.rs::{diff_documents_reports_add_remove_change,style_preset_apply_and_roundtrip}`; CI `40304244261` |
+
 ## Gaps / exclusions
 - Canonical inventory: `docs/spec/README.md` (52 F-IDs across F-1xx…F-7xx), adopted 2026-10-19; see Phase 1 requirement set above.
 - PDF import — DONE 2026-10-21 (F-503); report/image export + print — DONE 2026-10-21 (F-505/F-506, F-504 printer dialog pending re-verify on CI artefacts)

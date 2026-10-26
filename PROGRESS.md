@@ -758,6 +758,26 @@ flow now enforced by branch protection.
 - **Final fix** (`release.yml`, commit `7198393`): `set -euo pipefail`; the binary is located by probing both `rubric` and `rubric.exe` (copy fails loudly with a directory listing if neither exists); zip creation uses `zip` when present and otherwise calls `powershell.exe` directly (with a `powershell` fallback), and every branch echoes which tool it used.
 - **Release-path lesson**: a `workflow_dispatch` re-run reuses the workflow file *from the tag's commit*, so workflow fixes must move the tag. `v0.1.0` was therefore deleted and re-created at the fixed commit (twice), rather than re-running the existing run.
 
+## 2026-10-26 — v0.2-01 domain slice: Markups List, style presets, project diff — CI verified, reviewer fixes applied
+**Status**: domain slice complete and CI-green (commit `7e33fd2`, GitHub Actions run `40304244261`: fmt check, clippy `-D warnings`, full tests, release build; security checks also green). PR #32 is ready for human review; PR #30 was the original feature branch and is closed as superseded. UI panel is the next slice.
+
+### Completed
+- `MarkupList` snapshot (`src/domain/markup_list.rs`): case-insensitive filters (status/author/subject/kind/page/layer incl. default-layer handling), search over author/subject + comment texts for full markups (summary line for rows), stable sorts with deterministic id tie-break, grouping by status/author/subject/kind/page/layer. `matches`/`matches_row` now share one criteria helper (`matches_core`), and Page groups sort numerically (1, 2, 10).
+- `StylePreset` + `StylePresetLibrary` (`src/domain/style_preset.rs`): capture/apply style, status and lock; fills only empty author/subject; `apply_to` now calls `touch()` so `modified` stays truthful; library capped at 64 with oldest eviction, upsert dedupe and case-insensitive lookup. Full-equality serde roundtrip test.
+- `DiffResult` (`src/domain/diff.rs`): diff by markup UUID with 2-dp geometry fingerprints; added/removed/changed with before/after snapshots plus per-page groups; style and locked changes are diff-visible; duplicate ids in malformed documents are diffed once; `diff_projects` treats a project without an active document as empty instead of reporting "no changes".
+- Tests: module unit tests plus integration coverage in `tests/domain_tests.rs` (list filter/sort from a document, diff add/change with controlled ids, style preset apply + serde roundtrip), Page-group numeric-order test and PageAsc/PageDesc tie-stability test.
+- Docs: Stirling PDF added as capability-level inspiration (`docs/inspiration.md`, `docs/research/stirling-pdf-capabilities.md`, radar addendum in `docs/repo-radar.md`, `DECISIONS.md`); PROGRESS, CHANGELOG, ROADMAP, IMPLEMENTATION_PLAN and REQUIREMENTS_TRACEABILITY updated with R-V02-01/R-V02-02.
+
+### Reviewer verdict (FIX FIRST) — all actionables closed
+- **MAJOR**: `MarkupSummaryRow`/`rows_equal` omitted `MarkupStyle` (and `locked`), hiding restyling from the diff — both fields added with a style-only/lock-only change test.
+- **MEDIUM**: `StylePreset::apply_to` left `modified` stale — `touch()` added.
+- **MEDIUM**: `diff_projects` returned an empty result for an absent active document — missing side now treated as an empty document.
+- **LOW/INFO**: Page group lexicographic order fixed numerics; `matches`/`matches_row` duplication removed via `matches_core` (search haystacks stay intentionally different); integration tests added; preset roundtrip now full equality; duplicate-id diff input deduped.
+- **Deferred to the UI slice**: preset application overwriting review status/lock is documented behaviour; confirm the affordance (and whether it needs a gate) when the Markups List panel lands.
+
+### Process
+- CI verification branches are transient: this slice's checks ran on `opencode/ci`, while the original feature branch is `opencode/v0.2-01-markup-list-domain` (PR #30, closed as superseded by #32). Recorded in `docs/process-feedback.md`.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
 import, report export, page image export, print). Phase 6 in progress: dark
