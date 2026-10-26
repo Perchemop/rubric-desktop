@@ -13,6 +13,12 @@ pub enum EditorAction {
     Redo,
     DeleteSelection,
     ClearSelection,
+    CopyProperties,
+    PasteProperties,
+    BringForward,
+    SendBackward,
+    BringToFront,
+    SendToBack,
     ZoomIn,
     ZoomOut,
     FitPage,
@@ -20,11 +26,17 @@ pub enum EditorAction {
 
 impl EditorAction {
     /// Every action, in menu order.
-    pub const ALL: [EditorAction; 7] = [
+    pub const ALL: [EditorAction; 13] = [
         EditorAction::Undo,
         EditorAction::Redo,
         EditorAction::DeleteSelection,
         EditorAction::ClearSelection,
+        EditorAction::CopyProperties,
+        EditorAction::PasteProperties,
+        EditorAction::BringForward,
+        EditorAction::SendBackward,
+        EditorAction::BringToFront,
+        EditorAction::SendToBack,
         EditorAction::ZoomIn,
         EditorAction::ZoomOut,
         EditorAction::FitPage,
@@ -37,21 +49,34 @@ impl EditorAction {
             EditorAction::Redo => "Redo",
             EditorAction::DeleteSelection => "Delete Selected",
             EditorAction::ClearSelection => "Clear Selection",
+            EditorAction::CopyProperties => "Copy Properties",
+            EditorAction::PasteProperties => "Paste Properties",
+            EditorAction::BringForward => "Bring Forward",
+            EditorAction::SendBackward => "Send Backward",
+            EditorAction::BringToFront => "Bring to Front",
+            EditorAction::SendToBack => "Send to Back",
             EditorAction::ZoomIn => "Zoom In",
             EditorAction::ZoomOut => "Zoom Out",
             EditorAction::FitPage => "Fit Page",
         }
     }
 
-    /// Whether the action does anything given the current selection size.
+    /// Whether the action does anything given the current selection and
+    /// whether a style has been copied.
     ///
-    /// Deleting or clearing with nothing selected is a no-op, so those two
-    /// entries are disabled. The history and view actions are always offered:
-    /// undo/redo simply do nothing on an empty history, and zoom always
-    /// applies.
-    pub fn is_enabled(self, selection_count: usize) -> bool {
+    /// Deleting, clearing or pasting with nothing selected is a no-op, so those
+    /// entries are disabled. Copying and z-order need exactly one selected
+    /// markup. The history and view actions are always offered: undo/redo
+    /// simply do nothing on an empty history, and zoom always applies.
+    pub fn is_enabled(self, selection_count: usize, has_style_clipboard: bool) -> bool {
         match self {
             EditorAction::DeleteSelection | EditorAction::ClearSelection => selection_count > 0,
+            EditorAction::CopyProperties
+            | EditorAction::BringForward
+            | EditorAction::SendBackward
+            | EditorAction::BringToFront
+            | EditorAction::SendToBack => selection_count == 1,
+            EditorAction::PasteProperties => selection_count > 0 && has_style_clipboard,
             _ => true,
         }
     }
@@ -64,7 +89,7 @@ mod tests {
 
     #[test]
     fn all_contains_every_variant_exactly_once() {
-        assert_eq!(EditorAction::ALL.len(), 7);
+        assert_eq!(EditorAction::ALL.len(), 13);
         for (i, a) in EditorAction::ALL.iter().enumerate() {
             for b in EditorAction::ALL.iter().skip(i + 1) {
                 assert_ne!(a, b, "duplicate action in ALL: {a:?}");
@@ -86,11 +111,40 @@ mod tests {
     fn selection_actions_require_a_selection() {
         for a in [EditorAction::DeleteSelection, EditorAction::ClearSelection] {
             assert!(
-                !a.is_enabled(0),
+                !a.is_enabled(0, false),
                 "{a:?} should be disabled with no selection"
             );
-            assert!(a.is_enabled(1), "{a:?} should be enabled with a selection");
+            assert!(
+                a.is_enabled(1, false),
+                "{a:?} should be enabled with a selection"
+            );
         }
+    }
+
+    #[test]
+    fn copy_and_z_order_require_exactly_one_selection() {
+        let single = [
+            EditorAction::CopyProperties,
+            EditorAction::BringForward,
+            EditorAction::SendBackward,
+            EditorAction::BringToFront,
+            EditorAction::SendToBack,
+        ];
+        for a in single {
+            assert!(!a.is_enabled(0, true), "{a:?} needs a selection");
+            assert!(a.is_enabled(1, true), "{a:?} needs one selection");
+            assert!(!a.is_enabled(3, true), "{a:?} needs exactly one");
+        }
+    }
+
+    #[test]
+    fn paste_requires_a_selection_and_a_copied_style() {
+        let paste = EditorAction::PasteProperties;
+        assert!(!paste.is_enabled(0, false));
+        assert!(!paste.is_enabled(1, false), "nothing has been copied");
+        assert!(!paste.is_enabled(0, true), "nothing is selected");
+        assert!(paste.is_enabled(1, true));
+        assert!(paste.is_enabled(3, true));
     }
 
     #[test]
@@ -104,11 +158,11 @@ mod tests {
         ];
         for a in always {
             assert!(
-                a.is_enabled(0),
+                a.is_enabled(0, false),
                 "{a:?} should stay enabled with no selection"
             );
             assert!(
-                a.is_enabled(3),
+                a.is_enabled(3, true),
                 "{a:?} should stay enabled with a selection"
             );
         }

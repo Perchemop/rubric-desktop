@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use super::geom::Rect;
 use super::markup::Markup;
+use super::style::MarkupStyle;
 use super::units::Scale;
 
 /// A named group of markups that can be hidden or locked together.
@@ -234,6 +235,119 @@ impl Document {
         }
     }
 
+    /// Move `id` one step later in paint order among markups on its page.
+    ///
+    /// Markups are painted in vector order, but only relative order within a
+    /// page is visible. The swap therefore never crosses a page boundary.
+    /// Returns `false` when the markup does not exist or is already last on its
+    /// page.
+    pub fn bring_forward(&mut self, id: Uuid) -> bool {
+        let Some(index) = self.markups.iter().position(|m| m.id == id) else {
+            return false;
+        };
+        let page = self.markups[index].page;
+        let Some(next) = self
+            .markups
+            .iter()
+            .enumerate()
+            .skip(index + 1)
+            .find(|(_, markup)| markup.page == page)
+            .map(|(i, _)| i)
+        else {
+            return false;
+        };
+        self.markups.swap(index, next);
+        self.touch();
+        true
+    }
+
+    /// Move `id` one step earlier in paint order among markups on its page.
+    ///
+    /// See [`Document::bring_forward`] for the page-scoped rule.
+    pub fn send_backward(&mut self, id: Uuid) -> bool {
+        let Some(index) = self.markups.iter().position(|m| m.id == id) else {
+            return false;
+        };
+        let page = self.markups[index].page;
+        let Some(previous) = self.markups[..index]
+            .iter()
+            .rposition(|markup| markup.page == page)
+        else {
+            return false;
+        };
+        self.markups.swap(index, previous);
+        self.touch();
+        true
+    }
+
+    /// Move `id` to the end of its page's paint order (drawn on top).
+    ///
+    /// Returns `false` when the markup does not exist or is already last on
+    /// its page.
+    pub fn bring_to_front(&mut self, id: Uuid) -> bool {
+        let Some(index) = self.markups.iter().position(|m| m.id == id) else {
+            return false;
+        };
+        let page = self.markups[index].page;
+        let Some(last) = self.markups.iter().rposition(|markup| markup.page == page) else {
+            return false;
+        };
+        if last == index {
+            return false;
+        }
+        let markup = self.markups.remove(index);
+        self.markups.push(markup);
+        self.touch();
+        true
+    }
+
+    /// Move `id` to the start of its page's paint order (drawn at the bottom).
+    ///
+    /// Returns `false` when the markup does not exist or is already first on
+    /// its page.
+    pub fn send_to_back(&mut self, id: Uuid) -> bool {
+        let Some(index) = self.markups.iter().position(|m| m.id == id) else {
+            return false;
+        };
+        let page = self.markups[index].page;
+        let Some(first) = self.markups.iter().position(|markup| markup.page == page) else {
+            return false;
+        };
+        if first == index {
+            return false;
+        }
+        let markup = self.markups.remove(index);
+        self.markups.insert(0, markup);
+        self.touch();
+        true
+    }
+
+    /// Apply `style` to every editable markup in `ids` and return the number
+    /// changed.
+    ///
+    /// Missing and locked ids are skipped. Only the visual style (and each
+    /// markup's `modified` timestamp) changes; geometry, metadata, review state,
+    /// comments, lock state and measurements are untouched.
+    pub fn apply_style_to(&mut self, ids: &[Uuid], style: MarkupStyle) -> usize {
+        let mut changed = 0;
+        for id in ids {
+            let editable = self
+                .find_markup(*id)
+                .is_some_and(|markup| self.is_markup_editable(markup));
+            if !editable {
+                continue;
+            }
+            if let Some(markup) = self.find_markup_mut(*id) {
+                markup.apply_style(style);
+                changed += 1;
+            }
+        }
+        if changed > 0 {
+            self.touch();
+        }
+        changed
+    }
+
     pub fn clear_markups(&mut self) {
         if !self.markups.is_empty() {
             self.markups.clear();
@@ -440,6 +554,73 @@ mod tests {
             MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0)),
             "tester",
         )
+    }
+
+    fn page_ids(doc: &Document, page: usize) -> Vec<Uuid> {
+        doc.markups_on_page(page)
+            .into_iter()
+            .map(|markup| markup.id)
+            .collect()
+    }
+
+    #[test]
+    fn z_order_stays_within_the_page_and_stops_at_edges() {
+        let mut doc = Document::empty("Doc");
+        doc.add_page(Page::a4(1));
+        let mut a = markup();
+        a.page = 0;
+        let mut b = markup();
+        b.page = 0;
+        let mut c = markup();
+        c.page = 0;
+        let mut other_page = markup();
+        other_page.page = 1;
+        let (a_id, b_id, c_id, other_id) = (a.id, b.id, c.id, other_page.id);
+        for markup in [a, b, c, other_page] {
+            doc.add_markup(markup);
+        }
+
+        assert_eq!(page_ids(&doc, 0), vec![a_id, b_id, c_id]);
+        assert!(doc.bring_forward(a_id));
+        assert_eq!(page_ids(&doc, 0), vec![b_id, a_id, c_id]);
+        assert!(doc.send_backward(a_id));
+        assert_eq!(page_ids(&doc, 0), vec![a_id, b_id, c_id]);
+        assert!(!doc.send_backward(a_id), "already at the back");
+        assert!(doc.bring_to_front(a_id));
+        assert_eq!(page_ids(&doc, 0), vec![b_id, c_id, a_id]);
+        assert!(!doc.bring_to_front(a_id), "already at the front");
+        assert!(doc.send_to_back(a_id));
+        assert_eq!(page_ids(&doc, 0), vec![a_id, b_id, c_id]);
+        assert!(!doc.send_to_back(a_id), "already at the back");
+        assert_eq!(page_ids(&doc, 1), vec![other_id]);
+        assert!(!doc.bring_forward(other_id), "only markup on the page");
+    }
+
+    #[test]
+    fn apply_style_to_skips_locked_and_missing_markups() {
+        let mut doc = Document::empty("Doc");
+        let mut first = markup();
+        first.author = "First".to_string();
+        first.subject = "Keep me".to_string();
+        first.status = crate::domain::markup::ReviewStatus::Accepted;
+        let first_id = first.id;
+        let mut locked = markup();
+        locked.locked = true;
+        let locked_id = locked.id;
+        let locked_style = locked.style;
+        doc.add_markup(first);
+        doc.add_markup(locked);
+
+        let style = MarkupStyle::default().with_stroke(crate::domain::style::palette::BLUE);
+        let changed = doc.apply_style_to(&[first_id, locked_id, Uuid::new_v4()], style);
+
+        assert_eq!(changed, 1);
+        let first = doc.find_markup(first_id).unwrap();
+        assert_eq!(first.style, style);
+        assert_eq!(first.author, "First");
+        assert_eq!(first.subject, "Keep me");
+        assert_eq!(first.status, crate::domain::markup::ReviewStatus::Accepted);
+        assert_eq!(doc.find_markup(locked_id).unwrap().style, locked_style);
     }
 
     #[test]

@@ -55,6 +55,8 @@
 - [x] Status colours + legend
 - [x] Stamp library (5 presets: Approved/Rejected/Draft/Check/Cross, glyph rendering, preset picker)
 - [x] Callout text editing in-canvas (also Text boxes; auto-open after placement)
+- [x] Copy properties / apply visual style to selected markups (F-114; `docs/tasks/v0.2-03-editing-commands.md`)
+- [x] Page-scoped z-order: bring forward/backward and to front/back (F-115; same v0.2-03 slice)
 
 ## Phase 5 — Persistence + I/O + PDF (non-destructive)
 - [x] JSON save/load (.rubric.json)
@@ -91,6 +93,7 @@
 - [x] Human approval received 2026-10-24
 - [x] Task brief created: docs/tasks/v0.2-01-markup-list-domain.md
 - [x] Task brief created: docs/tasks/v0.2-02-markups-list-ui.md
+- [x] Task brief created: docs/tasks/v0.2-03-editing-commands.md
 - [x] Inspiration addendum (client-directed): Stirling PDF capability analysis, 2026-10-26
 - [x] Task execution complete – `MarkupList`, `StylePreset`/`StylePresetLibrary`, `DiffResult` (commit `7e33fd2`, CI run `40304244261`)
 - [x] UI slice: Markups List panel with filter/sort/group, row selection and View toggle (PR #34; implementation commit `c2687d9`)
