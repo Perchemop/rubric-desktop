@@ -21,7 +21,9 @@ models and GitHub Actions:
   and pushes. GitHub Actions is the free **Task Runner** that verifies it.
 - **Pull Request (review)** — the change lands as a PR; the CI run plus the
   `reviewer` subagent and the human review it (trust but verify, guide §9).
-- **Merge** — the **human** merges. Agents prepare PRs; they do not self-merge.
+- **Merge** — the **agent merges** once CI is green and review findings are
+  addressed (owner directive 2026-10-26). The owner may still ask to review a
+  PR first; otherwise do not wait for a manual merge.
 - **PR template** — every PR uses `.github/PULL_REQUEST_TEMPLATE.md` (acceptance criteria, tests, CI, no proprietary material); reviewers reject PRs that fail its checklist (guide §8.3).
 - **Roadmap** — `ROADMAP.md` tracks staged milestones and readiness %; percentages move **only from verified evidence** (guide §6.2).
 - **Research gate** — public research lives in `docs/research/*.md` as original summaries + URLs, and needs explicit human approval before dependent implementation Tasks (guide §2.3, §8.4).
@@ -105,8 +107,8 @@ clippy (`-D warnings`), full tests, and a release build.
 - Introduce AGPL/GPL dependencies without approval.
 - Mix UI and business logic.
 - Push without running quality gates.
-- Self-merge a Pull Request: open it for review and let the human merge
-  (guide §5, §9).
+- Leave a green, review-clean PR unmerged unless the owner asked to review it
+  first (owner directive 2026-10-26: agents merge completed PRs).
 
 ## Completion mandate (mandatory)
 

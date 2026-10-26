@@ -13,10 +13,11 @@ use crate::data::{
     render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
 use crate::domain::{
-    AppPrefs, Document, EditorAction, Grid, History, MarkupKind, Project, Pt, Report,
-    ReportGroupKey, StampPreset, Theme, Tool,
+    AppPrefs, Document, EditorAction, Grid, History, MarkupGroupKey, MarkupKind,
+    MarkupListSort, Project, Pt, Report, ReportGroupKey, ReviewStatus, StampPreset,
+    Theme, Tool,
 };
-use crate::ui::{canvas, inspector, menu, pages, theme, toolbar};
+use crate::ui::{canvas, inspector, markups_list, menu, pages, theme, toolbar};
 use uuid::Uuid;
 
 #[allow(dead_code)]
@@ -65,6 +66,16 @@ pub(crate) enum InspectorMode {
     Comments,
     Measurements,
     Settings,
+}
+
+/// Layer criterion in the Markups List. The default layer is a distinct case
+/// because markups on it store `layer_id: None` in the domain model.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum MarkupLayerFilter {
+    #[default]
+    All,
+    DefaultLayer,
+    Layer(Uuid),
 }
 
 #[allow(dead_code)]
@@ -133,6 +144,17 @@ pub(crate) struct UiState {
     /// describes how the canvas behaves, never project data, so it is not
     /// persisted into `.rubric.json`.
     pub(crate) grid: Grid,
+    /// Whether the Markups List panel is visible (View menu toggle).
+    pub(crate) show_markups_list: bool,
+    /// Markups List filter controls. Kept as UI state so the domain filter can
+    /// be rebuilt on every frame; none of it is written into `.rubric.json`.
+    pub(crate) markup_search: String,
+    pub(crate) markup_status: Option<ReviewStatus>,
+    pub(crate) markup_author: Option<String>,
+    pub(crate) markup_subject: Option<String>,
+    pub(crate) markup_layer: MarkupLayerFilter,
+    pub(crate) markup_sort: MarkupListSort,
+    pub(crate) markup_group: Option<MarkupGroupKey>,
 }
 
 impl Default for UiState {
@@ -159,6 +181,14 @@ impl Default for UiState {
             scale_paper_inches: 1.0,
             scale_real_units: 10.0,
             grid: Grid::default(),
+            show_markups_list: true,
+            markup_search: String::new(),
+            markup_status: None,
+            markup_author: None,
+            markup_subject: None,
+            markup_layer: MarkupLayerFilter::All,
+            markup_sort: MarkupListSort::default(),
+            markup_group: None,
         }
     }
 }
@@ -919,6 +949,17 @@ impl RubricApp {
                         }
                     }
                 });
+                ui.separator();
+                if ui
+                    .checkbox(&mut self.ui.show_markups_list, "Show Markups List")
+                    .changed()
+                {
+                    self.ui.status = if self.ui.show_markups_list {
+                        "Markups List shown".to_string()
+                    } else {
+                        "Markups List hidden".to_string()
+                    };
+                }
             });
             ui.menu_button("Help", |ui| {
                 if ui.button("About Rubric").clicked() {
@@ -1256,6 +1297,30 @@ impl App for RubricApp {
             menu::draw_editor_context_menu(ui, &mut self.ui);
         });
         egui::Panel::bottom("status").show(ui, |ui| self.bottom_bar(ui));
+
+        let mut list_action = None;
+        if self.ui.show_markups_list {
+            let project = self.history.current();
+            let ui_state = &mut self.ui;
+            egui::Panel::bottom("markups_list")
+                .default_size(190.0)
+                .min_size(110.0)
+                .max_size(420.0)
+                .resizable(true)
+                .show(ui, |ui| {
+                    list_action =
+                        markups_list::draw_markups_list(ui, project, ui_state);
+                });
+        }
+        if let Some(action) = list_action {
+            self.ui.selected.clear();
+            self.ui.selected.insert(action.id);
+            self.ui.status =
+                format!("Selected markup on page {}", action.page + 1);
+            if action.page != self.ui.current_page {
+                self.jump_to_page(action.page);
+            }
+        }
 
         let prior_status = self.ui.status.clone();
         let mut need_snapshot = false;
