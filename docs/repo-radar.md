@@ -38,3 +38,9 @@ Radar relevance checked even though this is inspiration-only, not a dependency:
 covered by the Bluebeam/Acrobat inspiration rows and this repository's own
 `MarkupList` domain model. This slice introduced no external product,
 dependency or copied material.
+
+## 2026-10-26 — v0.2-03 editing commands
+
+**No radar change.** Copy Properties and page-scoped z-order are spec features
+(F-114/F-115) implemented from the repository's own markup/document model. No
+external product, dependency or copied material was introduced.
