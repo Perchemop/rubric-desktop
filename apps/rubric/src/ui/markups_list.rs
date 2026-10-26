@@ -11,6 +11,7 @@ use uuid::Uuid;
 
 use crate::domain::{
     MarkupGroupKey, MarkupList, MarkupListFilter, MarkupListSort, Project, ReviewStatus,
+    NONE_LABEL,
 };
 use crate::ui::app::{MarkupLayerFilter, UiState};
 
@@ -255,7 +256,9 @@ pub(crate) fn draw_markups_list(
 
     egui::ScrollArea::vertical()
         .auto_shrink([false, false])
-        .show(ui, |ui| render_list(ui, &filtered, state, &layer_name))
+        .show(ui, |ui| {
+            render_list(ui, &filtered, state, &layer_name, default_layer_name)
+        })
         .inner
 }
 
@@ -264,12 +267,21 @@ fn render_list(
     list: &MarkupList,
     state: &UiState,
     layer_name: &dyn Fn(Uuid) -> String,
+    default_layer_name: &str,
 ) -> Option<MarkupListAction> {
     match state.markup_group {
         Some(key) => {
             for (label, group) in list.group(key, layer_name) {
+                // Keep the domain label as the widget identity; only the
+                // visible text changes for the default layer.
+                let shown = if key == MarkupGroupKey::Layer && label == NONE_LABEL {
+                    format!("{default_layer_name} (default)")
+                } else {
+                    label.clone()
+                };
                 let mut action = None;
-                egui::CollapsingHeader::new(format!("{} ({})", label, group.len()))
+                egui::CollapsingHeader::new(format!("{} ({})", shown, group.len()))
+                    .id_salt(format!("markup-group-{label}"))
                     .default_open(true)
                     .show(ui, |ui| {
                         action = render_rows(ui, &group, state, &label);

@@ -428,6 +428,8 @@ impl MarkupList {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
+
     use crate::domain::document::{Document, Page};
     use crate::domain::geom::{Pt, Rect};
     use crate::domain::markup::{Markup, MarkupGeometry, MarkupKind, ReviewStatus};
@@ -549,6 +551,27 @@ mod tests {
         let filtered = list.filter(&filter);
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered.rows[0].id, Uuid::from_u128(1));
+    }
+
+    #[test]
+    fn filter_layers_empty_set_keeps_only_default_layer() {
+        let mut doc = Document::empty("D");
+        let layer_id = doc.add_layer("L1");
+        let mut m1 = make_markup(1, 0, MarkupKind::Highlight, "A", "S", ReviewStatus::Open);
+        m1.layer_id = Some(layer_id);
+        let mut m2 = make_markup(2, 0, MarkupKind::Highlight, "B", "S", ReviewStatus::Open);
+        m2.layer_id = None;
+        doc.add_markup(m1);
+        doc.add_markup(m2);
+        let list = MarkupList::from_document(&doc);
+        let filter = MarkupListFilter {
+            layers: Some(HashSet::new()),
+            include_default_layer: true,
+            ..Default::default()
+        };
+        let filtered = list.filter(&filter);
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered.rows[0].id, Uuid::from_u128(2));
     }
 
     #[test]

@@ -96,8 +96,8 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 
 | ID | Requirement | Status | Trace |
 |---|-----------|--------|-------|
-| R-V02-01 | Markups List: snapshot from project/document; filters (status/author/subject/kind/page/layer/search); stable sorts; grouping | PARTIAL (domain DONE; UI panel pending) | `src/domain/markup_list.rs`; `tests/domain_tests.rs::markup_list_filter_and_sort_from_document`; `docs/tasks/v0.2-01-markup-list-domain.md`; CI `40304244261` |
-| R-V02-02 | Status workflow audit metadata: reusable style presets (capture/apply + library) and project diff with added/removed/changed by stable id | PARTIAL (domain DONE; UI pending) | `src/domain/style_preset.rs`, `src/domain/diff.rs`; `tests/domain_tests.rs::{diff_documents_reports_add_remove_change,style_preset_apply_and_roundtrip}`; CI `40304244261` |
+| R-V02-01 | Markups List: snapshot from project/document; filters (status/author/subject/kind/page/layer/search); stable sorts; grouping | DONE | `src/domain/markup_list.rs`; `src/ui/markups_list.rs`; `tests/domain_tests.rs::markup_list_filter_and_sort_from_document`; `docs/tasks/v0.2-01-markup-list-domain.md`; `docs/tasks/v0.2-02-markups-list-ui.md`; PR #34; implementation CI run `40308480821` |
+| R-V02-02 | Status workflow audit metadata: reusable style presets (capture/apply + library) and project diff with added/removed/changed by stable id | PARTIAL (domain DONE; preset/diff UI pending) | `src/domain/style_preset.rs`, `src/domain/diff.rs`; `tests/domain_tests.rs::{diff_documents_reports_add_remove_change,style_preset_apply_and_roundtrip}`; CI `40304244261` |
 
 ## Gaps / exclusions
 - Canonical inventory: `docs/spec/README.md` (52 F-IDs across F-1xx…F-7xx), adopted 2026-10-19; see Phase 1 requirement set above.

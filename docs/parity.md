@@ -22,9 +22,9 @@ implemented · **Todo** = not started · **Out of scope** = deliberately exclude
 | Measurements with page scale (length, perimeter, area, angle, diameter, radius, count) | F-201–F-206 | Partial | measure tools + scale/units landed |
 | Calibration & units (presets, custom ratio, unit selection, labels) | F-207–F-209 | Done | inspector scale editor + on-canvas labels |
 | Review workflow (status, comments, author/subject, report) | F-301–F-305 | Done | statuses, comments, summary report, status legend |
-| Markups list / review console (filter, sort, group) | R-V02-01 | Partial (domain done) | `MarkupList` domain model landed 2026-10-26; UI panel pending |
+| Markups list / review console (filter, sort, group) | R-V02-01 | Done | `MarkupList` domain model plus resizable bottom panel with search/status/author/subject/layer filters, all sorts and group modes, row selection + page jump (2026-10-26) |
 | Document compare / markup diff (added, removed, changed) | R-V02-02 | Partial (domain done) | `DiffResult` + `diff_documents`/`diff_projects` landed 2026-10-26; UI presentation pending |
-| Reusable style presets | R-V02-02 | Partial (domain done) | `StylePreset`/`StylePresetLibrary` landed 2026-10-26; Markups List UI wiring pending |
+| Reusable style presets | R-V02-02 | Partial (domain done) | `StylePreset`/`StylePresetLibrary` landed 2026-10-26; preset editing/apply affordance still pending |
 | Persistence (project sidecar, autosave, recents, dialogs) | F-501–F-503, F-506, F-507 | Partial | `.rubric.json` sidecar + recents landed; autosave pending |
 | Export & print (rendered page image, print) | F-505 | Done | image export + print |
 | Undo/redo | F-604 | Done | bounded 128 snapshots |

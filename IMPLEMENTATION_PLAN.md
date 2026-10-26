@@ -90,10 +90,11 @@
 - [x] Open questions recorded: Q-V02-1 CSV export, Q-V02-2 diff presentation, Q-V02-3 markup style favorites
 - [x] Human approval received 2026-10-24
 - [x] Task brief created: docs/tasks/v0.2-01-markup-list-domain.md
+- [x] Task brief created: docs/tasks/v0.2-02-markups-list-ui.md
 - [x] Inspiration addendum (client-directed): Stirling PDF capability analysis, 2026-10-26
 - [x] Task execution complete – `MarkupList`, `StylePreset`/`StylePresetLibrary`, `DiffResult` (commit `7e33fd2`, CI run `40304244261`)
-- [ ] UI slice: Markups List panel with filter/sort/group
-- [x] Tests for list, filter, diff logic in `src/domain` + `tests/domain_tests.rs`
+- [x] UI slice: Markups List panel with filter/sort/group, row selection and View toggle (PR #34; implementation commit `c2687d9`)
+- [x] Tests for list, filter, diff logic in `src/domain` + `tests/domain_tests.rs`, plus Markups List UI-state helper tests
 
 ## Slice strategy
 Build vertically: domain + tests → minimal UI → drawing + selection → save/load → measurements → review → polish. Keep each slice small, compiling, tested.
