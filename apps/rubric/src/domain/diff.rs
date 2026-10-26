@@ -210,7 +210,7 @@ pub fn diff_projects(a: &Project, b: &Project) -> DiffResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::document::Document;
+    use crate::domain::document::{Document, Page};
     use crate::domain::geom::{Pt, Rect};
     use crate::domain::markup::{Markup, MarkupGeometry, MarkupKind, ReviewStatus};
     use crate::domain::project::Project;
@@ -304,6 +304,7 @@ mod tests {
             MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
         ));
         let mut b = Document::empty("D");
+        b.add_page(Page::a4(1));
         b.add_markup(make_markup(
             1,
             1,
@@ -408,6 +409,7 @@ mod tests {
             ReviewStatus::Open,
             MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
         ));
+        b.add_page(Page::a4(1));
         b.add_markup(make_markup(
             2,
             1,
