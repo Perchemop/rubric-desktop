@@ -263,14 +263,12 @@ fn markup_list_filter_and_sort_from_document() {
     );
     approved.status = ReviewStatus::Approved;
     doc.add_markup(approved);
-    doc.add_markup(
-        Markup::new(
-            1,
-            MarkupKind::Rectangle,
-            MarkupGeometry::Bounds(Rect::new(5.0, 5.0, 10.0, 10.0)),
-            "Bob",
-        ),
-    );
+    doc.add_markup(Markup::new(
+        1,
+        MarkupKind::Rectangle,
+        MarkupGeometry::Bounds(Rect::new(5.0, 5.0, 10.0, 10.0)),
+        "Bob",
+    ));
 
     let list = MarkupList::from_document(&doc);
     assert_eq!(list.rows.len(), 2);
