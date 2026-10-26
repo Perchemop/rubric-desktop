@@ -84,10 +84,7 @@ fn truncate(value: &str, max_chars: usize) -> String {
     if value.chars().count() <= max_chars {
         return value.to_string();
     }
-    let mut out: String = value
-        .chars()
-        .take(max_chars.saturating_sub(1))
-        .collect();
+    let mut out: String = value.chars().take(max_chars.saturating_sub(1)).collect();
     out.push('…');
     out
 }
@@ -106,11 +103,8 @@ pub(crate) fn draw_markups_list(
         return None;
     };
 
-    let layer_names: HashMap<Uuid, String> = doc
-        .layers
-        .iter()
-        .map(|l| (l.id, l.name.clone()))
-        .collect();
+    let layer_names: HashMap<Uuid, String> =
+        doc.layers.iter().map(|l| (l.id, l.name.clone())).collect();
     let layer_name = |id: Uuid| {
         layer_names
             .get(&id)
@@ -160,11 +154,7 @@ pub(crate) fn draw_markups_list(
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut state.markup_status, None, "All statuses");
                 for status in ReviewStatus::ALL {
-                    ui.selectable_value(
-                        &mut state.markup_status,
-                        Some(status),
-                        status.label(),
-                    );
+                    ui.selectable_value(&mut state.markup_status, Some(status), status.label());
                 }
             });
 
@@ -182,12 +172,7 @@ pub(crate) fn draw_markups_list(
             });
 
         ComboBox::from_label("Subject")
-            .selected_text(
-                state
-                    .markup_subject
-                    .as_deref()
-                    .unwrap_or("All subjects"),
-            )
+            .selected_text(state.markup_subject.as_deref().unwrap_or("All subjects"))
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut state.markup_subject, None, "All subjects");
                 for subject in &subjects {
@@ -236,20 +221,11 @@ pub(crate) fn draw_markups_list(
             });
 
         ComboBox::from_label("Group")
-            .selected_text(
-                state
-                    .markup_group
-                    .map(|key| key.label())
-                    .unwrap_or("None"),
-            )
+            .selected_text(state.markup_group.map(|key| key.label()).unwrap_or("None"))
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut state.markup_group, None, "None");
                 for key in MarkupGroupKey::ALL {
-                    ui.selectable_value(
-                        &mut state.markup_group,
-                        Some(key),
-                        key.label(),
-                    );
+                    ui.selectable_value(&mut state.markup_group, Some(key), key.label());
                 }
             });
     });
@@ -328,12 +304,10 @@ fn render_rows(
             for row in list.rows() {
                 let selected = state.selected.contains(&row.id);
                 let mut clicked = false;
-                clicked |=
-                    ui.selectable_label(selected, (row.page + 1).to_string())
-                        .clicked();
                 clicked |= ui
-                    .selectable_label(selected, row.kind.label())
+                    .selectable_label(selected, (row.page + 1).to_string())
                     .clicked();
+                clicked |= ui.selectable_label(selected, row.kind.label()).clicked();
                 clicked |= ui
                     .selectable_label(selected, truncate(row.author.as_str(), 24))
                     .clicked();
