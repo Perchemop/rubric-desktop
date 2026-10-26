@@ -779,7 +779,7 @@ flow now enforced by branch protection.
 - CI verification branches are transient: this slice's checks ran on `opencode/ci`, while the original feature branch is `opencode/v0.2-01-markup-list-domain` (PR #30, closed as superseded by #32). Recorded in `docs/process-feedback.md`.
 
 ## 2026-10-26 — v0.2-02 Markups List UI (R-V02-01) — reviewer fixes applied
-**Status**: implemented on `opencode/v0.2-02-markups-list-ui`; implementation commit `c2687d9` is CI-green (run `40308480821`: fmt, clippy `-D warnings`, tests, release build; security checks also green). Reviewer FIX FIRST findings are addressed in the same PR (#34). Per the owner directive of 2026-10-26, the PR is merged automatically once the final checks are green.
+**Status**: implemented on `opencode/v0.2-02-markups-list-ui`; implementation commit `c2687d9` is CI-green (run `40308480821`: fmt, clippy `-D warnings`, tests, release build; security checks also green). Reviewer fixes and docs are in commit `1a5c539`, also CI-green (run `40310526592`, security run `40310526743`). Per the owner directive of 2026-10-26, PR #34 is merged automatically once the final checks are green.
 
 ### Completed
 - New `apps/rubric/src/ui/markups_list.rs`: resizable bottom panel built on `MarkupList::from_document`, with search plus status/author/subject/layer filters (including the default-layer case), every `MarkupListSort`, every `MarkupGroupKey`, and row selection that selects the markup and jumps to its page.
