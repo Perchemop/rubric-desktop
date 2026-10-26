@@ -169,8 +169,7 @@ impl Default for UiState {
             zoom: 1.0,
             pan: Vec2::ZERO,
             page_origin: Pos2::new(40.0, 40.0),
-            hint: "Ctrl+S: Save  ·  Ctrl+Z: Undo  ·  Ctrl+Y: Redo  ·  Del: Delete"
-                .to_string(),
+            hint: "Ctrl+S: Save  ·  Ctrl+Z: Undo  ·  Ctrl+Y: Redo  ·  Del: Delete".to_string(),
             status: "Ready".to_string(),
             draw_cancelled: false,
             last_tool: Tool::Select,
