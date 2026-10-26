@@ -15,11 +15,11 @@ This file is the staged, milestone view over those.
 
 | Measure | Value | Evidence |
 |---|---|---|
-| Requirement groups fully done | **13 / 17 (76 %)** | `REQUIREMENTS_TRACEABILITY.md` — R-S rows marked DONE |
-| Requirement groups partial | 4 / 17 | R-S-001, R-S-003, R-S-013, R-S-016 (small residual items only) |
+| Requirement groups fully done | **14 / 17 (82 %)** | `REQUIREMENTS_TRACEABILITY.md` — R-S rows marked DONE |
+| Requirement groups partial | 3 / 17 | R-S-001, R-S-013, R-S-016 (small residual items only) |
 | Requirement groups not started | 0 / 17 | — |
-| Feature IDs done (52 total) | **46 / 52 (88 %)** | `docs/spec/README.md` reconciled 2026-10-24 |
-| Feature IDs open | 6 | F-103, F-114, F-115, F-502, F-507, F-605 (+2 sub-items: F-401 zoom presets, F-004 layer rename/reorder) |
+| Feature IDs done (52 total) | **48 / 52 (92 %)** | `docs/spec/README.md` reconciled 2026-10-26 |
+| Feature IDs open | 4 | F-103, F-502, F-507, F-605 (+2 sub-items: F-401 zoom presets, F-004 layer rename/reorder) |
 | CI | green on `main` | fmt · clippy `-D warnings` · tests · release build |
 | Primary-platform install | verified | installed from CI artefact and launched (Linux aarch64, Crostini) |
 
