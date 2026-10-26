@@ -699,6 +699,14 @@ impl Markup {
         });
     }
 
+    /// Replace the visual style without changing geometry, metadata, review
+    /// status, lock state, comments or measurements. Refreshes `modified`.
+    pub fn apply_style(&mut self, style: MarkupStyle) {
+        self.style = style;
+        self.style.font_size = self.style.font_size.max(6.0);
+        self.touch();
+    }
+
     pub fn touch(&mut self) {
         self.modified = Utc::now();
     }
@@ -921,6 +929,35 @@ mod tests {
         );
         m.geometry.translate(5.0, -3.0);
         assert_eq!(m.bounds(), Rect::new(5.0, -3.0, 10.0, 10.0));
+    }
+
+    #[test]
+    fn apply_style_changes_only_the_visual_style_and_touches() {
+        let mut m = Markup::new(
+            0,
+            MarkupKind::Rectangle,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0)),
+            "tester",
+        );
+        m.author = "Author".to_string();
+        m.subject = "Subject".to_string();
+        m.status = ReviewStatus::Accepted;
+        m.locked = true;
+        let geometry = m.geometry.clone();
+        let before = m.modified;
+        let style = MarkupStyle::default()
+            .with_stroke(palette::BLUE)
+            .with_width(4.0);
+
+        m.apply_style(style);
+
+        assert_eq!(m.style, style);
+        assert_eq!(m.geometry, geometry);
+        assert_eq!(m.author, "Author");
+        assert_eq!(m.subject, "Subject");
+        assert_eq!(m.status, ReviewStatus::Accepted);
+        assert!(m.locked);
+        assert!(m.modified >= before);
     }
 
     #[test]
