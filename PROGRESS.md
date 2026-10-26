@@ -799,7 +799,7 @@ flow now enforced by branch protection.
 - CI runs on the feature branch (`CI_BRANCH=opencode/v0.2-02-markups-list-ui`) so the PR is the record; PR #34 replaces the earlier shared-branch pattern. The merge follows the 2026-10-26 owner directive without a manual merge step.
 
 ## 2026-10-26 — v0.2-03 editing commands (F-114/F-115)
-**Status**: implemented on `opencode/v0.2-03-editing-commands`; implementation commit `86305a1` was CI-green (run `40315238211`), and the final reviewer-fix commit `3b0fcda` is also CI-green (run `40316051901`, security run `40316051812`). The slice closes the two remaining selection-editing commands from R-S-003.
+**Status**: implemented on `opencode/v0.2-03-editing-commands`; implementation commit `86305a1` was CI-green (run `40315238211`), the reviewer-fix commit `3b0fcda` was CI-green (run `40316051901`), and the final slice tip `070ffd9` is CI-green (run `40316773330`, security run `40316773214`). This entry was then updated in a docs-only follow-up covered by the same PR's CI. The slice closes the two remaining selection-editing commands from R-S-003.
 
 ### Completed
 - Copy/Paste Properties: a session-only `MarkupStyle` clipboard. Copy works on one markup (including a locked one, because it is read-only); paste applies the style to every selected editable markup, skips locked/missing targets, refreshes `modified`, and pushes one undo snapshot.
