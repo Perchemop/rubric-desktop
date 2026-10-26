@@ -19,7 +19,8 @@ carried into Rubric.
 | Product | Capability observed as useful | How Rubric implements it (originally) |
 |---|---|---|
 | Bluebeam Revu | Status-driven review workflows; stamp libraries; calibrated measurement toolsets on drawings | Own `ReviewStatus` enum + legend, own `StampPreset` five-glyph set drawn in egui, own `Scale`/`units` domain model with paper-space calibration |
-| Adobe Acrobat | Standard annotation taxonomy (highlight/strikeout/underline, sticky notes, callouts) | Own `MarkupKind`/`MarkupGeometry` types, own hit-testing with tolerance, own overlay painter |
+| Adobe Acrobat | Standard annotation taxonomy (highlight/strikeout/underline, sticky notes, callouts); document comparison | Own `MarkupKind`/`MarkupGeometry` types, own hit-testing with tolerance, own overlay painter; v0.2 markup-level `DiffResult` domain model |
+| Stirling PDF | Local-first multi-tool PDF platform; page organisation, redaction, signatures, PDF comparison as discrete capabilities | Capability analysis in `docs/research/stirling-pdf-capabilities.md`; nothing adopted beyond capability concepts (compare validates the v0.2 diff model; redaction/signature/page-ops recorded as future research only) |
 | General commercial PDF suites | Non-destructive editing (markups never touch the source PDF); sidecar/annotation storage | `.rubric.json` sidecar with UUIDs and UTC timestamps; the PDF is opened read-only |
 
 ## Recording future inspiration

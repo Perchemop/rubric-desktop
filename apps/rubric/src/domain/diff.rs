@@ -9,6 +9,7 @@ use uuid::Uuid;
 use super::document::Document;
 use super::markup::{Markup, MarkupGeometry, MarkupKind, ReviewStatus};
 use super::project::Project;
+use super::style::MarkupStyle;
 
 /// Compact serialisable snapshot of a markup for diffing.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -19,6 +20,8 @@ pub struct MarkupSummaryRow {
     pub author: String,
     pub subject: String,
     pub status: ReviewStatus,
+    pub style: MarkupStyle,
+    pub locked: bool,
     pub created: DateTime<Utc>,
     pub modified: DateTime<Utc>,
     pub geometry_fingerprint: String,
@@ -33,6 +36,8 @@ impl MarkupSummaryRow {
             author: markup.author.clone(),
             subject: markup.subject.clone(),
             status: markup.status,
+            style: markup.style,
+            locked: markup.locked,
             created: markup.created,
             modified: markup.modified,
             geometry_fingerprint: geometry_fingerprint(markup),
@@ -151,6 +156,8 @@ fn rows_equal(a: &MarkupSummaryRow, b: &MarkupSummaryRow) -> bool {
     a.page == b.page
         && a.kind == b.kind
         && a.status == b.status
+        && a.style == b.style
+        && a.locked == b.locked
         && a.author == b.author
         && a.subject == b.subject
         && a.geometry_fingerprint == b.geometry_fingerprint
@@ -165,14 +172,22 @@ pub fn diff_documents(a: &Document, b: &Document) -> DiffResult {
     let mut removed = Vec::new();
     let mut changed = Vec::new();
 
+    // Markups are expected to have unique ids (`Uuid`); a malformed document
+    // with duplicates is diffed once per id, not once per duplicate row.
     for markup in &b.markups {
         if !a_map.contains_key(&markup.id) {
+            if added.iter().any(|r: &MarkupSummaryRow| r.id == markup.id) {
+                continue;
+            }
             added.push(MarkupSummaryRow::from_markup(markup));
         }
     }
 
     for markup in &a.markups {
         if !b_map.contains_key(&markup.id) {
+            if removed.iter().any(|r: &MarkupSummaryRow| r.id == markup.id) {
+                continue;
+            }
             removed.push(MarkupSummaryRow::from_markup(markup));
         }
     }
@@ -199,11 +214,17 @@ pub fn diff_documents(a: &Document, b: &Document) -> DiffResult {
 }
 
 /// Diff two projects by their active documents.
-/// Returns an empty result if either project has no active document.
+///
+/// A project without an active document is treated as having no markups, so
+/// an asymmetric comparison surfaces the populated side's markups as
+/// added/removed rather than reporting a misleading "no changes".
 pub fn diff_projects(a: &Project, b: &Project) -> DiffResult {
+    let empty = Document::empty("(none)");
     match (a.active(), b.active()) {
         (Some(doc_a), Some(doc_b)) => diff_documents(doc_a, doc_b),
-        _ => DiffResult::default(),
+        (None, Some(doc_b)) => diff_documents(&empty, doc_b),
+        (Some(doc_a), None) => diff_documents(doc_a, &empty),
+        (None, None) => DiffResult::default(),
     }
 }
 
@@ -214,6 +235,7 @@ mod tests {
     use crate::domain::geom::{Pt, Rect};
     use crate::domain::markup::{Markup, MarkupGeometry, MarkupKind, ReviewStatus};
     use crate::domain::project::Project;
+    use crate::domain::style::palette;
 
     fn make_markup(
         id: u128,
@@ -451,5 +473,84 @@ mod tests {
         let json = serde_json::to_string(&diff).unwrap();
         let back: DiffResult = serde_json::from_str(&json).unwrap();
         assert_eq!(diff, back);
+    }
+
+    #[test]
+    fn change_detection_style_and_locked_only() {
+        let mut a = Document::empty("D");
+        a.add_markup(make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        ));
+        let mut b = Document::empty("D");
+        let mut styled = make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        );
+        styled.style.stroke = palette::GREEN;
+        styled.locked = true;
+        b.add_markup(styled);
+
+        let diff = diff_documents(&a, &b);
+        assert_eq!(diff.changed.len(), 1);
+        let c = &diff.changed[0];
+        assert_ne!(c.before.as_ref().unwrap().style, c.after.as_ref().unwrap().style);
+        assert!(!c.before.as_ref().unwrap().locked);
+        assert!(c.after.as_ref().unwrap().locked);
+    }
+
+    #[test]
+    fn duplicate_ids_in_one_document_are_diffed_once() {
+        let mut a = Document::empty("D");
+        let mut b = Document::empty("D");
+        let dup1 = make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        );
+        let mut dup2 = dup1.clone();
+        dup2.geometry = MarkupGeometry::Bounds(Rect::new(2.0, 2.0, 1.0, 1.0));
+        b.add_markup(dup1);
+        b.add_markup(dup2);
+
+        let diff = diff_documents(&a, &b);
+        assert_eq!(diff.added.len(), 1);
+    }
+
+    #[test]
+    fn diff_projects_missing_active_document_treated_as_empty() {
+        let mut a = Project::new("A");
+        a.active_mut().unwrap().add_markup(make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        ));
+        let mut b = Project::new("B");
+        b.documents.clear();
+
+        let diff = diff_projects(&a, &b);
+        assert_eq!(diff.removed.len(), 1);
+        let diff2 = diff_projects(&b, &a);
+        assert_eq!(diff2.added.len(), 1);
+        let diff3 = diff_projects(&b, &b);
+        assert!(diff3.is_empty());
     }
 }
