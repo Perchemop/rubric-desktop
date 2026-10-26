@@ -1,6 +1,6 @@
 //! Document/project diff for markup changes.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -174,25 +174,25 @@ pub fn diff_documents(a: &Document, b: &Document) -> DiffResult {
 
     // Markups are expected to have unique ids (`Uuid`); a malformed document
     // with duplicates is diffed once per id, not once per duplicate row.
+    let mut seen_added = HashSet::new();
     for markup in &b.markups {
-        if !a_map.contains_key(&markup.id) {
-            if added.iter().any(|r: &MarkupSummaryRow| r.id == markup.id) {
-                continue;
-            }
+        if !a_map.contains_key(&markup.id) && seen_added.insert(markup.id) {
             added.push(MarkupSummaryRow::from_markup(markup));
         }
     }
 
+    let mut seen_removed = HashSet::new();
     for markup in &a.markups {
-        if !b_map.contains_key(&markup.id) {
-            if removed.iter().any(|r: &MarkupSummaryRow| r.id == markup.id) {
-                continue;
-            }
+        if !b_map.contains_key(&markup.id) && seen_removed.insert(markup.id) {
             removed.push(MarkupSummaryRow::from_markup(markup));
         }
     }
 
+    let mut seen_changed = HashSet::new();
     for markup_a in &a.markups {
+        if !seen_changed.insert(markup_a.id) {
+            continue;
+        }
         if let Some(markup_b) = b_map.get(&markup_a.id) {
             let row_a = MarkupSummaryRow::from_markup(markup_a);
             let row_b = MarkupSummaryRow::from_markup(markup_b);
@@ -532,6 +532,34 @@ mod tests {
 
         let diff = diff_documents(&a, &b);
         assert_eq!(diff.added.len(), 1);
+
+        // The changed path must also collapse duplicate ids to one row.
+        let mut a2 = Document::empty("A2");
+        a2.add_markup(make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        ));
+        let mut b2 = Document::empty("B2");
+        let mut changed1 = make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Approved,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        );
+        let mut changed2 = changed1.clone();
+        changed2.status = ReviewStatus::Rejected;
+        b2.add_markup(changed1);
+        b2.add_markup(changed2);
+        let diff2 = diff_documents(&a2, &b2);
+        assert_eq!(diff2.changed.len(), 1);
     }
 
     #[test]
