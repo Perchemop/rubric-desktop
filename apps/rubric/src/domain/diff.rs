@@ -504,7 +504,10 @@ mod tests {
         let diff = diff_documents(&a, &b);
         assert_eq!(diff.changed.len(), 1);
         let c = &diff.changed[0];
-        assert_ne!(c.before.as_ref().unwrap().style, c.after.as_ref().unwrap().style);
+        assert_ne!(
+            c.before.as_ref().unwrap().style,
+            c.after.as_ref().unwrap().style,
+        );
         assert!(!c.before.as_ref().unwrap().locked);
         assert!(c.after.as_ref().unwrap().locked);
     }
