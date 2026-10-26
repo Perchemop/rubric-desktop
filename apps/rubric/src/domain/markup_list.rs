@@ -430,7 +430,7 @@ impl MarkupList {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::document::Document;
+    use crate::domain::document::{Document, Page};
     use crate::domain::geom::{Pt, Rect};
     use crate::domain::markup::{Markup, MarkupGeometry, MarkupKind, ReviewStatus};
     use crate::domain::project::Project;
@@ -473,6 +473,7 @@ mod tests {
             "Elec",
             ReviewStatus::Open,
         ));
+        doc.add_page(Page::a4(1));
         doc.add_markup(make_markup(
             2,
             1,
