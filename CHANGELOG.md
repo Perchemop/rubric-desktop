@@ -16,6 +16,11 @@ All notable changes to this project will be documented here. Format: semantic-is
   domain model, with search and status/author/subject/layer filters, every
   sort and group mode, row selection that jumps to the markup's page, empty
   states, Clear filters, and a View → Show Markups List toggle.
+- Selection editing completion (F-114/F-115): Copy/Paste Properties apply only
+  the visual style to selected editable markups (one undo snapshot, locked
+  targets skipped), and page-scoped Bring Forward/Backward/To Front/To Back
+  reorder markups without crossing page boundaries. Commands are available in
+  the shared canvas/inspector context menu and the Edit menu.
 - Stirling PDF added as capability-level inspiration (client-directed):
   original capability summary in `docs/research/stirling-pdf-capabilities.md`,
   inspiration table row and radar addendum; no code or dependency adopted.

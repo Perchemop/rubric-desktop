@@ -14,7 +14,7 @@ use crate::data::{
 };
 use crate::domain::{
     AppPrefs, Document, EditorAction, Grid, History, MarkupGroupKey, MarkupKind, MarkupListSort,
-    Project, Pt, Report, ReportGroupKey, ReviewStatus, StampPreset, Theme, Tool,
+    MarkupStyle, Project, Pt, Report, ReportGroupKey, ReviewStatus, StampPreset, Theme, Tool,
 };
 use crate::ui::{canvas, inspector, markups_list, menu, pages, theme, toolbar};
 use uuid::Uuid;
@@ -133,6 +133,9 @@ pub(crate) struct UiState {
     /// the inspector only *request* actions; `ui()` performs them so history
     /// snapshots and status text follow a single path.
     pub(crate) pending_action: Option<EditorAction>,
+    /// Visual style captured by Copy Properties. Session-only; applying review
+    /// status or lock state is deliberately not part of this clipboard.
+    pub(crate) style_clipboard: Option<MarkupStyle>,
     /// Currently displayed page index (session state; never snapshotted).
     pub(crate) current_page: usize,
     dirty: bool,
@@ -175,6 +178,7 @@ impl Default for UiState {
             move_changed: false,
             text_edit: None,
             pending_action: None,
+            style_clipboard: None,
             current_page: 0,
             dirty: false,
             scale_paper_inches: 1.0,
@@ -388,6 +392,12 @@ impl RubricApp {
                 self.clear_selection();
                 self.ui.status = "Selection cleared".to_string();
             }
+            EditorAction::CopyProperties => self.copy_selected_style(),
+            EditorAction::PasteProperties => self.paste_selected_style(),
+            EditorAction::BringForward
+            | EditorAction::SendBackward
+            | EditorAction::BringToFront
+            | EditorAction::SendToBack => self.apply_z_order(action),
             EditorAction::ZoomIn => {
                 self.ui.zoom = (self.ui.zoom * 1.25).clamp(0.1, 16.0);
             }
@@ -398,6 +408,100 @@ impl RubricApp {
                 self.ui.zoom = 1.0;
                 self.ui.pan = Vec2::ZERO;
             }
+        }
+    }
+
+    /// The selected id when exactly one markup is selected.
+    fn single_selected(&self) -> Option<Uuid> {
+        let mut ids = self.ui.selected.iter();
+        let id = *ids.next()?;
+        ids.next().is_none().then_some(id)
+    }
+
+    /// Copy the selected markup's visual style into the session clipboard.
+    fn copy_selected_style(&mut self) {
+        let Some(id) = self.single_selected() else {
+            self.ui.status = "Select exactly one markup to copy properties".to_string();
+            return;
+        };
+        let style = self
+            .active_doc()
+            .and_then(|doc| doc.find_markup(id))
+            .map(|markup| markup.style);
+        match style {
+            Some(style) => {
+                self.ui.style_clipboard = Some(style);
+                self.ui.status = "Properties copied".to_string();
+            }
+            None => self.ui.status = "Markup not found".to_string(),
+        }
+    }
+
+    /// Apply the copied visual style to every selected editable markup.
+    fn paste_selected_style(&mut self) {
+        let Some(style) = self.ui.style_clipboard else {
+            self.ui.status = "Copy properties first".to_string();
+            return;
+        };
+        let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
+        if ids.is_empty() {
+            self.ui.status = "Select at least one markup to paste properties".to_string();
+            return;
+        }
+        let changed = match self.active_doc_mut() {
+            Some(doc) => doc.apply_style_to(&ids, style),
+            None => 0,
+        };
+        if changed == 0 {
+            self.ui.status = "No editable markups selected".to_string();
+        } else {
+            self.push_snapshot("paste properties");
+            self.ui.status = format!("Properties applied to {changed} markup(s)");
+        }
+    }
+
+    /// Move the single selected markup in its page's paint order.
+    fn apply_z_order(&mut self, action: EditorAction) {
+        let Some(id) = self.single_selected() else {
+            self.ui.status = "Select exactly one markup to change its order".to_string();
+            return;
+        };
+        let result = match self.active_doc_mut() {
+            Some(doc) => {
+                let exists = doc.find_markup(id).is_some();
+                let editable = doc
+                    .find_markup(id)
+                    .is_some_and(|markup| doc.is_markup_editable(markup));
+                if !exists {
+                    Err("Markup not found")
+                } else if !editable {
+                    Err("Selection is locked")
+                } else {
+                    Ok(match action {
+                        EditorAction::BringForward => doc.bring_forward(id),
+                        EditorAction::SendBackward => doc.send_backward(id),
+                        EditorAction::BringToFront => doc.bring_to_front(id),
+                        EditorAction::SendToBack => doc.send_to_back(id),
+                        _ => false,
+                    })
+                }
+            }
+            None => Err("No active document"),
+        };
+        let (changed_message, edge_message) = match action {
+            EditorAction::BringForward => ("Brought forward", "Already at the front"),
+            EditorAction::SendBackward => ("Sent backward", "Already at the back"),
+            EditorAction::BringToFront => ("Brought to front", "Already at the front"),
+            EditorAction::SendToBack => ("Sent to back", "Already at the back"),
+            _ => ("Order changed", "Already at that position"),
+        };
+        match result {
+            Ok(true) => {
+                self.push_snapshot(action.label());
+                self.ui.status = changed_message.to_string();
+            }
+            Ok(false) => self.ui.status = edge_message.to_string(),
+            Err(message) => self.ui.status = message.to_string(),
         }
     }
 
@@ -890,10 +994,7 @@ impl RubricApp {
                     ui.close();
                 }
                 ui.separator();
-                if ui.button("Delete Selected").clicked() {
-                    self.apply_editor_action(EditorAction::DeleteSelection);
-                    ui.close();
-                }
+                menu::draw_selection_commands(ui, &mut self.ui);
             });
             ui.menu_button("View", |ui| {
                 if ui.button("Zoom In").clicked() {

@@ -32,8 +32,8 @@ This requirement set is **original material authored for Rubric**. It is derived
 | F-111 | Stamps (preset library: approved/rejected/draft style marks) | Ph 4 | done (StampPreset library incl. Approved/Rejected/Draft/Check/Cross; preset picker in Inspector) |
 | F-112 | Drag-to-draw with live preview (bounds/segment/path/angle/ink) | Ph 2 | done |
 | F-113 | Select, move, delete markups | MVP (Ph 2) | done (click/drag select, drag move, Del/Backspace + Edit/Context menu delete) |
-| F-114 | Copy properties and apply style to other markups | Ph 4 | pending |
-| F-115 | Z-order (bring forward / send back) | Ph 4 | pending |
+| F-114 | Copy properties and apply style to other markups | Ph 4 | done (Copy/Paste Properties: visual style only, locked targets skipped, one undo snapshot) |
+| F-115 | Z-order (bring forward / send back) | Ph 4 | done (page-scoped forward/backward/front/back; boundary no-ops) |
 | F-116 | Layer visibility and lock | Ph 4 | done (Inspector Layers panel: visibility, lock, delete) |
 
 ### F-2xx — Measurements and scale

@@ -779,7 +779,7 @@ flow now enforced by branch protection.
 - CI verification branches are transient: this slice's checks ran on `opencode/ci`, while the original feature branch is `opencode/v0.2-01-markup-list-domain` (PR #30, closed as superseded by #32). Recorded in `docs/process-feedback.md`.
 
 ## 2026-10-26 — v0.2-02 Markups List UI (R-V02-01) — reviewer fixes applied
-**Status**: implemented on `opencode/v0.2-02-markups-list-ui`; implementation commit `c2687d9` is CI-green (run `40308480821`: fmt, clippy `-D warnings`, tests, release build; security checks also green). Reviewer fixes and docs are in commit `1a5c539`, also CI-green (run `40310526592`, security run `40310526743`). Per the owner directive of 2026-10-26, PR #34 is merged automatically once the final checks are green.
+**Status**: merged as `e5335e1` (PR #34, rebase). Implementation commit `c2687d9` was CI-green (run `40308480821`); reviewer fixes and docs were CI-green on `1a5c539` (run `40310526592`, security `40310526743`) and the rebased tip was CI-green on `main` (run `40312120918`, security `40312120719`).
 
 ### Completed
 - New `apps/rubric/src/ui/markups_list.rs`: resizable bottom panel built on `MarkupList::from_document`, with search plus status/author/subject/layer filters (including the default-layer case), every `MarkupListSort`, every `MarkupGroupKey`, and row selection that selects the markup and jumps to its page.
@@ -797,6 +797,20 @@ flow now enforced by branch protection.
 
 ### Process
 - CI runs on the feature branch (`CI_BRANCH=opencode/v0.2-02-markups-list-ui`) so the PR is the record; PR #34 replaces the earlier shared-branch pattern. The merge follows the 2026-10-26 owner directive without a manual merge step.
+
+## 2026-10-26 — v0.2-03 editing commands (F-114/F-115)
+**Status**: implemented on `opencode/v0.2-03-editing-commands`; CI verification and reviewer pass pending. The slice closes the two remaining selection-editing commands from R-S-003.
+
+### Completed
+- Copy/Paste Properties: a session-only `MarkupStyle` clipboard. Copy works on one markup (including a locked one, because it is read-only); paste applies the style to every selected editable markup, skips locked/missing targets, refreshes `modified`, and pushes one undo snapshot.
+- Page-scoped z-order: `Document::bring_forward`/`send_backward` swap with the nearest same-page neighbour; `bring_to_front`/`send_to_back` move to the page's paint-order edge. Boundary moves are no-ops and push no history.
+- Shared UX: all six commands are in the canvas/inspector context menu and the Edit menu, with enablement from `EditorAction::is_enabled(selection, has_clipboard)`; z-order and copy require exactly one selection, paste requires a clipboard plus a selection.
+- Tests: domain z-order invariants (including cross-page isolation and boundary no-ops), style application only touching style/`modified`, locked-target skipping, and the action enablement matrix.
+- Scope decision: copy/paste is visual-style only; review status and lock state are never silently overwritten. A future preset-library apply that changes them must be an explicit, gated affordance (recorded in `DECISIONS.md`).
+
+### Next
+- Run CI on the feature branch, address reviewer findings, and merge automatically per the 2026-10-26 owner directive.
+- Continue with F-502 (autosave loop wiring) and F-507 (`schema_version` + forward-compatible load).
 
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF

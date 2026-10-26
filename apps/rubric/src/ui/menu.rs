@@ -23,6 +23,45 @@ fn tool_label(tool: Tool) -> &'static str {
     }
 }
 
+/// Record `action` on `ui_state` when its menu entry is clicked.
+fn action_button(ui: &mut Ui, ui_state: &mut UiState, action: EditorAction) {
+    let enabled = action.is_enabled(ui_state.selected.len(), ui_state.style_clipboard.is_some());
+    if ui
+        .add_enabled(enabled, egui::Button::new(action.label()))
+        .clicked()
+    {
+        ui_state.pending_action = Some(action);
+        ui.close();
+    }
+}
+
+/// Selection-dependent editing commands shared by the context menu and the
+/// Edit menu (F-113–F-115).
+pub(crate) fn draw_selection_commands(ui: &mut Ui, ui_state: &mut UiState) {
+    for action in [EditorAction::DeleteSelection, EditorAction::ClearSelection] {
+        action_button(ui, ui_state, action);
+    }
+
+    ui.separator();
+
+    for action in [EditorAction::CopyProperties, EditorAction::PasteProperties] {
+        action_button(ui, ui_state, action);
+    }
+
+    ui.separator();
+
+    ui.menu_button("Order", |ui| {
+        for action in [
+            EditorAction::BringForward,
+            EditorAction::SendBackward,
+            EditorAction::BringToFront,
+            EditorAction::SendToBack,
+        ] {
+            action_button(ui, ui_state, action);
+        }
+    });
+}
+
 /// Render the editor context menu, recording the chosen action on `ui_state`.
 pub(crate) fn draw_editor_context_menu(ui: &mut Ui, ui_state: &mut UiState) {
     // Tool submenu — reuses the F-601 shortcut keys for discoverability.
@@ -43,17 +82,7 @@ pub(crate) fn draw_editor_context_menu(ui: &mut Ui, ui_state: &mut UiState) {
 
     ui.separator();
 
-    let selection = ui_state.selected.len();
-    for action in [EditorAction::DeleteSelection, EditorAction::ClearSelection] {
-        let button = egui::Button::new(action.label());
-        if ui
-            .add_enabled(action.is_enabled(selection), button)
-            .clicked()
-        {
-            ui_state.pending_action = Some(action);
-            ui.close();
-        }
-    }
+    draw_selection_commands(ui, ui_state);
 
     ui.separator();
 
@@ -66,13 +95,6 @@ pub(crate) fn draw_editor_context_menu(ui: &mut Ui, ui_state: &mut UiState) {
         EditorAction::ZoomOut,
         EditorAction::FitPage,
     ] {
-        let button = egui::Button::new(action.label());
-        if ui
-            .add_enabled(action.is_enabled(selection), button)
-            .clicked()
-        {
-            ui_state.pending_action = Some(action);
-            ui.close();
-        }
+        action_button(ui, ui_state, action);
     }
 }
