@@ -31,3 +31,10 @@ Radar relevance checked even though this is inspiration-only, not a dependency:
 | --- | --- | --- |
 | `Stirling-Tools/Stirling-PDF` (as dependency) | **reject** | Java/Spring server platform — wrong stack (§4A.3 Fit) and a server runtime Rubric does not want. As *inspiration only* it is adopted (client-directed): capability analysis in `docs/research/stirling-pdf-capabilities.md`; core is MIT, proprietary directories not consulted. |
 | `Stirling-Tools/Stirling-PDF` (compare/redaction/signature capabilities) | **watch** | Compare validates the v0.2-01 `DiffResult` model and may seed a UI slice; redaction/signatures/page-ops need PDF *writing*, which contradicts the read-only PDF decision until that scope decision is revisited. |
+
+## 2026-10-26 — v0.2-02 Markups List UI
+
+**No radar change.** The Markups List/review console capability is already
+covered by the Bluebeam/Acrobat inspiration rows and this repository's own
+`MarkupList` domain model. This slice introduced no external product,
+dependency or copied material.
