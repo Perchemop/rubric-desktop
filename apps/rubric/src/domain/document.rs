@@ -573,27 +573,43 @@ mod tests {
         b.page = 0;
         let mut c = markup();
         c.page = 0;
-        let mut other_page = markup();
-        other_page.page = 1;
-        let (a_id, b_id, c_id, other_id) = (a.id, b.id, c.id, other_page.id);
-        for markup in [a, b, c, other_page] {
+        let mut x = markup();
+        x.page = 1;
+        let mut y = markup();
+        y.page = 1;
+        let (a_id, b_id, c_id, x_id, y_id) = (a.id, b.id, c.id, x.id, y.id);
+        // Interleave the pages so skipping over a page boundary is visible.
+        for markup in [a, b, x, c, y] {
             doc.add_markup(markup);
         }
 
         assert_eq!(page_ids(&doc, 0), vec![a_id, b_id, c_id]);
-        assert!(doc.bring_forward(a_id));
-        assert_eq!(page_ids(&doc, 0), vec![b_id, a_id, c_id]);
-        assert!(doc.send_backward(a_id));
+        assert_eq!(page_ids(&doc, 1), vec![x_id, y_id]);
+        assert!(doc.bring_forward(b_id), "skips the page-1 markup");
+        assert_eq!(page_ids(&doc, 0), vec![a_id, c_id, b_id]);
+        assert_eq!(page_ids(&doc, 1), vec![x_id, y_id]);
+        assert!(doc.send_backward(b_id));
         assert_eq!(page_ids(&doc, 0), vec![a_id, b_id, c_id]);
         assert!(!doc.send_backward(a_id), "already at the back");
+        assert!(
+            !doc.bring_forward(c_id),
+            "only following markup is on another page"
+        );
+        assert_eq!(page_ids(&doc, 1), vec![x_id, y_id]);
         assert!(doc.bring_to_front(a_id));
         assert_eq!(page_ids(&doc, 0), vec![b_id, c_id, a_id]);
+        assert_eq!(page_ids(&doc, 1), vec![x_id, y_id]);
         assert!(!doc.bring_to_front(a_id), "already at the front");
         assert!(doc.send_to_back(a_id));
         assert_eq!(page_ids(&doc, 0), vec![a_id, b_id, c_id]);
         assert!(!doc.send_to_back(a_id), "already at the back");
-        assert_eq!(page_ids(&doc, 1), vec![other_id]);
-        assert!(!doc.bring_forward(other_id), "only markup on the page");
+
+        assert!(doc.bring_forward(x_id));
+        assert_eq!(page_ids(&doc, 1), vec![y_id, x_id]);
+        assert!(doc.send_backward(x_id));
+        assert_eq!(page_ids(&doc, 1), vec![x_id, y_id]);
+        assert!(!doc.send_backward(x_id), "already at the back");
+        assert!(!doc.bring_forward(y_id), "already at the front");
     }
 
     #[test]
