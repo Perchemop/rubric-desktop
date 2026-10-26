@@ -58,6 +58,7 @@ Small, low-risk completions; each its own Task + release.
 ### v0.2.0 — finish the review workflow
 
 - [x] v0.2-01 domain foundation: Markups List (filter/sort/group), style presets, project diff (R-V02-01/02) — CI `40304244261`
+- [x] v0.2-02 Markups List UI: resizable panel with search/status/author/subject/layer filters, all sorts and group modes, row selection + page jump, View toggle (R-V02-01) — PR #34
 - [ ] F-114: copy properties → apply style to other markups
 - [ ] F-115: z-order (bring forward / send backward / to front / to back)
 - [ ] F-502: wire the existing `store::autosave` into the app loop (interval + status)

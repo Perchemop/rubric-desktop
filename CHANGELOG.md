@@ -12,6 +12,10 @@ All notable changes to this project will be documented here. Format: semantic-is
   (`diff_documents`/`diff_projects`, 2-dp geometry fingerprints,
   style/locked-aware change detection). All serde-serialisable and
   headless-tested, plus integration coverage in `tests/domain_tests.rs`.
+- Markups List UI (R-V02-01): resizable bottom panel built on the `MarkupList`
+  domain model, with search and status/author/subject/layer filters, every
+  sort and group mode, row selection that jumps to the markup's page, empty
+  states, Clear filters, and a View → Show Markups List toggle.
 - Stirling PDF added as capability-level inspiration (client-directed):
   original capability summary in `docs/research/stirling-pdf-capabilities.md`,
   inspiration table row and radar addendum; no code or dependency adopted.
@@ -31,6 +35,9 @@ All notable changes to this project will be documented here. Format: semantic-is
 - `docs/metrics.md` — which project metrics are tracked and why.
 
 ### Changed
+- `AGENTS.md`: owner directive 2026-10-26 — agents merge completed PRs once CI
+  is green and review findings are addressed, rather than waiting for a manual
+  merge click.
 - `.github/PULL_REQUEST_TEMPLATE.md`: UI changes now must pass the
   accessibility checklist items.
 - `CONTRIBUTING.md`: links the conduct/security/accessibility paths.

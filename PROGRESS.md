@@ -759,7 +759,7 @@ flow now enforced by branch protection.
 - **Release-path lesson**: a `workflow_dispatch` re-run reuses the workflow file *from the tag's commit*, so workflow fixes must move the tag. `v0.1.0` was therefore deleted and re-created at the fixed commit (twice), rather than re-running the existing run.
 
 ## 2026-10-26 — v0.2-01 domain slice: Markups List, style presets, project diff — CI verified, reviewer fixes applied
-**Status**: domain slice complete and CI-green (final code commit `c03cfb9`, GitHub Actions run `40305909163`: fmt check, clippy `-D warnings`, full tests, release build; security checks also green; the slice commit `7e33fd2` was green in run `40304244261`). PR #32 is ready for human review; PR #30 was the original feature branch and is closed as superseded. UI panel is the next slice.
+**Status**: domain slice complete and CI-green (final code commit `c03cfb9`, GitHub Actions run `40305909163`: fmt check, clippy `-D warnings`, full tests, release build; security checks also green; the slice commit `7e33fd2` was green in run `40304244261`). PR #32 was merged at `59694b2`; PR #30 was the original feature branch and is closed as superseded. UI panel is the next slice.
 
 ### Completed
 - `MarkupList` snapshot (`src/domain/markup_list.rs`): case-insensitive filters (status/author/subject/kind/page/layer incl. default-layer handling), search over author/subject + comment texts for full markups (summary line for rows), stable sorts with deterministic id tie-break, grouping by status/author/subject/kind/page/layer. `matches`/`matches_row` now share one criteria helper (`matches_core`), and Page groups sort numerically (1, 2, 10).
@@ -777,6 +777,25 @@ flow now enforced by branch protection.
 
 ### Process
 - CI verification branches are transient: this slice's checks ran on `opencode/ci`, while the original feature branch is `opencode/v0.2-01-markup-list-domain` (PR #30, closed as superseded by #32). Recorded in `docs/process-feedback.md`.
+
+## 2026-10-26 — v0.2-02 Markups List UI (R-V02-01) — reviewer fixes applied
+**Status**: implemented on `opencode/v0.2-02-markups-list-ui`; implementation commit `c2687d9` is CI-green (run `40308480821`: fmt, clippy `-D warnings`, tests, release build; security checks also green). Reviewer FIX FIRST findings are addressed in the same PR (#34). Per the owner directive of 2026-10-26, the PR is merged automatically once the final checks are green.
+
+### Completed
+- New `apps/rubric/src/ui/markups_list.rs`: resizable bottom panel built on `MarkupList::from_document`, with search plus status/author/subject/layer filters (including the default-layer case), every `MarkupListSort`, every `MarkupGroupKey`, and row selection that selects the markup and jumps to its page.
+- Panel integration in `ui/app.rs`: `UiState` filter/sort/group fields, `MarkupLayerFilter`, a View → Show Markups List toggle, and action handling that never pushes an undo snapshot for pure selection.
+- Empty states: no active document, no markups, and no filter matches, plus Clear filters. Status is always shown as text, with colour as a secondary cue only.
+- Grouping identity fix: the domain label remains the widget `id_salt`; the default layer is renamed only in the visible header, so a layer literally named "Default layer" cannot collide.
+- Tests: five headless UI-state helper tests (filter translation, default/named layers, blank/all, case-insensitive dedupe, truncation) and a new domain test proving an empty layer set plus `include_default_layer` keeps only the default layer.
+- Docs: `docs/tasks/v0.2-02-markups-list-ui.md`; PROGRESS, CHANGELOG, ROADMAP, IMPLEMENTATION_PLAN, REQUIREMENTS_TRACEABILITY and `docs/parity.md` updated. `AGENTS.md` merge-policy wording is now consistent with the owner directive.
+
+### Reviewer verdict (FIX FIRST) — all actionables closed
+- **MEDIUM**: tracking files were not updated — now updated across the roadmap, plan, changelog, traceability, parity and progress records.
+- **LOW**: no domain test for the empty-layer-set + default-layer contract — added `filter_layers_empty_set_keeps_only_default_layer`.
+- **LOW**: renaming the default group could collide with a layer name — fixed by keeping the original label as `CollapsingHeader::id_salt` and the grid identity, renaming only the visible text.
+
+### Process
+- CI runs on the feature branch (`CI_BRANCH=opencode/v0.2-02-markups-list-ui`) so the PR is the record; PR #34 replaces the earlier shared-branch pattern. The merge follows the 2026-10-26 owner directive without a manual merge step.
 
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
