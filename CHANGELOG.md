@@ -40,6 +40,8 @@ All notable changes to this project will be documented here. Format: semantic-is
 - `docs/metrics.md` — which project metrics are tracked and why.
 
 ### Changed
+- Redo is now **Ctrl+Y** (`Ctrl+Z` remains undo); the hint bar and the F-601
+  shortcut record were updated.
 - `AGENTS.md`: owner directive 2026-10-26 — agents merge completed PRs once CI
   is green and review findings are addressed, rather than waiting for a manual
   merge click.
