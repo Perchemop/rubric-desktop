@@ -61,6 +61,7 @@ impl StylePreset {
         }
         markup.status = self.status;
         markup.locked = self.locked;
+        markup.touch();
     }
 }
 
@@ -266,8 +267,22 @@ mod tests {
         let preset = StylePreset::from_markup(&sample_markup(), "Test");
         let json = serde_json::to_string(&preset).unwrap();
         let back: StylePreset = serde_json::from_str(&json).unwrap();
-        assert_eq!(preset.id, back.id);
-        assert_eq!(preset.name, back.name);
-        assert_eq!(preset.style, back.style);
+        // Full equality: every field (id, name, style, created, status,
+        // locked, ...) must survive the round trip.
+        assert_eq!(preset, back);
+    }
+
+    #[test]
+    fn apply_to_touches_modified() {
+        let preset = StylePreset::from_markup(&sample_markup(), "Test");
+        let mut target = Markup::new(
+            0,
+            MarkupKind::Rectangle,
+            MarkupGeometry::Bounds(Rect::new(1.0, 1.0, 1.0, 1.0)),
+            "David",
+        );
+        let before = target.modified;
+        preset.apply_to(&mut target);
+        assert!(target.modified >= before);
     }
 }
