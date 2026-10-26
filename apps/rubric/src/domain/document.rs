@@ -602,7 +602,7 @@ mod tests {
         let mut first = markup();
         first.author = "First".to_string();
         first.subject = "Keep me".to_string();
-        first.status = crate::domain::markup::ReviewStatus::Accepted;
+        first.status = crate::domain::markup::ReviewStatus::Approved;
         let first_id = first.id;
         let mut locked = markup();
         locked.locked = true;
@@ -619,7 +619,7 @@ mod tests {
         assert_eq!(first.style, style);
         assert_eq!(first.author, "First");
         assert_eq!(first.subject, "Keep me");
-        assert_eq!(first.status, crate::domain::markup::ReviewStatus::Accepted);
+        assert_eq!(first.status, crate::domain::markup::ReviewStatus::Approved);
         assert_eq!(doc.find_markup(locked_id).unwrap().style, locked_style);
     }
 
