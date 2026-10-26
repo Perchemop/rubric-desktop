@@ -37,7 +37,7 @@ models and GitHub Actions:
 - Error handling: use `thiserror` for domain/data errors; avoid panics in logic; prefer `Result`.
 - Conventions: snake_case, modules flat and explicit; doc comments for public API.
 - Dependencies: prefer well-maintained, MIT/Apache-2.0 crates.
-- UI: egui/eframe; viewport with app icon; responsive panels; keyboard shortcuts (Ctrl+S save, Ctrl+Z undo, Ctrl+Shift+Z redo, Esc/Del).
+- UI: egui/eframe; viewport with app icon; responsive panels; keyboard shortcuts (Ctrl+S save, Ctrl+Z undo, Ctrl+Y redo, Esc/Del).
 - Persistence: JSON (serde_json), `.rubric.json` extension, human-readable; include UUIDs and timestamps.
 - Git: fresh repo, never commit external reference material; commit small, focused slices; messages imperative and descriptive.
 
