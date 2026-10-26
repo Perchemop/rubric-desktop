@@ -4,6 +4,7 @@ pub mod app;
 pub mod canvas;
 pub mod icons;
 pub mod inspector;
+pub mod markups_list;
 pub mod menu;
 pub mod pages;
 pub mod theme;
