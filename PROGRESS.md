@@ -799,12 +799,13 @@ flow now enforced by branch protection.
 - CI runs on the feature branch (`CI_BRANCH=opencode/v0.2-02-markups-list-ui`) so the PR is the record; PR #34 replaces the earlier shared-branch pattern. The merge follows the 2026-10-26 owner directive without a manual merge step.
 
 ## 2026-10-26 — v0.2-03 editing commands (F-114/F-115)
-**Status**: implemented on `opencode/v0.2-03-editing-commands`; CI verification and reviewer pass pending. The slice closes the two remaining selection-editing commands from R-S-003.
+**Status**: implemented on `opencode/v0.2-03-editing-commands`; CI green on implementation commit `86305a1` (run `40315238211`). Reviewer FIX FIRST findings were addressed in the final docs/test commit; the final CI run is recorded with the PR. The slice closes the two remaining selection-editing commands from R-S-003.
 
 ### Completed
 - Copy/Paste Properties: a session-only `MarkupStyle` clipboard. Copy works on one markup (including a locked one, because it is read-only); paste applies the style to every selected editable markup, skips locked/missing targets, refreshes `modified`, and pushes one undo snapshot.
 - Page-scoped z-order: `Document::bring_forward`/`send_backward` swap with the nearest same-page neighbour; `bring_to_front`/`send_to_back` move to the page's paint-order edge. Boundary moves are no-ops and push no history.
 - Shared UX: all six commands are in the canvas/inspector context menu and the Edit menu, with enablement from `EditorAction::is_enabled(selection, has_clipboard)`; z-order and copy require exactly one selection, paste requires a clipboard plus a selection.
+- Redo is now **Ctrl+Y**; `Ctrl+Z` remains undo and `Ctrl+Shift+Z` no longer undoes. The hint bar, CHANGELOG, spec F-601, `AGENTS.md` and `.opencode/agents/ui-dev.md` all record the new shortcut.
 - Tests: domain z-order invariants (including cross-page isolation and boundary no-ops), style application only touching style/`modified`, locked-target skipping, and the action enablement matrix.
 - Scope decision: copy/paste is visual-style only; review status and lock state are never silently overwritten. A future preset-library apply that changes them must be an explicit, gated affordance (recorded in `DECISIONS.md`).
 
