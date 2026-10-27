@@ -260,6 +260,20 @@ mod tests {
     }
 
     #[test]
+    fn autosave_writes_a_project_file_that_loads_back() {
+        let project = Project::new("Recoverable");
+        let target = temp_project_path("autosave_roundtrip");
+        let written = autosave(&project, Some(&target))
+            .expect("autosave")
+            .expect("path");
+        assert!(written.to_string_lossy().ends_with(".autosave.rubric.json"));
+        let loaded = load_project(&written).expect("load autosave");
+        assert_eq!(loaded, project);
+        assert_eq!(loaded.schema_version, CURRENT_SCHEMA_VERSION);
+        let _ = std::fs::remove_file(&written);
+    }
+
+    #[test]
     fn autosave_due_requires_dirty_and_enabled() {
         let now = Instant::now();
         assert!(autosave_due(true, true, 60, None, now));
