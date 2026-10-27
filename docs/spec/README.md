@@ -77,10 +77,10 @@ This requirement set is **original material authored for Rubric**. It is derived
 |---|---|---|---|
 | F-501 | `.rubric.json` sidecar save/load (pretty JSON, UUIDs, timestamps) | MVP | done |
 | F-502 | Autosave | Ph 5 | done (File > Auto-save enable + interval; dirty project written at most once per interval; status reports the path) |
-| F-503 | Recent files list | Ph 5 | pending |
-| F-504 | PDF import and page rendering (non-destructive, sidecar kept) | Ph 5 | pending; pure-Rust crate first (see assumptions) |
-| F-505 | Export (rendered image) and print | Ph 5 | pending |
-| F-506 | Native open/save file dialogs (PDF + `.rubric.json`) | Ph 5 | pending |
+| F-503 | Recent files list | Ph 5 | done (File > Recent, app-level `recent.json`, cleared from the menu, 2026-10-20) |
+| F-504 | PDF import and page rendering (non-destructive, sidecar kept) | Ph 5 | done (`pdfium-render` runtime binding, read-only PDF, shared render cache, 2026-10-21) |
+| F-505 | Export (rendered image) and print | Ph 5 | done (File > Export Page Image, File > Print via the CPU rasteriser, 2026-10-21) |
+| F-506 | Native open/save file dialogs (PDF + `.rubric.json`) | Ph 5 | done (rfd open/save dialogs for projects and PDF import, 2026-10-20) |
 | F-507 | Project schema versioning (`schema_version`) | later | done (`schema_version` written on save; load refuses unsupported versions; legacy files load as current) |
 
 ### F-6xx — UI/UX polish

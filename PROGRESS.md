@@ -836,7 +836,7 @@ flow now enforced by branch protection.
 - G6 PR/push authorship cannot satisfy §5.5 exactly (guide II.26.7) — client decision.
 
 ## 2026-10-26 — v0.2-04 persistence hardening (F-502/F-507)
-**Status**: implemented on `opencode/v0.2-04-persistence-hardening`; CI verification recorded with the PR (this line is updated with the final run IDs after the checks). The branch also carries the 2026-10-27 guide/addendum compliance fixes above.
+**Status**: implemented on `opencode/v0.2-04-persistence-hardening`; the implementation/compliance tip `e39dfc7` was CI-green (run `40482350600`, security run `40482350579`). Reviewer findings (stale spec F-503–F-506 rows, this run-ID record, the task brief, and an autosave round-trip test) are closed in the follow-up commit, whose CI is recorded with PR #36. The branch also carries the 2026-10-27 guide/addendum compliance fixes above.
 
 ### Completed
 - Autosave (F-502): `File → Auto-save` toggles `Settings.auto_save` and picks an interval (30 s / 1 min / 2 min / 5 min / 10 min, plus a non-preset persisted value). The app writes an autosave at most once per interval, only while the project is dirty, to `<name>.autosave.rubric.json` beside the saved project (app data dir when untitled). Success clears the unsaved flag and reports the path; failure leaves it dirty and reports the error. `autosave_due` keeps the schedule a pure, headless-tested function and clamps the interval to ≥ 5 s.
