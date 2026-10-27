@@ -44,3 +44,10 @@ dependency or copied material.
 **No radar change.** Copy Properties and page-scoped z-order are spec features
 (F-114/F-115) implemented from the repository's own markup/document model. No
 external product, dependency or copied material was introduced.
+
+## 2026-10-26 — v0.2-04 persistence hardening
+
+**No radar change.** Autosave scheduling and the `schema_version` guard are
+internal persistence work (F-502/F-507) built from the repository's own store
+and data model. No external product, dependency or copied material was
+introduced.

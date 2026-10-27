@@ -3,18 +3,19 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use eframe::{App, CreationContext, Frame};
 use egui::{Align, Layout, Pos2, TextureHandle, Ui, Vec2};
 
 use crate::data::{
-    load_prefs, load_project, load_recent, normalise_project_filename, print_image,
-    render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
+    autosave, autosave_due, load_prefs, load_project, load_recent, normalise_project_filename,
+    print_image, render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
 use crate::domain::{
-    AppPrefs, Document, EditorAction, Grid, History, MarkupGroupKey, MarkupKind, MarkupListSort,
-    MarkupStyle, Project, Pt, Report, ReportGroupKey, ReviewStatus, StampPreset, Theme, Tool,
+    auto_save_interval_label, AppPrefs, Document, EditorAction, Grid, History, MarkupGroupKey,
+    MarkupKind, MarkupListSort, MarkupStyle, Project, Pt, Report, ReportGroupKey, ReviewStatus,
+    StampPreset, Theme, Tool, AUTO_SAVE_INTERVALS,
 };
 use crate::ui::{canvas, inspector, markups_list, menu, pages, theme, toolbar};
 use uuid::Uuid;
@@ -138,6 +139,8 @@ pub(crate) struct UiState {
     pub(crate) style_clipboard: Option<MarkupStyle>,
     /// Currently displayed page index (session state; never snapshotted).
     pub(crate) current_page: usize,
+    /// True when a committed project change has not reached disk yet (save or
+    /// autosave). Session-only; it drives autosave and the save path.
     dirty: bool,
     /// Custom scale editor inputs (paper inches and real units).
     pub(crate) scale_paper_inches: f64,
@@ -207,6 +210,10 @@ pub struct RubricApp {
     current_path: Option<PathBuf>,
     /// Set when the window title needs to be re-synced with `current_path`.
     title_dirty: bool,
+    /// Instant of the most recent autosave **attempt** in this session, or
+    /// `None` before the first one. Recording the attempt (even a failed one)
+    /// rate-limits retries to one per interval instead of one per frame.
+    last_autosave: Option<Instant>,
     /// Cache of rendered PDF page textures, keyed by cache PNG path.
     page_textures: HashMap<String, TextureHandle>,
     /// Cache keys whose page render failed this project session. Poisoned so a
@@ -274,6 +281,7 @@ impl RubricApp {
             comment_text: String::new(),
             current_path: None,
             title_dirty: true,
+            last_autosave: None,
             page_textures: HashMap::new(),
             failed_page_textures: HashSet::new(),
             thumb_cache: pages::ThumbCache::default(),
@@ -327,8 +335,9 @@ impl RubricApp {
     }
 
     fn clear_selection(&mut self) {
+        // Selection is session state, not project data: clearing it must not
+        // mark the project dirty or trigger an autosave of unchanged content.
         self.ui.selected.clear();
-        self.ui.dirty = true;
     }
 
     fn delete_selected(&mut self) {
@@ -369,6 +378,8 @@ impl RubricApp {
                     self.ui.status = "Finish or cancel text edit first".to_string();
                 } else if self.history.undo() {
                     self.ui.status = "Undo".to_string();
+                    // Undo/redo change the in-memory project, so it is unsaved.
+                    self.ui.dirty = true;
                     self.clear_selection();
                 }
             }
@@ -377,6 +388,7 @@ impl RubricApp {
                     self.ui.status = "Finish or cancel text edit first".to_string();
                 } else if self.history.redo() {
                     self.ui.status = "Redo".to_string();
+                    self.ui.dirty = true;
                     self.clear_selection();
                 }
             }
@@ -658,6 +670,8 @@ impl RubricApp {
     fn push_snapshot(&mut self, reason: &str) {
         let proj = self.history.current().clone();
         self.history.push(proj);
+        // A committed change is exactly what auto-save should persist.
+        self.ui.dirty = true;
         self.ui.status = format!("Snapshot: {reason}");
     }
 
@@ -666,6 +680,7 @@ impl RubricApp {
     fn push_snapshot_quiet(&mut self) {
         let proj = self.history.current().clone();
         self.history.push(proj);
+        self.ui.dirty = true;
     }
 
     /// Shared reset used by New / Open / Import: installs a project into the
@@ -678,6 +693,8 @@ impl RubricApp {
         self.current_path = current_path;
         self.ui.status = status;
         self.title_dirty = true;
+        // A freshly installed project has never been autosaved this session.
+        self.last_autosave = None;
         self.page_textures.clear();
         self.failed_page_textures.clear();
         self.thumb_cache = pages::ThumbCache::default();
@@ -843,6 +860,39 @@ impl RubricApp {
         }
     }
 
+    /// Run an autosave when the project is dirty and its interval has elapsed
+    /// (spec F-502). The write is small and synchronous on the UI thread; the
+    /// schedule is rate-limited so a failed attempt retries at the next
+    /// interval rather than every frame.
+    fn maybe_autosave(&mut self) {
+        let settings = &self.history.current().settings;
+        if !autosave_due(
+            self.ui.dirty,
+            settings.auto_save,
+            settings.auto_save_interval_secs,
+            self.last_autosave,
+            Instant::now(),
+        ) {
+            return;
+        }
+        // Record the attempt first so a failure cannot busy-loop the loop.
+        self.last_autosave = Some(Instant::now());
+        let path = self.current_path.clone();
+        match autosave(self.history.current(), path.as_deref()) {
+            Ok(Some(path)) => {
+                self.ui.dirty = false;
+                self.ui.status = format!("Autosaved: {}", path.display());
+            }
+            Ok(None) => {
+                // No writable location (no project path and no data dir). Leave
+                // the project dirty; File → Save As resolves it for good.
+            }
+            Err(e) => {
+                self.ui.status = format!("Autosave failed: {e}");
+            }
+        }
+    }
+
     fn save_project_action(&mut self) {
         if let Some(p) = self.current_path.clone() {
             self.save_project_to(p);
@@ -976,6 +1026,37 @@ impl RubricApp {
                     self.save_project_as_action();
                     ui.close();
                 }
+                // Autosave controls (spec F-502). These edit `Settings`, which
+                // is project data, so each change pushes one undo snapshot.
+                ui.menu_button("Auto-save", |ui| {
+                    let mut enabled = self.history.current().settings.auto_save;
+                    if ui.checkbox(&mut enabled, "Enable Auto-save").changed() {
+                        self.history.current_mut().settings.auto_save = enabled;
+                        self.ui.status = if enabled {
+                            "Auto-save on".to_string()
+                        } else {
+                            "Auto-save off".to_string()
+                        };
+                        self.push_snapshot_quiet();
+                    }
+                    ui.separator();
+                    let current = self.history.current().settings.auto_save_interval_secs;
+                    // Keep a non-preset persisted interval honest by showing it.
+                    let mut options = AUTO_SAVE_INTERVALS.to_vec();
+                    if !options.contains(&current) {
+                        options.insert(0, current);
+                    }
+                    let mut chosen = current;
+                    for secs in options {
+                        ui.selectable_value(&mut chosen, secs, auto_save_interval_label(secs));
+                    }
+                    if chosen != current {
+                        self.history.current_mut().settings.auto_save_interval_secs = chosen;
+                        self.ui.status =
+                            format!("Auto-save every {}", auto_save_interval_label(chosen));
+                        self.push_snapshot_quiet();
+                    }
+                });
                 ui.separator();
                 if ui.button("Quit").clicked() {
                     // Let eframe tear down normally instead of exiting the
@@ -1251,16 +1332,16 @@ impl App for RubricApp {
                 // markup that no longer exists.
                 if self.ui.text_edit.is_some() {
                     self.ui.status = "Finish or cancel text edit first".to_string();
-                } else {
-                    self.history.undo();
+                } else if self.history.undo() {
+                    self.ui.dirty = true;
                     self.clear_selection();
                 }
             }
             if i.modifiers.command && i.key_pressed(egui::Key::Y) {
                 if self.ui.text_edit.is_some() {
                     self.ui.status = "Finish or cancel text edit first".to_string();
-                } else {
-                    self.history.redo();
+                } else if self.history.redo() {
+                    self.ui.dirty = true;
                     self.clear_selection();
                 }
             }
@@ -1535,6 +1616,10 @@ impl App for RubricApp {
                 }
             }
         }
+
+        // Autosave (spec F-502): run at the end of the frame so it sees every
+        // committed change from this pass.
+        self.maybe_autosave();
 
         ui.ctx()
             .request_repaint_after(Duration::from_secs_f32(0.25));

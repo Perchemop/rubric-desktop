@@ -13,8 +13,9 @@ CI run.
 - [ ] CI green on GitHub Actions (the free Task Runner): fmt → clippy
       `-D warnings` → `test --all` → release build.
 - [ ] Pull Request opened/updated for review using
-      `.github/PULL_REQUEST_TEMPLATE.md`; **the human merges** (guide §5, §8.3,
-      §9 — trust but verify).
+      `.github/PULL_REQUEST_TEMPLATE.md`; the **agent merges once CI is green
+      and review findings are addressed** (owner directive 2026-10-26,
+      `AGENTS.md`, `DECISIONS.md`), unless the owner asked to review first.
 - [ ] `ROADMAP.md` readiness % updated when a tracked item completes — from
       evidence only (CI run or recorded hands-on check).
 - [ ] No fake success states / dead controls / placeholder-only data.

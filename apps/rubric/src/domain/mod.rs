@@ -25,7 +25,9 @@ pub use markup::{
 };
 pub use markup_list::{MarkupGroupKey, MarkupList, MarkupListFilter, MarkupListSort, MarkupRow};
 pub use project::{
-    History, Project, ProjectSnapshot, RecentList, Settings, Tool, ToolSet, MAX_RECENT,
+    auto_save_interval_label, History, Project, ProjectSnapshot, RecentList, Settings, Tool,
+    ToolSet, AUTO_SAVE_INTERVALS, CURRENT_SCHEMA_VERSION, MAX_RECENT,
+    MIN_AUTO_SAVE_INTERVAL_SECS,
 };
 pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCounts, NONE_LABEL};
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};

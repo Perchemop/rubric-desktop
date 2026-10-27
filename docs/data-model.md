@@ -1,7 +1,7 @@
 # Data Model
 
 ## Entities
-- **Project**: id, name, documents[], active_document, tool_sets[], settings, created, modified
+- **Project**: id, schema_version (1), name, documents[], active_document, tool_sets[], settings, created, modified
 - **Document**: id, title, source_path?, pages[], markups[], created, modified
 - **Page**: index, width, height (pt), rotation (0/90/180/270), scale (Scale)
 - **Scale**: unit (MeasureUnit), units_per_point (f64)
@@ -45,6 +45,11 @@ Measure: MeasureLength, MeasurePerimeter, MeasureArea, MeasureAngle, MeasureDiam
 
 ## Serialisation
 serde + serde_json. DateTime<Utc> serialised as RFC3339. Enums serde_rename "snake_case" where stable.
+
+Every `.rubric.json` carries `schema_version` (currently 1). A file without the
+field is treated as version 1; `load_project` refuses any version outside
+`1..=CURRENT_SCHEMA_VERSION` with `DataError::UnsupportedSchema` rather than
+loading a newer file as the current schema.
 
 ## Equality
 Derived PartialEq for testing; clones are intentional for history snapshots.

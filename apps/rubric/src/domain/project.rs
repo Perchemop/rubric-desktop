@@ -8,6 +8,45 @@ use super::document::{Document, Page};
 use super::markup::MarkupKind;
 use super::units::{clamp_precision, DEFAULT_PRECISION};
 
+/// Schema version written into every `.rubric.json` project file.
+///
+/// Bump this whenever a change makes an older build mis-read a newer file.
+/// [`crate::data::load_project`] refuses anything outside
+/// `1..=CURRENT_SCHEMA_VERSION`; files written before the field existed have no
+/// `schema_version` and load as this version.
+pub const CURRENT_SCHEMA_VERSION: u32 = 1;
+
+/// Smallest auto-save interval the UI will persist, in seconds. A zero or tiny
+/// interval would rewrite the file every frame, so it is clamped up.
+pub const MIN_AUTO_SAVE_INTERVAL_SECS: u32 = 5;
+
+/// Interval choices offered by `File → Auto-save`, in seconds.
+pub const AUTO_SAVE_INTERVALS: [u32; 5] = [30, 60, 120, 300, 600];
+
+/// Serde default for [`Project::schema_version`]: a file saved before the field
+/// existed is the current schema.
+fn default_schema_version() -> u32 {
+    CURRENT_SCHEMA_VERSION
+}
+
+/// Human-readable label for an auto-save interval, e.g. `"2 minutes"`.
+///
+/// Exact minutes use the singular/plural minute form; anything else is shown in
+/// seconds. Values are not rounded, so an unusual persisted interval stays
+/// honest in the menu.
+pub fn auto_save_interval_label(secs: u32) -> String {
+    if secs >= 60 && secs % 60 == 0 {
+        let minutes = secs / 60;
+        if minutes == 1 {
+            "1 minute".to_string()
+        } else {
+            format!("{minutes} minutes")
+        }
+    } else {
+        format!("{secs} seconds")
+    }
+}
+
 /// Application-level settings (preferences).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Settings {
@@ -190,6 +229,14 @@ impl ToolSet {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Project {
     pub id: Uuid,
+    /// On-disk schema version (see [`CURRENT_SCHEMA_VERSION`]).
+    ///
+    /// Files written before this field existed have no `schema_version` and
+    /// deserialize to the current version. [`crate::data::load_project`]
+    /// refuses a newer/unknown version rather than loading it as if it were
+    /// this schema.
+    #[serde(default = "default_schema_version")]
+    pub schema_version: u32,
     pub name: String,
     /// Absolute or relative path of the PDF backing this project.
     ///
@@ -213,6 +260,7 @@ impl Project {
         let now = Utc::now();
         let mut p = Self {
             id: Uuid::new_v4(),
+            schema_version: CURRENT_SCHEMA_VERSION,
             name: name.into(),
             source_pdf: None,
             documents: vec![Document::empty("Untitled Document")],
@@ -702,6 +750,31 @@ mod tests {
         }"#;
         let settings: Settings = serde_json::from_str(json).expect("deserialize");
         assert_eq!(settings.precision, 3);
+    }
+
+    #[test]
+    fn auto_save_interval_label_formats_minutes_and_seconds() {
+        assert_eq!(auto_save_interval_label(30), "30 seconds");
+        assert_eq!(auto_save_interval_label(45), "45 seconds");
+        assert_eq!(auto_save_interval_label(60), "1 minute");
+        assert_eq!(auto_save_interval_label(120), "2 minutes");
+        assert_eq!(auto_save_interval_label(600), "10 minutes");
+    }
+
+    #[test]
+    fn new_project_carries_the_current_schema_version() {
+        assert_eq!(Project::new("Plan").schema_version, CURRENT_SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn legacy_project_without_schema_version_loads_current() {
+        let mut value = serde_json::to_value(Project::new("Legacy")).expect("json");
+        value
+            .as_object_mut()
+            .expect("object")
+            .remove("schema_version");
+        let loaded: Project = serde_json::from_value(value).expect("deserialize legacy");
+        assert_eq!(loaded.schema_version, CURRENT_SCHEMA_VERSION);
     }
 
     #[test]
