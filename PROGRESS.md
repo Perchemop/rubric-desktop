@@ -799,7 +799,7 @@ flow now enforced by branch protection.
 - CI runs on the feature branch (`CI_BRANCH=opencode/v0.2-02-markups-list-ui`) so the PR is the record; PR #34 replaces the earlier shared-branch pattern. The merge follows the 2026-10-26 owner directive without a manual merge step.
 
 ## 2026-10-26 — v0.2-03 editing commands (F-114/F-115)
-**Status**: implemented on `opencode/v0.2-03-editing-commands`; implementation commit `86305a1` was CI-green (run `40315238211`), the reviewer-fix commit `3b0fcda` was CI-green (run `40316051901`), and the final slice tip `070ffd9` is CI-green (run `40316773330`, security run `40316773214`). This entry was then updated in a docs-only follow-up covered by the same PR's CI. The slice closes the two remaining selection-editing commands from R-S-003.
+**Status**: merged as `d980223` (PR #35, rebase). Implementation commit `86305a1` was CI-green (run `40315238211`), the reviewer-fix commit `3b0fcda` was CI-green (run `40316051901`), and the slice tip `070ffd9` was CI-green (run `40316773330`, security run `40316773214`). `main` was CI-green on the merge (run `40317456119`, security run `40317456022`). The slice closes the two remaining selection-editing commands from R-S-003.
 
 ### Completed
 - Copy/Paste Properties: a session-only `MarkupStyle` clipboard. Copy works on one markup (including a locked one, because it is read-only); paste applies the style to every selected editable markup, skips locked/missing targets, refreshes `modified`, and pushes one undo snapshot.
@@ -811,13 +811,43 @@ flow now enforced by branch protection.
 
 ### Reviewer verdict (FIX FIRST) — all closed
 - **MEDIUM**: `AGENTS.md` and `.opencode/agents/ui-dev.md` still named Ctrl+Shift+Z; both now say Ctrl+Y.
-- **MEDIUM**: the ROADMAP readiness table was stale; now 48/52 feature IDs done (92%), 14/17 requirement groups (82%), 4 open IDs, dated 2026-10-26.
+- **MEDIUM**: the ROADMAP readiness table was stale; updated to 48/52 feature IDs done (92%) and 4 open IDs, dated 2026-10-26. Its partial-group list still omitted R-S-011 (F-401 zoom presets); corrected in v0.2-04.
 - **LOW**: the z-order test did not exercise a same-page neighbour skipped across a page boundary; the test now interleaves two page-1 markups and asserts both cross-page isolation and boundary no-ops.
 - **LOW**: status lines were stale; both this entry and the task brief record the final green run.
 
 ### Next
+- Merged automatically per the 2026-10-26 owner directive; `main` verified green.
+- Continue with F-502 (autosave loop wiring) and F-507 (`schema_version` + forward-compatible load) — see v0.2-04 below.
+
+## 2026-10-27 — Guide & addendum compliance review
+**Status**: reviewed the local `guide.md` (Part I §0–18, Part II §II.18–II.28) and `addendum.md` (§A–§O); recorded rule-by-rule in `docs/guide-compliance.md`. No rule text was edited (both stay local and untracked).
+
+### Fixed from the review
+- `.ci-required.txt` added (guide II.20.4/II.25) — lists the checks that decide `ci.sh`'s verdict; `CodeQL (SAST)` is excluded because it is skipped on PRs.
+- `README.md` gained a "Try Rubric without Rust" download path and corrected workspace layout/shortcuts (guide M.2 / addendum K.11).
+- `docs/qc/checklist.md` merge policy now matches the 2026-10-26 owner directive.
+- `docs/current-model-map.md` refreshed with the live 2026-10-27 free-model catalog; Context7 available, GitHub via authenticated `gh`.
+- `DECISIONS.md` gained the missing entry for the Ctrl+Y redo user directive (guide II.24.2).
+
+### Tracked gaps
+- G3 `docs/capability-inventory.md` (guide II.27.3) — planned v0.3 docs slice.
+- G4 `egui_kittest` visual evidence needs a `Host`/plain-`Ui` seam refactor (guide II.27.12) — planned v0.3 slice; no fabricated harness.
+- G5 per-release §2.5 legal checklist run to be recorded in PROGRESS with the CI run ID at the v0.2.0 tag (guide II.19.5).
+- G6 PR/push authorship cannot satisfy §5.5 exactly (guide II.26.7) — client decision.
+
+## 2026-10-26 — v0.2-04 persistence hardening (F-502/F-507)
+**Status**: implemented on `opencode/v0.2-04-persistence-hardening`; CI verification recorded with the PR (this line is updated with the final run IDs after the checks). The branch also carries the 2026-10-27 guide/addendum compliance fixes above.
+
+### Completed
+- Autosave (F-502): `File → Auto-save` toggles `Settings.auto_save` and picks an interval (30 s / 1 min / 2 min / 5 min / 10 min, plus a non-preset persisted value). The app writes an autosave at most once per interval, only while the project is dirty, to `<name>.autosave.rubric.json` beside the saved project (app data dir when untitled). Success clears the unsaved flag and reports the path; failure leaves it dirty and reports the error. `autosave_due` keeps the schedule a pure, headless-tested function and clamps the interval to ≥ 5 s.
+- Unsaved tracking: a committed change (snapshot) and undo/redo now set the session unsaved flag; selection changes no longer do. `save_project_to` clears it.
+- Schema versioning (F-507): `Project.schema_version` (current `CURRENT_SCHEMA_VERSION = 1`) is written on every save and autosave; files without the field load as the current version; `load_project` refuses `0` or anything newer than the current version with `DataError::UnsupportedSchema` instead of mis-reading it.
+- Tests: autosave stem/path rules, the due/interval clamp matrix, the schema-range guard, a disk test that a newer file is refused, a legacy-through-serde default test, and integration coverage in `tests/domain_tests.rs`.
+- Docs: new `docs/tasks/v0.2-04-persistence-hardening.md`; spec, roadmap, traceability, parity, data model, changelog and plan updated. The ROADMAP partial-group list was corrected to include R-S-011 (it had been omitted since the v0.2-03 edit).
+
+### Next
 - Run CI on the feature branch, address reviewer findings, and merge automatically per the 2026-10-26 owner directive.
-- Continue with F-502 (autosave loop wiring) and F-507 (`schema_version` + forward-compatible load).
+- Then the remaining product residuals: F-103 (note popover) and F-605 (accessibility pass), plus the F-401 zoom presets and F-004 layer rename/reorder sub-items.
 
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF

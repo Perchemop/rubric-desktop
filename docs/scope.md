@@ -13,7 +13,7 @@ Statuses live in `REQUIREMENTS_TRACEABILITY.md`.
 | Measurements | Length, perimeter, area, angle, diameter, radius, count with per-page scale calibration and unit selection | F-201–F-209 |
 | Review workflow | Statuses (Open/In review/Approved/Rejected), subject, author, comments, legend | F-301–F-305 |
 | Document structure | Pages, layers (visibility/lock), multi-document projects | F-401–F-404, F-116 |
-| Persistence | `.rubric.json` sidecar (pretty JSON, UUIDs, timestamps), autosave, schema versioning later | F-501/F-502/F-507 |
+| Persistence | `.rubric.json` sidecar (pretty JSON, UUIDs, timestamps), autosave, `schema_version` guard | F-501/F-502/F-507 |
 | I/O | Native open/save dialogs, recent files, PDF import + page rendering, image export + print | F-503–F-506 |
 | UI/UX polish | Shortcuts, page navigation, dark theme, context menus, icons/branding | F-601–F-605 |
 | Packaging | Cross-platform release builds | F-7xx |

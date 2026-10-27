@@ -1,0 +1,13 @@
+# Authoritative status checks for `ci.sh` (guide II.20.4 / II.25).
+# One exact check name per line; blank lines and `#` comments are ignored.
+# Only these decide ci.sh's verdict; other checks are still reported.
+#
+# `CodeQL (SAST)` is deliberately NOT listed: it is skipped on pull requests
+# (it runs on pushes to main and on a schedule), so it would fail the PR
+# verdict for a reason unrelated to the change.
+check
+Secret scan
+Dependency review
+Cargo deny (licences, advisories)
+SBOM (SPDX + CycloneDX)
+packaging-plan
