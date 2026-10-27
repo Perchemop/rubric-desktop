@@ -41,7 +41,7 @@ Rules:
   `fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame)` with
   Ui-first panels (`Panel::top/left/right/bottom().show(ui, ...)`,
   `CentralPanel::default().show(ui, ...)`).
-- Keyboard shortcuts: Ctrl+S save, Ctrl+Z undo, Ctrl+Shift+Z redo, Esc cancel,
+- Keyboard shortcuts: Ctrl+S save, Ctrl+Z undo, Ctrl+Y redo, Esc cancel,
   Del delete selection.
 - Push undo snapshots only on committed actions, never during live drags.
 - Viewport must carry the app icon (`assets/icons/icon_128.png`).
