@@ -251,8 +251,11 @@ mod tests {
     #[test]
     fn autosave_path_prefers_a_sibling_of_the_open_project() {
         let project = Project::new("Site Plan");
-        let path = autosave_path(&project, Some(std::path::Path::new("/tmp/site.rubric.json")))
-            .expect("path");
+        let path = autosave_path(
+            &project,
+            Some(std::path::Path::new("/tmp/site.rubric.json")),
+        )
+        .expect("path");
         assert_eq!(path, PathBuf::from("/tmp/site.autosave.rubric.json"));
     }
 
@@ -268,10 +271,28 @@ mod tests {
     fn autosave_due_respects_the_interval_and_clamps_tiny_values() {
         let start = Instant::now();
         let clamped = Duration::from_secs(u64::from(MIN_AUTO_SAVE_INTERVAL_SECS));
-        assert!(!autosave_due(true, true, 60, Some(start), start + Duration::from_secs(59)));
-        assert!(autosave_due(true, true, 60, Some(start), start + Duration::from_secs(60)));
+        assert!(!autosave_due(
+            true,
+            true,
+            60,
+            Some(start),
+            start + Duration::from_secs(59)
+        ));
+        assert!(autosave_due(
+            true,
+            true,
+            60,
+            Some(start),
+            start + Duration::from_secs(60)
+        ));
         // A persisted 0 must not autosave every frame; the clamp makes it wait.
-        assert!(!autosave_due(true, true, 0, Some(start), start + Duration::from_secs(1)));
+        assert!(!autosave_due(
+            true,
+            true,
+            0,
+            Some(start),
+            start + Duration::from_secs(1)
+        ));
         assert!(autosave_due(true, true, 0, Some(start), start + clamped));
     }
 
