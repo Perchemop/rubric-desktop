@@ -14,20 +14,25 @@ No local model hosting (Ollama or similar) is used. Only the provider
 changes between the two tiers; the process, roles, vertical-slice
 discipline, CI-first rule and tracking files stay identical.
 
-## OpenCode free (active)
+## OpenCode free (active — discovered 2026-10-27)
+
+Live catalog at session start: `flint-40b-free`, `nemotron-3.5-super-vl-free`,
+`beam-free`, `mimo-v2.6-flash-free`, `deepseek-v4.1-flash-free`,
+`glm-5.3-flash-free`, `nemotron-3.5-lightning-free`, `nemotron-3-ultra-free`,
+`big-pickle` (all zero-cost). `big-pickle` is available again this session.
 
 | Role | Model |
 |---|---|
-| Orchestrator / lead (plans & delegates, never edits) | `nvidia/z-ai/glm-5.3` — NVIDIA free tier 2, used because `opencode/big-pickle` was retired from the OpenCode free tier |
-| Domain dev (pure Rust types/logic/tests) | `opencode/deepseek-v4.1-flash-free#high` (unchanged) |
-| UI dev (egui/eframe slices) | `opencode/nemotron-3.5-super-vl-free#high` — vision-capable per guide §5.3 for canvas-touching slices (previously `beam-free#high`) |
-| Fixer (build-gate failures) | `opencode/flint-40b-free#high` — newest OpenCode free code-generation model (previously `glm-5.3-flash-free#high`) |
-| Reviewer (read-only review) | `opencode/glm-5.3-flash-free#high` (unchanged) |
-| Test writer | `opencode/mimo-v2.6-flash-free` (unchanged) |
-| Docs writer | `opencode/beam-free#high` (big-pickle retired) |
-| Explorer (fast search) | `opencode/mimo-v2.6-flash-free` (unchanged) |
-| CI runner | `opencode/beam-free#high` (proven this session) |
-| designer (UI/UX) | `opencode/nemotron-3.5-super-vl-free#high` | vision-capable; design + performance review |
+| Orchestrator / lead (plans & delegates, never edits) | `opencode/nemotron-3-ultra-free#high` — strongest reasoning in the live free set; `opencode/big-pickle` is the alternate |
+| Domain dev (pure Rust types/logic/tests) | `opencode/deepseek-v4.1-flash-free#high` |
+| UI dev (egui/eframe slices) | `opencode/nemotron-3.5-super-vl-free#high` — vision-capable per guide §5.3 for canvas-touching slices |
+| Fixer (build-gate failures) | `opencode/flint-40b-free#high` — newest OpenCode free code-generation model |
+| Reviewer (read-only review) | `opencode/glm-5.3-flash-free#high` |
+| Test writer | `opencode/mimo-v2.6-flash-free` |
+| Docs writer | `opencode/beam-free#high` |
+| Explorer (fast search) | `opencode/nemotron-3.5-lightning-free` — fastest live model for search |
+| CI runner | `opencode/beam-free#high` |
+| designer (UI/UX) | `opencode/nemotron-3.5-super-vl-free#high` — vision-capable; design + performance review |
 
 Model IDs are not load-bearing: they change over time, so the orchestrator
 re-discovers the currently available free models at session start and
@@ -37,17 +42,21 @@ reassigns the best fit per role (guide §5.2). `.opencode/agents/*.md`
 ## NVIDIA free (fallback, not currently active)
 
 Discovered via `opencode.models(provider = "nvidia")`. Representative free
-models available in the fallback tier (re-checked 2026-10-23; selection
+models available in the fallback tier (re-checked 2026-10-27; selection
 re-runs when the switch happens):
 
 - `nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b` — strong reasoning, vision
+- `nvidia/nvidia/nemotron-3-ultra-550b-a55b` — strong reasoning
 - `nvidia/stepfun-ai/step-5-preview`
 - `nvidia/deepseek-ai/deepseek-v4.1-flash` — coding
 - `nvidia/z-ai/glm-5.3-flash` — coding
-- `nvidia/z-ai/glm-5.3` — general reasoning (currently the orchestrator)
+- `nvidia/z-ai/glm-5.3` — general reasoning
+- `nvidia/minimaxai/minimax-m3.1-flash`
+- `nvidia/nvidia/nemotron-3.5-lightning-30b-a3b`
 - `nvidia/meta/muse-glimmer-30b`
 - `nvidia/poolside/laguna-xs-2.1`
 - `nvidia/google/diffusiongemma-26b-a4b-it`
+- `nvidia/google/gemma-4-31b-it`
 - `nvidia/openai/gpt-oss-20b`
 
 Guard/vision-only models (llama-guard, paligemma) are excluded from roles.
@@ -97,10 +106,24 @@ Public research for `docs/research/*.md` uses the least-human-input ladder:
 3. **Human assist (last resort):** the human pastes URLs or short excerpts; the
    agent writes behavioural notes only.
 
-No research notes exist yet — Rubric's implemented feature set was designed
-from its own spec (`docs/spec/README.md`), not from vendor research. When notes
-are added, the method used is recorded in the note itself, and the human gate
-in guide §8.4 applies before dependent implementation.
+Rubric's core feature set was designed from its own spec
+(`docs/spec/README.md`), not from vendor research. Capability-level research
+notes now exist for the review workflow and PDF tooling
+(`docs/research/bluebeam-studio-capabilities.md`,
+`docs/research/adobe-acrobat-capabilities.md` and the client-directed
+`docs/research/stirling-pdf-capabilities.md`); each records its sources as URLs,
+uses original wording, and was approved at the guide §8.4 human gate before any
+dependent implementation. The method used is recorded in each note, and the
+human gate in guide §8.4 still applies before dependent implementation.
+
+## MCP and tooling status (2026-10-27)
+
+Context7 MCP is available for library/framework documentation. GitHub
+operations (PRs, runs, checks, releases) run through the authenticated `gh`
+CLI rather than a GitHub MCP server, which is not present in this environment's
+tool catalog; the effect the addendum §D.1 asks for (agent-driven PRs, issues,
+Actions and Releases) is met by `gh`. Recorded in `docs/guide-compliance.md` as
+an adaptation rather than assumed.
 
 ## Model terms record (Part II §19.7 / §2.4)
 

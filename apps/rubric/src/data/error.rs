@@ -21,4 +21,13 @@ pub enum DataError {
 
     #[error("PDFium library error: {0}")]
     PdfLibrary(String),
+
+    /// The file was written by a schema version this build cannot read.
+    ///
+    /// Refusing up front beats loading a newer file as if it were the current
+    /// schema and silently dropping fields.
+    #[error(
+        "project schema version {found} is not supported by this build (supported: 1..={supported})"
+    )]
+    UnsupportedSchema { found: u32, supported: u32 },
 }

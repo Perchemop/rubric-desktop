@@ -21,6 +21,18 @@ All notable changes to this project will be documented here. Format: semantic-is
   targets skipped), and page-scoped Bring Forward/Backward/To Front/To Back
   reorder markups without crossing page boundaries. Commands are available in
   the shared canvas/inspector context menu and the Edit menu.
+- Autosave wiring (F-502): `File → Auto-save` enables it and picks an interval;
+  a dirty project is written at most once per interval to
+  `<name>.autosave.rubric.json` beside the project (app data dir when
+  untitled), and the status bar reports the path or the failure.
+- `docs/guide-compliance.md`: rule-by-rule review of the local `guide.md` and
+  `addendum.md`, with evidence, the deliberately-adapted rules, and six tracked
+  gaps.
+- `.ci-required.txt`: the authoritative CI checks that decide `ci.sh`'s verdict
+  (guide II.20.4 / II.25).
+- Project schema versioning (F-507): every `.rubric.json` is stamped with
+  `schema_version`; legacy files without it load as the current version, and
+  `load_project` refuses a newer/unknown version instead of mis-reading it.
 - Stirling PDF added as capability-level inspiration (client-directed):
   original capability summary in `docs/research/stirling-pdf-capabilities.md`,
   inspiration table row and radar addendum; no code or dependency adopted.
@@ -40,8 +52,14 @@ All notable changes to this project will be documented here. Format: semantic-is
 - `docs/metrics.md` — which project metrics are tracked and why.
 
 ### Changed
-- Redo is now **Ctrl+Y** (`Ctrl+Z` remains undo); the hint bar and the F-601
-  shortcut record were updated.
+- Redo is now **Ctrl+Y** (`Ctrl+Z` remains undo); the hint bar, README, and the
+  F-601 shortcut record were updated.
+- `README.md`: adds a "Try Rubric without Rust" release-download path, corrects
+  the workspace layout, and documents the contributor build/test commands.
+- `docs/qc/checklist.md`: the per-Task merge step now matches the 2026-10-26
+  owner directive (agent merges once CI is green and findings are addressed).
+- `docs/current-model-map.md`: refreshed with the live 2026-10-27 free-model
+  catalog and the Context7/`gh` tooling status.
 - `AGENTS.md`: owner directive 2026-10-26 — agents merge completed PRs once CI
   is green and review findings are addressed, rather than waiting for a manual
   merge click.

@@ -76,12 +76,12 @@ This requirement set is **original material authored for Rubric**. It is derived
 | ID | Feature | Priority | Notes |
 |---|---|---|---|
 | F-501 | `.rubric.json` sidecar save/load (pretty JSON, UUIDs, timestamps) | MVP | done |
-| F-502 | Autosave | Ph 5 | settings/hook stub exists |
+| F-502 | Autosave | Ph 5 | done (File > Auto-save enable + interval; dirty project written at most once per interval; status reports the path) |
 | F-503 | Recent files list | Ph 5 | pending |
 | F-504 | PDF import and page rendering (non-destructive, sidecar kept) | Ph 5 | pending; pure-Rust crate first (see assumptions) |
 | F-505 | Export (rendered image) and print | Ph 5 | pending |
 | F-506 | Native open/save file dialogs (PDF + `.rubric.json`) | Ph 5 | pending |
-| F-507 | Project schema versioning (`schema_version`) | later | pending |
+| F-507 | Project schema versioning (`schema_version`) | later | done (`schema_version` written on save; load refuses unsupported versions; legacy files load as current) |
 
 ### F-6xx — UI/UX polish
 

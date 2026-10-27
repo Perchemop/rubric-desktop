@@ -11,15 +11,15 @@ This file is the staged, milestone view over those.
 
 ---
 
-## Readiness (2026-10-24)
+## Readiness (2026-10-26)
 
 | Measure | Value | Evidence |
 |---|---|---|
 | Requirement groups fully done | **14 / 17 (82 %)** | `REQUIREMENTS_TRACEABILITY.md` — R-S rows marked DONE |
-| Requirement groups partial | 3 / 17 | R-S-001, R-S-013, R-S-016 (small residual items only) |
+| Requirement groups partial | 3 / 17 | R-S-001, R-S-011, R-S-016 (small residual items only) |
 | Requirement groups not started | 0 / 17 | — |
-| Feature IDs done (52 total) | **48 / 52 (92 %)** | `docs/spec/README.md` reconciled 2026-10-26 |
-| Feature IDs open | 4 | F-103, F-502, F-507, F-605 (+2 sub-items: F-401 zoom presets, F-004 layer rename/reorder) |
+| Feature IDs done (52 total) | **50 / 52 (96 %)** | `docs/spec/README.md` reconciled 2026-10-26 |
+| Feature IDs open | 2 | F-103, F-605 (+2 sub-items: F-401 zoom presets, F-004 layer rename/reorder) |
 | CI | green on `main` | fmt · clippy `-D warnings` · tests · release build |
 | Primary-platform install | verified | installed from CI artefact and launched (Linux aarch64, Crostini) |
 
@@ -61,12 +61,14 @@ Small, low-risk completions; each its own Task + release.
 - [x] v0.2-02 Markups List UI: resizable panel with search/status/author/subject/layer filters, all sorts and group modes, row selection + page jump, View toggle (R-V02-01) — PR #34
 - [x] F-114: copy properties → apply style to other markups — v0.2-03 (visual style only, locked targets skipped, one snapshot)
 - [x] F-115: z-order (bring forward / send backward / to front / to back) — v0.2-03 (page-scoped, boundary no-ops)
-- [ ] F-502: wire the existing `store::autosave` into the app loop (interval + status)
-- [ ] F-507: `schema_version` field + forward-compatible load
+- [x] F-502: wire the existing `store::autosave` into the app loop (interval + status) — v0.2-04 (File > Auto-save, dirty-only, one write per interval)
+- [x] F-507: `schema_version` field + forward-compatible load — v0.2-04 (load refuses unsupported versions)
 
 ### v0.3.0 — accessibility & robustness
 
 - [ ] F-605: accessibility pass (contrast audit, full keyboard reachability, screen-reader labels)
+- [ ] Process: `docs/capability-inventory.md` (guide II.27.3) — capability rows with source URLs, acceptance criteria and evidence (gap G3 in `docs/guide-compliance.md`)
+- [ ] Process: extract a `Host`/plain-`Ui` seam from `RubricApp` so `egui_kittest` can render real widgets to PNG as CI visual evidence (guide II.27.12, gap G4)
 - [ ] Empty / error states for every panel; no dead controls
 - [x] ~~`gitleaks` (or GitHub secret scanning) in CI~~ — done early 2026-10-24:
       push-protected secret scanning at repo level plus an in-CI pattern scan

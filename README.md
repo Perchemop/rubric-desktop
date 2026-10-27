@@ -2,7 +2,7 @@
 
 **Rubric** is a free, cross-platform PDF markup, review, and measurement application written in Rust. It is a clean, original implementation focused on redlining, review workflows, and precise measurements.
 
-## Features (Phase 0 + Slice 1)
+## Features
 
 - **Original, professionally branded** design (SVG logo, multi-size icons, polished UI skeleton).
 - **Rust only, 100% free/open-source** — no proprietary dependencies; built on egui/eframe.
@@ -15,29 +15,42 @@
 - **Persistence**: Save/load projects as pretty-printed JSON (`.rubric.json`) with timestamps and UUIDs.
 - **Tooling**: `cargo test`, `cargo clippy`, `cargo fmt`, CI-ready.
 
+## Try Rubric without Rust
+
+You do not need Rust installed to try the app. Download the archive for your
+platform from the [latest release](https://github.com/Perchemop/rubric-desktop/releases)
+(`rubric-<os>-<arch>`), unpack it, and run the `rubric` binary. CI also attaches
+build artefacts to each run on the [Actions](https://github.com/Perchemop/rubric-desktop/actions)
+page. Save a project with **File ▸ Save Project** and reopen it with
+**File ▸ Open Project**.
+
 ## Repository layout
 
-- `src/domain/` — pure business/model logic (geom, units, style, markup, document, project)
-- `src/data/` — persistence/errors (JSON store)
-- `src/ui/` — egui UI (app, canvas, toolbar, inspector, theme, icons)
-- `assets/` — logo and icons
-- `docs/` — architecture, data model, test plan, assumptions and questions
-- `tests/` — integration/domain tests
+This is a Cargo workspace. The desktop app lives under `apps/rubric/`:
 
-## Quick start
+- `apps/rubric/src/domain/` — pure business/model logic (geom, units, style, markup, document, project)
+- `apps/rubric/src/data/` — persistence/errors (JSON `.rubric.json` store, PDF, export/print)
+- `apps/rubric/src/ui/` — egui UI (app, canvas, toolbar, inspector, theme, icons)
+- `apps/rubric/tests/` — integration/domain tests
+- `crates/crash-report/`, `crates/update-check/` — shared suite crates
+- `assets/` — logo and icons
+- `docs/` — architecture, data model, spec, QC and assumptions
+
+## Build and test locally (contributors)
 
 ```bash
-# clone repo (locally created)
-cd ~/rubric
+# build and run the app
+cargo build --release -p rubric
 
-# build and run (headless systems can't open GUI; build at least works)
-cargo build
-
-# tests + lint
-cargo test
+# tests + lint from the workspace root
+cargo test --all
 cargo clippy -- -D warnings
 cargo fmt --all -- --check
 ```
+
+The maintainer's machine is memory-constrained, so GitHub Actions is the
+authoritative checker there; the commands above are the same ones CI runs and
+work on any normal checkout.
 
 ## Crash reports and update checks (privacy)
 
@@ -85,7 +98,7 @@ in `docs/inspiration.md`. Dependency licences are tracked in
 |---|---|
 | Ctrl/Cmd + S | Save project |
 | Ctrl/Cmd + O | Open project |
-| Ctrl + Z / Shift+Ctrl+Z | Undo / Redo |
+| Ctrl + Z / Ctrl + Y | Undo / Redo |
 | Delete / Backspace | Delete selection |
 | Esc | Cancel current action / close dialog |
 | Page Up / Page Down | Previous / next page |
