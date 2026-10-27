@@ -25,7 +25,7 @@ implemented · **Todo** = not started · **Out of scope** = deliberately exclude
 | Markups list / review console (filter, sort, group) | R-V02-01 | Done | `MarkupList` domain model plus resizable bottom panel with search/status/author/subject/layer filters, all sorts and group modes, row selection + page jump (2026-10-26) |
 | Document compare / markup diff (added, removed, changed) | R-V02-02 | Partial (domain done) | `DiffResult` + `diff_documents`/`diff_projects` landed 2026-10-26; UI presentation pending |
 | Reusable style presets | R-V02-02 | Partial (domain done) | `StylePreset`/`StylePresetLibrary` landed 2026-10-26; preset editing/apply affordance still pending |
-| Persistence (project sidecar, autosave, recents, dialogs) | F-501–F-503, F-506, F-507 | Partial | `.rubric.json` sidecar + recents landed; autosave pending |
+| Persistence (project sidecar, autosave, recents, dialogs, schema version) | F-501–F-503, F-506, F-507 | Done | `.rubric.json` sidecar + recents + native dialogs landed; autosave loop and `schema_version` guard landed 2026-10-26 |
 | Export & print (rendered page image, print) | F-505 | Done | image export + print |
 | Undo/redo | F-604 | Done | bounded 128 snapshots |
 | UI/UX polish (keyboard shortcuts, dark theme, context menus) | F-601–F-603 | Done (2026-10-23) | F-601 per-tool keys, F-602 dark theme, F-603 context menus |

@@ -60,14 +60,15 @@
 
 ## Phase 5 — Persistence + I/O + PDF (non-destructive)
 - [x] JSON save/load (.rubric.json)
-- [x] Autosave hook (stub exists)
+- [x] Autosave loop (F-502: File > Auto-save enable + interval, dirty-only, one write per interval)
+- [x] Project schema versioning (F-507: `schema_version` on save, refuse unsupported version on load)
 - [x] Open file dialog (native, rfd) for .rubric.json (PDF filter arrives with import)
 - [x] PDF import/rendering (pdfium-render runtime binding; sidecar kept, PDF read-only)
 - [x] Export/print (page image PNG via CPU rasterizer + OS print command; report export txt/JSON)
 - [x] Recent files (app-level config store: `~/.config/rubric/recent.json`)
 
 ## Phase 6 — Polish, packaging, CI
-- [x] Basic UI panels, shortcuts (Ctrl+S/Z/Shift+Z/Esc/Del)
+- [x] Basic UI panels, shortcuts (Ctrl+S/Z/Y/Esc/Del)
 - [x] Per-tool keyboard shortcuts (F-601: unmodified letter/digit keys, guarded)
 - [x] Context menus (F-603: shared canvas + inspector menu)
 - [x] Grid, snap, rulers (F-405/F-406: View > Show Grid / Snap to Grid / Grid Spacing; page-point rulers)
@@ -94,10 +95,12 @@
 - [x] Task brief created: docs/tasks/v0.2-01-markup-list-domain.md
 - [x] Task brief created: docs/tasks/v0.2-02-markups-list-ui.md
 - [x] Task brief created: docs/tasks/v0.2-03-editing-commands.md
+- [x] Task brief created: docs/tasks/v0.2-04-persistence-hardening.md
 - [x] Inspiration addendum (client-directed): Stirling PDF capability analysis, 2026-10-26
 - [x] Task execution complete – `MarkupList`, `StylePreset`/`StylePresetLibrary`, `DiffResult` (commit `7e33fd2`, CI run `40304244261`)
 - [x] UI slice: Markups List panel with filter/sort/group, row selection and View toggle (PR #34; implementation commit `c2687d9`)
 - [x] Tests for list, filter, diff logic in `src/domain` + `tests/domain_tests.rs`, plus Markups List UI-state helper tests
+- [x] Tests for autosave scheduling and the schema-version guard (`src/data/store.rs`, `tests/domain_tests.rs`)
 
 ## Slice strategy
 Build vertically: domain + tests → minimal UI → drawing + selection → save/load → measurements → review → polish. Keep each slice small, compiling, tested.

@@ -21,5 +21,6 @@ pub use recent::{load_recent, recent_config_path, save_recent};
 pub use render::rasterize_primitives;
 pub(crate) use render::render_page_to_png_bytes;
 pub use store::{
-    default_project_path, load_project, normalise_project_filename, project_dir, save_project,
+    autosave, autosave_due, default_project_path, load_project, normalise_project_filename,
+    project_dir, save_project,
 };

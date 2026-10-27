@@ -1,10 +1,12 @@
 //! Domain tests: geometry, measurements, hit testing, serialization round-trips.
 
+use rubric::data::DataError;
 use rubric::domain::{
     geom::{angle_degrees, path_length, polygon_area},
     style::palette,
     units::MeasureUnit,
     Document, Markup, MarkupGeometry, MarkupKind, Page, Project, Pt, Rect, ReviewStatus, Scale,
+    CURRENT_SCHEMA_VERSION,
 };
 use rubric::{load_project, save_project};
 
@@ -108,6 +110,33 @@ fn project_save_load_roundtrip() {
     assert_eq!(proj2.name, "Test Project");
     assert_eq!(proj2.documents.len(), 2);
     assert_eq!(proj2.active_document, 1);
+}
+
+#[test]
+fn schema_version_roundtrips_and_defaults_to_current() {
+    let proj = Project::new("Versioned");
+    assert_eq!(proj.schema_version, CURRENT_SCHEMA_VERSION);
+    let json = serde_json::to_string_pretty(&proj).expect("ser");
+    assert!(
+        json.contains("\"schema_version\""),
+        "the field must be written: {json}"
+    );
+    let back: Project = serde_json::from_str(&json).expect("de");
+    assert_eq!(back.schema_version, CURRENT_SCHEMA_VERSION);
+}
+
+#[test]
+fn project_with_newer_schema_version_is_refused_on_disk() {
+    let path = temp_project_path("schema_newer");
+    let mut proj = Project::new("Future");
+    proj.schema_version = CURRENT_SCHEMA_VERSION + 1;
+    save_project(&proj, &path).expect("save");
+    let err = load_project(&path).expect_err("must refuse a newer schema");
+    assert!(
+        matches!(err, DataError::UnsupportedSchema { .. }),
+        "got {err:?}"
+    );
+    let _ = std::fs::remove_file(&path);
 }
 
 fn rect_markup() -> Markup {
