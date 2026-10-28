@@ -40,6 +40,32 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Scan tracked files for personal data
         run: bash scripts/scan-personal-data.sh
+      # The scanners are the gate, so prove they actually detect a planted
+      # leak and accept a synthetic/CI value — otherwise a green check proves
+      # nothing.
+      - name: Scanner self-test
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+          mkdir -p "$tmp/clean" "$tmp/leak" "$tmp/dist" "$tmp/pkg"
+          # Build the planted home path at runtime so this workflow file is not
+          # itself a false positive for the scan it contains.
+          p="/home"
+          printf 'contact dev@example.com\nCI path /home/runner/work/app\n' > "$tmp/clean/ok.txt"
+          printf 'author %s/leaky-user/secret\n' "$p" > "$tmp/leak/bad.txt"
+          bash scripts/scan-personal-data.sh --path "$tmp/clean" >/dev/null
+          if bash scripts/scan-personal-data.sh --path "$tmp/leak" >/dev/null; then
+            echo "self-test: personal-data scan missed a planted leak" >&2; exit 1
+          fi
+          printf 'ok /home/runner/x\n' > "$tmp/pkg/readme.txt"
+          tar -czf "$tmp/dist/clean.tar.gz" -C "$tmp/pkg" .
+          bash scripts/scan-release-assets.sh "$tmp/dist" >/dev/null
+          printf 'bad %s/leaky-user/x\n' "$p" > "$tmp/pkg/readme.txt"
+          tar -czf "$tmp/dist/leak.tar.gz" -C "$tmp/pkg" .
+          if bash scripts/scan-release-assets.sh "$tmp/dist" >/dev/null; then
+            echo "self-test: release-asset scan missed a planted leak" >&2; exit 1
+          fi
+          echo "scanner self-test: ok"
 
   # PR-time dependency review: fails when new dependencies carry licences we
   # ban or known vulnerabilities (GitHub advisory database).
