@@ -27,6 +27,9 @@ CI run.
       signals, reduced motion) — see `ACCESSIBILITY.md`.
 - [ ] New dependencies: allowed licence class (`deny.toml` gate), recorded
       in `ATTRIBUTION.md`; no secrets in the diff (secret scan clean).
+- [ ] No personal data in the change: `scripts/scan-personal-data.sh` is clean
+      (no non-CI home path, no real email) and the `Personal data scan` check is
+      green (guide II.29). Placeholder/seed values are obviously synthetic.
 
 ## Per phase
 
@@ -66,6 +69,9 @@ CI run.
 - [ ] Patents: public non-infringing alternatives preferred; public standards used
 - [ ] Licence: MIT clear; NOTICE/ATTRIBUTION complete
 - [ ] Secrets: no keys/tokens in git or release binaries; crash reports use user-supplied tokens only
+- [ ] Personal data (guide II.29): no real name/email/phone/address/account id,
+      no non-CI home path, in the tree, history, metadata or release assets;
+      the four-part scan is recorded in `PROGRESS.md` with the CI run ID
 - [ ] Privacy: crash reports send only what the user consents to; documented in README
 - [ ] Research files: summaries + URLs only; human-approved (`docs/research/`)
 - [ ] Claims: no false certification/affiliation/"drop-in replacement" wording
