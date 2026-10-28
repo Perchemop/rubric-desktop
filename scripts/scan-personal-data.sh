@@ -11,8 +11,9 @@
 #   * an absolute home path for a real user: /home/<name>, /Users/<name>
 #     (macOS), C:\Users\<name>. The CI build users /home/runner, /Users/runner
 #     and C:\Users\runner are permitted (guide II.29.6).
-#   * an email address that is not obviously synthetic (@example.*) or a GitHub
-#     noreply address.
+#   * an email address that is not obviously synthetic (@example.*, or any
+#     domain under the RFC 2606 reserved TLDs .example/.invalid/.test/
+#     .localhost) or a GitHub noreply address.
 #
 # Dependency notice files that legitimately carry an upstream author's address
 # are third-party content (guide II.29.2); if such a file is ever added, the
@@ -37,7 +38,7 @@ fi
 HOME_RE='/home/[A-Za-z0-9_.-]+|/Users/[A-Za-z0-9_.-]+|C:\\Users\\[A-Za-z0-9_.-]+'
 HOME_ALLOW='(/home/runner|/Users/runner|C:\\Users\\runner)$'
 EMAIL_RE='[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
-EMAIL_ALLOW='@(example\.(com|org|net)|users\.noreply\.github\.com|noreply\.github\.com)$'
+EMAIL_ALLOW='@(example\.(com|org|net)|users\.noreply\.github\.com|noreply\.github\.com|[A-Za-z0-9.-]+\.(example|invalid|test|localhost))$'
 
 list_files() {
     if [ "$MODE" = path ]; then
