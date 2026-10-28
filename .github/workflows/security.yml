@@ -1,7 +1,9 @@
-# Security checks — secret scanning, dependency licence/advisory review,
-# SBOM, and SAST. Extends the CI design (Part I §4) per the security
-# requirements adopted from opensource.guide (guide Part II §20.7):
-# a gap here is treated like a broken CI — fix it before feature work.
+# Security checks — secret scanning, personal-data scanning, dependency
+# licence/advisory review, SBOM, and SAST. Extends the CI design (Part I §4)
+# per the security requirements adopted from opensource.guide (guide Part II
+# §20.7) and the mandatory personal-data gate (guide II.29, owner directive
+# 2026-10-27): a gap here is treated like a broken CI — fix it before feature
+# work.
 
 name: Security
 
@@ -27,6 +29,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Scan tracked files for credential patterns
         run: bash scripts/scan-secrets.sh
+
+  # Personal-data gate (guide II.29, owner directive 2026-10-27): fails when a
+  # real-looking home path or email is committed. A required check, so a leak
+  # cannot merge.
+  personal-data:
+    name: Personal data scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Scan tracked files for personal data
+        run: bash scripts/scan-personal-data.sh
 
   # PR-time dependency review: fails when new dependencies carry licences we
   # ban or known vulnerabilities (GitHub advisory database).
