@@ -850,7 +850,7 @@ flow now enforced by branch protection.
 - Then the remaining product residuals: F-103 (note popover) and F-605 (accessibility pass), plus the F-401 zoom presets and F-004 layer rename/reorder sub-items.
 
 ## 2026-10-28 — II.29 personal-data & secret scan gate
-**Status**: implemented on `opencode/v0.2-05-privacy-scan-gate`; the scan result and CI run IDs are recorded with the PR. Driven by the revised `guide.md` §II.29 (owner directive 2026-10-27: "every agent runs a full scan, and nothing coded or released may contain this information").
+**Status**: implemented on `opencode/v0.2-05-privacy-scan-gate`; reviewer-fix tip `01a988f` is CI-green (run `40661419541`) and Security-green (run `40661419631`), with the required `Personal data scan` check present and passing. The initial implementation tip `1016af8` was green in CI `40655585347` / Security `40655585152`. Driven by the revised `guide.md` §II.29 (owner directive 2026-10-27: "every agent runs a full scan, and nothing coded or released may contain this information").
 
 ### Scan result (II.29.2, four parts)
 1. **Working tree** (tracked files incl. dot-directories): the only findings were six `/home/<user>/.config/opencode/scripts/ci.sh` lines in `.opencode/agents/{ci-runner,coder,designer}.md`. `/home/runner` in CI workflows is the permitted CI user. No real email addresses in the tree (only `dev@example.com` / GitHub noreply).
