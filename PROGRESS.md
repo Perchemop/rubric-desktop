@@ -861,7 +861,12 @@ flow now enforced by branch protection.
 ### Findings and fixes
 - The maintainer's absolute home path (which embeds the OS account name) was committed and published in `.opencode/agents/*.md`. **Removed from `HEAD` and every current file in PR #37** (`58e57d6`, merged 2026-10-27).
 - A tracked Python bytecode cache, `scripts/__pycache__/release-notes.cpython-313.pyc`, embedded the same absolute source path. **Untracked in this slice** (`git rm --cached`) and prevented from returning with `__pycache__/` + `*.pyc` added to `.gitignore`; the scanner is what found it.
-- Both values remain readable in history: a `git filter-repo` purge is destructive and needs owner approval — tracked as **gap G7** and raised with the owner.
+- Both values were **purged from all history on 2026-10-28** after explicit owner approval (guide II.29.4): every branch, tag and commit was rewritten with `git filter-repo` (literal text replacement for the home path, then `--invert-paths --path-glob '*.pyc'` to drop the bytecode cache entirely), force-pushed, and branch protection restored exactly. Rewritten `main` tip `f44beb3` is CI-green (run `40674095718`) and Security-green (run `40674095704`); all remote branches and commit metadata verify clean.
+
+### History purge (owner-approved, 2026-10-28) — consequences
+- **All commit SHAs and most CI run IDs recorded in this repository before 2026-10-28 no longer resolve.** The rewrite changed every commit from the first affected one onwards, so earlier references in `PROGRESS.md`, `ROADMAP.md`, `CHANGELOG.md`, task briefs and `docs/` are historical labels only. New work records the rewritten SHAs.
+- The deployed procedure: safety copy of `.git`; local tracking branches created for every remote branch so all were rewritten; branch protection temporarily set `allow_force_pushes=true` and `enforce_admins=false`, then restored to the original (`allow_force_pushes=false`, `enforce_admins=true`, required checks `check` + `Personal data scan`); `git push --force --all` and `--tags`; `git fetch --prune`; verified zero matches in every branch HEAD, in `git log --all -S`, and in commit author/committer metadata.
+- **Residual risk**: GitHub may serve unreferenced objects and cached views for a period, and any pre-existing fork/clone keeps the old objects until it re-fetches. Recorded in `SECURITY.md`; a GitHub Support purge request remains an option.
 - The `arm64` vs `aarch64` release-name spelling is now recorded as a `DECISIONS.md` deviation (guide II.28.3).
 
 ### Reviewer verdict (FIX FIRST) — all closed

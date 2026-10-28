@@ -97,3 +97,27 @@ Who does what: the single maintainer (see `GOVERNANCE.md`) triages,
 decides mitigation, and coordinates disclosure. If the maintainer is
 unreachable for 30 days on a Critical report, users should prefer server-side
  remedies: GitHub support can restrict repository access while the maintainer is absent.
+
+## Security incidents
+
+### 2026-10-28 — Personal data in published git history (resolved)
+
+- **Class**: personal data (guide II.29) — an absolute maintainer home path,
+  which embeds the operating-system account name. It is not a credential, so no
+  secret was exposed and no token rotation was required.
+- **Carriers**: agent configuration (`.opencode/agents/*.md`) and a tracked
+  Python bytecode cache (`scripts/__pycache__/*.pyc`) that embedded the absolute
+  source path. Both were committed and therefore published.
+- **Detection**: a full four-part scan (working tree, history, published surface,
+  metadata) run under the new guide II.29 gate.
+- **Remediation**: removed from `HEAD` and all current files (PR #37); the
+  bytecode cache was untracked and `*.pyc` / `__pycache__/` ignored (PR #38);
+  then every branch, tag and commit was rewritten with `git filter-repo` to
+  delete the value from all blobs, force-pushed, and branch protection restored.
+  The new `Personal data scan` check is **required**, so it cannot recur.
+- **Residual risk**: GitHub may serve unreferenced objects and cached views for
+  a period after a rewrite, and any pre-existing fork or clone keeps the old
+  objects until it re-fetches. The maintainer was informed; a GitHub Support
+  purge request remains available if the cached copy must be removed too.
+- **The value is deliberately not reproduced here** (guide II.29.1): a document
+  may describe the defect but must never quote the value.

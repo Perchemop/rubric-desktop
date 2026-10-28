@@ -96,6 +96,16 @@ All notable changes to this project will be documented here. Format: semantic-is
   wildcards); `epaint_default_fonts` font licences (OFL-1.1,
   Ubuntu-font-1.0) documented in `deny.toml` and `ATTRIBUTION.md`.
 
+### Security
+- Removed a maintainer absolute home path from published git history (guide
+  II.29). It was carried by agent configuration and a tracked Python bytecode
+  cache; both were removed from the tree first, then every branch, tag and
+  commit was rewritten with `git filter-repo` and force-pushed, and branch
+  protection was restored. The `Personal data scan` required check prevents a
+  recurrence. The incident is recorded in `SECURITY.md` and the value is not
+  reproduced. **Commit SHAs recorded before 2026-10-28 no longer resolve** after
+  the rewrite.
+
 ## [0.1.0] - 2026-10-24
 
 ### Summary

@@ -75,7 +75,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | II.27 Designer role | Deferred (in part) | design system/parity via `docs/design/brand.md` + `docs/parity.md`; `docs/capability-inventory.md` (II.27.3) absent — gap G3 |
 | II.27.12 Visual evidence for egui apps | **Deferred** | the guide lists Rubric's shell shape among those `egui_kittest` cannot drive today; needs the `Host`-seam refactor — gap G4. No fake harness is used |
 | II.28 Naming conventions | Adapted | crate/binary names follow cargo; the release artefacts use `arm64` rather than the guide's `aarch64` — recorded as a `DECISIONS.md` deviation (II.28.3) |
-| II.29 Personal-data/secrets scan gate | Met (added 2026-10-28) | four-part scan done; tree clean at `origin/main` (`58e57d6`); `scripts/scan-personal-data.sh` + `Personal data scan` required check; release-asset scan wired. One historical leak: the maintainer home path was published and removed in PR #37; **history purge is an open owner decision — gap G7** |
+| II.29 Personal-data/secrets scan gate | Met (added 2026-10-28) | four-part scan done; `scripts/scan-personal-data.sh` + `Personal data scan` required check; release-asset scan wired; the historical leak was purged from **all history** on 2026-10-28 (owner-approved `git filter-repo`, force-push, protection restored) — gap G7 resolved |
 
 ## Addendum — addendum.md
 
@@ -109,7 +109,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | G4 | egui visual evidence (`egui_kittest`, II.27.12) needs a `Host`-seam refactor | Defers a gate | Planned refactor slice — added to `ROADMAP.md` v0.3; no fabricated harness is used in the meantime |
 | G5 | §2.5/II.19.5 release legal checklist not yet recorded per release | Blocks a release only | Run and record in `PROGRESS.md` with the CI run ID when v0.2.0 is tagged |
 | G6 | The git-identity rule has no home in the revised guide (II.26.7) | Client decision | Recorded open; needs the client to re-home it, narrow it to commits, or accept PR authorship as the pushing account. No workaround applied silently |
-| G7 | A maintainer absolute home path was committed and published (II.29.4) | Owner decision (destructive) | Two carriers: `.opencode/agents/*.md` (removed in PR #37, `58e57d6`) and a tracked `scripts/__pycache__/*.pyc` (untracked in this slice; `.gitignore` now blocks `*.pyc`). Both remain readable in history; a `git filter-repo` purge is **owner-approved work only** (force-push, branch-protection change) — raised via the `question` tool |
+| G7 | A maintainer absolute home path was committed and published (II.29.4) | **Resolved 2026-10-28** | Two carriers: `.opencode/agents/*.md` (removed in PR #37) and a tracked `scripts/__pycache__/*.pyc` (untracked, `*.pyc` ignored). Owner approved a purge; every branch, tag and commit was rewritten with `git filter-repo`, force-pushed, and branch protection restored. Residual risk (GitHub cached views/forks) recorded in `SECURITY.md` |
 
 No rule in `guide.md` or `addendum.md` was edited: both remain local and
 untracked, per their own "never push" rule and addendum §N.1.
