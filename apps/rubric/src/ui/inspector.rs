@@ -119,10 +119,43 @@ pub(crate) fn draw_inspector(
                         }
                     }
                 }
-                ui.label(&layer.name);
+                // Editable layer name (rename)
+                let mut name = layer.name.clone();
+                let name_resp = ui.add(egui::TextEdit::singleline(&mut name).desired_width(120.0));
+                if name_resp.changed() {
+                    if let Some(doc) = project.active_mut() {
+                        if doc.rename_layer(id, &name) {
+                            ui_state.status = format!("Layer renamed to '{}'", name);
+                        }
+                    }
+                }
+                if name_resp.lost_focus() {
+                    committed = true;
+                }
+                // Reorder buttons
                 if is_default {
                     ui.small("(default)");
-                } else if ui.button("Delete").clicked() {
+                    ui.enabled(false).button("▲");
+                    ui.enabled(false).button("▼");
+                } else {
+                    if ui.button("▲").clicked() {
+                        if let Some(doc) = project.active_mut() {
+                            if doc.move_layer_up(id) {
+                                committed = true;
+                                ui_state.status = format!("Layer '{}' moved up", layer.name);
+                            }
+                        }
+                    }
+                    if ui.button("▼").clicked() {
+                        if let Some(doc) = project.active_mut() {
+                            if doc.move_layer_down(id) {
+                                committed = true;
+                                ui_state.status = format!("Layer '{}' moved down", layer.name);
+                            }
+                        }
+                    }
+                }
+                if !is_default && ui.button("Delete").clicked() {
                     if let Some(doc) = project.active_mut() {
                         match doc.remove_layer(id) {
                             Ok(()) => {

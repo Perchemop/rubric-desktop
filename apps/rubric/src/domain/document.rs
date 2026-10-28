@@ -12,11 +12,17 @@ use super::units::Scale;
 
 /// A named group of markups that can be hidden or locked together.
 ///
-/// Layers are a visibility/editing aid, not a stacking model. Markups are
-/// still painted in [`Document::markups`] vector order (the last markup in the
-/// vector is drawn on top), and [`Layer::z`] is reserved for future explicit
-/// layer ordering. Changing layer order therefore does not change paint order
-/// today.
+/// Layers also define paint order: markups are painted layer by layer in
+/// [`Document::layers`] order, and within a layer in [`Document::markups`]
+/// vector order (the later markup is drawn on top). See
+/// [`Document::markups_in_paint_order`]. Reordering layers therefore changes
+/// stacking, and [`Layer::z`] mirrors the layer's position (kept in sync by
+/// [`Document::move_layer_up`] / [`Document::move_layer_down`]).
+///
+/// The first layer is the document's default layer: markups with
+/// `layer_id == None` belong to it, and it is kept at the bottom of the layer
+/// order so those markups never silently change stacking when other layers are
+/// reordered.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Layer {
     /// Stable identifier referenced by [`Markup::layer_id`].
@@ -237,21 +243,25 @@ impl Document {
 
     /// Move `id` one step later in paint order among markups on its page.
     ///
-    /// Markups are painted in vector order, but only relative order within a
-    /// page is visible. The swap therefore never crosses a page boundary.
-    /// Returns `false` when the markup does not exist or is already last on its
+    /// Paint order is layer-major (see [`Document::markups_in_paint_order`]), so
+    /// a one-step move stays within the markup's page **and layer**: moving past
+    /// a markup on another layer would have no visible effect. Returns `false`
+    /// when the markup does not exist or is already last in its layer on that
     /// page.
     pub fn bring_forward(&mut self, id: Uuid) -> bool {
         let Some(index) = self.markups.iter().position(|m| m.id == id) else {
             return false;
         };
-        let page = self.markups[index].page;
+        let (page, layer) = (
+            self.markups[index].page,
+            self.layer_id_for(&self.markups[index]),
+        );
         let Some(next) = self
             .markups
             .iter()
             .enumerate()
             .skip(index + 1)
-            .find(|(_, markup)| markup.page == page)
+            .find(|(_, m)| m.page == page && self.layer_id_for(m) == layer)
             .map(|(i, _)| i)
         else {
             return false;
@@ -261,17 +271,21 @@ impl Document {
         true
     }
 
-    /// Move `id` one step earlier in paint order among markups on its page.
+    /// Move `id` one step earlier in paint order among markups on the same page
+    /// **and layer**.
     ///
-    /// See [`Document::bring_forward`] for the page-scoped rule.
+    /// See [`Document::bring_forward`] for the page/layer-scoped rule.
     pub fn send_backward(&mut self, id: Uuid) -> bool {
         let Some(index) = self.markups.iter().position(|m| m.id == id) else {
             return false;
         };
-        let page = self.markups[index].page;
+        let (page, layer) = (
+            self.markups[index].page,
+            self.layer_id_for(&self.markups[index]),
+        );
         let Some(previous) = self.markups[..index]
             .iter()
-            .rposition(|markup| markup.page == page)
+            .rposition(|m| m.page == page && self.layer_id_for(m) == layer)
         else {
             return false;
         };
@@ -280,44 +294,60 @@ impl Document {
         true
     }
 
-    /// Move `id` to the end of its page's paint order (drawn on top).
+    /// Move `id` to the top of its layer on that page (drawn on top within the
+    /// layer).
     ///
-    /// Returns `false` when the markup does not exist or is already last on
-    /// its page.
+    /// Returns `false` when the markup does not exist or is already last in its
+    /// layer on that page.
     pub fn bring_to_front(&mut self, id: Uuid) -> bool {
         let Some(index) = self.markups.iter().position(|m| m.id == id) else {
             return false;
         };
-        let page = self.markups[index].page;
-        let Some(last) = self.markups.iter().rposition(|markup| markup.page == page) else {
+        let (page, layer) = (
+            self.markups[index].page,
+            self.layer_id_for(&self.markups[index]),
+        );
+        let Some(last) = self
+            .markups
+            .iter()
+            .rposition(|m| m.page == page && self.layer_id_for(m) == layer)
+        else {
             return false;
         };
         if last == index {
             return false;
         }
         let markup = self.markups.remove(index);
-        self.markups.push(markup);
+        self.markups.insert(last, markup);
         self.touch();
         true
     }
 
-    /// Move `id` to the start of its page's paint order (drawn at the bottom).
+    /// Move `id` to the bottom of its layer on that page (drawn at the bottom
+    /// within the layer).
     ///
-    /// Returns `false` when the markup does not exist or is already first on
-    /// its page.
+    /// Returns `false` when the markup does not exist or is already first in its
+    /// layer on that page.
     pub fn send_to_back(&mut self, id: Uuid) -> bool {
         let Some(index) = self.markups.iter().position(|m| m.id == id) else {
             return false;
         };
-        let page = self.markups[index].page;
-        let Some(first) = self.markups.iter().position(|markup| markup.page == page) else {
+        let (page, layer) = (
+            self.markups[index].page,
+            self.layer_id_for(&self.markups[index]),
+        );
+        let Some(first) = self
+            .markups
+            .iter()
+            .position(|m| m.page == page && self.layer_id_for(m) == layer)
+        else {
             return false;
         };
         if first == index {
             return false;
         }
         let markup = self.markups.remove(index);
-        self.markups.insert(0, markup);
+        self.markups.insert(first, markup);
         self.touch();
         true
     }
@@ -357,6 +387,98 @@ impl Document {
 
     pub fn markups_on_page(&self, page: usize) -> Vec<&Markup> {
         self.markups.iter().filter(|m| m.page == page).collect()
+    }
+
+    /// Visible markups on `page` in paint order (back to front).
+    ///
+    /// Paint order is layer-major: markups are grouped by their resolved layer
+    /// ([`Document::layer_id_for`]) in [`Document::layers`] order, and within a
+    /// layer they keep [`Document::markups`] vector order. This is the order the
+    /// canvas paints in, and hit testing walks it in reverse.
+    ///
+    /// A markup whose resolved layer is not in `layers` (a hand-edited or future
+    /// file) is fail-open: it is appended in vector order rather than dropped.
+    pub fn markups_in_paint_order(&self, page: usize) -> Vec<&Markup> {
+        let mut out: Vec<&Markup> = Vec::new();
+        for layer in &self.layers {
+            for m in &self.markups {
+                if m.page == page
+                    && self.is_markup_visible(m)
+                    && self.layer_id_for(m) == Some(layer.id)
+                {
+                    out.push(m);
+                }
+            }
+        }
+        for m in &self.markups {
+            if m.page != page || !self.is_markup_visible(m) {
+                continue;
+            }
+            if !self
+                .layers
+                .iter()
+                .any(|l| Some(l.id) == self.layer_id_for(m))
+            {
+                out.push(m);
+            }
+        }
+        out
+    }
+
+    /// Rename a layer. Blank (whitespace-only) names are refused so a layer
+    /// cannot become unlabelled. Returns `false` when the layer is missing or
+    /// the name is blank.
+    pub fn rename_layer(&mut self, id: Uuid, name: &str) -> bool {
+        let name = name.trim();
+        if name.is_empty() {
+            return false;
+        }
+        let Some(layer) = self.layers.iter_mut().find(|l| l.id == id) else {
+            return false;
+        };
+        if layer.name == name {
+            return false;
+        }
+        layer.name = name.to_string();
+        self.touch();
+        true
+    }
+
+    /// Move a layer one step later in paint order (towards the top).
+    ///
+    /// The default layer (always index 0) is pinned at the bottom so markups
+    /// with `layer_id == None` never change stacking implicitly; moving it, or
+    /// moving a layer that is already last, returns `false`. [`Layer::z`] is
+    /// rewritten to the layer's index so the hint stays truthful.
+    pub fn move_layer_up(&mut self, id: Uuid) -> bool {
+        self.move_layer(id, -1)
+    }
+
+    /// Move a layer one step earlier in paint order (towards the bottom).
+    ///
+    /// See [`Document::move_layer_up`]; the default layer is pinned.
+    pub fn move_layer_down(&mut self, id: Uuid) -> bool {
+        self.move_layer(id, 1)
+    }
+
+    /// Shared layer-reorder helper: `delta` is `-1` for up (later in paint
+    /// order) or `1` for down, with the default layer pinned at index 0.
+    fn move_layer(&mut self, id: Uuid, delta: i32) -> bool {
+        let Some(index) = self.layers.iter().position(|l| l.id == id) else {
+            return false;
+        };
+        let target = index as i32 + delta;
+        // Pin the default layer (index 0) at the bottom: neither it nor the
+        // layer directly above it may swap past index 0.
+        if index == 0 || target <= 0 || target as usize >= self.layers.len() {
+            return false;
+        }
+        self.layers.swap(index, target as usize);
+        for (z, layer) in self.layers.iter_mut().enumerate() {
+            layer.z = z as i64;
+        }
+        self.touch();
+        true
     }
 
     pub fn find_markup(&self, id: Uuid) -> Option<&Markup> {
@@ -815,5 +937,103 @@ mod tests {
         let loaded: Document = serde_json::from_value(value).expect("deserialize");
         assert_eq!(loaded.layers.len(), 1);
         assert_eq!(loaded.layers[0].name, "Layer 1");
+    }
+
+    #[test]
+    fn rename_layer_updates_name_and_rejects_blank() {
+        let mut doc = Document::empty("Doc");
+        let id = doc.add_layer("Old");
+        assert!(doc.rename_layer(id, "New"));
+        assert_eq!(doc.layer(id).unwrap().name, "New");
+        assert!(!doc.rename_layer(id, "   "));
+        assert_eq!(doc.layer(id).unwrap().name, "New");
+        assert!(!doc.rename_layer(Uuid::new_v4(), "X"));
+    }
+
+    #[test]
+    fn move_layer_up_and_down_respects_default_pin_and_updates_z() {
+        let mut doc = Document::empty("Doc");
+        let a = doc.add_layer("A");
+        let b = doc.add_layer("B");
+        // order: default(0), A(1), B(2)
+        assert_eq!(doc.layers[0].id, doc.default_layer_id());
+        assert_eq!(doc.layers[1].id, a);
+        assert_eq!(doc.layers[2].id, b);
+        // move B up
+        assert!(doc.move_layer_up(b));
+        assert_eq!(doc.layers[1].id, b);
+        assert_eq!(doc.layers[2].id, a);
+        // moving A up would swap with default → disallowed
+        assert!(!doc.move_layer_up(a));
+        // move B down back
+        assert!(doc.move_layer_down(b));
+        assert_eq!(doc.layers[1].id, a);
+        assert_eq!(doc.layers[2].id, b);
+        // default cannot be moved
+        let def = doc.default_layer_id();
+        assert!(!doc.move_layer_up(def));
+        assert!(!doc.move_layer_down(def));
+        // z mirrors position
+        for (i, l) in doc.layers.iter().enumerate() {
+            assert_eq!(l.z, i as i64);
+        }
+    }
+
+    #[test]
+    fn markups_in_paint_order_respects_layer_order() {
+        let mut doc = Document::empty("Doc");
+        let l1 = doc.add_layer("L1");
+        let l2 = doc.add_layer("L2");
+        let mut m_def = markup();
+        m_def.page = 0;
+        let mut m1 = markup().with_layer(l1);
+        m1.page = 0;
+        let mut m2 = markup().with_layer(l2);
+        m2.page = 0;
+        doc.add_markup(m_def.clone());
+        doc.add_markup(m1.clone());
+        doc.add_markup(m2.clone());
+        let order = doc.markups_in_paint_order(0);
+        // default first, then L1, then L2
+        assert_eq!(order[0].id, m_def.id);
+        assert_eq!(order[1].id, m1.id);
+        assert_eq!(order[2].id, m2.id);
+        // reorder layers: move L2 up (swap with L1)
+        assert!(doc.move_layer_up(l2));
+        let order2 = doc.markups_in_paint_order(0);
+        assert_eq!(order2[1].id, m2.id);
+        assert_eq!(order2[2].id, m1.id);
+    }
+
+    #[test]
+    fn z_order_is_scoped_to_layer_and_page() {
+        let mut doc = Document::empty("Doc");
+        let l1 = doc.add_layer("L1");
+        let l2 = doc.add_layer("L2");
+        let mut a = markup().with_layer(l1);
+        a.page = 0;
+        let mut b = markup().with_layer(l1);
+        b.page = 0;
+        let mut c = markup().with_layer(l2);
+        c.page = 0;
+        doc.add_markup(a.clone());
+        doc.add_markup(b.clone());
+        doc.add_markup(c.clone());
+        // bring_forward b should skip c (different layer)
+        assert!(doc.bring_forward(b.id));
+        // order within vector: a, c, b
+        assert_eq!(doc.markups[0].id, a.id);
+        assert_eq!(doc.markups[1].id, c.id);
+        assert_eq!(doc.markups[2].id, b.id);
+        // send_backward b -> returns to after a (before c)
+        assert!(doc.send_backward(b.id));
+        assert_eq!(doc.markups[0].id, a.id);
+        assert_eq!(doc.markups[1].id, b.id);
+        assert_eq!(doc.markups[2].id, c.id);
+        // bring_to_front for b goes to last in its layer (still after a)
+        assert!(doc.bring_to_front(b.id));
+        assert_eq!(doc.markups[1].id, b.id); // a,b,c order
+        // c is isolated in its own layer, moving it has no effect beyond itself
+        assert!(!doc.bring_forward(c.id));
     }
 }

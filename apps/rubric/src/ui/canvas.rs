@@ -22,17 +22,14 @@ fn to_page(screen: Pos2, pan: Vec2, zoom: f32, origin: Pos2) -> Pt {
     Pt::new(v.x * inv, v.y * inv)
 }
 
-/// Pick a markup id at page point (frontmost = highest index).
+/// Pick a markup id at page point (frontmost = last in paint order).
 fn pick_markup_id(project: &Project, page_idx: usize, p: Pt, tol: f32) -> Option<Uuid> {
     let doc = project.active()?;
-    let mut ids: Vec<Uuid> = doc
-        .markups
-        .iter()
-        .filter(|m| m.page == page_idx && doc.is_markup_visible(m) && m.hit_test(p, tol))
+    doc.markups_in_paint_order(page_idx)
+        .into_iter()
+        .rev()
+        .find(|m| m.hit_test(p, tol))
         .map(|m| m.id)
-        .collect();
-    ids.reverse();
-    ids.first().copied()
 }
 
 fn screen_rect(r: DRect, origin: Pos2, pan: Vec2, zoom: f32) -> egui::Rect {
@@ -624,13 +621,9 @@ pub(crate) fn draw_canvas(
         origin,
     );
 
-    // Render markups (add order).
+    // Render markups in paint order (layer-major, then vector order).
     if let Some(doc) = project.active() {
-        for m in doc
-            .markups
-            .iter()
-            .filter(|m| m.page == page.index && doc.is_markup_visible(m))
-        {
+        for m in doc.markups_in_paint_order(page.index) {
             draw_markup(&painter, origin, pan, zoom, m);
         }
     }
@@ -653,11 +646,7 @@ pub(crate) fn draw_canvas(
     if project.settings.show_measurements {
         if let Some(doc) = project.active() {
             let unit = page.scale.unit;
-            for m in doc
-                .markups
-                .iter()
-                .filter(|m| m.page == page.index && doc.is_markup_visible(m))
-            {
+            for m in doc.markups_in_paint_order(page.index) {
                 if let Some(meas) = m.measurement {
                     let label = meas.label_with(unit, project.settings.precision);
                     let anchor_page = measure_anchor(m);

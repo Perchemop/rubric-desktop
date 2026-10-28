@@ -14,6 +14,7 @@ pub mod style_preset;
 pub mod theme;
 pub mod thumbs;
 pub mod units;
+pub mod view;
 
 pub use action::EditorAction;
 pub use diff::{diff_documents, diff_projects, DiffResult, MarkupChange, MarkupSummaryRow};
