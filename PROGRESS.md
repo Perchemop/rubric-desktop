@@ -864,8 +864,13 @@ flow now enforced by branch protection.
 - Both values remain readable in history: a `git filter-repo` purge is destructive and needs owner approval — tracked as **gap G7** and raised with the owner.
 - The `arm64` vs `aarch64` release-name spelling is now recorded as a `DECISIONS.md` deviation (guide II.28.3).
 
+### Reviewer verdict (FIX FIRST) — all closed
+- **HIGH**: the release-asset scanner matched whole lines, so the `/home/runner` allowance only worked when a line ended exactly there (a real CI path like `/home/runner/work/...` would have false-failed the first release). Fixed with `-o` (matches are now `file:line:path`), which also keeps binary hits compact.
+- **MEDIUM**: the email pass used `-I` and skipped binaries, so a `.pyc` carrying a real address would pass while the docs claimed otherwise. The email pass now scans binaries too (`-a`), matching the home-path pass.
+- **LOW**: added `/Users/<name>` (macOS) to both scanners with a `/Users/runner` allowance, and a `C:\Users\runner` allowance in the asset scanner; release archives now extract to a unique `mktemp` dir; and the `Personal data scan` job gained a **self-test** that plants a leak and asserts both scanners fail on it and pass on a clean/synthetic fixture.
+
 ### Delivered
-- `scripts/scan-personal-data.sh` — tracked-tree scan for non-CI home paths and real emails; dependency-free.
+- `scripts/scan-personal-data.sh` — tracked-tree (and `--path`) scan for non-CI home paths and real emails; dependency-free.
 - `scripts/scan-release-assets.sh` — extracts each release archive and scans it (including binaries) before assets are attached.
 - `security.yml` job **`Personal data scan`**; added to `.ci-required.txt` (a leak now blocks a merge); `release.yml` runs the asset scan in `publish`.
 - `docs/qc/checklist.md`, `docs/guide-compliance.md` (re-reviewed for the revised guide), `CHANGELOG.md`, `DECISIONS.md` updated; the stale `docs/research/README.md` index (it said "none yet" with three notes present) corrected.
