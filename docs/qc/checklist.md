@@ -71,7 +71,9 @@ CI run.
 - [ ] Secrets: no keys/tokens in git or release binaries; crash reports use user-supplied tokens only
 - [ ] Personal data (guide II.29): no real name/email/phone/address/account id,
       no non-CI home path, in the tree, history, metadata or release assets;
-      the four-part scan is recorded in `PROGRESS.md` with the CI run ID
+      the four-part scan is recorded in `PROGRESS.md` with the CI run ID.
+      (History still carries the pre-PR-#37 home path: purge pending owner
+      decision, gap G7 — do not claim this row clean until it is resolved.)
 - [ ] Privacy: crash reports send only what the user consents to; documented in README
 - [ ] Research files: summaries + URLs only; human-approved (`docs/research/`)
 - [ ] Claims: no false certification/affiliation/"drop-in replacement" wording
