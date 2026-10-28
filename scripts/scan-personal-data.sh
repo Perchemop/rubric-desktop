@@ -36,7 +36,10 @@ fi
 # keeps false positives out. Emails are scanned the same way for the same
 # reason.
 HOME_RE='/home/[A-Za-z0-9_.-]+|/Users/[A-Za-z0-9_.-]+|C:\\Users\\[A-Za-z0-9_.-]+'
-HOME_ALLOW='(/home/runner|/Users/runner|C:\\Users\\runner)$'
+# /home/user, /Users/user and C:\Users\user are additionally allowed: the
+# generic placeholder username reveals nothing personal, and it appears in
+# path-scrubbing tests (guide II.29.6) and documentation examples.
+HOME_ALLOW='(/home/runner|/Users/runner|C:\\Users\\runner|/home/user|/Users/user|C:\\Users\\user)$'
 EMAIL_RE='[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
 EMAIL_ALLOW='@(example\.(com|org|net)|users\.noreply\.github\.com|noreply\.github\.com|[A-Za-z0-9.-]+\.(example|invalid|test|localhost))$'
 
