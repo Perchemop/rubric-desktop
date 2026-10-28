@@ -34,7 +34,12 @@ Recorded per note. Preferred order (guide §2.4):
 
 | Note | Capability | Status |
 |---|---|---|
-| — | (none yet — Rubric's implemented capabilities were designed from the original spec in `docs/spec/README.md`) | |
+| [`bluebeam-studio-capabilities.md`](bluebeam-studio-capabilities.md) | Status-driven review workflow, stamps, calibrated measurement | Approved 2026-10-24 |
+| [`adobe-acrobat-capabilities.md`](adobe-acrobat-capabilities.md) | Annotation taxonomy, document comparison | Approved 2026-10-24 |
+| [`stirling-pdf-capabilities.md`](stirling-pdf-capabilities.md) | Local-first PDF toolset (compare, redaction, signatures, page ops) | Client-directed 2026-10-26 (gate recorded in `DECISIONS.md`) |
 
 When a note is added, link it here with the capability it covers, its
-approval date, and the approving human's initials.
+approval date, and the approving human's initials. The per-capability
+inventory — one stable `CAP-nn` row with a source URL and evidence — lives in
+`docs/capability-inventory.md` (guide II.27.3); it is still to be created
+(tracked gap G3 in `docs/guide-compliance.md`).

@@ -26,3 +26,8 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# Python bytecode caches — a .pyc embeds the absolute source path, which is a
+# personal-data leak in a public repository (guide II.29).
+__pycache__/
+*.pyc

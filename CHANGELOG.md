@@ -25,9 +25,17 @@ All notable changes to this project will be documented here. Format: semantic-is
   a dirty project is written at most once per interval to
   `<name>.autosave.rubric.json` beside the project (app data dir when
   untitled), and the status bar reports the path or the failure.
+- Personal-data and secret scan gate (guide II.29, owner directive 2026-10-27):
+  `scripts/scan-personal-data.sh` fails on a non-CI home path or a real email in
+  the tracked tree, `scripts/scan-release-assets.sh` scans extracted release
+  archives, and `Personal data scan` is a required check in `.ci-required.txt`.
+- Removed a tracked `scripts/__pycache__/*.pyc` that embedded an absolute source
+  path (found by the new scan), and ignored `__pycache__/` and `*.pyc` so a
+  bytecode cache cannot be committed again.
 - `docs/guide-compliance.md`: rule-by-rule review of the local `guide.md` and
-  `addendum.md`, with evidence, the deliberately-adapted rules, and six tracked
-  gaps.
+  `addendum.md`, re-reviewed 2026-10-28 for the revised guide (II.29 and the
+  suite-wide Part II), with evidence, the deliberately-adapted rules, and seven
+  tracked gaps.
 - `.ci-required.txt`: the authoritative CI checks that decide `ci.sh`'s verdict
   (guide II.20.4 / II.25).
 - Project schema versioning (F-507): every `.rubric.json` is stamped with

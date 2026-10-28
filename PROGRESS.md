@@ -849,6 +849,27 @@ flow now enforced by branch protection.
 - Run CI on the feature branch, address reviewer findings, and merge automatically per the 2026-10-26 owner directive.
 - Then the remaining product residuals: F-103 (note popover) and F-605 (accessibility pass), plus the F-401 zoom presets and F-004 layer rename/reorder sub-items.
 
+## 2026-10-28 — II.29 personal-data & secret scan gate
+**Status**: implemented on `opencode/v0.2-05-privacy-scan-gate`; the scan result and CI run IDs are recorded with the PR. Driven by the revised `guide.md` §II.29 (owner directive 2026-10-27: "every agent runs a full scan, and nothing coded or released may contain this information").
+
+### Scan result (II.29.2, four parts)
+1. **Working tree** (tracked files incl. dot-directories): the only findings were six `/home/<user>/.config/opencode/scripts/ci.sh` lines in `.opencode/agents/{ci-runner,coder,designer}.md`. `/home/runner` in CI workflows is the permitted CI user. No real email addresses in the tree (only `dev@example.com` / GitHub noreply).
+2. **History**: `git log --all -S"<home path>"` shows the value entered history in commit `874a117` and was removed in PR #37 (`58e57d6`); it is still readable in intervening commits.
+3. **Published surface**: PR/issue bodies and repo description/homepage do not contain the value (checked via `gh search` and PR bodies for #35–#37).
+4. **Metadata**: commit identities are `Rubric Dev <dev@example.com>` (synthetic) and GitHub's `noreply`/bot addresses; no personal name/email in tags or metadata.
+
+### Findings and fixes
+- The maintainer's absolute home path (which embeds the OS account name) was committed and published in `.opencode/agents/*.md`. **Removed from `HEAD` and every current file in PR #37** (`58e57d6`, merged 2026-10-27).
+- A tracked Python bytecode cache, `scripts/__pycache__/release-notes.cpython-313.pyc`, embedded the same absolute source path. **Untracked in this slice** (`git rm --cached`) and prevented from returning with `__pycache__/` + `*.pyc` added to `.gitignore`; the scanner is what found it.
+- Both values remain readable in history: a `git filter-repo` purge is destructive and needs owner approval — tracked as **gap G7** and raised with the owner.
+- The `arm64` vs `aarch64` release-name spelling is now recorded as a `DECISIONS.md` deviation (guide II.28.3).
+
+### Delivered
+- `scripts/scan-personal-data.sh` — tracked-tree scan for non-CI home paths and real emails; dependency-free.
+- `scripts/scan-release-assets.sh` — extracts each release archive and scans it (including binaries) before assets are attached.
+- `security.yml` job **`Personal data scan`**; added to `.ci-required.txt` (a leak now blocks a merge); `release.yml` runs the asset scan in `publish`.
+- `docs/qc/checklist.md`, `docs/guide-compliance.md` (re-reviewed for the revised guide), `CHANGELOG.md`, `DECISIONS.md` updated; the stale `docs/research/README.md` index (it said "none yet" with three notes present) corrected.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
 import, report export, page image export, print). Phase 6 in progress: dark

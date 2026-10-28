@@ -13,8 +13,12 @@ Legend: **Met** = implemented as written · **Adapted** = implemented with a
 recorded deviation · **Deferred** = tracked gap with a plan · **N/A** = not
 applicable to this project.
 
-Review date: **2026-10-27**. Reviewed against `guide.md` (Part I §0–18, Part II
-§II.18–II.28) and `addendum.md` (§A–§O).
+Review dates: **2026-10-27**, re-reviewed **2026-10-28** after `guide.md` was
+revised. The revision adds **§II.29** (the mandatory personal-data/secret scan
+gate, owner directive 2026-10-27), extends §II.24 and §II.25, generalises Part
+II to suite-wide wording (`<app>` instead of named products), and moves the
+git-identity rule to §II.26.7. Reviewed against `guide.md` (Part I §0–18, Part
+II §II.18–§II.29) and `addendum.md` (§A–§O).
 
 ---
 
@@ -63,13 +67,15 @@ Review date: **2026-10-27**. Reviewed against `guide.md` (Part I §0–18, Part 
 | II.22 Marketing / no false claims | Met | README/VISION wording; no affiliation or "drop-in replacement" claims |
 | II.23 Maintainer sustainability | Met | `GOVERNANCE.md`, small slices, evidence-based roadmap |
 | II.24.1 Per-slice DoD | Met | slice docs record exact CI runs in `PROGRESS.md` |
-| II.24.2 Per-phase DoD | Met (one file) | traceability ↔ plan consistent; user directives recorded in `DECISIONS.md` (Ctrl+Y entry added 2026-10-27); capability inventory is gap G3 |
-| II.24.3 Release/packaging | Met | multi-target CI artefacts + `Cargo.lock`; round-trip tests |
-| II.25 Launch readiness | Deferred (in part) | community files, branch protection, scanner gates present; capability inventory and visual evidence are gaps G3/G4 |
-| II.26 Open questions for the human | Open | II.26.1 local-test wording applied; II.26.6 licence choice open as `Q-LIC-1`; II.26.7 PR-author identity open — gap G6 |
+| II.24.1 No personal data / secret in the change | Met (gate added 2026-10-28) | `scripts/scan-personal-data.sh` + the required `Personal data scan` check; a historical home-path leak was removed in PR #37 (history purge still open — gap G7) |
+| II.24.2 Per-phase DoD | Met (one file) | traceability ↔ plan consistent; user directives recorded in `DECISIONS.md` (Ctrl+Y 2026-10-27; the II.29 scan gate 2026-10-28); capability inventory is gap G3 |
+| II.24.3 Release/packaging | Met (asset scan added 2026-10-28) | multi-target CI artefacts + `Cargo.lock`; `release.yml` runs `scripts/scan-release-assets.sh` before publishing; round-trip tests |
+| II.25 Launch readiness | Deferred (in part) | community files, branch protection, scanner gates present and now include the personal-data scan; capability inventory and visual evidence are gaps G3/G4 |
+| II.26 Open questions for the human | Open | II.26.1 local-test wording applied; II.26.6 licence choice open as `Q-LIC-1`; II.26.7 the git-identity rule now needs a home (it left Part I §5.5) — gap G6 |
 | II.27 Designer role | Deferred (in part) | design system/parity via `docs/design/brand.md` + `docs/parity.md`; `docs/capability-inventory.md` (II.27.3) absent — gap G3 |
-| II.27.12 Visual evidence for egui apps | **Deferred** | guide lists rubric among the apps whose `eframe::App` shell cannot be driven by `egui_kittest` today; needs the `Host`-seam refactor — gap G4. No fake harness is used |
-| II.28 Naming conventions | Adapted | crate/binary names follow cargo; the guide's §II.28.3 notes rubric writes `rubric-linux-arm64` where cadence uses `aarch64` — to settle at the next release-name change |
+| II.27.12 Visual evidence for egui apps | **Deferred** | the guide lists Rubric's shell shape among those `egui_kittest` cannot drive today; needs the `Host`-seam refactor — gap G4. No fake harness is used |
+| II.28 Naming conventions | Adapted | crate/binary names follow cargo; the release artefacts use `arm64` rather than the guide's `aarch64` — recorded as a `DECISIONS.md` deviation (II.28.3) |
+| II.29 Personal-data/secrets scan gate | Met (added 2026-10-28) | four-part scan done; tree clean at `origin/main` (`58e57d6`); `scripts/scan-personal-data.sh` + `Personal data scan` required check; release-asset scan wired. One historical leak: the maintainer home path was published and removed in PR #37; **history purge is an open owner decision — gap G7** |
 
 ## Addendum — addendum.md
 
@@ -102,7 +108,8 @@ Review date: **2026-10-27**. Reviewed against `guide.md` (Part I §0–18, Part 
 | G3 | `docs/capability-inventory.md` (II.27.3) absent | Slows-work | Planned docs slice — added to `ROADMAP.md` v0.3; `docs/spec/README.md` + `docs/parity.md` + `docs/inspiration.md` are the interim sources |
 | G4 | egui visual evidence (`egui_kittest`, II.27.12) needs a `Host`-seam refactor | Defers a gate | Planned refactor slice — added to `ROADMAP.md` v0.3; no fabricated harness is used in the meantime |
 | G5 | §2.5/II.19.5 release legal checklist not yet recorded per release | Blocks a release only | Run and record in `PROGRESS.md` with the CI run ID when v0.2.0 is tagged |
-| G6 | PR/push authorship cannot satisfy §5.5 exactly (II.26.7) | Client decision | Recorded open; needs the client to choose narrow-the-rule / machine account / accepted exception. No workaround applied silently |
+| G6 | The git-identity rule has no home in the revised guide (II.26.7) | Client decision | Recorded open; needs the client to re-home it, narrow it to commits, or accept PR authorship as the pushing account. No workaround applied silently |
+| G7 | A maintainer absolute home path was committed and published (II.29.4) | Owner decision (destructive) | Two carriers: `.opencode/agents/*.md` (removed in PR #37, `58e57d6`) and a tracked `scripts/__pycache__/*.pyc` (untracked in this slice; `.gitignore` now blocks `*.pyc`). Both remain readable in history; a `git filter-repo` purge is **owner-approved work only** (force-push, branch-protection change) — raised via the `question` tool |
 
 No rule in `guide.md` or `addendum.md` was edited: both remain local and
 untracked, per their own "never push" rule and addendum §N.1.

@@ -151,6 +151,9 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Scan release assets for personal data (guide II.29.3/II.29.6)
+        run: bash scripts/scan-release-assets.sh dist
+
       - name: Build release notes
         id: notes
         shell: bash
