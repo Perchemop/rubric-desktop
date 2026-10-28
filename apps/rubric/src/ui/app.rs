@@ -13,9 +13,9 @@ use crate::data::{
     print_image, render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
 use crate::domain::{
-    auto_save_interval_label, AppPrefs, Document, EditorAction, Grid, History, MarkupGroupKey,
-    MarkupKind, MarkupListSort, MarkupStyle, Project, Pt, Report, ReportGroupKey, ReviewStatus,
-    StampPreset, Theme, Tool, AUTO_SAVE_INTERVALS, view,
+    auto_save_interval_label, view, AppPrefs, Document, EditorAction, Grid, History,
+    MarkupGroupKey, MarkupKind, MarkupListSort, MarkupStyle, Project, Pt, Report, ReportGroupKey,
+    ReviewStatus, StampPreset, Theme, Tool, AUTO_SAVE_INTERVALS,
 };
 use crate::ui::{canvas, inspector, markups_list, menu, pages, theme, toolbar};
 use uuid::Uuid;

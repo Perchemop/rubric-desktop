@@ -1033,7 +1033,6 @@ mod tests {
         // bring_to_front for b goes to last in its layer (still after a)
         assert!(doc.bring_to_front(b.id));
         assert_eq!(doc.markups[1].id, b.id); // a,b,c order
-        // c is isolated in its own layer, moving it has no effect beyond itself
         assert!(!doc.bring_forward(c.id));
     }
 }
