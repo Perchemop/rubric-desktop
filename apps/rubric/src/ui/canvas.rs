@@ -780,13 +780,11 @@ pub(crate) fn draw_canvas(
             let add_resp = ui.put(next_row(20.0), egui::Button::new("Add comment"));
             let close_resp = ui.put(next_row(20.0), egui::Button::new("Close"));
             if add_resp.clicked() && !ui_state.note_draft.trim().is_empty() {
+                let author = project.settings.author.clone();
                 if let Some(doc) = project.active_mut() {
                     if let Some(m) = doc.find_markup_mut(note_id) {
-                        if m.add_comment(
-                            project.settings.author.clone(),
-                            ui_state.note_draft.clone(),
-                        )
-                        .is_some()
+                        if m.add_comment(author.clone(), ui_state.note_draft.clone())
+                            .is_some()
                         {
                             ui_state.note_draft.clear();
                             ui_state.status = "Comment added".to_string();
