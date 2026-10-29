@@ -908,6 +908,25 @@ flow now enforced by branch protection.
 - This reverses the earlier v0.1.0 statement that layers are "a
   visibility/editing aid, not a stacking model"; recorded in `DECISIONS.md`.
 
+## 2026-10-30 — v0.2-08 note popover (F-103)
+**Status**: implemented on `v0.2-08-note-popover`, merged to `main` at `e8b8fe2`
+(CI `40942594880`, Security `40942594855`, all required checks green).
+
+### Completed
+- `Markup::add_comment(author, text)` appends a threaded comment (author + text +
+  timestamp), refuses blank text, touches `modified` (unit test included).
+- Canvas: selecting or creating a `Note` pin opens a floating comment popover
+  positioned beside the pin; shows the comment thread, a draft multiline box,
+  Add comment / Close buttons; closes on Escape, click outside / note deletion,
+  or when the note no longer exists.
+- Inspector Comment section now routes through `add_comment` for consistency.
+- `UiState` gains `note_popover` (`Option<Uuid>`) and `note_draft` (`String`)
+  session state; opening a popover on another note closes the previous one.
+
+### Next
+- F-605 accessibility pass (contrast audit, keyboard reachability, labels),
+  then G3 `docs/capability-inventory.md` and G4 `egui_kittest` Host-seam refactor.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
 import, report export, page image export, print). Phase 6 in progress: dark

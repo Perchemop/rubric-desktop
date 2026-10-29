@@ -147,6 +147,25 @@ Record significant architectural/implementation decisions.
 - **Rationale**: the owner directive of 2026-10-27 makes this mandatory and treats a missed scan as a failed slice (guide II.29). A real person's name, address, email or account name in a public repository is a published defect that survives in history, forks and cached views, so the gate must block merges rather than warn. The scan is dependency-free (git + grep) so the privacy gate adds no supply-chain surface.
 - **Impact**: `scripts/scan-personal-data.sh`, `scripts/scan-release-assets.sh` (new); `.github/workflows/security.yml` (`Personal data scan` job), `.github/workflows/release.yml` (asset scan in `publish`), `.ci-required.txt`; `docs/qc/checklist.md`, `docs/guide-compliance.md`, `PROGRESS.md`. A previously committed maintainer home path was removed from the tree in PR #37 (`58e57d6`); history purge is a separate owner-approved action (gap G7).
 
+## 2026-10-30: Note popover (F-103) uses `Markup::add_comment`, threaded under the pin
+- **Decision**: The note popover renders comments already stored on the `Note` markup
+  (`Markup.comments`, threaded with author + timestamp) and appends new ones through
+  `Markup::add_comment`, which refuses whitespace-only text. Comments are session-free:
+  they serialize with the markup in `.rubric.json`, so no separate comments store is
+  needed. The popover opens when a Note pin is selected or created and closes on
+  Escape, click outside, Close, or note deletion; opening it on another pin closes the
+  previous one. The inspector Comment section (existing, shared with all markups) now
+  routes through `add_comment` too, so comment creation is consistent everywhere.
+- **Rationale**: reusing the existing comment type keeps the data model flat and
+  serde-friendly (guide: flat modules, full serialisation). A separate popover-only
+  draft store would need sync and snapshot logic; `UiState.note_draft` plus
+  `Markup::add_comment` on commit is minimal and undo-friendly (one snapshot per
+  committed comment via the document `touch()` on add_markup/edit paths).
+- **Impact**: `apps/rubric/src/domain/markup.rs` (`Markup::add_comment` + test),
+  `apps/rubric/src/ui/canvas.rs` (popover render/open/close), `apps/rubric/src/ui/app.rs`
+  (`note_popover`/`note_draft` session state), `apps/rubric/src/ui/inspector.rs`
+  (Comment section via `add_comment`).
+
 ## 2026-10-28: Layer order drives paint order; the default layer is pinned
 - **Decision**: `Layer` order is now the primary stacking model. `Document::markups_in_paint_order` groups visible markups by layer (in `Document::layers` order) and keeps `Document::markups` vector order within a layer; the canvas paints, labels measurements and hit-tests through it. `Document::move_layer_up`/`move_layer_down` reorder layers and rewrite each `Layer::z` to its index. The default layer (always index 0) is pinned at the bottom of the order, so markups with `layer_id == None` never re-bind to a different layer; reorder commands that would cross it return `false`. F-115 z-order commands are scoped to the same page **and** resolved layer, so a one-step move always changes visible stacking.
 - **Rationale**: the earlier v0.1.0 `Layer` comment declared layers "a visibility/editing aid, not a stacking model". Once the Inspector exposes reorder, that statement would describe a control that does nothing — the guide forbids shipping a present-but-broken control. Pinning the default layer avoids a silent, surprising re-bind of every `layer_id == None` markup (all legacy files) when the first layer is moved; users reorder the layers they created. Layer-scoped z-order keeps the two ordering commands mutually consistent: layer order moves whole layers, z-order moves markups inside one.

@@ -83,7 +83,7 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 | F-005 | Scale/calibration | Page.scale + units | DONE | inspector UI editor landed (Phase 3) |
 | F-006 | Page navigation/thumbnails | Document.pages | TODO | add UI |
 | F-007 | Non-destructive markup (sidecar) | .rubric.json separate | DONE | PDF embedding later optional |
-| F-1xx | Markups/tools + selection/edit (spec) | MarkupKind, Geometry, ToolSet → Layer | PARTIAL | docs/spec/README.md F-101–F-116; R-S-001–R-S-004; drag/multi-point/ink, text+callout editing (F-104/F-105), stamp library (F-111), copy properties (F-114) and z-order (F-115) landed 2026-10-19/20/26; note popover (F-103) pending |
+| F-1xx | Markups/tools + selection/edit (spec) | MarkupKind, Geometry, ToolSet → Layer | PARTIAL | docs/spec/README.md F-101–F-116; R-S-001–R-S-004; drag/multi-point/ink, text+callout editing (F-104/F-105), stamp library (F-111), copy properties (F-114), z-order (F-115) landed 2026-10-19/20/26; note popover (F-103) landed 2026-10-30 |
 | F-2xx | Measurements + scale/calibration (spec) | Measurement, Page.scale, units | PARTIAL | docs/spec/README.md F-201–F-209; R-S-005–R-S-007 |
 | F-3xx | Review workflow (spec) | ReviewStatus, Comment, author/subject | PARTIAL | docs/spec/README.md F-301–F-305; R-S-008–R-S-010; F-301/F-305 landed 2026-10-19, F-304 landed 2026-10-21 |
 | F-4xx | Navigation/pages (spec) | Document.pages, UiState camera | DONE | docs/spec/README.md F-401–F-406; R-S-011–R-S-012; F-404 (thumbnails), F-405 (grid + snap) and F-406 (rulers) done 2026-10-23; F-401 zoom presets done 2026-10-28 |

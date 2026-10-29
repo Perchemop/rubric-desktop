@@ -5,6 +5,10 @@ All notable changes to this project will be documented here. Format: semantic-is
 ## [Unreleased]
 
 ### Added
+- Note popover (F-103): selecting or creating a Note pin opens a floating comment
+  popover positioned beside the pin (threaded comments via `Markup::add_comment`,
+  which refuses blank text); the popover has a draft box, Add comment / Close
+  buttons, and closes on Escape or click outside / note deletion.
 - Zoom presets (F-401): the View menu offers 50 % / 100 % / 200 % buttons,
   backed by the new pure domain `view` module (`MIN_ZOOM`, `MAX_ZOOM`,
   `ZOOM_PRESETS`, `clamp_zoom`).
