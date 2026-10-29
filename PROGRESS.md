@@ -964,6 +964,19 @@ flow now enforced by branch protection.
 - `docs/guide-compliance.md`: G3 marked fixed; §11, II.24.2, II.25 and II.27
   rows updated (only the visual-evidence gap G4 remains).
 
+## 2026-10-30 — process gaps G6 resolved, G4 confirmed deferred
+**Status**: `AGENTS.md` + `docs/guide-compliance.md` updated; merged to `main`.
+
+### Completed
+- **G6 (git identity)**: the rule that every git action is authored
+  `Rubric Dev <dev@example.com>` is re-homed in `AGENTS.md`; guide-compliance
+  §5.5 / II.26 / G6 updated. Owner decision recorded in `DECISIONS.md`.
+- **G4 (automated visual evidence)**: owner reviewed the trade-off and chose to
+  keep the documented deferral (no fabricated harness / no fake screenshots),
+  recorded in `DECISIONS.md`, `docs/guide-compliance.md` and `ROADMAP.md` v0.3.
+- Remaining open items are release-time (G5 per-release legal checklist) or
+  client questions (`Q-LIC-1` licence choice); no product work remains.
+
 ## Summary
 Phases 1–6 complete and CI-green. All 52 spec feature IDs and all 17 requirement
 groups are implemented, including the v0.2 reviewer/auditor milestone

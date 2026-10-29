@@ -41,6 +41,16 @@ models and GitHub Actions:
 - Persistence: JSON (serde_json), `.rubric.json` extension, human-readable; include UUIDs and timestamps.
 - Git: fresh repo, never commit external reference material; commit small, focused slices; messages imperative and descriptive.
 
+## Git identity (guide II.26.7, re-homed here 2026-10-30)
+
+Every git action — commit, PR, merge, tag — is authored as the app's dev
+identity: `Rubric Dev <dev@example.com>` (repository-local config; the same
+rule `ci.sh` asserts). This keeps human and agent contributions
+distinguishable and avoids publishing a real person's name or address. GitHub
+PR/merge **authorship** follows the pushing account, which is a platform
+limitation, not a licence to use a personal identity in commit metadata. See
+`GOVERNANCE.md` and `docs/guide-compliance.md` (gap G6).
+
 ## Testing strategy
 - Unit tests in `src/domain/*` modules and `tests/domain_tests.rs`.
 - Headless tests must not require a display. UI is integration surface; logic lives in domain.

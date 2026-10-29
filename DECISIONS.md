@@ -147,6 +147,31 @@ Record significant architectural/implementation decisions.
 - **Rationale**: the owner directive of 2026-10-27 makes this mandatory and treats a missed scan as a failed slice (guide II.29). A real person's name, address, email or account name in a public repository is a published defect that survives in history, forks and cached views, so the gate must block merges rather than warn. The scan is dependency-free (git + grep) so the privacy gate adds no supply-chain surface.
 - **Impact**: `scripts/scan-personal-data.sh`, `scripts/scan-release-assets.sh` (new); `.github/workflows/security.yml` (`Personal data scan` job), `.github/workflows/release.yml` (asset scan in `publish`), `.ci-required.txt`; `docs/qc/checklist.md`, `docs/guide-compliance.md`, `PROGRESS.md`. A previously committed maintainer home path was removed from the tree in PR #37 (`58e57d6`); history purge is a separate owner-approved action (gap G7).
 
+## 2026-10-30: Git-identity rule re-homed in AGENTS.md (gap G6)
+- **Decision**: The rule that every git action is authored `Rubric Dev
+  <dev@example.com>` (repository-local config; `ci.sh` asserts it) is recorded
+  explicitly in `AGENTS.md`, since the revised guide left it without a home
+  (II.26.7). PR/merge *authorship* still follows the pushing account — a GitHub
+  platform limitation, documented rather than worked around.
+- **Rationale**: owner decision (2026-10-30). A rule with no home is not
+  enforceable; putting it next to the other agent rules makes it a first-class
+  instruction, and keeps a real person's identity out of commit metadata.
+- **Impact**: `AGENTS.md` (new "Git identity" section); `docs/guide-compliance.md`
+  (§5.5 / II.26 / G6 updated). No code change.
+
+## 2026-10-30: Automated visual evidence (G4) kept as a documented deferral
+- **Decision**: The guide II.27.12 visual-evidence gate (render real widgets to
+  PNG in CI via `egui_kittest`) stays a documented, owner-approved deferral. We
+  do not add a fabricated harness or fake screenshots. The deference is recorded
+  in `docs/guide-compliance.md` (gap G4) and `ROADMAP.md` v0.3.
+- **Rationale**: owner decision (2026-10-30, informed of the trade-off). Enabling
+  it needs a `Host`/plain-`Ui` seam in `RubricApp` plus a software graphics
+  driver on the headless CI runner; that work is real and can be fragile on
+  headless machines. The guide explicitly permits an honest, tracked deferral
+  over a specious one. All product quality gates otherwise pass.
+- **Impact**: documentation only — `docs/guide-compliance.md`, `ROADMAP.md`,
+  `PROGRESS.md`. No code change.
+
 ## 2026-10-30: Accessibility is machine-checked in the domain; accent stays a fill
 - **Decision**: WCAG 2.x contrast maths live in the domain (`src/domain/a11y.rs`)
   and the shipped chrome palettes are audited by a headless test

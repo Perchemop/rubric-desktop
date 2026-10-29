@@ -5,6 +5,10 @@ All notable changes to this project will be documented here. Format: semantic-is
 ## [Unreleased]
 
 ### Added
+- `AGENTS.md` now states the git-identity rule (every git action authored
+  `Rubric Dev <dev@example.com>`), re-homing guide II.26.7 — process gap G6
+  resolved. Automated UI-screenshot evidence (G4) is confirmed as a documented,
+  owner-approved deferral.
 - `docs/capability-inventory.md` (guide II.27.3): one reviewable row per
   capability — source URL, acceptance criteria and evidence — closing process
   gap G3. `docs/parity.md` and `docs/guide-compliance.md` updated to match.
