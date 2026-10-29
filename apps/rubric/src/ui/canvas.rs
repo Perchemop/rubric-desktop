@@ -755,11 +755,7 @@ pub(crate) fn draw_canvas(
             if let Some(doc) = project.active() {
                 if let Some(m) = doc.find_markup(note_id) {
                     for c in &m.comments {
-                        let label = format!(
-                            "{} · {}",
-                            c.author,
-                            c.created.format("%H:%M:%S")
-                        );
+                        let label = format!("{} · {}", c.author, c.created.format("%H:%M:%S"));
                         ui.put(next_row(16.0), egui::Label::new(label));
                         ui.put(
                             next_row(14.0),
@@ -778,12 +774,11 @@ pub(crate) fn draw_canvas(
             if add_resp.clicked() && !ui_state.note_draft.trim().is_empty() {
                 if let Some(doc) = project.active_mut() {
                     if let Some(m) = doc.find_markup_mut(note_id) {
-                        if m
-                            .add_comment(
-                                project.settings.author.clone(),
-                                ui_state.note_draft.clone(),
-                            )
-                            .is_some()
+                        if m.add_comment(
+                            project.settings.author.clone(),
+                            ui_state.note_draft.clone(),
+                        )
+                        .is_some()
                         {
                             ui_state.note_draft.clear();
                             ui_state.status = "Comment added".to_string();
