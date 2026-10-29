@@ -729,60 +729,78 @@ pub(crate) fn draw_canvas(
                     sr.min.y + 160.0 / zoom,
                 ),
             );
-            let mut child = ui.child_ui(popover, Default::default());
-            let inner = egui::Frame::none()
-                .fill(ui.visuals().extreme_bg_color)
-                .stroke(egui::Stroke::new(1.0, Color32::from_gray(150)))
-                .inner_margin(8.0)
-                .show(&mut child, |ui| {
-                    ui.set_min_width(200.0);
-                    ui.vertical(|ui| {
-                        ui.heading("Note");
-                        ui.separator();
-                        if let Some(doc) = project.active() {
-                            if let Some(m) = doc.find_markup(note_id) {
-                                for c in &m.comments {
-                                    ui.label(format!(
-                                        "{} · {}",
-                                        c.author,
-                                        c.created.format("%H:%M:%S")
-                                    ));
-                                    ui.small(&c.text);
-                                    ui.separator();
-                                }
-                            }
+            // Box drawn as a widget so its response covers the whole popover
+            // area (used for the "click outside" check).
+            let popover_resp = ui.put(
+                popover,
+                egui::Frame::none()
+                    .fill(ui.visuals().extreme_bg_color)
+                    .stroke(egui::Stroke::new(1.0, Color32::from_gray(150))),
+            );
+            let inner = popover.shrink(8.0);
+            let mut cy = inner.min.y;
+            let mut next_row = move |h: f32| {
+                let r = egui::Rect::from_min_size(
+                    Pos2::new(inner.min.x, cy),
+                    egui::vec2(inner.width(), h),
+                );
+                cy += h + 4.0;
+                r
+            };
+            ui.put(
+                next_row(20.0),
+                egui::Label::new(egui::RichText::new("Note").heading()),
+            );
+            ui.put(next_row(1.0), egui::Separator::default());
+            if let Some(doc) = project.active() {
+                if let Some(m) = doc.find_markup(note_id) {
+                    for c in &m.comments {
+                        let label = format!(
+                            "{} · {}",
+                            c.author,
+                            c.created.format("%H:%M:%S")
+                        );
+                        ui.put(next_row(16.0), egui::Label::new(label));
+                        ui.put(
+                            next_row(14.0),
+                            egui::Label::new(egui::RichText::new(&c.text).small()),
+                        );
+                        ui.put(next_row(1.0), egui::Separator::default());
+                    }
+                }
+            }
+            let _ = ui.put(
+                next_row(60.0),
+                egui::TextEdit::multiline(&mut ui_state.note_draft),
+            );
+            let add_resp = ui.put(next_row(20.0), egui::Button::new("Add comment"));
+            let close_resp = ui.put(next_row(20.0), egui::Button::new("Close"));
+            if add_resp.clicked() && !ui_state.note_draft.trim().is_empty() {
+                if let Some(doc) = project.active_mut() {
+                    if let Some(m) = doc.find_markup_mut(note_id) {
+                        if m
+                            .add_comment(
+                                project.settings.author.clone(),
+                                ui_state.note_draft.clone(),
+                            )
+                            .is_some()
+                        {
+                            ui_state.note_draft.clear();
+                            ui_state.status = "Comment added".to_string();
+                            m.touch();
+                            doc.touch();
                         }
-                        ui.text_edit_multiline(&mut ui_state.note_draft);
-                        let add = ui.button("Add comment").clicked()
-                            && !ui_state.note_draft.trim().is_empty();
-                        if add {
-                            if let Some(doc) = project.active_mut() {
-                                if let Some(m) = doc.find_markup_mut(note_id) {
-                                    if m.add_comment(
-                                        project.settings.author.clone(),
-                                        ui_state.note_draft.clone(),
-                                    )
-                                    .is_some()
-                                    {
-                                        ui_state.note_draft.clear();
-                                        ui_state.status = "Comment added".to_string();
-                                        m.touch();
-                                        doc.touch();
-                                    }
-                                }
-                            }
-                            mutated = true;
-                        }
-                        if ui.button("Close").clicked() {
-                            ui_state.note_popover = None;
-                        }
-                    });
-                });
-            let _ = inner;
+                    }
+                }
+                mutated = true;
+            }
+            if close_resp.clicked() {
+                ui_state.note_popover = None;
+            }
             // Close when clicking elsewhere on the canvas, but not when the
             // click that opened this popover is still over the note itself.
             let click_on_note = response.hover_pos().is_some_and(|hp| sr.contains(hp));
-            if response.clicked() && !child.response().hovered() && !click_on_note {
+            if response.clicked() && !popover_resp.hovered() && !click_on_note {
                 ui_state.note_popover = None;
             }
             if ui.ctx().input(|i| i.key_pressed(egui::Key::Escape)) {
