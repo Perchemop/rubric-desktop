@@ -13,9 +13,9 @@ use crate::data::{
     print_image, render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
 use crate::domain::{
-    auto_save_interval_label, AppPrefs, Document, EditorAction, Grid, History, MarkupGroupKey,
-    MarkupKind, MarkupListSort, MarkupStyle, Project, Pt, Report, ReportGroupKey, ReviewStatus,
-    StampPreset, Theme, Tool, AUTO_SAVE_INTERVALS,
+    auto_save_interval_label, view, AppPrefs, Document, EditorAction, Grid, History,
+    MarkupGroupKey, MarkupKind, MarkupListSort, MarkupStyle, Project, Pt, Report, ReportGroupKey,
+    ReviewStatus, StampPreset, Theme, Tool, AUTO_SAVE_INTERVALS,
 };
 use crate::ui::{canvas, inspector, markups_list, menu, pages, theme, toolbar};
 use uuid::Uuid;
@@ -410,10 +410,10 @@ impl RubricApp {
             | EditorAction::BringToFront
             | EditorAction::SendToBack => self.apply_z_order(action),
             EditorAction::ZoomIn => {
-                self.ui.zoom = (self.ui.zoom * 1.25).clamp(0.1, 16.0);
+                self.ui.zoom = (self.ui.zoom * 1.25).clamp(view::MIN_ZOOM, view::MAX_ZOOM);
             }
             EditorAction::ZoomOut => {
-                self.ui.zoom = (self.ui.zoom / 1.25).clamp(0.1, 16.0);
+                self.ui.zoom = (self.ui.zoom / 1.25).clamp(view::MIN_ZOOM, view::MAX_ZOOM);
             }
             EditorAction::FitPage => {
                 self.ui.zoom = 1.0;
@@ -1085,6 +1085,14 @@ impl RubricApp {
                 }
                 if ui.button("Fit Page").clicked() {
                     self.apply_editor_action(EditorAction::FitPage);
+                }
+                ui.separator();
+                for pct in view::ZOOM_PRESETS {
+                    let zoom = pct as f32 / 100.0;
+                    if ui.button(format!("{}%", pct)).clicked() {
+                        self.ui.zoom = view::clamp_zoom(zoom);
+                        self.ui.status = format!("Zoom {}%", pct);
+                    }
                 }
                 ui.separator();
                 // Canvas guides (F-405): grid visibility, snapping and pitch.

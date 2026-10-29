@@ -62,7 +62,7 @@ Each row maps a spec area to its feature IDs and the planned modules.
 | R-S-008 | Review workflow: statuses (Open/In review/Approved/Rejected), comments, author/subject | F-301–F-303 | src/domain/markup.rs (ReviewStatus, remapped 2026-10-19), src/domain/project.rs | DONE |
 | R-S-009 | Summary report (markups by status/author/subject, exportable) | F-304 | src/domain/report.rs (new), src/data/export.rs (new), src/ui/app.rs | DONE |
 | R-S-010 | Status colours and legend | F-305 | src/ui/inspector.rs (Status legend + swatches), src/domain/markup.rs (`ReviewStatus::color()`), src/ui/canvas.rs (status dots) | DONE |
-| R-S-011 | Canvas navigation: zoom, pan, page navigation, thumbnails | F-401–F-404 | src/ui/app.rs, src/ui/canvas.rs, src/ui/pages.rs, src/domain/thumbs.rs | PARTIAL (F-404 thumbnails done 2026-10-23) |
+| R-S-011 | Canvas navigation: zoom, pan, page navigation, thumbnails | F-401–F-404 | src/ui/app.rs, src/ui/canvas.rs, src/ui/pages.rs, src/domain/thumbs.rs, src/domain/view.rs | DONE (F-404 thumbnails 2026-10-23; F-401 wheel zoom + 50/100/200 % presets 2026-10-28) |
 | R-S-012 | Grid, snap, rulers | F-405, F-406 | src/domain/grid.rs, src/ui/canvas.rs, src/ui/app.rs (View menu) | DONE |
 | R-S-013 | Persistence: `.rubric.json` sidecar, autosave, recent files, native dialogs, schema version | F-501–F-503, F-506, F-507 | src/data/store.rs, src/ui/app.rs | DONE — autosave loop + `schema_version` guard landed 2026-10-26 (`autosave_due_respects_the_interval_and_clamps_tiny_values`, `load_project_refuses_a_newer_schema_version`) |
 | R-S-014 | PDF import and page rendering | F-504 | src/data/pdf.rs (new), src/ui/canvas.rs | DONE |
@@ -79,14 +79,14 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 | F-001 | Markups (highlights, lines, shapes, text, callouts, stamps) | MarkupKind + Geometry | DONE (core) | expand tool set over time |
 | F-002 | Measurements (length/perimeter/area/angle/count) | Measurement + recompute | DONE | add diameter/radius UI polish |
 | F-003 | Review workflow (statuses, comments, subjects) | ReviewStatus, Comment | DONE | spec status set Open/In review/Approved/Rejected landed (F-301, 2026-10-19) |
-| F-004 | Layers/Toolsets | ToolSet + Layer field | PARTIAL | visibility/lock landed; rename/reorder pending |
+| F-004 | Layers/Toolsets | ToolSet + Layer field | DONE | visibility/lock + rename/reorder landed 2026-10-28 (layer-major paint order, default layer pinned) |
 | F-005 | Scale/calibration | Page.scale + units | DONE | inspector UI editor landed (Phase 3) |
 | F-006 | Page navigation/thumbnails | Document.pages | TODO | add UI |
 | F-007 | Non-destructive markup (sidecar) | .rubric.json separate | DONE | PDF embedding later optional |
 | F-1xx | Markups/tools + selection/edit (spec) | MarkupKind, Geometry, ToolSet → Layer | PARTIAL | docs/spec/README.md F-101–F-116; R-S-001–R-S-004; drag/multi-point/ink, text+callout editing (F-104/F-105), stamp library (F-111), copy properties (F-114) and z-order (F-115) landed 2026-10-19/20/26; note popover (F-103) pending |
 | F-2xx | Measurements + scale/calibration (spec) | Measurement, Page.scale, units | PARTIAL | docs/spec/README.md F-201–F-209; R-S-005–R-S-007 |
 | F-3xx | Review workflow (spec) | ReviewStatus, Comment, author/subject | PARTIAL | docs/spec/README.md F-301–F-305; R-S-008–R-S-010; F-301/F-305 landed 2026-10-19, F-304 landed 2026-10-21 |
-| F-4xx | Navigation/pages (spec) | Document.pages, UiState camera | PARTIAL | docs/spec/README.md F-401–F-406; R-S-011–R-S-012; F-404 (thumbnails), F-405 (grid + snap) and F-406 (rulers) done 2026-10-23 |
+| F-4xx | Navigation/pages (spec) | Document.pages, UiState camera | DONE | docs/spec/README.md F-401–F-406; R-S-011–R-S-012; F-404 (thumbnails), F-405 (grid + snap) and F-406 (rulers) done 2026-10-23; F-401 zoom presets done 2026-10-28 |
 | F-5xx | Persistence/I/O (spec) | .rubric.json store, PDF import, export/print | DONE | docs/spec/README.md F-501–F-507; R-S-013–R-S-015; native dialogs + recent files landed 2026-10-20; PDF import landed 2026-10-21; report export landed 2026-10-21; image export + print landed 2026-10-21; autosave + schema version landed 2026-10-26 |
 | F-6xx | UI/UX polish (spec) | shortcuts, theme, history | PARTIAL | docs/spec/README.md F-601–F-605; R-S-016; F-601 (per-tool keys), F-602 (dark theme), F-603 (context menus) done 2026-10-23 |
 | F-7xx | Packaging (spec) | CI release build, installers | DONE | docs/spec/README.md F-701–F-704; R-S-017; release.yml + package.yml done 2026-10-23 (installers unsigned — see docs/assumptions-and-questions Q-PACK-1) |
@@ -102,7 +102,7 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 ## Gaps / exclusions
 - Canonical inventory: `docs/spec/README.md` (52 F-IDs across F-1xx…F-7xx), adopted 2026-10-19; see Phase 1 requirement set above.
 - PDF import — DONE 2026-10-21 (F-503); report/image export + print — DONE 2026-10-21 (F-505/F-506, F-504 printer dialog pending re-verify on CI artefacts)
-- Open product residuals: F-103 (note popover), F-605 (+F-401 zoom presets, F-004 layer rename) — see Roadmap.
+- Open product residuals: F-103 (note popover), F-605 — see Roadmap.
 - Community/security/ops: done as of 2026-10-24 (R-C-001…R-C-012 below); ongoing duties (Dependabot triage, CodeQL findings triage) recorded in GOVERNANCE.md.
 
 ## Verification

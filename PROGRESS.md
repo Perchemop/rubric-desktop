@@ -880,6 +880,34 @@ flow now enforced by branch protection.
 - `security.yml` job **`Personal data scan`**; added to `.ci-required.txt` (a leak now blocks a merge); `release.yml` runs the asset scan in `publish`.
 - `docs/qc/checklist.md`, `docs/guide-compliance.md` (re-reviewed for the revised guide), `CHANGELOG.md`, `DECISIONS.md` updated; the stale `docs/research/README.md` index (it said "none yet" with three notes present) corrected.
 
+## 2026-10-28 — v0.2-07 zoom presets (F-401) and layer rename/reorder (F-004)
+**Status**: implemented on `v0.2-07-zoom-layers`; the implementation tip `9afb180` is CI-green (run `40849531047`, security run `40849530908`), reviewed and merged.
+
+### Completed
+- Zoom presets (F-401): `View` menu gains 50 % / 100 % / 200 % preset buttons.
+  The zoom range and preset list moved into a pure domain module,
+  `src/domain/view.rs` (`MIN_ZOOM`, `MAX_ZOOM`, `ZOOM_PRESETS`, `clamp_zoom`),
+  so `ZoomIn`/`ZoomOut` no longer carry magic numbers.
+- Layer rename/reorder (F-004): the Inspector layers panel now has an editable
+  name field (live `Document::rename_layer`; one undo snapshot on focus loss)
+  and ▲/▼ reorder buttons.
+- Layer stacking is now real: `Document::markups_in_paint_order` paints
+  layer-major (in `Document::layers` order, vector order within a layer) and
+  the canvas renders, labels measurements and hit-tests through it. Reordering
+  layers changes stacking.
+- The default layer (index 0) is pinned at the bottom so markups with
+  `layer_id == None` never re-bind implicitly; `move_layer_up`/`move_layer_down`
+  refuse moves that would cross it, and rewrite each `Layer::z` to its index.
+- Z-order commands (`bring_forward`/`send_backward`/`bring_to_front`/
+  `send_to_back`) are now scoped to the same page **and** resolved layer, so
+  they stay consistent with layer-major paint order.
+- Tests: rename, default-pin reorder with `z` mirroring, paint order following
+  layer order, and the layer-scoped z-order matrix.
+
+### Note
+- This reverses the earlier v0.1.0 statement that layers are "a
+  visibility/editing aid, not a stacking model"; recorded in `DECISIONS.md`.
+
 ## Summary
 Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
 import, report export, page image export, print). Phase 6 in progress: dark
