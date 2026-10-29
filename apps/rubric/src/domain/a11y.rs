@@ -134,8 +134,16 @@ mod tests {
 
     #[test]
     fn black_on_white_is_the_maximum_ratio() {
+        let ratio = contrast_ratio(Color::rgb(0, 0, 0), palette::WHITE);
+        assert!(approx(ratio, 21.0, 0.05), "expected ~21:1, got {ratio}");
+    }
+
+    #[test]
+    fn near_black_brand_ink_still_clears_the_maximum() {
+        // The brand "Black" swatch (20,20,24) is not pure black but is still
+        // far above every WCAG threshold on white.
         let ratio = contrast_ratio(palette::BLACK, palette::WHITE);
-        assert!(approx(ratio, 21.0, 0.5), "expected ~21:1, got {ratio}");
+        assert!(ratio >= 18.0, "expected ≥ 18:1, got {ratio}");
     }
 
     #[test]
