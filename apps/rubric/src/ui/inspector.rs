@@ -93,11 +93,7 @@ pub(crate) fn draw_inspector(
             ui.horizontal(|ui| {
                 let visible = layer.visible;
                 let eye = if visible { "👁" } else { "·" };
-                let eye_tip = if visible {
-                    "Hide layer"
-                } else {
-                    "Show layer"
-                };
+                let eye_tip = if visible { "Hide layer" } else { "Show layer" };
                 if ui.button(eye).on_hover_text(eye_tip).clicked() {
                     if let Some(doc) = project.active_mut() {
                         if doc.set_layer_visible(id, !visible) {

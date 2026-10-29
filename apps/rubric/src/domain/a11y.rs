@@ -75,12 +75,7 @@ pub struct AuditPair {
 }
 
 impl AuditPair {
-    pub fn new(
-        name: impl Into<String>,
-        fg: Color,
-        bg: Color,
-        level: WcagLevel,
-    ) -> Self {
+    pub fn new(name: impl Into<String>, fg: Color, bg: Color, level: WcagLevel) -> Self {
         Self {
             name: name.into(),
             fg,
@@ -165,10 +160,7 @@ mod tests {
         // #767676 on white is the classic WCAG 4.5:1 boundary colour.
         let grey = Color::rgb(118, 118, 118);
         let ratio = contrast_ratio(grey, palette::WHITE);
-        assert!(
-            approx(ratio, 4.54, 0.05),
-            "expected ~4.54:1, got {ratio}"
-        );
+        assert!(approx(ratio, 4.54, 0.05), "expected ~4.54:1, got {ratio}");
         assert!(meets(WcagLevel::AaNormal, grey, palette::WHITE));
     }
 
@@ -193,5 +185,4 @@ mod tests {
         assert!(issues[0].ratio < 4.5);
         assert!(issues[0].describe().contains("below the required"));
     }
-
 }
