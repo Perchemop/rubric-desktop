@@ -40,7 +40,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | §5 Chat → Task → PR | Met | `docs/tasks/*`, PR template, `docs/process-feedback.md` |
 | §5.2 Free model policy | Met | OpenCode free → NVIDIA free → keys; live map in `docs/current-model-map.md` (refreshed 2026-10-27) |
 | §5.3 Agent roles | Met | `.opencode/agents/` (orchestrator, coder, domain-dev, ui-dev, test-writer, fixer, reviewer, docs-writer, explorer, designer, ci-runner) |
-| §5.5 Git identity on every git action | Adapted | commits are authored `Rubric Dev <dev@example.com>` (ci.sh asserts it); PR/push authorship follows the pushing account — the known limitation recorded as II.26.7 / gap G6 |
+| §5.5 Git identity on every git action | Met (re-homed 2026-10-30) | commits are authored `Rubric Dev <dev@example.com>` (ci.sh asserts it); the rule is now recorded in `AGENTS.md` (gap G6 resolved); PR/push authorship follows the pushing account (platform limitation, documented) |
 | §6.1 v0.1.0 hard gate | Met | `v0.1.0` tag + honest release notes; criteria table in `ROADMAP.md` |
 | §6.2 Roadmap from evidence | Met | readiness % moved only with linked CI runs; see `PROGRESS.md` |
 | §6.3 Release-notes standard | Met | F-template notes; latest release v0.1.0 |
@@ -71,7 +71,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | II.24.2 Per-phase DoD | Met | traceability ↔ plan consistent; user directives recorded in `DECISIONS.md` (Ctrl+Y 2026-10-27; the II.29 scan gate 2026-10-28); `docs/capability-inventory.md` present (G3 closed 2026-10-30) |
 | II.24.3 Release/packaging | Met (asset scan added 2026-10-28) | multi-target CI artefacts + `Cargo.lock`; `release.yml` runs `scripts/scan-release-assets.sh` before publishing; round-trip tests |
 | II.25 Launch readiness | Deferred (in part) | community files, branch protection, scanner gates present and now include the personal-data scan; capability inventory present (G3 closed); automated visual evidence is the remaining gap G4 |
-| II.26 Open questions for the human | Open | II.26.1 local-test wording applied; II.26.6 licence choice open as `Q-LIC-1`; II.26.7 the git-identity rule now needs a home (it left Part I §5.5) — gap G6 |
+| II.26 Open questions for the human | Open (one item) | II.26.1 local-test wording applied; II.26.6 licence choice open as `Q-LIC-1`; II.26.7 git-identity rule re-homed in `AGENTS.md` (G6 resolved 2026-10-30) |
 | II.27 Designer role | Met (G4 deferred) | design system/parity via `docs/design/brand.md` + `docs/parity.md` + `docs/capability-inventory.md` (II.27.3, added 2026-10-30); II.27.12 visual evidence is gap G4 |
 | II.27.12 Visual evidence for egui apps | **Deferred** | the guide lists Rubric's shell shape among those `egui_kittest` cannot drive today; needs the `Host`-seam refactor — gap G4. No fake harness is used |
 | II.28 Naming conventions | Adapted | crate/binary names follow cargo; the release artefacts use `arm64` rather than the guide's `aarch64` — recorded as a `DECISIONS.md` deviation (II.28.3) |
@@ -108,7 +108,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | G3 | `docs/capability-inventory.md` (II.27.3) absent | Slows-work | **Fixed 2026-10-30** — capability rows with source URLs, acceptance criteria and evidence, cross-linked from `docs/parity.md` |
 | G4 | egui visual evidence (`egui_kittest`, II.27.12) needs a `Host`-seam refactor | Defers a gate | Planned refactor slice — added to `ROADMAP.md` v0.3; no fabricated harness is used in the meantime |
 | G5 | §2.5/II.19.5 release legal checklist not yet recorded per release | Blocks a release only | Run and record in `PROGRESS.md` with the CI run ID when v0.2.0 is tagged |
-| G6 | The git-identity rule has no home in the revised guide (II.26.7) | Client decision | Recorded open; needs the client to re-home it, narrow it to commits, or accept PR authorship as the pushing account. No workaround applied silently |
+| G6 | The git-identity rule has no home in the revised guide (II.26.7) | Client decision | **Resolved 2026-10-30** — owner directed the rule be re-homed; recorded in `AGENTS.md` (commits/PRs/merges/tags authored `Rubric Dev <dev@example.com>`; PR authorship follows the pushing account) |
 | G7 | A maintainer absolute home path was committed and published (II.29.4) | **Resolved 2026-10-28** | Two carriers: `.opencode/agents/*.md` (removed in PR #37) and a tracked `scripts/__pycache__/*.pyc` (untracked, `*.pyc` ignored). Owner approved a purge; every branch, tag and commit was rewritten with `git filter-repo`, force-pushed, and branch protection restored. Residual risk (GitHub cached views/forks) recorded in `SECURITY.md` |
 
 No rule in `guide.md` or `addendum.md` was edited: both remain local and
