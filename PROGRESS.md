@@ -950,6 +950,20 @@ flow now enforced by branch protection.
 - Remaining tracked work is process-only: G3 `docs/capability-inventory.md` and
   G4 `egui_kittest` Host-seam refactor (see `docs/guide-compliance.md`).
 
+## 2026-10-30 — capability inventory (guide II.27.3, gap G3)
+**Status**: implemented on `v0.2-10-capability-inventory`, merged to `main`.
+
+### Completed
+- `docs/capability-inventory.md`: 31 capability rows, each with the inspiration
+  source (URL / research note), feature IDs, acceptance criteria and evidence
+  (module, test name, CI run) — plus an out-of-scope table and the remaining
+  process gap (G4).
+- `docs/parity.md`: rows advanced to Done (PDF/navigation, text/review markup,
+  shape/path, selection, measurements, accessibility) to match F-103/F-004/
+  F-401/F-605 shipping.
+- `docs/guide-compliance.md`: G3 marked fixed; §11, II.24.2, II.25 and II.27
+  rows updated (only the visual-evidence gap G4 remains).
+
 ## Summary
 Phases 1–6 complete and CI-green. All 52 spec feature IDs and all 17 requirement
 groups are implemented, including the v0.2 reviewer/auditor milestone

@@ -67,7 +67,7 @@ Small, low-risk completions; each its own Task + release.
 ### v0.3.0 — accessibility & robustness
 
 - [x] F-605: accessibility pass — v0.2-09 (WCAG contrast maths + palette audit test, audited body-text colours, icon-button tooltips, `docs/a11y.md`)
-- [ ] Process: `docs/capability-inventory.md` (guide II.27.3) — capability rows with source URLs, acceptance criteria and evidence (gap G3 in `docs/guide-compliance.md`)
+- [x] Process: `docs/capability-inventory.md` (guide II.27.3) — capability rows with source URLs, acceptance criteria and evidence (gap G3 in `docs/guide-compliance.md`) — 2026-10-30
 - [ ] Process: extract a `Host`/plain-`Ui` seam from `RubricApp` so `egui_kittest` can render real widgets to PNG as CI visual evidence (guide II.27.12, gap G4)
 - [ ] Empty / error states for every panel; no dead controls
 - [x] ~~`gitleaks` (or GitHub secret scanning) in CI~~ — done early 2026-10-24:

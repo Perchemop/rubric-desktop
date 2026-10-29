@@ -50,7 +50,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | §8.4 Human gate on research | Met | 2026-10-24 approval; Stirling PDF client-directed approval |
 | §9 Finished-product gates | Deferred (in part) | logic/CI/legal gates met for current scope; the **visual-evidence** gate needs the `egui_kittest` refactor — gap G4 |
 | §10 Original UI + SVG assets | Met | `docs/design/brand.md`, `assets/` original SVG, `ATTRIBUTION.md` |
-| §11 Tracking files | Deferred (one file) | all present except `docs/capability-inventory.md` — gap G3 |
+| §11 Tracking files | Met (2026-10-30) | all present, including `docs/capability-inventory.md` — gap G3 closed |
 | §12 Repository layout | Met | workspace plus domain/data/ui split |
 | §13 Stress-test mitigations | Met | v0.1.0 gate, PR checklist, early release workflow, human research gate, no local heavy builds |
 
@@ -68,11 +68,11 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | II.23 Maintainer sustainability | Met | `GOVERNANCE.md`, small slices, evidence-based roadmap |
 | II.24.1 Per-slice DoD | Met | slice docs record exact CI runs in `PROGRESS.md` |
 | II.24.1 No personal data / secret in the change | Met (gate added 2026-10-28) | `scripts/scan-personal-data.sh` + the required `Personal data scan` check; a historical home-path leak was removed in PR #37 (history purge still open — gap G7) |
-| II.24.2 Per-phase DoD | Met (one file) | traceability ↔ plan consistent; user directives recorded in `DECISIONS.md` (Ctrl+Y 2026-10-27; the II.29 scan gate 2026-10-28); capability inventory is gap G3 |
+| II.24.2 Per-phase DoD | Met | traceability ↔ plan consistent; user directives recorded in `DECISIONS.md` (Ctrl+Y 2026-10-27; the II.29 scan gate 2026-10-28); `docs/capability-inventory.md` present (G3 closed 2026-10-30) |
 | II.24.3 Release/packaging | Met (asset scan added 2026-10-28) | multi-target CI artefacts + `Cargo.lock`; `release.yml` runs `scripts/scan-release-assets.sh` before publishing; round-trip tests |
-| II.25 Launch readiness | Deferred (in part) | community files, branch protection, scanner gates present and now include the personal-data scan; capability inventory and visual evidence are gaps G3/G4 |
+| II.25 Launch readiness | Deferred (in part) | community files, branch protection, scanner gates present and now include the personal-data scan; capability inventory present (G3 closed); automated visual evidence is the remaining gap G4 |
 | II.26 Open questions for the human | Open | II.26.1 local-test wording applied; II.26.6 licence choice open as `Q-LIC-1`; II.26.7 the git-identity rule now needs a home (it left Part I §5.5) — gap G6 |
-| II.27 Designer role | Deferred (in part) | design system/parity via `docs/design/brand.md` + `docs/parity.md`; `docs/capability-inventory.md` (II.27.3) absent — gap G3 |
+| II.27 Designer role | Met (G4 deferred) | design system/parity via `docs/design/brand.md` + `docs/parity.md` + `docs/capability-inventory.md` (II.27.3, added 2026-10-30); II.27.12 visual evidence is gap G4 |
 | II.27.12 Visual evidence for egui apps | **Deferred** | the guide lists Rubric's shell shape among those `egui_kittest` cannot drive today; needs the `Host`-seam refactor — gap G4. No fake harness is used |
 | II.28 Naming conventions | Adapted | crate/binary names follow cargo; the release artefacts use `arm64` rather than the guide's `aarch64` — recorded as a `DECISIONS.md` deviation (II.28.3) |
 | II.29 Personal-data/secrets scan gate | Met (added 2026-10-28) | four-part scan done; `scripts/scan-personal-data.sh` + `Personal data scan` required check; release-asset scan wired; the historical leak was purged from **all history** on 2026-10-28 (owner-approved `git filter-repo`, force-push, protection restored) — gap G7 resolved |
@@ -105,7 +105,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | --- | --- | --- | --- |
 | G1 | `.ci-required.txt` missing (II.20.4/II.25) | Slows-work | **Fixed 2026-10-27** — root file lists the checks that must decide `ci.sh`'s verdict |
 | G2 | README had no "download, no Rust" path; repo layout and shortcut table were stale | Slows-work | **Fixed 2026-10-27** — README updated |
-| G3 | `docs/capability-inventory.md` (II.27.3) absent | Slows-work | Planned docs slice — added to `ROADMAP.md` v0.3; `docs/spec/README.md` + `docs/parity.md` + `docs/inspiration.md` are the interim sources |
+| G3 | `docs/capability-inventory.md` (II.27.3) absent | Slows-work | **Fixed 2026-10-30** — capability rows with source URLs, acceptance criteria and evidence, cross-linked from `docs/parity.md` |
 | G4 | egui visual evidence (`egui_kittest`, II.27.12) needs a `Host`-seam refactor | Defers a gate | Planned refactor slice — added to `ROADMAP.md` v0.3; no fabricated harness is used in the meantime |
 | G5 | §2.5/II.19.5 release legal checklist not yet recorded per release | Blocks a release only | Run and record in `PROGRESS.md` with the CI run ID when v0.2.0 is tagged |
 | G6 | The git-identity rule has no home in the revised guide (II.26.7) | Client decision | Recorded open; needs the client to re-home it, narrow it to commits, or accept PR authorship as the pushing account. No workaround applied silently |
