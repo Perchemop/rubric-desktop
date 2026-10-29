@@ -741,6 +741,7 @@ pub(crate) fn draw_canvas(
                 popover,
                 egui::CornerRadius::default(),
                 egui::Stroke::new(1.0, Color32::from_gray(150)),
+                egui::StrokeKind::Middle,
             );
             let popover_resp =
                 ui.interact(popover, egui::Id::new("note_popover"), egui::Sense::click());
