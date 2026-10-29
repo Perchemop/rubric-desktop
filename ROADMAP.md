@@ -15,11 +15,11 @@ This file is the staged, milestone view over those.
 
 | Measure | Value | Evidence |
 |---|---|---|
-| Requirement groups fully done | **15 / 17 (88 %)** | `REQUIREMENTS_TRACEABILITY.md` — R-S rows marked DONE |
-| Requirement groups partial | 2 / 17 | R-S-001, R-S-016 (small residual items only) |
+| Requirement groups fully done | **17 / 17 (100 %)** | `REQUIREMENTS_TRACEABILITY.md` — all R-S rows marked DONE |
+| Requirement groups partial | 0 / 17 | — |
 | Requirement groups not started | 0 / 17 | — |
-| Feature IDs done (52 total) | **51 / 52 (98 %)** | `docs/spec/README.md` reconciled 2026-10-30 |
-| Feature IDs open | 1 | F-605 |
+| Feature IDs done (52 total) | **52 / 52 (100 %)** | `docs/spec/README.md` reconciled 2026-10-30 |
+| Feature IDs open | 0 | — |
 | CI | green on `main` | fmt · clippy `-D warnings` · tests · release build |
 | Primary-platform install | verified | installed from CI artefact and launched (Linux aarch64, Crostini) |
 
@@ -66,7 +66,7 @@ Small, low-risk completions; each its own Task + release.
 
 ### v0.3.0 — accessibility & robustness
 
-- [ ] F-605: accessibility pass (contrast audit, full keyboard reachability, screen-reader labels)
+- [x] F-605: accessibility pass — v0.2-09 (WCAG contrast maths + palette audit test, audited body-text colours, icon-button tooltips, `docs/a11y.md`)
 - [ ] Process: `docs/capability-inventory.md` (guide II.27.3) — capability rows with source URLs, acceptance criteria and evidence (gap G3 in `docs/guide-compliance.md`)
 - [ ] Process: extract a `Host`/plain-`Ui` seam from `RubricApp` so `egui_kittest` can render real widgets to PNG as CI visual evidence (guide II.27.12, gap G4)
 - [ ] Empty / error states for every panel; no dead controls

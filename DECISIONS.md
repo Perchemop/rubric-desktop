@@ -147,6 +147,25 @@ Record significant architectural/implementation decisions.
 - **Rationale**: the owner directive of 2026-10-27 makes this mandatory and treats a missed scan as a failed slice (guide II.29). A real person's name, address, email or account name in a public repository is a published defect that survives in history, forks and cached views, so the gate must block merges rather than warn. The scan is dependency-free (git + grep) so the privacy gate adds no supply-chain surface.
 - **Impact**: `scripts/scan-personal-data.sh`, `scripts/scan-release-assets.sh` (new); `.github/workflows/security.yml` (`Personal data scan` job), `.github/workflows/release.yml` (asset scan in `publish`), `.ci-required.txt`; `docs/qc/checklist.md`, `docs/guide-compliance.md`, `PROGRESS.md`. A previously committed maintainer home path was removed from the tree in PR #37 (`58e57d6`); history purge is a separate owner-approved action (gap G7).
 
+## 2026-10-30: Accessibility is machine-checked in the domain; accent stays a fill
+- **Decision**: WCAG 2.x contrast maths live in the domain (`src/domain/a11y.rs`)
+  and the shipped chrome palettes are audited by a headless test
+  (`shipped_palettes_meet_wcag_contrast`), so a palette regression fails CI. Body
+  text colour is set explicitly per theme (`override_text_color`). The brand accent
+  `#E4572E` is ~3.7:1 on white and is therefore used only as a selection/emphasis
+  **fill** (audited at AA-large), never as body text; the dark-theme link uses the
+  lighter brand "Accent 2" `#FF7A45` (≥ 4.5:1 on the indigo surface). Icon-only
+  controls carry descriptive tooltips.
+- **Rationale**: contrast is the one part of accessibility that can be verified
+  headlessly in `cargo test`, so it belongs in the domain with the maths and a
+  test, not in a review checklist. Changing the brand accent to force 4.5:1 as
+  text would visibly change the brand for a case (accent-as-text) the app does not
+  use; keeping it as an audited fill respects both the brand spec and the standard.
+- **Impact**: `apps/rubric/src/domain/a11y.rs` (new), `apps/rubric/src/ui/theme.rs`,
+  `apps/rubric/src/ui/inspector.rs`, `apps/rubric/src/ui/app.rs`, `docs/a11y.md`.
+  Tracked residual: automated `egui_kittest` visual evidence needs a `Host`/plain-`Ui`
+  seam (gap G4), deferred.
+
 ## 2026-10-30: Note popover (F-103) uses `Markup::add_comment`, threaded under the pin
 - **Decision**: The note popover renders comments already stored on the `Note` markup
   (`Markup.comments`, threaded with author + timestamp) and appends new ones through

@@ -52,7 +52,7 @@ Each row maps a spec area to its feature IDs and the planned modules.
 
 | ID | Requirement | Spec IDs | Planned modules | Status |
 |---|-----------|----------|-----------------|--------|
-| R-S-001 | Markup tools: highlight, text markups, note, text, callout, shapes, cloud, polyline/polygon, line/arrow, ink, stamps | F-101–F-111 | src/domain/markup.rs, src/ui/toolbar.rs, src/ui/canvas.rs | PARTIAL (only F-103 note popover open) |
+| R-S-001 | Markup tools: highlight, text markups, note, text, callout, shapes, cloud, polyline/polygon, line/arrow, ink, stamps | F-101–F-111 | src/domain/markup.rs, src/ui/toolbar.rs, src/ui/canvas.rs | DONE — note popover (F-103) landed 2026-10-30 |
 | R-S-002 | Drag-to-draw with live preview (bounds/segment/path/angle/ink) | F-112 | src/ui/canvas.rs (DrawState) | DONE |
 | R-S-003 | Selection editing: select/move/delete, copy properties, z-order | F-113–F-115 | src/domain/action.rs, src/domain/document.rs, src/domain/markup.rs, src/ui/menu.rs, src/ui/app.rs | DONE — copy/paste visual style and page-scoped z-order landed 2026-10-26 (`z_order_stays_within_the_page_and_stops_at_edges`, `apply_style_to_skips_locked_and_missing_markups`) |
 | R-S-004 | Layer visibility and lock | F-116 | src/domain/project.rs (ToolSet → Layer), src/ui/inspector.rs | DONE |
@@ -67,7 +67,7 @@ Each row maps a spec area to its feature IDs and the planned modules.
 | R-S-013 | Persistence: `.rubric.json` sidecar, autosave, recent files, native dialogs, schema version | F-501–F-503, F-506, F-507 | src/data/store.rs, src/ui/app.rs | DONE — autosave loop + `schema_version` guard landed 2026-10-26 (`autosave_due_respects_the_interval_and_clamps_tiny_values`, `load_project_refuses_a_newer_schema_version`) |
 | R-S-014 | PDF import and page rendering | F-504 | src/data/pdf.rs (new), src/ui/canvas.rs | DONE |
 | R-S-015 | Export (rendered image) and print | F-505 | src/data/export.rs (new), src/data/render.rs (new), src/data/print.rs (new), src/ui/app.rs | DONE |
-| R-S-016 | UX polish: shortcuts, dark theme, context menus, undo/redo, accessibility | F-601–F-605 | src/ui/app.rs, src/ui/theme.rs, src/domain/project.rs, src/domain/theme.rs, src/data/prefs.rs | PARTIAL |
+| R-S-016 | UX polish: shortcuts, dark theme, context menus, undo/redo, accessibility | F-601–F-605 | src/ui/app.rs, src/ui/theme.rs, src/domain/project.rs, src/domain/theme.rs, src/data/prefs.rs, src/domain/a11y.rs | DONE — accessibility (F-605) landed 2026-10-30 (`shipped_palettes_meet_wcag_contrast`) |
 | R-S-017 | Packaging: Linux AppImage, macOS DMG, Windows MSI, CI release artifacts | F-701–F-704 | .github/workflows/release.yml, .github/workflows/package.yml, packaging/wix/, docs/pdfium.md | DONE |
 
 ## Feature requirements
@@ -83,12 +83,12 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 | F-005 | Scale/calibration | Page.scale + units | DONE | inspector UI editor landed (Phase 3) |
 | F-006 | Page navigation/thumbnails | Document.pages | TODO | add UI |
 | F-007 | Non-destructive markup (sidecar) | .rubric.json separate | DONE | PDF embedding later optional |
-| F-1xx | Markups/tools + selection/edit (spec) | MarkupKind, Geometry, ToolSet → Layer | PARTIAL | docs/spec/README.md F-101–F-116; R-S-001–R-S-004; drag/multi-point/ink, text+callout editing (F-104/F-105), stamp library (F-111), copy properties (F-114), z-order (F-115) landed 2026-10-19/20/26; note popover (F-103) landed 2026-10-30 |
+| F-1xx | Markups/tools + selection/edit (spec) | MarkupKind, Geometry, ToolSet → Layer | DONE | docs/spec/README.md F-101–F-116; R-S-001–R-S-004; drag/multi-point/ink, text+callout editing (F-104/F-105), stamp library (F-111), copy properties (F-114), z-order (F-115) landed 2026-10-19/20/26; note popover (F-103) landed 2026-10-30 |
 | F-2xx | Measurements + scale/calibration (spec) | Measurement, Page.scale, units | PARTIAL | docs/spec/README.md F-201–F-209; R-S-005–R-S-007 |
 | F-3xx | Review workflow (spec) | ReviewStatus, Comment, author/subject | PARTIAL | docs/spec/README.md F-301–F-305; R-S-008–R-S-010; F-301/F-305 landed 2026-10-19, F-304 landed 2026-10-21 |
 | F-4xx | Navigation/pages (spec) | Document.pages, UiState camera | DONE | docs/spec/README.md F-401–F-406; R-S-011–R-S-012; F-404 (thumbnails), F-405 (grid + snap) and F-406 (rulers) done 2026-10-23; F-401 zoom presets done 2026-10-28 |
 | F-5xx | Persistence/I/O (spec) | .rubric.json store, PDF import, export/print | DONE | docs/spec/README.md F-501–F-507; R-S-013–R-S-015; native dialogs + recent files landed 2026-10-20; PDF import landed 2026-10-21; report export landed 2026-10-21; image export + print landed 2026-10-21; autosave + schema version landed 2026-10-26 |
-| F-6xx | UI/UX polish (spec) | shortcuts, theme, history | PARTIAL | docs/spec/README.md F-601–F-605; R-S-016; F-601 (per-tool keys), F-602 (dark theme), F-603 (context menus) done 2026-10-23 |
+| F-6xx | UI/UX polish (spec) | shortcuts, theme, history | DONE | docs/spec/README.md F-601–F-605; R-S-016; F-601 (per-tool keys), F-602 (dark theme), F-603 (context menus) done 2026-10-23; F-605 (accessibility) done 2026-10-30 |
 | F-7xx | Packaging (spec) | CI release build, installers | DONE | docs/spec/README.md F-701–F-704; R-S-017; release.yml + package.yml done 2026-10-23 (installers unsigned — see docs/assumptions-and-questions Q-PACK-1) |
 | F-8xx | Community/security/ops readiness (operating guide Part II — not product-spec scope; tracked as R-C-*) | — | DONE (initial wave) | see "Community, security and operating-hygiene requirements" below |
 
@@ -102,7 +102,7 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 ## Gaps / exclusions
 - Canonical inventory: `docs/spec/README.md` (52 F-IDs across F-1xx…F-7xx), adopted 2026-10-19; see Phase 1 requirement set above.
 - PDF import — DONE 2026-10-21 (F-503); report/image export + print — DONE 2026-10-21 (F-505/F-506, F-504 printer dialog pending re-verify on CI artefacts)
-- Open product residuals: F-103 (note popover), F-605 — see Roadmap.
+- Open product residuals: none — all 52 spec feature IDs are implemented (see Roadmap).
 - Community/security/ops: done as of 2026-10-24 (R-C-001…R-C-012 below); ongoing duties (Dependabot triage, CodeQL findings triage) recorded in GOVERNANCE.md.
 
 ## Verification
