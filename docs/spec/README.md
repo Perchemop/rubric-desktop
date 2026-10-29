@@ -21,7 +21,7 @@ This requirement set is **original material authored for Rubric**. It is derived
 |---|---|---|---|
 | F-101 | Highlight tool (semi-transparent band over text) | MVP (Ph 2) | done |
 | F-102 | Strikeout / underline / squiggly text markups | MVP (Ph 2) | done |
-| F-103 | Note (anchored comment pin) | MVP (Ph 2) | placement done; floating popover UX pending (comments editable in Inspector) |
+| F-103 | Note (anchored comment pin) | MVP (Ph 2) | done (floating comment popover beside the pin; threaded comments via `Markup::add_comment`) |
 | F-104 | Text box | MVP (Ph 2) | done (placement + in-canvas editing with focus/draft commit) |
 | F-105 | Callout (text box + pointer tail) | MVP (Ph 2) | done (placement + in-canvas editing) |
 | F-106 | Rectangle and ellipse shapes | MVP (Ph 2) | done |
