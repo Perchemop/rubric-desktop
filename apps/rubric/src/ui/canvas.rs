@@ -717,15 +717,17 @@ pub(crate) fn draw_canvas(
     // above all markups; clicking empty canvas space closes it.
     if let Some(note_id) = ui_state.note_popover {
         let note_screen = project.active().and_then(|doc| {
-            doc.find_markup(note_id).map(|m| {
-                screen_rect(m.bounds(), origin, pan, zoom)
-            })
+            doc.find_markup(note_id)
+                .map(|m| screen_rect(m.bounds(), origin, pan, zoom))
         });
         if let Some(sr) = note_screen {
             let zoom = ui_state.zoom.max(0.1);
             let popover = egui::Rect::from_min_max(
                 Pos2::new(sr.max.x + 8.0 / zoom, sr.min.y),
-                Pos2::new(sr.max.x + 8.0 / zoom + 220.0 / zoom, sr.min.y + 160.0 / zoom),
+                Pos2::new(
+                    sr.max.x + 8.0 / zoom + 220.0 / zoom,
+                    sr.min.y + 160.0 / zoom,
+                ),
             );
             let mut child = ui.child_ui(popover, Default::default());
             let inner = egui::Frame::none()
@@ -756,12 +758,11 @@ pub(crate) fn draw_canvas(
                         if add {
                             if let Some(doc) = project.active_mut() {
                                 if let Some(m) = doc.find_markup_mut(note_id) {
-                                    if m
-                                        .add_comment(
-                                            project.settings.author.clone(),
-                                            ui_state.note_draft.clone(),
-                                        )
-                                        .is_some()
+                                    if m.add_comment(
+                                        project.settings.author.clone(),
+                                        ui_state.note_draft.clone(),
+                                    )
+                                    .is_some()
                                     {
                                         ui_state.note_draft.clear();
                                         ui_state.status = "Comment added".to_string();
@@ -780,9 +781,7 @@ pub(crate) fn draw_canvas(
             let _ = inner;
             // Close when clicking elsewhere on the canvas, but not when the
             // click that opened this popover is still over the note itself.
-            let click_on_note = response
-                .hover_pos()
-                .is_some_and(|hp| sr.contains(hp));
+            let click_on_note = response.hover_pos().is_some_and(|hp| sr.contains(hp));
             if response.clicked() && !child.response().hovered() && !click_on_note {
                 ui_state.note_popover = None;
             }
