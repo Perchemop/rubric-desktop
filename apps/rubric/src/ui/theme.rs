@@ -29,10 +29,17 @@ pub fn egui_stroke(c: Color, w: f32) -> Stroke {
 
 /// Brand accent (Rubric red-orange) used for selection and highlights.
 const ACCENT: Color32 = Color32::from_rgb(228, 87, 46);
+/// Lighter brand accent (brand "Accent 2") used as the dark-theme link colour
+/// so link text clears WCAG AA on the deep-indigo surface.
+const ACCENT_2: Color32 = Color32::from_rgb(255, 122, 69);
 /// Deep indigo used as the dark surface colour.
 const INK_900: Color32 = Color32::from_rgb(20, 23, 43);
 /// Slightly lighter indigo for raised surfaces in the dark theme.
 const INK_700: Color32 = Color32::from_rgb(31, 36, 64);
+/// Body text on the light chrome (audited, spec F-605).
+const LIGHT_TEXT: Color32 = Color32::from_rgb(32, 34, 48);
+/// Body text on the dark chrome (audited, spec F-605).
+const DARK_TEXT: Color32 = Color32::from_rgb(232, 234, 242);
 
 /// Apply the given theme to an egui context.
 ///
@@ -50,13 +57,15 @@ pub fn apply_theme(ctx: &egui::Context, theme: Theme) {
             visuals.window_fill = Color32::from_rgb(252, 252, 253);
             visuals.extreme_bg_color = Color32::from_rgb(235, 238, 244);
             visuals.faint_bg_color = Color32::from_rgb(240, 242, 247);
+            visuals.override_text_color = Some(LIGHT_TEXT);
         }
         Theme::Dark => {
             visuals.panel_fill = INK_700;
             visuals.window_fill = INK_700;
             visuals.extreme_bg_color = INK_900;
             visuals.faint_bg_color = Color32::from_rgb(38, 43, 72);
-            visuals.hyperlink_color = ACCENT;
+            visuals.override_text_color = Some(DARK_TEXT);
+            visuals.hyperlink_color = ACCENT_2;
         }
     }
 
@@ -109,5 +118,83 @@ mod tests {
         apply_theme(&ctx, Theme::Light);
         assert_eq!(ctx.theme(), egui::Theme::Light);
         assert!(!ctx.style_of(egui::Theme::Light).visuals.dark_mode);
+    }
+
+    /// Spec F-605: the shipped chrome palettes must clear WCAG AA for body
+    /// text, and AA-large for the accent-on-surface selection/link pairs.
+    #[test]
+    fn shipped_palettes_meet_wcag_contrast() {
+        use crate::domain::a11y::{audit, AuditPair, WcagLevel};
+
+        let light_panel = Color32::from_rgb(250, 250, 252);
+        let light_window = Color32::from_rgb(252, 252, 253);
+        let light_extreme = Color32::from_rgb(235, 238, 244);
+        let dark_faint = Color32::from_rgb(38, 43, 72);
+
+        let pairs = vec![
+            AuditPair::new(
+                "light body text on panel",
+                from_color32(LIGHT_TEXT),
+                from_color32(light_panel),
+                WcagLevel::AaNormal,
+            ),
+            AuditPair::new(
+                "light body text on window",
+                from_color32(LIGHT_TEXT),
+                from_color32(light_window),
+                WcagLevel::AaNormal,
+            ),
+            AuditPair::new(
+                "light body text on extreme bg",
+                from_color32(LIGHT_TEXT),
+                from_color32(light_extreme),
+                WcagLevel::AaNormal,
+            ),
+            AuditPair::new(
+                "dark body text on panel",
+                from_color32(DARK_TEXT),
+                from_color32(INK_700),
+                WcagLevel::AaNormal,
+            ),
+            AuditPair::new(
+                "dark body text on extreme bg",
+                from_color32(DARK_TEXT),
+                from_color32(INK_900),
+                WcagLevel::AaNormal,
+            ),
+            AuditPair::new(
+                "dark body text on faint bg",
+                from_color32(DARK_TEXT),
+                from_color32(dark_faint),
+                WcagLevel::AaNormal,
+            ),
+            // Accent is a selection *fill*, not body text: AA-large applies.
+            AuditPair::new(
+                "light text on accent selection",
+                from_color32(LIGHT_TEXT),
+                from_color32(ACCENT),
+                WcagLevel::AaLarge,
+            ),
+            AuditPair::new(
+                "dark text on accent selection",
+                from_color32(DARK_TEXT),
+                from_color32(ACCENT),
+                WcagLevel::AaLarge,
+            ),
+            AuditPair::new(
+                "dark link on panel",
+                from_color32(ACCENT_2),
+                from_color32(INK_700),
+                WcagLevel::AaNormal,
+            ),
+        ];
+
+        let issues = audit(&pairs);
+        let report = issues
+            .iter()
+            .map(|i| i.describe())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(issues.is_empty(), "WCAG failures:\n{report}");
     }
 }

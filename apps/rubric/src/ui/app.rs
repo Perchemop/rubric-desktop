@@ -1188,17 +1188,19 @@ impl RubricApp {
                 if count > 0 {
                     let current = self.ui.current_page.min(count - 1);
                     if ui
-                        .add_enabled(current + 1 < count, egui::Button::new("▶"))
-                        .clicked()
-                    {
-                        self.jump_to_page(current + 1);
-                    }
-                    ui.label(format!("{}/{}", current + 1, count));
-                    if ui
                         .add_enabled(current > 0, egui::Button::new("◀"))
+                        .on_hover_text("Previous page")
                         .clicked()
                     {
                         self.jump_to_page(current.saturating_sub(1));
+                    }
+                    ui.label(format!("Page {}/{}", current + 1, count));
+                    if ui
+                        .add_enabled(current + 1 < count, egui::Button::new("▶"))
+                        .on_hover_text("Next page")
+                        .clicked()
+                    {
+                        self.jump_to_page(current + 1);
                     }
                 }
             });
