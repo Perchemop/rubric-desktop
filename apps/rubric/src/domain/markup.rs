@@ -707,6 +707,26 @@ impl Markup {
         self.touch();
     }
 
+    /// Append a comment authored by `author` and return its id.
+    ///
+    /// Whitespace-only text is refused (`None`) so a note pin cannot collect
+    /// empty entries from a stray Enter. Refreshes `modified` on success.
+    pub fn add_comment(
+        &mut self,
+        author: impl Into<String>,
+        text: impl Into<String>,
+    ) -> Option<Uuid> {
+        let text = text.into();
+        if text.trim().is_empty() {
+            return None;
+        }
+        let comment = Comment::new(author, text);
+        let id = comment.id;
+        self.comments.push(comment);
+        self.touch();
+        Some(id)
+    }
+
     pub fn touch(&mut self) {
         self.modified = Utc::now();
     }
@@ -1455,5 +1475,26 @@ mod tests {
         assert!(json.contains("\"stamp\":\"rejected\""), "json = {json}");
         let back: Markup = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back.stamp, Some(StampPreset::Rejected));
+    }
+
+    #[test]
+    fn add_comment_appends_and_refuses_blank() {
+        let mut m = Markup::new(
+            0,
+            MarkupKind::Note,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 20.0, 20.0)),
+            "tester",
+        );
+        let before = m.modified;
+        assert_eq!(m.add_comment("Ann", "   "), None);
+        assert!(m.comments.is_empty());
+        assert_eq!(m.modified, before, "a refused comment must not touch");
+
+        let id = m.add_comment("Ann", "looks good").expect("comment id");
+        assert_eq!(m.comments.len(), 1);
+        assert_eq!(m.comments[0].id, id);
+        assert_eq!(m.comments[0].author, "Ann");
+        assert_eq!(m.comments[0].text, "looks good");
+        assert!(m.modified >= before);
     }
 }

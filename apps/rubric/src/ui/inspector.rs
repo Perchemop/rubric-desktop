@@ -548,17 +548,16 @@ pub(crate) fn draw_inspector(
         // with no feedback. The draft text is only cleared once added.
         ui.add_enabled_ui(editable, |ui| {
             ui.text_edit_multiline(comment_text);
-            let added = ui.button("Add Comment").clicked() && !comment_text.is_empty();
-            if added {
-                m.comments.push(crate::domain::Comment::new(
-                    project.settings.author.clone(),
-                    comment_text.clone(),
-                ));
-                comment_text.clear();
-                ui_state.status = "Comment added".to_string();
-                edited = true;
-                // Adding a comment is a committed action: snapshot it once.
-                committed = true;
+            let add_clicked = ui.button("Add Comment").clicked();
+            if add_clicked {
+                let author = project.settings.author.clone();
+                if m.add_comment(author, comment_text.clone()).is_some() {
+                    comment_text.clear();
+                    ui_state.status = "Comment added".to_string();
+                    edited = true;
+                    // Adding a comment is a committed action: snapshot it once.
+                    committed = true;
+                }
             }
         });
     });
