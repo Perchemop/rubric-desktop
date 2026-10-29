@@ -6,7 +6,8 @@ markup/review/measurement tool built as original work.
 ## Licence terms for contributions
 
 By opening a pull request you agree that your contribution is licensed under
-the project licence — **MIT** (`LICENSE`) — via a DCO-style sign-off:
+the project licence — **MIT OR Apache-2.0** (`LICENSE-MIT` / `LICENSE-APACHE`)
+— via a DCO-style sign-off:
 
 ```
 Signed-off-by: Your Name <your.email@example.com>
@@ -16,11 +17,9 @@ Signed-off-by: Your Name <your.email@example.com>
 have the right to submit it, and that you licence it to the project on those
 terms. No CLA is required.
 
-> Note: dual-licensing the project as **MIT OR Apache-2.0** (the Rust
-> ecosystem convention) is recorded as open question **Q-LIC-1** in
-> `docs/assumptions-and-questions.md`; until it is decided, the single
-> MIT licence applies everywhere — keep crate metadata and docs consistent
-> with that.
+> Note: the project is dual-licensed **MIT OR Apache-2.0** (the Rust ecosystem
+> convention); see `docs/assumptions-and-questions.md` (Q-LIC-1, decided 2026-10-30).
+> Crate metadata and docs are consistent with this.
 
 ## Ground rules
 

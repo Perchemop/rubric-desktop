@@ -77,7 +77,7 @@ PDF page geometry conventions), the permissively licensed open-source
 crates listed in `Cargo.toml`, Rubric's own original requirement set
 (`docs/spec/README.md`), and capability-level feature inspiration recorded
 in `docs/inspiration.md`. Dependency licences are tracked in
-`ATTRIBUTION.md` (project licence: MIT).
+`ATTRIBUTION.md` (project licence: MIT OR Apache-2.0).
 
 ## Community and project docs
 
@@ -107,4 +107,6 @@ See `ACCESSIBILITY.md` for the full accessibility commitment and `apps/rubric/sr
 
 ## License
 
-MIT License. See [LICENSE](LICENSE).
+Dual-licensed under the MIT License or the Apache License, Version 2.0,
+at your option. See [`LICENSE-MIT`](LICENSE-MIT) and
+[`LICENSE-APACHE`](LICENSE-APACHE).

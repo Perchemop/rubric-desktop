@@ -59,7 +59,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | Rule | Status | Evidence / deviation |
 | --- | --- | --- |
 | II.18 Naming/branding | Met | `docs/product-name.md`, `docs/design/brand.md` |
-| II.19 Legal depth | Adapted | clean-room, trademark, secrets and research rules met; **licence is MIT-only**, not dual MIT OR Apache-2.0 — recorded open as `Q-LIC-1` in `docs/assumptions-and-questions.md` |
+| II.19 Legal depth | Met (2026-10-30) | clean-room, trademark, secrets and research rules met; **licence is dual MIT OR Apache-2.0** (`LICENSE-MIT` / `LICENSE-APACHE`, Cargo `license = "MIT OR Apache-2.0"`), Q-LIC-1 resolved in `docs/assumptions-and-questions.md` |
 | II.19.5 Release checklist recorded in PROGRESS | **Deferred** | gap G5 (next release) |
 | II.20 Security audit | Met | `SECURITY.md` threat model; `deny.toml`, `scripts/scan-secrets.sh`, CodeQL, SBOM |
 | II.20.4 Authoritative checks in `.ci-required.txt` | Met (fixed 2026-10-27) | root `.ci-required.txt` added — gap G1. On pull requests it lists the always-present checks; **CodeQL is excluded from the PR verdict** because it is skipped on PRs, and it still runs on pushes to `main` (and on schedule), where it is read from the run status directly. `Dependency review` is PR-only, which is exactly the flow `ci.sh` uses |

@@ -1,6 +1,7 @@
 # Attribution — Third-Party Components
 
-Rubric itself is **MIT licensed** (`LICENSE`); all first-party source code,
+Rubric itself is **dual-licensed under MIT OR Apache-2.0**
+(`LICENSE-MIT` / `LICENSE-APACHE`); all first-party source code,
 tests, docs, and branding assets are original work.
 
 ## Direct dependencies (all free/open-source)
