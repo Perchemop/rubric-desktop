@@ -64,7 +64,7 @@ This requirement set is **original material authored for Rubric**. It is derived
 
 | ID | Feature | Priority | Notes |
 |---|---|---|---|
-| F-401 | Zoom (mouse wheel centred on cursor, fit, presets) | Ph 2 | done (wheel zoom centred on cursor, Zoom In/Out/Fit Page); numeric presets (50/100/200 %) pending |
+| F-401 | Zoom (mouse wheel centred on cursor, fit, presets) | Ph 2 | done (wheel zoom centred on cursor, Zoom In/Out/Fit Page, View-menu 50/100/200 % presets) |
 | F-402 | Pan (Space-drag / middle-drag) | Ph 2 | done |
 | F-403 | Page navigation (first/prev/next/jump to page) | Ph 5 | done (top-bar arrows, PageUp/Down, thumbnail click-to-jump) |
 | F-404 | Page thumbnails sidebar | Ph 5 | done (left panel, PDF previews via the shared render cache, numbered placeholders when not PDF-backed, click to jump) |

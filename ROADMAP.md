@@ -15,11 +15,11 @@ This file is the staged, milestone view over those.
 
 | Measure | Value | Evidence |
 |---|---|---|
-| Requirement groups fully done | **14 / 17 (82 %)** | `REQUIREMENTS_TRACEABILITY.md` — R-S rows marked DONE |
-| Requirement groups partial | 3 / 17 | R-S-001, R-S-011, R-S-016 (small residual items only) |
+| Requirement groups fully done | **15 / 17 (88 %)** | `REQUIREMENTS_TRACEABILITY.md` — R-S rows marked DONE |
+| Requirement groups partial | 2 / 17 | R-S-001, R-S-016 (small residual items only) |
 | Requirement groups not started | 0 / 17 | — |
-| Feature IDs done (52 total) | **50 / 52 (96 %)** | `docs/spec/README.md` reconciled 2026-10-26 |
-| Feature IDs open | 2 | F-103, F-605 (+2 sub-items: F-401 zoom presets, F-004 layer rename/reorder) |
+| Feature IDs done (52 total) | **50 / 52 (96 %)** | `docs/spec/README.md` reconciled 2026-10-28 |
+| Feature IDs open | 2 | F-103, F-605 |
 | CI | green on `main` | fmt · clippy `-D warnings` · tests · release build |
 | Primary-platform install | verified | installed from CI artefact and launched (Linux aarch64, Crostini) |
 
@@ -50,8 +50,8 @@ in `PROGRESS.md`.
 
 Small, low-risk completions; each its own Task + release.
 
-- [ ] F-401: zoom presets (50 / 100 / 200 %) in the View menu
-- [ ] F-004: layer rename / reorder in the Inspector
+- [x] F-401: zoom presets (50 / 100 / 200 %) in the View menu — v0.2-07
+- [x] F-004: layer rename / reorder in the Inspector — v0.2-07 (layer-major paint order, default layer pinned)
 - [ ] F-103: floating note popover on the canvas pin
 - [ ] Installer polish: bundle PDFium in every artefact; record checksums
 

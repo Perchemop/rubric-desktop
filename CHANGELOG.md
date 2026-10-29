@@ -5,6 +5,14 @@ All notable changes to this project will be documented here. Format: semantic-is
 ## [Unreleased]
 
 ### Added
+- Zoom presets (F-401): the View menu offers 50 % / 100 % / 200 % buttons,
+  backed by the new pure domain `view` module (`MIN_ZOOM`, `MAX_ZOOM`,
+  `ZOOM_PRESETS`, `clamp_zoom`).
+- Layer rename and reorder (F-004): the Inspector layers panel gains an
+  editable name field and ▲/▼ reorder buttons. Paint order is now layer-major
+  (`Document::markups_in_paint_order`), so reordering layers changes stacking;
+  the default layer is pinned at the bottom and z-order commands are scoped to
+  the same page and layer.
 - v0.2-01 domain foundation for reviewer workflows: `MarkupList` snapshot
   (case-insensitive filters incl. comment/summary search, stable sorts,
   grouping with numeric page order), `StylePreset`/`StylePresetLibrary`
