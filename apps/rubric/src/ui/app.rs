@@ -1087,7 +1087,7 @@ impl RubricApp {
                     self.apply_editor_action(EditorAction::FitPage);
                 }
                 ui.separator();
-                for &pct in view::ZOOM_PRESETS {
+                for pct in view::ZOOM_PRESETS {
                     let zoom = pct as f32 / 100.0;
                     if ui.button(format!("{}%", pct)).clicked() {
                         self.ui.zoom = view::clamp_zoom(zoom);

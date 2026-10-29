@@ -135,8 +135,6 @@ pub(crate) fn draw_inspector(
                 // Reorder buttons
                 if is_default {
                     ui.small("(default)");
-                    ui.enabled(false).button("▲");
-                    ui.enabled(false).button("▼");
                 } else {
                     if ui.button("▲").clicked() {
                         if let Some(doc) = project.active_mut() {
