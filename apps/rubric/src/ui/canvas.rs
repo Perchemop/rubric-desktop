@@ -713,6 +713,88 @@ pub(crate) fn draw_canvas(
         }
     }
 
+    // Floating comment popover for a selected note pin (spec F-103). Rendered
+    // above all markups; clicking empty canvas space closes it.
+    if let Some(note_id) = ui_state.note_popover {
+        let note_screen = project.active().and_then(|doc| {
+            doc.find_markup(note_id).map(|m| {
+                screen_rect(m.bounds(), origin, pan, zoom)
+            })
+        });
+        if let Some(sr) = note_screen {
+            let zoom = ui_state.zoom.max(0.1);
+            let popover = egui::Rect::from_min_max(
+                Pos2::new(sr.max.x + 8.0 / zoom, sr.min.y),
+                Pos2::new(sr.max.x + 8.0 / zoom + 220.0 / zoom, sr.min.y + 160.0 / zoom),
+            );
+            let mut child = ui.child_ui(popover, Default::default());
+            let inner = egui::Frame::none()
+                .fill(ui.visuals().extreme_bg_color)
+                .stroke(egui::Stroke::new(1.0, Color32::from_gray(150)))
+                .inner_margin(8.0)
+                .show(&mut child, |ui| {
+                    ui.set_min_width(200.0);
+                    ui.vertical(|ui| {
+                        ui.heading("Note");
+                        ui.separator();
+                        if let Some(doc) = project.active() {
+                            if let Some(m) = doc.find_markup(note_id) {
+                                for c in &m.comments {
+                                    ui.label(format!(
+                                        "{} · {}",
+                                        c.author,
+                                        c.created.format("%H:%M:%S")
+                                    ));
+                                    ui.small(&c.text);
+                                    ui.separator();
+                                }
+                            }
+                        }
+                        ui.text_edit_multiline(&mut ui_state.note_draft);
+                        let add = ui.button("Add comment").clicked()
+                            && !ui_state.note_draft.trim().is_empty();
+                        if add {
+                            if let Some(doc) = project.active_mut() {
+                                if let Some(m) = doc.find_markup_mut(note_id) {
+                                    if m
+                                        .add_comment(
+                                            project.settings.author.clone(),
+                                            ui_state.note_draft.clone(),
+                                        )
+                                        .is_some()
+                                    {
+                                        ui_state.note_draft.clear();
+                                        ui_state.status = "Comment added".to_string();
+                                        m.touch();
+                                        doc.touch();
+                                    }
+                                }
+                            }
+                            mutated = true;
+                        }
+                        if ui.button("Close").clicked() {
+                            ui_state.note_popover = None;
+                        }
+                    });
+                });
+            let _ = inner;
+            // Close when clicking elsewhere on the canvas, but not when the
+            // click that opened this popover is still over the note itself.
+            let click_on_note = response
+                .hover_pos()
+                .is_some_and(|hp| sr.contains(hp));
+            if response.clicked() && !child.response().hovered() && !click_on_note {
+                ui_state.note_popover = None;
+            }
+            if ui.ctx().input(|i| i.key_pressed(egui::Key::Escape)) {
+                ui_state.note_popover = None;
+            }
+        } else {
+            // The note no longer exists; close the popover.
+            ui_state.note_popover = None;
+        }
+    }
+
     // Pointer position in page space. `raw_pos` is exact and drives
     // hit-testing — a click must still pick a markup that is not grid-aligned.
     // `page_pos` additionally honours snap-to-grid (F-405) and drives creation,
@@ -885,6 +967,18 @@ pub(crate) fn draw_canvas(
                         ui_state.selected.clear();
                         ui_state.selected.insert(id);
                         ui_state.status = format!("Selected {}", id);
+                        // Note pins open a floating comment popover (F-103);
+                        // selecting anything else closes an open one.
+                        let is_note = project
+                            .active()
+                            .and_then(|d| d.find_markup(id))
+                            .is_some_and(|m| m.kind == MarkupKind::Note);
+                        if is_note {
+                            ui_state.note_popover = Some(id);
+                            ui_state.note_draft.clear();
+                        } else {
+                            ui_state.note_popover = None;
+                        }
                         // Enter edit mode on double-click for Text/Callout markups.
                         if response.double_clicked() {
                             let (kind_ok, editable, visible, original) = {
@@ -927,7 +1021,10 @@ pub(crate) fn draw_canvas(
                             }
                         }
                     }
-                    None => ui_state.selected.clear(),
+                    None => {
+                        ui_state.selected.clear();
+                        ui_state.note_popover = None;
+                    }
                 }
             } else if let Some(kind) = ui_state.active_tool.to_kind() {
                 if is_path_kind(kind) {
@@ -1072,6 +1169,11 @@ pub(crate) fn draw_canvas(
                             focus_requested: false,
                         });
                         ui_state.status = "Editing text".to_string();
+                    }
+                    if kind == MarkupKind::Note {
+                        ui_state.note_popover = Some(new_id);
+                        ui_state.note_draft.clear();
+                        ui_state.status = "Note added — add a comment".to_string();
                     }
                 }
             }
@@ -1320,6 +1422,11 @@ pub(crate) fn draw_canvas(
                                 focus_requested: false,
                             });
                             ui_state.status = "Editing text".to_string();
+                        }
+                        if kind == MarkupKind::Note {
+                            ui_state.note_popover = Some(new_id);
+                            ui_state.note_draft.clear();
+                            ui_state.status = "Note added — add a comment".to_string();
                         }
                     }
                     super::app::DrawState::Segment { start, end, kind } => {

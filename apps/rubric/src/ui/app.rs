@@ -130,6 +130,10 @@ pub(crate) struct UiState {
     /// In-canvas text editor state (Text/Callout markups only). UI-only, no
     /// serde: it never leaves the session.
     pub(crate) text_edit: Option<TextEditState>,
+    /// Note pin whose floating popover is open (spec F-103). UI-only.
+    pub(crate) note_popover: Option<Uuid>,
+    /// Draft text in the note popover's comment box (spec F-103). UI-only.
+    pub(crate) note_draft: String,
     /// A context-menu action requested this frame (spec F-603). The canvas and
     /// the inspector only *request* actions; `ui()` performs them so history
     /// snapshots and status text follow a single path.
@@ -179,6 +183,8 @@ impl Default for UiState {
             move_selection: false,
             move_changed: false,
             text_edit: None,
+            note_popover: None,
+            note_draft: String::new(),
             pending_action: None,
             style_clipboard: None,
             current_page: 0,
