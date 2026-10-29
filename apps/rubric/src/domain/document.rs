@@ -959,16 +959,18 @@ mod tests {
         assert_eq!(doc.layers[0].id, doc.default_layer_id());
         assert_eq!(doc.layers[1].id, a);
         assert_eq!(doc.layers[2].id, b);
-        // move B up
+        // move B up (swaps with A, which is allowed)
         assert!(doc.move_layer_up(b));
         assert_eq!(doc.layers[1].id, b);
         assert_eq!(doc.layers[2].id, a);
-        // moving A up would swap with default → disallowed
-        assert!(!doc.move_layer_up(a));
-        // move B down back
+        // move B back down
         assert!(doc.move_layer_down(b));
         assert_eq!(doc.layers[1].id, a);
         assert_eq!(doc.layers[2].id, b);
+        // A may not swap past the pinned default layer (index 0)
+        assert!(!doc.move_layer_up(a));
+        // B is already last
+        assert!(!doc.move_layer_down(b));
         // default cannot be moved
         let def = doc.default_layer_id();
         assert!(!doc.move_layer_up(def));
@@ -1010,29 +1012,35 @@ mod tests {
         let mut doc = Document::empty("Doc");
         let l1 = doc.add_layer("L1");
         let l2 = doc.add_layer("L2");
+        // Vector order: a(l1), c(l2), b(l1) — c sits between the two L1 markups.
         let mut a = markup().with_layer(l1);
         a.page = 0;
-        let mut b = markup().with_layer(l1);
-        b.page = 0;
         let mut c = markup().with_layer(l2);
         c.page = 0;
+        let mut b = markup().with_layer(l1);
+        b.page = 0;
         doc.add_markup(a.clone());
-        doc.add_markup(b.clone());
         doc.add_markup(c.clone());
-        // bring_forward b should skip c (different layer)
-        assert!(doc.bring_forward(b.id));
-        // order within vector: a, c, b
-        assert_eq!(doc.markups[0].id, a.id);
-        assert_eq!(doc.markups[1].id, c.id);
-        assert_eq!(doc.markups[2].id, b.id);
-        // send_backward b -> returns to after a (before c)
-        assert!(doc.send_backward(b.id));
-        assert_eq!(doc.markups[0].id, a.id);
-        assert_eq!(doc.markups[1].id, b.id);
-        assert_eq!(doc.markups[2].id, c.id);
-        // bring_to_front for b goes to last in its layer (still after a)
-        assert!(doc.bring_to_front(b.id));
-        assert_eq!(doc.markups[1].id, b.id); // a,b,c order
+        doc.add_markup(b.clone());
+        let ids = |d: &Document| d.markups.iter().map(|m| m.id).collect::<Vec<_>>();
+        assert_eq!(ids(&doc), vec![a.id, c.id, b.id]);
+
+        // bring_forward(a) skips c (different layer) and swaps with b.
+        assert!(doc.bring_forward(a.id));
+        assert_eq!(ids(&doc), vec![b.id, c.id, a.id]);
+        // send_backward(a) swaps back with b.
+        assert!(doc.send_backward(a.id));
+        assert_eq!(ids(&doc), vec![a.id, c.id, b.id]);
+        // bring_to_front(a) moves to the top of its layer (index of b).
+        assert!(doc.bring_to_front(a.id));
+        assert_eq!(ids(&doc), vec![c.id, b.id, a.id]);
+        // send_to_back(a) moves below b, still after c in vector terms.
+        assert!(doc.send_to_back(a.id));
+        assert_eq!(ids(&doc), vec![c.id, a.id, b.id]);
+        // b is already last in its layer.
+        assert!(!doc.bring_forward(b.id));
+        // c is isolated in L2, so neither direction moves it.
         assert!(!doc.bring_forward(c.id));
+        assert!(!doc.send_backward(c.id));
     }
 }
