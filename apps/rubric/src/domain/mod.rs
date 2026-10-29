@@ -1,5 +1,6 @@
 //! Domain module re-exports and common types.
 
+pub mod a11y;
 pub mod action;
 pub mod diff;
 pub mod document;
@@ -16,6 +17,7 @@ pub mod thumbs;
 pub mod units;
 pub mod view;
 
+pub use a11y::{audit, contrast_ratio, meets, relative_luminance, A11yIssue, AuditPair, WcagLevel};
 pub use action::EditorAction;
 pub use diff::{diff_documents, diff_projects, DiffResult, MarkupChange, MarkupSummaryRow};
 pub use document::{Document, Layer, LayerError, Page};

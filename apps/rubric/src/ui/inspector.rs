@@ -93,7 +93,12 @@ pub(crate) fn draw_inspector(
             ui.horizontal(|ui| {
                 let visible = layer.visible;
                 let eye = if visible { "👁" } else { "·" };
-                if ui.button(eye).clicked() {
+                let eye_tip = if visible {
+                    "Hide layer"
+                } else {
+                    "Show layer"
+                };
+                if ui.button(eye).on_hover_text(eye_tip).clicked() {
                     if let Some(doc) = project.active_mut() {
                         if doc.set_layer_visible(id, !visible) {
                             committed = true;
@@ -107,7 +112,8 @@ pub(crate) fn draw_inspector(
                 }
                 let locked = layer.locked;
                 let padlock = if locked { "🔒" } else { "🔓" };
-                if ui.button(padlock).clicked() {
+                let padlock_tip = if locked { "Unlock layer" } else { "Lock layer" };
+                if ui.button(padlock).on_hover_text(padlock_tip).clicked() {
                     if let Some(doc) = project.active_mut() {
                         if doc.set_layer_locked(id, !locked) {
                             committed = true;
@@ -136,7 +142,11 @@ pub(crate) fn draw_inspector(
                 if is_default {
                     ui.small("(default)");
                 } else {
-                    if ui.button("▲").clicked() {
+                    if ui
+                        .button("▲")
+                        .on_hover_text("Move layer up (towards the front)")
+                        .clicked()
+                    {
                         if let Some(doc) = project.active_mut() {
                             if doc.move_layer_up(id) {
                                 committed = true;
@@ -144,7 +154,11 @@ pub(crate) fn draw_inspector(
                             }
                         }
                     }
-                    if ui.button("▼").clicked() {
+                    if ui
+                        .button("▼")
+                        .on_hover_text("Move layer down (towards the back)")
+                        .clicked()
+                    {
                         if let Some(doc) = project.active_mut() {
                             if doc.move_layer_down(id) {
                                 committed = true;
