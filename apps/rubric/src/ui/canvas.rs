@@ -729,14 +729,21 @@ pub(crate) fn draw_canvas(
                     sr.min.y + 160.0 / zoom,
                 ),
             );
-            // Box drawn as a widget so its response covers the whole popover
-            // area (used for the "click outside" check).
-            let popover_resp = ui.put(
+            // Box painted directly (egui 0.36's Frame has no `none` ctor);
+            // the interact response covers the whole popover area for the
+            // "click outside" check.
+            painter.rect_filled(
                 popover,
-                egui::Frame::none()
-                    .fill(ui.visuals().extreme_bg_color)
-                    .stroke(egui::Stroke::new(1.0, Color32::from_gray(150))),
+                egui::CornerRadius::default(),
+                ui.visuals().extreme_bg_color,
             );
+            painter.rect_stroke(
+                popover,
+                egui::CornerRadius::default(),
+                egui::Stroke::new(1.0, Color32::from_gray(150)),
+            );
+            let popover_resp =
+                ui.interact(popover, egui::Id::new("note_popover"), egui::Sense::click());
             let inner = popover.shrink(8.0);
             let mut cy = inner.min.y;
             let mut next_row = move |h: f32| {
