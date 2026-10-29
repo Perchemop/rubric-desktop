@@ -15,11 +15,11 @@ implemented · **Todo** = not started · **Out of scope** = deliberately exclude
 
 | Capability (inspiration level) | Feature IDs | Status | Notes |
 |---|---|---|---|
-| Open & render PDF documents, page navigation | F-401–F-406, F-504 | Partial | PDF import + page rendering (Phase 5); page thumbnails (F-404), grid + snap-to-grid (F-405) and rulers (F-406) done 2026-10-23 |
-| Text & review markup (highlight, strikeout, underline, squiggly, text, callout, note, stamp) | F-101–F-111 | Partial | tool set landed; note popover (F-103) pending |
-| Shape & path markup (rectangle, ellipse, cloud, polygon, polyline, line, arrow, ink) | F-101–F-116 | Partial | shapes/paths + drag-to-draw landed; page-scoped z-order and copy properties (F-114/F-115) landed 2026-10-26 |
-| Selection editing (select, move, delete, copy properties, z-order, layers) | F-113–F-116 | Done | select/move/delete, copy/paste visual style, page-scoped z-order + layer visibility/lock (F-116) done |
-| Measurements with page scale (length, perimeter, area, angle, diameter, radius, count) | F-201–F-206 | Partial | measure tools + scale/units landed |
+| Open & render PDF documents, page navigation | F-401–F-406, F-504 | Done | PDF import + page rendering, thumbnails (F-404), grid/snap (F-405), rulers (F-406), zoom presets (F-401) |
+| Text & review markup (highlight, strikeout, underline, squiggly, text, callout, note, stamp) | F-101–F-111 | Done | tool set + note popover (F-103) 2026-10-30 |
+| Shape & path markup (rectangle, ellipse, cloud, polygon, polyline, line, arrow, ink) | F-101–F-116 | Done | shapes/paths + drag-to-draw; page+layer-scoped z-order and copy properties (F-114/F-115) |
+| Selection editing (select, move, delete, copy properties, z-order, layers) | F-113–F-116 | Done | select/move/delete, copy/paste visual style, page+layer-scoped z-order + layer visibility/lock/rename/reorder |
+| Measurements with page scale (length, perimeter, area, angle, diameter, radius, count) | F-201–F-206 | Done | measure tools + scale/units + on-canvas labels |
 | Calibration & units (presets, custom ratio, unit selection, labels) | F-207–F-209 | Done | inspector scale editor + on-canvas labels |
 | Review workflow (status, comments, author/subject, report) | F-301–F-305 | Done | statuses, comments, summary report, status legend |
 | Markups list / review console (filter, sort, group) | R-V02-01 | Done | `MarkupList` domain model plus resizable bottom panel with search/status/author/subject/layer filters, all sorts and group modes, row selection + page jump (2026-10-26) |
@@ -29,7 +29,7 @@ implemented · **Todo** = not started · **Out of scope** = deliberately exclude
 | Export & print (rendered page image, print) | F-505 | Done | image export + print |
 | Undo/redo | F-604 | Done | bounded 128 snapshots |
 | UI/UX polish (keyboard shortcuts, dark theme, context menus) | F-601–F-603 | Done (2026-10-23) | F-601 per-tool keys, F-602 dark theme, F-603 context menus |
-| Accessibility (contrast, keyboard reachability) | F-605 | Todo | reviewed later |
+| Accessibility (contrast, keyboard reachability) | F-605 | Done | WCAG contrast audit test + audited body-text colours + labelled controls (2026-10-30, `docs/a11y.md`) |
 | Packaging & installers (AppImage, DMG, MSI, CI artifacts) | F-701–F-704 | Done (2026-10-23) | CI release build for 3 targets + Linux AppImage, macOS DMG, Windows MSI; installers unsigned (Q-PACK-1) |
 | Web (WASM) target | — | Out of scope (v1) | see `docs/scope.md` |
 

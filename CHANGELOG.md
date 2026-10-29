@@ -5,6 +5,9 @@ All notable changes to this project will be documented here. Format: semantic-is
 ## [Unreleased]
 
 ### Added
+- `docs/capability-inventory.md` (guide II.27.3): one reviewable row per
+  capability — source URL, acceptance criteria and evidence — closing process
+  gap G3. `docs/parity.md` and `docs/guide-compliance.md` updated to match.
 - Accessibility pass (F-605): a pure domain module `domain/a11y.rs` computes WCAG
   relative luminance and contrast ratio; a headless test audits the shipped
   chrome palettes (body text passes AA, accent selection/link pairs pass
