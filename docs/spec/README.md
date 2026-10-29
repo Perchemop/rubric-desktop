@@ -91,7 +91,7 @@ This requirement set is **original material authored for Rubric**. It is derived
 | F-602 | Dark theme (light/dark toggle) | Ph 6 | done (View > Theme light/dark toggle, persisted preference) |
 | F-603 | Context menus (canvas + inspector) | Ph 6 | done (shared menu: tool submenu, delete/clear, undo/redo/zoom) |
 | F-604 | Undo/redo (bounded history, 128 snapshots) | MVP | done |
-| F-605 | Accessibility (readable contrast, keyboard-reachable controls) | later | pending review |
+| F-605 | Accessibility (readable contrast, keyboard-reachable controls) | later | done (WCAG contrast audit test, audited body-text colours, keyboard shortcuts, icon-button tooltips; see `docs/a11y.md`) |
 
 ### F-7xx — Packaging
 

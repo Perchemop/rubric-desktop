@@ -927,9 +927,35 @@ flow now enforced by branch protection.
 - F-605 accessibility pass (contrast audit, keyboard reachability, labels),
   then G3 `docs/capability-inventory.md` and G4 `egui_kittest` Host-seam refactor.
 
+## 2026-10-30 — v0.2-09 accessibility pass (F-605)
+**Status**: implemented on `v0.2-09-accessibility`, merged to `main` at `9dcbf46`
+(CI `40963721115`, Security `40963721143`, all required checks green).
+
+### Completed
+- `domain/a11y.rs`: WCAG 2.x relative luminance, contrast ratio, `WcagLevel`
+  (AA-normal 4.5, AA-large 3.0, AAA 7.0), `AuditPair`/`A11yIssue`/`audit`, with
+  headless tests (pure black/white 21:1, brand ink ≥ 18:1, identity, symmetry,
+  #767676 4.5:1 boundary, failures-only audit).
+- `ui/theme.rs`: explicit per-theme `override_text_color`, a lighter dark-theme
+  link accent (brand "Accent 2" `#FF7A45`), and the audit test
+  `shipped_palettes_meet_wcag_contrast`.
+- `ui/inspector.rs`: tooltips on the layer visibility/lock and reorder (▲/▼)
+  icon buttons. `ui/app.rs`: page-nav arrows are prev/next-ordered and labelled
+  ("Previous page"/"Next page"), label reads "Page n/N".
+- `docs/a11y.md`: audit table, the accepted accent-as-fill limitation, and the
+  deferred `egui_kittest` visual-evidence gap (G4).
+
+### Result
+- All 52 spec feature IDs and all 17 requirement groups are now implemented.
+- Remaining tracked work is process-only: G3 `docs/capability-inventory.md` and
+  G4 `egui_kittest` Host-seam refactor (see `docs/guide-compliance.md`).
+
 ## Summary
-Phases 1–4 complete and CI-green. Phase 5 complete (dialogs, recents, PDF
-import, report export, page image export, print). Phase 6 in progress: dark
-theme (F-602), per-tool keyboard shortcuts (F-601) and editor context menus
-(F-603) merged. Process follows guide §5 (Chat → Task → PR → Merge) with GitHub
-Actions as the free Task Runner. CI-first throughout.
+Phases 1–6 complete and CI-green. All 52 spec feature IDs and all 17 requirement
+groups are implemented, including the v0.2 reviewer/auditor milestone
+(Markups List, style presets, project diff, autosave, schema version, note
+popover, zoom presets, layer rename/reorder, accessibility) and the II.29
+personal-data/secret scan gate. Remaining work is process-only: G3
+`docs/capability-inventory.md` and G4 `egui_kittest` visual-evidence seam.
+Process follows guide §5 (Chat → Task → PR → Merge) with GitHub Actions as the
+free Task Runner. CI-first throughout.

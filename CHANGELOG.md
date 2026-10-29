@@ -5,6 +5,12 @@ All notable changes to this project will be documented here. Format: semantic-is
 ## [Unreleased]
 
 ### Added
+- Accessibility pass (F-605): a pure domain module `domain/a11y.rs` computes WCAG
+  relative luminance and contrast ratio; a headless test audits the shipped
+  chrome palettes (body text passes AA, accent selection/link pairs pass
+  AA-large). Body-text colour is now set explicitly per theme (a lighter
+  dark-theme link accent), icon-only controls (layer visibility/lock/reorder)
+  gained tooltips, and the page-navigation arrows are labelled. See `docs/a11y.md`.
 - Note popover (F-103): selecting or creating a Note pin opens a floating comment
   popover positioned beside the pin (threaded comments via `Markup::add_comment`,
   which refuses blank text); the popover has a draft box, Add comment / Close
