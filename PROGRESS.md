@@ -974,15 +974,33 @@ flow now enforced by branch protection.
 - **G4 (automated visual evidence)**: owner reviewed the trade-off and chose to
   keep the documented deferral (no fabricated harness / no fake screenshots),
   recorded in `DECISIONS.md`, `docs/guide-compliance.md` and `ROADMAP.md` v0.3.
-- Remaining open items are release-time (G5 per-release legal checklist) or
-  client questions (`Q-LIC-1` licence choice); no product work remains.
+- **G5 (release legal checklist)**: recorded against CI run `41022008677`
+  (Release) / `41022008545` (Package) in `docs/qc/checklist.md` Run log;
+  guide-compliance II.19.5 / G5 marked Met.
+- **Q-LIC-1 (licence)**: resolved as dual MIT OR Apache-2.0 (PR #50/51);
+  `LICENSE-MIT` / `LICENSE-APACHE`, all crate `license` fields updated,
+  CONTRIBUTING/README/ATTRIBUTION consistent.
+
+## 2026-10-30 — Release v0.2.0 published
+**Status**: tagged `v0.2.0` at `main` `d68debd`, CI-green, released on GitHub.
+
+### Release
+- Release: https://github.com/Perchemop/rubric-desktop/releases/tag/v0.2.0
+- CI Release run `41022008677` (green); CI Package run `41022008545` (green)
+- Required `Personal data scan` green on all runs
+- Assets: rubric-linux-arm64.zip, rubric-linux-x86_64.zip,
+  rubric-macos-arm64.zip, rubric-windows-x86_64.zip
+- Release notes derived from CHANGELOG; assets signed unsigned (Q-PACK-1);
+  desktop icons SVG-only pending raster set (Q-PACK-2)
 
 ## Summary
 Phases 1–6 complete and CI-green. All 52 spec feature IDs and all 17 requirement
 groups are implemented, including the v0.2 reviewer/auditor milestone
 (Markups List, style presets, project diff, autosave, schema version, note
 popover, zoom presets, layer rename/reorder, accessibility) and the II.29
-personal-data/secret scan gate. Remaining work is process-only: G3
-`docs/capability-inventory.md` and G4 `egui_kittest` visual-evidence seam.
+personal-data/secret scan gate. Process gaps resolved: G3 capability inventory,
+G5 release legal checklist, G6 git identity — all closed. The only remaining
+tracked item is G4 (automated visual evidence), confirmed as a documented,
+owner-approved deferral. v0.2.0 is released.
 Process follows guide §5 (Chat → Task → PR → Merge) with GitHub Actions as the
 free Task Runner. CI-first throughout.

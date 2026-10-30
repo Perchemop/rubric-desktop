@@ -4,6 +4,29 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-30
+
+### Released
+
+All 52 spec feature IDs and 17 requirement groups implemented and CI-verified,
+published as Rubric v0.2.0:
+https://github.com/Perchemop/rubric-desktop/releases/tag/v0.2.0
+
+Release assets (unsigned, Q-PACK-1):
+- rubric-linux-arm64.zip, rubric-linux-x86_64.zip
+- rubric-macos-arm64.zip
+- rubric-windows-x86_64.zip
+
+Dual-licensed MIT OR Apache-2.0 (Q-LIC-1 resolved).
+
+Highlights since v0.1.0: note popover with threaded comments (F-103), zoom
+presets 50/100/200% (F-401), layer rename/reorder with real layer-major paint
+order (F-004), accessibility contrast audit with audited body-text colours and
+labelled controls (F-605), capability inventory (guide II.27.3, gap G3 closed),
+git-identity rule re-homed (guide II.26.7, gap G6 resolved), release legal
+checklist recorded (guide §2.5, gap G5 resolved). Automated UI-screenshot
+evidence (guide II.27.12, gap G4) remains a documented deferral.
+
 ### Added
 - `AGENTS.md` now states the git-identity rule (every git action authored
   `Rubric Dev <dev@example.com>`), re-homing guide II.26.7 — process gap G6
