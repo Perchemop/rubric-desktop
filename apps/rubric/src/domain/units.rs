@@ -315,12 +315,18 @@ mod tests {
         // 1 in on paper == 1 ft on site.
         let plan = Scale::from_ratio(MeasureUnit::Foot, 1.0, 72.0);
         let text = plan.describe();
-        assert!(text.starts_with("1 in = 1.000 ft"), "unexpected describe(): {text}");
+        assert!(
+            text.starts_with("1 in = 1.000 ft"),
+            "unexpected describe(): {text}"
+        );
 
         // 1:1 in inches: one inch of paper is one real inch.
         let full_size = Scale::new(MeasureUnit::Inch, 1.0 / 72.0);
         let text = full_size.describe();
-        assert!(text.starts_with("1 in = 1.000 in"), "unexpected describe(): {text}");
+        assert!(
+            text.starts_with("1 in = 1.000 in"),
+            "unexpected describe(): {text}"
+        );
     }
 
     #[test]

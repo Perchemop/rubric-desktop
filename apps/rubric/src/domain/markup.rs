@@ -342,7 +342,11 @@ pub fn next_count_number<'a>(markups: impl IntoIterator<Item = &'a Markup>, page
 /// Human-readable running-total label for `total` count markers, e.g.
 /// `3 count`.
 pub fn count_total_label(total: u32) -> String {
-    units::format_value(MeasureKind::Count, units::MeasureUnit::Point, f64::from(total))
+    units::format_value(
+        MeasureKind::Count,
+        units::MeasureUnit::Point,
+        f64::from(total),
+    )
 }
 
 /// Review workflow status (spec F-301).
@@ -1437,7 +1441,12 @@ mod tests {
             },
             "t",
         );
-        let markups = vec![count_marker(0, 1), count_marker(0, 2), count_marker(1, 1), decoy];
+        let markups = vec![
+            count_marker(0, 1),
+            count_marker(0, 2),
+            count_marker(1, 1),
+            decoy,
+        ];
         assert_eq!(next_count_number(&markups, 0), 3);
         assert_eq!(next_count_number(&markups, 1), 2);
         assert_eq!(next_count_number(&markups, 2), 1, "fresh page starts at 1");
@@ -1455,7 +1464,12 @@ mod tests {
             },
             "t",
         );
-        let markups = vec![count_marker(0, 1), count_marker(0, 5), count_marker(1, 1), decoy];
+        let markups = vec![
+            count_marker(0, 1),
+            count_marker(0, 5),
+            count_marker(1, 1),
+            decoy,
+        ];
         assert_eq!(count_markers_on_page(&markups, 0), 2);
         assert_eq!(count_markers_on_page(&markups, 1), 1);
         assert_eq!(count_markers_on_page(&markups, 2), 0);

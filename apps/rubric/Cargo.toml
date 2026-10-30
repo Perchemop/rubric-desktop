@@ -30,5 +30,5 @@ pdfium-render = "0.9"
 # Shared suite crates (guide §7): crash reporting and update checks.
 # Explicit `version` alongside `path`: cargo-deny treats a versionless
 # dependency spec as a wildcard, which the dependency-hygiene gate forbids.
-crash-report = { path = "../../crates/crash-report", version = "0.1.0" }
-update-check = { path = "../../crates/update-check", version = "0.1.0" }
+crash-report = { path = "../../crates/crash-report", version = "0.3.0" }
+update-check = { path = "../../crates/update-check", version = "0.3.0" }

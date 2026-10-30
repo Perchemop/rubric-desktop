@@ -277,18 +277,14 @@ fn draw_markup(
                 MarkupKind::Strikeout => {
                     // A horizontal line through the vertical middle of the box.
                     let y = sr.center().y;
-                    painter.line_segment(
-                        [Pos2::new(sr.min.x, y), Pos2::new(sr.max.x, y)],
-                        stroke_eg,
-                    );
+                    painter
+                        .line_segment([Pos2::new(sr.min.x, y), Pos2::new(sr.max.x, y)], stroke_eg);
                 }
                 MarkupKind::Underline => {
                     // A horizontal line just inside the bottom edge.
                     let y = sr.max.y - stroke_w;
-                    painter.line_segment(
-                        [Pos2::new(sr.min.x, y), Pos2::new(sr.max.x, y)],
-                        stroke_eg,
-                    );
+                    painter
+                        .line_segment([Pos2::new(sr.min.x, y), Pos2::new(sr.max.x, y)], stroke_eg);
                 }
                 MarkupKind::Squiggly => {
                     // A zig-zag near the baseline (bottom edge).
@@ -683,7 +679,14 @@ pub(crate) fn draw_canvas(
     // Render markups in paint order (layer-major, then vector order).
     if let Some(doc) = project.active() {
         for m in doc.markups_in_paint_order(page.index) {
-            draw_markup(&painter, origin, pan, zoom, m, project.settings.show_measurements);
+            draw_markup(
+                &painter,
+                origin,
+                pan,
+                zoom,
+                m,
+                project.settings.show_measurements,
+            );
         }
     }
 

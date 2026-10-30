@@ -206,9 +206,18 @@ pub(crate) fn draw_inspector(
         ui.horizontal_wrapped(|ui| {
             let presets: [(&str, Scale); 4] = [
                 ("1:1", Scale::PAPER),
-                ("1 in = 1 ft", Scale::from_ratio(MeasureUnit::Foot, 1.0, 72.0)),
-                ("1 in = 10 ft", Scale::from_ratio(MeasureUnit::Foot, 10.0, 72.0)),
-                ("1 in = 50 ft", Scale::from_ratio(MeasureUnit::Foot, 50.0, 72.0)),
+                (
+                    "1 in = 1 ft",
+                    Scale::from_ratio(MeasureUnit::Foot, 1.0, 72.0),
+                ),
+                (
+                    "1 in = 10 ft",
+                    Scale::from_ratio(MeasureUnit::Foot, 10.0, 72.0),
+                ),
+                (
+                    "1 in = 50 ft",
+                    Scale::from_ratio(MeasureUnit::Foot, 50.0, 72.0),
+                ),
             ];
             for (label, sc) in presets.iter() {
                 if ui.button(*label).clicked() && !same_scale(*sc, before) {

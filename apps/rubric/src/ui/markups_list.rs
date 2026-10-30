@@ -10,8 +10,8 @@ use eframe::egui::{self, ComboBox, RichText, Ui};
 use uuid::Uuid;
 
 use crate::domain::{
-    MarkupGroupKey, MarkupKind, MarkupList, MarkupListFilter, MarkupListSort, Project, ReviewStatus,
-    NONE_LABEL,
+    MarkupGroupKey, MarkupKind, MarkupList, MarkupListFilter, MarkupListSort, Project,
+    ReviewStatus, NONE_LABEL,
 };
 use crate::ui::app::{MarkupLayerFilter, UiState};
 
@@ -194,12 +194,7 @@ pub(crate) fn draw_markups_list(
             });
 
         ComboBox::from_id_salt("markup_kind_filter")
-            .selected_text(
-                state
-                    .markup_kind
-                    .map(|k| k.label())
-                    .unwrap_or("All kinds"),
-            )
+            .selected_text(state.markup_kind.map(|k| k.label()).unwrap_or("All kinds"))
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut state.markup_kind, None, "All kinds");
                 for kind in MarkupKind::ALL {
