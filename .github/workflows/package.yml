@@ -69,10 +69,10 @@ jobs:
           StartupNotify=true
           DESKTOP
 
-          cat > "$APPDIR/usr/share/metainfo/rubric.appdata.xml" <<'META'
+          cat > "$APPDIR/usr/share/metainfo/com.github.perchemop.rubric.appdata.xml" <<'META'
           <?xml version="1.0" encoding="UTF-8"?>
           <component type="desktop-application">
-            <id>desktop.rubric</id>
+            <id>com.github.perchemop.rubric</id>
             <name>Rubric</name>
             <summary>Free, cross-platform PDF markup, review and measurement</summary>
             <description>

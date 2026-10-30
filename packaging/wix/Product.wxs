@@ -85,7 +85,7 @@
   <Fragment>
     <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
       <Component Id="RubricExecutable" Guid="9F0E7C1D-2B34-4D5E-8A7B-1C9D7F0E2B34">
-        <File Id="rubricExe" Source="rubric.exe" KeyPath="yes" />
+        <File Id="rubricExe" Source="..\..\rubric.exe" KeyPath="yes" />
         <Shortcut
             Id="StartMenuRubricFromExe"
             Name="Rubric"
