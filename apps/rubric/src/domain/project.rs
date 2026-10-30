@@ -1046,7 +1046,7 @@ mod tests {
         let mut modified = initial.clone();
         modified.rename("Modified");
 
-        let mut history = History::new(initial);
+        let mut history = History::new(initial.clone());
         history.push(modified);
 
         assert!(history.undo());
