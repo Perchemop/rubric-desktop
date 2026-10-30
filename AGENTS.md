@@ -63,6 +63,19 @@ limitation, not a licence to use a personal identity in commit metadata. See
 - Hit testing: use tolerance; prefer segment/bounds hit tests per geometry.
 - Undo/redo: project snapshots in `History` (bounded to 128). Push snapshot on destructive/committed actions; avoid spamming during live drags.
 
+## Parallelisation (owner directive 2026-10-31)
+
+Speed up **multi-part** work (audit fixes, refactors, broad cleanups) by spawning
+**several subagents at once**, one per independent workstream, rather than doing
+everything serially. Partition by **file** so concurrent edits never collide
+(e.g. one agent owns `ui/canvas.rs`, another `ui/inspector.rs`, another
+`ui/markups_list.rs`+`ui/toolbar.rs`, another the domain tests). Each subagent is
+read/write on its own files, returns a concise report of what it changed, and
+**never commits or pushes** — the parent integrates all workstreams into one
+commit/PR and lets CI verify. Where file sets must overlap, use separate git
+worktrees instead of a shared tree. "Remember this" — keep parallelising by
+default for broad work.
+
 ## Subagent pipeline
 Specialised subagents live in `.opencode/agents/`: `orchestrator` (Chat/planning)
 and `coder` (Task execution) are the process roles; the build is split by stage

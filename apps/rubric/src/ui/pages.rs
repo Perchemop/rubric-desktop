@@ -51,77 +51,89 @@ pub(crate) fn draw_pages(
         let layout = thumb_layout(available, page_count, MIN_CELL, GAP);
         let cell_w = layout.cell_w as f32;
         let thumb_h = (layout.cell_h - layout.caption_h) as f32;
+        let per_row = layout.per_row.max(1);
 
-        for index in 0..page_count {
-            // Row breaks are the scroll area's job; each cell is one widget in
-            // a horizontal strip that wraps because the width was pre-computed
-            // to fit `per_row` cells.
-            let (rect, response) =
-                ui.allocate_exact_size(Vec2::new(cell_w, layout.cell_h as f32), Sense::click());
+        for row in 0..layout.rows {
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = GAP as f32;
+                ui.spacing_mut().item_spacing.y = 0.0;
+                for col in 0..per_row {
+                    let index = row * per_row + col;
+                    if index >= page_count {
+                        break;
+                    }
+                    let (rect, response) = ui.allocate_exact_size(
+                        Vec2::new(cell_w, layout.cell_h as f32),
+                        Sense::click(),
+                    );
 
-            let thumb_rect = Rect::from_min_size(rect.min, Vec2::new(cell_w, thumb_h));
-            let is_current = index == current_page;
-            let stroke = if is_current {
-                egui::Stroke::new(2.0, ui.visuals().selection.bg_fill)
-            } else {
-                egui::Stroke::new(1.0, ui.visuals().widgets.inactive.bg_fill)
-            };
-            ui.painter().rect(
-                thumb_rect,
-                3.0,
-                ui.visuals().extreme_bg_color,
-                stroke,
-                StrokeKind::Middle,
-            );
+                    let thumb_rect = Rect::from_min_size(rect.min, Vec2::new(cell_w, thumb_h));
+                    let is_current = index == current_page;
+                    let stroke = if is_current {
+                        egui::Stroke::new(2.0, ui.visuals().selection.bg_fill)
+                    } else {
+                        egui::Stroke::new(1.0, ui.visuals().widgets.inactive.bg_fill)
+                    };
+                    ui.painter().rect(
+                        thumb_rect,
+                        3.0,
+                        ui.visuals().extreme_bg_color,
+                        stroke,
+                        StrokeKind::Middle,
+                    );
 
-            // Rendered preview when the project is backed by a PDF; otherwise a
-            // numbered placeholder, which is honest about there being no image.
-            let mut loaded = None;
-            if let Some(path) = source_pdf {
-                // Rendering a *document* page, not the current one: the id
-                // encodes that, so the main canvas texture never reuses it.
-                let key = format!("{}:{index}:{THUMB_WIDTH_PX}", path.display());
-                loaded = load_thumb(ui, path, index, &key, cache);
-            }
-            match loaded {
-                Some(texture) => {
-                    let uv = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
-                    ui.painter()
-                        .image(texture.id(), thumb_rect, uv, Color32::WHITE);
-                }
-                None => {
-                    let centre = thumb_rect.center();
+                    // Rendered preview when the project is backed by a PDF; otherwise a
+                    // numbered placeholder, which is honest about there being no image.
+                    let mut loaded = None;
+                    if let Some(path) = source_pdf {
+                        // Rendering a *document* page, not the current one: the id
+                        // encodes that, so the main canvas texture never reuses it.
+                        let key = format!("{}:{index}:{THUMB_WIDTH_PX}", path.display());
+                        loaded = load_thumb(ui, path, index, &key, cache);
+                    }
+                    match loaded {
+                        Some(texture) => {
+                            let uv = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
+                            ui.painter()
+                                .image(texture.id(), thumb_rect, uv, Color32::WHITE);
+                        }
+                        None => {
+                            let centre = thumb_rect.center();
+                            ui.painter().text(
+                                centre,
+                                egui::Align2::CENTER_CENTER,
+                                format!("{}", index + 1),
+                                FontId::proportional(thumb_h * 0.45),
+                                ui.visuals().text_color(),
+                            );
+                        }
+                    }
+
+                    let caption_rect = Rect::from_min_size(
+                        thumb_rect.max,
+                        Vec2::new(cell_w, layout.caption_h as f32),
+                    );
+                    let caption_colour = if is_current {
+                        ui.visuals().selection.bg_fill
+                    } else {
+                        ui.visuals().text_color()
+                    };
                     ui.painter().text(
-                        centre,
+                        caption_rect.center(),
                         egui::Align2::CENTER_CENTER,
                         format!("{}", index + 1),
-                        FontId::proportional(thumb_h * 0.45),
-                        ui.visuals().text_color(),
+                        FontId::proportional(11.0),
+                        caption_colour,
                     );
+                    if response.clicked() && !is_current {
+                        jumped = Some(index);
+                        ui.ctx().request_repaint();
+                    }
                 }
-            }
-
-            let caption_rect =
-                Rect::from_min_size(thumb_rect.max, Vec2::new(cell_w, layout.caption_h as f32));
-            let caption_colour = if is_current {
-                ui.visuals().selection.bg_fill
-            } else {
-                ui.visuals().text_color()
-            };
-            ui.painter().text(
-                caption_rect.center(),
-                egui::Align2::CENTER_CENTER,
-                format!("{}", index + 1),
-                FontId::proportional(11.0),
-                caption_colour,
-            );
-            if response.clicked() && !is_current {
-                jumped = Some(index);
-                ui.ctx().request_repaint();
-            }
+            });
+            ui.add_space(GAP as f32);
         }
     });
-
     jumped
 }
 

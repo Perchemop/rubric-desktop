@@ -112,6 +112,9 @@ pub(crate) struct UiState {
     inspector_mode: InspectorMode,
     pub(crate) zoom: f32,
     pub(crate) pan: Vec2,
+    /// Last known canvas viewport size (points), captured each frame in the
+    /// central panel so Fit Page can scale to it.
+    pub(crate) canvas_size: Vec2,
     pub(crate) page_origin: Pos2,
     hint: String,
     pub(crate) status: String,
@@ -155,12 +158,20 @@ pub(crate) struct UiState {
     pub(crate) grid: Grid,
     /// Whether the Markups List panel is visible (View menu toggle).
     pub(crate) show_markups_list: bool,
+    /// Pending quit confirmation when the project has unsaved changes.
+    pub(crate) quit_confirm: bool,
+    /// Per-frame history enablement snapshot, refreshed at the start of the
+    /// frame; the shared context menu reads it to keep Undo/Redo honest.
+    pub(crate) can_undo: bool,
+    pub(crate) can_redo: bool,
     /// Markups List filter controls. Kept as UI state so the domain filter can
     /// be rebuilt on every frame; none of it is written into `.rubric.json`.
     pub(crate) markup_search: String,
     pub(crate) markup_status: Option<ReviewStatus>,
     pub(crate) markup_author: Option<String>,
     pub(crate) markup_subject: Option<String>,
+    pub(crate) markup_kind: Option<MarkupKind>,
+    pub(crate) markup_page: Option<usize>,
     pub(crate) markup_layer: MarkupLayerFilter,
     pub(crate) markup_sort: MarkupListSort,
     pub(crate) markup_group: Option<MarkupGroupKey>,
@@ -175,6 +186,7 @@ impl Default for UiState {
             inspector_mode: InspectorMode::Selection,
             zoom: 1.0,
             pan: Vec2::ZERO,
+            canvas_size: Vec2::ZERO,
             page_origin: Pos2::new(40.0, 40.0),
             hint: "Ctrl+S: Save  ·  Ctrl+Z: Undo  ·  Ctrl+Y: Redo  ·  Del: Delete".to_string(),
             status: "Ready".to_string(),
@@ -193,10 +205,15 @@ impl Default for UiState {
             scale_real_units: 10.0,
             grid: Grid::default(),
             show_markups_list: true,
+            quit_confirm: false,
+            can_undo: false,
+            can_redo: false,
             markup_search: String::new(),
             markup_status: None,
             markup_author: None,
             markup_subject: None,
+            markup_kind: None,
+            markup_page: None,
             markup_layer: MarkupLayerFilter::All,
             markup_sort: MarkupListSort::default(),
             markup_group: None,
@@ -422,7 +439,20 @@ impl RubricApp {
                 self.ui.zoom = (self.ui.zoom / 1.25).clamp(view::MIN_ZOOM, view::MAX_ZOOM);
             }
             EditorAction::FitPage => {
-                self.ui.zoom = 1.0;
+                let (page_w, page_h) = self
+                    .active_doc()
+                    .and_then(|doc| doc.pages.get(self.ui.current_page))
+                    .map(|p| (p.width.max(1.0), p.height.max(1.0)))
+                    .unwrap_or((595.0, 842.0));
+                let avail = self.ui.canvas_size;
+                if avail.x > 0.0 && avail.y > 0.0 {
+                    let margin = 40.0_f32;
+                    let zx = (avail.x - margin) / page_w;
+                    let zy = (avail.y - margin) / page_h;
+                    self.ui.zoom = zx.min(zy).clamp(view::MIN_ZOOM, view::MAX_ZOOM);
+                } else {
+                    self.ui.zoom = 1.0;
+                }
                 self.ui.pan = Vec2::ZERO;
             }
         }
@@ -762,7 +792,7 @@ impl RubricApp {
     fn print_page(&mut self) -> Result<(), DataError> {
         let mut last_page_pos: Option<Pt> = None;
         let project = self.history.current_mut();
-        let bytes = render_page_to_png_bytes(
+        let bytes = match render_page_to_png_bytes(
             project,
             &self.ui,
             &self.draw,
@@ -770,11 +800,24 @@ impl RubricApp {
             &mut self.failed_page_textures,
             &mut self.bg_error,
             &mut last_page_pos,
-        )?;
+        ) {
+            Ok(b) => b,
+            Err(e) => {
+                self.ui.status = format!("Print failed: {e}");
+                return Err(e);
+            }
+        };
         let temp_path =
             std::env::temp_dir().join(format!("rubric_print_{}.png", uuid::Uuid::new_v4()));
-        std::fs::write(&temp_path, &bytes)?;
-        match print_image(&temp_path) {
+        if let Err(e) = std::fs::write(&temp_path, &bytes) {
+            let err = DataError::Io(e);
+            self.ui.status = format!("Print failed: {err}");
+            return Err(err);
+        }
+        let result = print_image(&temp_path);
+        // Don't leak the temporary PNG, regardless of print outcome.
+        let _ = std::fs::remove_file(&temp_path);
+        match result {
             Ok(()) => {
                 self.ui.status = "Print job sent".to_string();
                 Ok(())
@@ -1065,17 +1108,27 @@ impl RubricApp {
                 });
                 ui.separator();
                 if ui.button("Quit").clicked() {
-                    // Let eframe tear down normally instead of exiting the
-                    // process outright.
-                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                    if self.ui.dirty {
+                        self.ui.quit_confirm = true;
+                    } else {
+                        // Let eframe tear down normally instead of exiting the
+                        // process outright.
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
                 }
             });
             ui.menu_button("Edit", |ui| {
-                if ui.button("Undo").clicked() {
+                if ui
+                    .add_enabled(self.history.can_undo(), egui::Button::new("Undo"))
+                    .clicked()
+                {
                     self.apply_editor_action(EditorAction::Undo);
                     ui.close();
                 }
-                if ui.button("Redo").clicked() {
+                if ui
+                    .add_enabled(self.history.can_redo(), egui::Button::new("Redo"))
+                    .clicked()
+                {
                     self.apply_editor_action(EditorAction::Redo);
                     ui.close();
                 }
@@ -1130,6 +1183,22 @@ impl RubricApp {
                         }
                     }
                 });
+                ui.separator();
+                {
+                    let mut show_measurements = self.history.current().settings.show_measurements;
+                    if ui
+                        .checkbox(&mut show_measurements, "Show Measurements")
+                        .changed()
+                    {
+                        self.history.current_mut().settings.show_measurements = show_measurements;
+                        self.ui.status = if show_measurements {
+                            "Measurements shown".to_string()
+                        } else {
+                            "Measurements hidden".to_string()
+                        };
+                        self.push_snapshot_quiet();
+                    }
+                }
                 ui.separator();
                 ui.menu_button("Theme", |ui| {
                     for option in Theme::ALL {
@@ -1333,6 +1402,11 @@ fn key_to_shortcut_char(key: egui::Key) -> Option<char> {
 
 impl App for RubricApp {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut Frame) {
+        // Refresh the enablement snapshot the shared context menu reads, so
+        // Undo/Redo are greyed out whenever the history stack cannot serve
+        // them (audit M19).
+        self.ui.can_undo = self.history.can_undo();
+        self.ui.can_redo = self.history.can_redo();
         // Computed before `ctx.input` so the immutable borrow of `ctx` for
         // `egui_wants_keyboard_input` does not overlap the input closure.
         let wants_kb = ctx.egui_wants_keyboard_input();
@@ -1524,6 +1598,7 @@ impl App for RubricApp {
         let prior_status = self.ui.status.clone();
         let mut need_snapshot = false;
         egui::CentralPanel::default().show(ui, |ui| {
+            self.ui.canvas_size = ui.available_size();
             need_snapshot = canvas::draw_canvas(
                 ui,
                 self.history.current_mut(),
@@ -1561,6 +1636,28 @@ impl App for RubricApp {
         // Bug report dialog (guide §7.1): preview + editable notes; nothing is
         // sent until the user explicitly chooses to.
         self.draw_bug_report(ui.ctx());
+
+        if self.ui.quit_confirm {
+            let mut open = true;
+            egui::Window::new("Unsaved Changes")
+                .open(&mut open)
+                .resizable(false)
+                .show(ui.ctx(), |ui| {
+                    ui.label("The project has unsaved changes.");
+                    ui.horizontal(|ui| {
+                        if ui.button("Quit Anyway").clicked() {
+                            self.ui.quit_confirm = false;
+                            ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                        }
+                        if ui.button("Cancel").clicked() {
+                            self.ui.quit_confirm = false;
+                        }
+                    });
+                });
+            if !open {
+                self.ui.quit_confirm = false;
+            }
+        }
 
         // Report export dialog (session state only).
         let mut do_export = false;

@@ -231,6 +231,11 @@ pub enum MarkupGeometry {
     /// An open or closed path (polyline, polygon, perimeter, area).
     Path { points: Vec<Pt>, closed: bool },
     /// Freehand pen strokes.
+    ///
+    /// The model holds any number of strokes in one markup, but the canvas
+    /// currently commits exactly one stroke per drag gesture; a multi-stroke
+    /// pen tool would append to `strokes` rather than produce a new markup.
+    /// Importers and other producers may supply more than one.
     Ink { strokes: Vec<Vec<Pt>> },
     /// A text box anchored at `at`, wrapping within `wrap` points.
     Text { at: Pt, wrap: f32, text: String },
@@ -302,6 +307,42 @@ impl MarkupGeometry {
             MarkupGeometry::Count { at, .. } => t(at),
         }
     }
+}
+
+/// How many [`MarkupKind::MeasureCount`] markers lie on `page`.
+///
+/// Used for the page's running count total; this counts markers independently
+/// of the numbers stored on them.
+pub fn count_markers_on_page<'a>(
+    markups: impl IntoIterator<Item = &'a Markup>,
+    page: usize,
+) -> u32 {
+    markups
+        .into_iter()
+        .filter(|m| m.page == page && m.kind == MarkupKind::MeasureCount)
+        .count() as u32
+}
+
+/// The number for the next count marker placed on `page`.
+///
+/// One more than the highest number already on the page, so deleting a marker
+/// never reissues its number. Numbering restarts at `1` on each page.
+pub fn next_count_number<'a>(markups: impl IntoIterator<Item = &'a Markup>, page: usize) -> u32 {
+    markups
+        .into_iter()
+        .filter(|m| m.page == page && m.kind == MarkupKind::MeasureCount)
+        .filter_map(|m| match &m.geometry {
+            MarkupGeometry::Count { number, .. } => Some(*number),
+            _ => None,
+        })
+        .max()
+        .map_or(1, |n| n.saturating_add(1))
+}
+
+/// Human-readable running-total label for `total` count markers, e.g.
+/// `3 count`.
+pub fn count_total_label(total: u32) -> String {
+    units::format_value(MeasureKind::Count, units::MeasureUnit::Point, f64::from(total))
 }
 
 /// Review workflow status (spec F-301).
@@ -1369,6 +1410,71 @@ mod tests {
         assert!(json.contains("\"status\":\"in_review\""), "json = {json}");
         let back: Markup = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back.status, ReviewStatus::InReview);
+    }
+
+    fn count_marker(page: usize, number: u32) -> Markup {
+        Markup::new(
+            page,
+            MarkupKind::MeasureCount,
+            MarkupGeometry::Count {
+                at: Pt::new(0.0, 0.0),
+                number,
+            },
+            "t",
+        )
+    }
+
+    #[test]
+    fn next_count_number_is_per_page_and_never_reissues() {
+        // A non-count markup that happens to carry Count geometry must not
+        // influence the numbering.
+        let decoy = Markup::new(
+            0,
+            MarkupKind::Note,
+            MarkupGeometry::Count {
+                at: Pt::new(0.0, 0.0),
+                number: 9,
+            },
+            "t",
+        );
+        let markups = vec![count_marker(0, 1), count_marker(0, 2), count_marker(1, 1), decoy];
+        assert_eq!(next_count_number(&markups, 0), 3);
+        assert_eq!(next_count_number(&markups, 1), 2);
+        assert_eq!(next_count_number(&markups, 2), 1, "fresh page starts at 1");
+        assert_eq!(next_count_number(&Vec::new(), 0), 1);
+    }
+
+    #[test]
+    fn count_markers_on_page_counts_only_counters_on_that_page() {
+        let decoy = Markup::new(
+            0,
+            MarkupKind::Note,
+            MarkupGeometry::Count {
+                at: Pt::new(0.0, 0.0),
+                number: 9,
+            },
+            "t",
+        );
+        let markups = vec![count_marker(0, 1), count_marker(0, 5), count_marker(1, 1), decoy];
+        assert_eq!(count_markers_on_page(&markups, 0), 2);
+        assert_eq!(count_markers_on_page(&markups, 1), 1);
+        assert_eq!(count_markers_on_page(&markups, 2), 0);
+    }
+
+    #[test]
+    fn count_total_label_is_an_integer_with_count_suffix() {
+        assert_eq!(count_total_label(0), "0 count");
+        assert_eq!(count_total_label(3), "3 count");
+    }
+
+    #[test]
+    fn count_number_survives_serde_roundtrip() {
+        let m = count_marker(1, 7);
+        let json = serde_json::to_string(&m).expect("serialize");
+        let back: Markup = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.geometry, m.geometry);
+        assert_eq!(back.kind, MarkupKind::MeasureCount);
+        assert_eq!(next_count_number(&[back], 1), 8);
     }
 
     #[test]

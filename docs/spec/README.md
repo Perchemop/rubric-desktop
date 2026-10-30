@@ -28,7 +28,7 @@ This requirement set is **original material authored for Rubric**. It is derived
 | F-107 | Cloud (revision cloud) outline | MVP (Ph 2) | done; outline path quality refine later |
 | F-108 | Polyline and polygon (multi-point paths) | Ph 2 | done (click-to-add points, right-click/Enter commit) |
 | F-109 | Line and arrow | MVP (Ph 2) | done |
-| F-110 | Ink freehand drawing | Ph 2 | done (drag accumulation, multi-stroke) |
+| F-110 | Ink freehand drawing | Ph 2 | done (drag accumulation; one stroke per gesture — multi-stroke Ink markups remain a domain-level capability, see `MarkupGeometry::Ink`) |
 | F-111 | Stamps (preset library: approved/rejected/draft style marks) | Ph 4 | done (StampPreset library incl. Approved/Rejected/Draft/Check/Cross; preset picker in Inspector) |
 | F-112 | Drag-to-draw with live preview (bounds/segment/path/angle/ink) | Ph 2 | done |
 | F-113 | Select, move, delete markups | MVP (Ph 2) | done (click/drag select, drag move, Del/Backspace + Edit/Context menu delete) |

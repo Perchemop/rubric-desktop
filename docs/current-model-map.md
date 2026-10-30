@@ -14,23 +14,23 @@ No local model hosting (Ollama or similar) is used. Only the provider
 changes between the two tiers; the process, roles, vertical-slice
 discipline, CI-first rule and tracking files stay identical.
 
-## OpenCode free (active — discovered 2026-10-27)
+## OpenCode free (active — discovered 2026-10-31)
 
 Live catalog at session start: `flint-40b-free`, `nemotron-3.5-super-vl-free`,
 `beam-free`, `mimo-v2.6-flash-free`, `deepseek-v4.1-flash-free`,
-`glm-5.3-flash-free`, `nemotron-3.5-lightning-free`, `nemotron-3-ultra-free`,
-`big-pickle` (all zero-cost). `big-pickle` is available again this session.
+`glm-5.3-flash-free` (all zero-cost). The previously recorded
+`nemotron-3-ultra-free`, `big-pickle` and `nemotron-3.5-lightning-free` IDs
+are no longer listed by the catalog.
 
 | Role | Model |
 |---|---|
-| Orchestrator / lead (plans & delegates, never edits) | `opencode/nemotron-3-ultra-free#high` — strongest reasoning in the live free set; `opencode/big-pickle` is the alternate |
+| Orchestrator / lead (plans & delegates, never edits) | runs in-session on the best available free model; `deepseek-v4.1-flash-free#high` is the strongest current coder fallback for the role |
 | Domain dev (pure Rust types/logic/tests) | `opencode/deepseek-v4.1-flash-free#high` |
 | UI dev (egui/eframe slices) | `opencode/nemotron-3.5-super-vl-free#high` — vision-capable per guide §5.3 for canvas-touching slices |
 | Fixer (build-gate failures) | `opencode/flint-40b-free#high` — newest OpenCode free code-generation model |
 | Reviewer (read-only review) | `opencode/glm-5.3-flash-free#high` |
 | Test writer | `opencode/mimo-v2.6-flash-free` |
 | Docs writer | `opencode/beam-free#high` |
-| Explorer (fast search) | `opencode/nemotron-3.5-lightning-free` — fastest live model for search |
 | CI runner | `opencode/beam-free#high` |
 | designer (UI/UX) | `opencode/nemotron-3.5-super-vl-free#high` — vision-capable; design + performance review |
 

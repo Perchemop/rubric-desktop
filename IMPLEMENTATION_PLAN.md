@@ -102,5 +102,12 @@
 - [x] Tests for list, filter, diff logic in `src/domain` + `tests/domain_tests.rs`, plus Markups List UI-state helper tests
 - [x] Tests for autosave scheduling and the schema-version guard (`src/data/store.rs`, `tests/domain_tests.rs`)
 
+## Phase 8 — v0.3 hardening (audit + engine adoption)
+- [x] Full GUI + end-to-end audit of v0.2.0 recorded: docs/audits/v0.2.0-full-audit.md (PR #60)
+- [x] Task brief created: docs/tasks/v0.3-01-audit-fixes.md (parallel workstreams A–E + H1)
+- [x] Research note approved 2026-10-31: docs/research/hayro-pdf-engine.md (pure-Rust PDF engine, H8 follow-up)
+- [ ] Audit-fix wave merged with CI green (workstreams A–D + H1 by parallel subagents; WS E tests + M19 context menu by the parent)
+- [ ] Engine slice: adopt `hayro` (+ `lopdf`) for PDF rendering/export — separate v0.3 slice
+
 ## Slice strategy
 Build vertically: domain + tests → minimal UI → drawing + selection → save/load → measurements → review → polish. Keep each slice small, compiling, tested.

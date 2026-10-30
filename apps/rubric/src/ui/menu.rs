@@ -86,15 +86,25 @@ pub(crate) fn draw_editor_context_menu(ui: &mut Ui, ui_state: &mut UiState) {
 
     ui.separator();
 
-    // History and view actions. Their applicability is decided by
-    // `EditorAction::is_enabled`; the executor no-ops where nothing applies.
-    for action in [
-        EditorAction::Undo,
-        EditorAction::Redo,
-        EditorAction::ZoomIn,
-        EditorAction::ZoomOut,
-        EditorAction::FitPage,
+    // History and view actions. History actions are additionally gated on the
+    // per-frame enablement snapshot (audit M19): with an empty stack Undo and
+    // Redo are disabled, exactly like the Edit menu bar. The executor no-ops
+    // where nothing applies.
+    for (action, history_ok) in [
+        (EditorAction::Undo, ui_state.can_undo),
+        (EditorAction::Redo, ui_state.can_redo),
+        (EditorAction::ZoomIn, true),
+        (EditorAction::ZoomOut, true),
+        (EditorAction::FitPage, true),
     ] {
-        action_button(ui, ui_state, action);
+        let enabled = history_ok
+            && action.is_enabled(ui_state.selected.len(), ui_state.style_clipboard.is_some());
+        if ui
+            .add_enabled(enabled, egui::Button::new(action.label()))
+            .clicked()
+        {
+            ui_state.pending_action = Some(action);
+            ui.close();
+        }
     }
 }

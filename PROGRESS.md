@@ -1,5 +1,38 @@
 # PROGRESS.md
 
+## 2026-10-31 — v0.3-01 audit-fix wave (parallel workstreams)
+**Status**: implemented on the audit-fix branch; CI verification in progress.
+Fixes the 9 high-severity defects plus in-scope medium findings from
+`docs/audits/v0.2.0-full-audit.md`, per `docs/tasks/v0.3-01-audit-fixes.md`.
+
+### Completed
+- Workstreams A–D + H1 landed by parallel subagents (file-disjoint, owner
+  directive 2026-10-31); the parent closed the two gaps the wave left:
+  - **WS E tests** (test-writer drafted; parent applied): 7 `History` tests
+    (new/round-trip/boundary no-ops/redo-branch truncation/128 cap/overwrite/
+    clear) in `domain/project.rs` and a new test module for the zoom constants
+    in `domain/view.rs`.
+  - **M19 completion** (ui-dev subagent failed on a connection error; parent
+    applied): `UiState.can_undo/can_redo` refreshed at the top of
+    `RubricApp::logic`, and the shared context menu gates Undo/Redo on it —
+    matching the Edit menu bar.
+- Parent integration: `ui/pages.rs` re-indented to rustfmt form after the
+  multi-column refactor (fmt gate protection), and the F-110 spec row now
+  states the single-stroke-per-gesture behaviour honestly (M21).
+- Version bump 0.1.0 → 0.3.0 in `apps/rubric` and both shared crates (H1).
+- Docs: CHANGELOG Unreleased section, this entry, the task brief, ROADMAP
+  v0.3.0 and IMPLEMENTATION_PLAN Phase 8 updated; `docs/current-model-map.md`
+  refreshed (2026-10-31 catalog: six OpenCode free models; the previously
+  recorded `nemotron-3-ultra-free`, `big-pickle` and `lightning-free` IDs are
+  no longer listed).
+
+### Active
+- CI run on the PR (fmt, clippy `-D warnings`, tests, release build) — run ID
+  to be recorded here when green.
+
+### Blocked
+- None.
+
 ## 2026-10-17 — Phase 0 (initial commit)
 **Status**: in progress (verifying build)
 

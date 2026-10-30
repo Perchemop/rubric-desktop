@@ -135,12 +135,18 @@ impl Scale {
     }
 
     /// Human readable description, e.g. `1 in = 10 ft`.
+    ///
+    /// The left-hand anchor is always **one inch** (72 PDF points), so the
+    /// label reads correctly whatever the display unit: a 1:1 scale in inches
+    /// describes as `1 in = 1.000 in`, and a 1 in = 1 ft plan as
+    /// `1 in = 1.000 ft`.
     pub fn describe(&self) -> String {
-        let one_point_in_units = self.units_per_point;
-        let per_unit = 1.0 / one_point_in_units; // points per real unit
-        let anchor = self.unit.points_per_unit();
-        // How many real units does one "anchor" (e.g. one inch) represent?
-        let real = self.points_to_units(anchor);
+        // One inch is 72 PDF points (1 pt = 1/72 in). That fixed anchor is
+        // exactly what the `1 in = …` left-hand side claims, so the conversion
+        // must start from 72 pt — not from one *display* unit.
+        const POINTS_PER_INCH: f64 = 72.0;
+        let per_unit = 1.0 / self.units_per_point; // points per real unit
+        let real = self.points_to_units(POINTS_PER_INCH);
         format!(
             "1 {} = {:.3} {}  ({} pt / {})",
             short_anchor(),
@@ -302,6 +308,30 @@ mod tests {
             .with_display_unit(MeasureUnit::Foot);
         assert_eq!(back.unit, MeasureUnit::Foot);
         assert!((back.units_per_point - s.units_per_point).abs() < 1e-12);
+    }
+
+    #[test]
+    fn describe_anchors_on_one_inch() {
+        // 1 in on paper == 1 ft on site.
+        let plan = Scale::from_ratio(MeasureUnit::Foot, 1.0, 72.0);
+        let text = plan.describe();
+        assert!(text.starts_with("1 in = 1.000 ft"), "unexpected describe(): {text}");
+
+        // 1:1 in inches: one inch of paper is one real inch.
+        let full_size = Scale::new(MeasureUnit::Inch, 1.0 / 72.0);
+        let text = full_size.describe();
+        assert!(text.starts_with("1 in = 1.000 in"), "unexpected describe(): {text}");
+    }
+
+    #[test]
+    fn describe_reports_points_per_display_unit() {
+        // 1 in = 1 ft => 72 points per foot.
+        let plan = Scale::from_ratio(MeasureUnit::Foot, 1.0, 72.0);
+        assert!(
+            plan.describe().contains("(72 pt / ft)"),
+            "unexpected describe(): {}",
+            plan.describe()
+        );
     }
 
     #[test]
