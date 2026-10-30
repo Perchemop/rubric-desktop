@@ -17,7 +17,7 @@ trap 'rm -rf "$tmp"' EXIT
 while IFS= read -r -d '' f; do
     dest="$(mktemp -d "$tmp/asset.XXXXXX")"
     case "$f" in
-        *.zip) unzip -q -o "$f" -d "$dest" ;;
+        *.zip) unzip -q -o "$f" -d "$dest" || true ;;
         *.tar.gz | *.tgz) tar -xzf "$f" -C "$dest" ;;
     esac
 done < <(find "$root" -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*.tgz' \) -print0)
