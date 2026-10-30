@@ -95,3 +95,4 @@ CI run.
 | Date | Scope | CI run | Outcome |
 |---|---|---|---|
 | 2026-10-18 | Phase 0 | `39121051225` | Pass (8/8 steps) |
+| 2026-10-30 | Release v0.2.0 legal checklist (§2.5) | `40977285744` | Pass (check + security green) |

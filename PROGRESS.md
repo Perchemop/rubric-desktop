@@ -974,15 +974,33 @@ flow now enforced by branch protection.
 - **G4 (automated visual evidence)**: owner reviewed the trade-off and chose to
   keep the documented deferral (no fabricated harness / no fake screenshots),
   recorded in `DECISIONS.md`, `docs/guide-compliance.md` and `ROADMAP.md` v0.3.
-- Remaining open items are release-time (G5 per-release legal checklist) or
-  client questions (`Q-LIC-1` licence choice); no product work remains.
+
+## 2026-10-30 — Release v0.2.0: G5 legal checklist recorded
+**Status**: legal checklist (§2.5 / II.19.5) run and recorded; v0.2.0 ready to tag.
+
+### Completed
+- **G5 (release legal checklist)**: full guide §2.5 / II.19.5 legal checklist
+  reviewed against the tree: original-only code/assets, clean-room, trademarks,
+  trade dress, patents, licence (dual MIT OR Apache-2.0, Q-LIC-1 resolved),
+  secrets, personal data (four-part II.29 scan clean; history purge G7
+  resolved), privacy, research files (approved), claims, contributors.
+- CI run `40977285744` (check + security jobs green) recorded as evidence in
+  `docs/qc/checklist.md` Run log; `docs/guide-compliance.md` II.19.5 / G5
+  marked Met/resolved.
+- `ROADMAP.md` v1.0.0 milestone "All 52 feature IDs done" marked [x].
+
+### Ready to tag
+- `main` at `1cb66ff`, CI-green (`40977285744`), all required checks green,
+  personal-data scan green.
 
 ## Summary
 Phases 1–6 complete and CI-green. All 52 spec feature IDs and all 17 requirement
 groups are implemented, including the v0.2 reviewer/auditor milestone
 (Markups List, style presets, project diff, autosave, schema version, note
 popover, zoom presets, layer rename/reorder, accessibility) and the II.29
-personal-data/secret scan gate. Remaining work is process-only: G3
-`docs/capability-inventory.md` and G4 `egui_kittest` visual-evidence seam.
+personal-data/secret scan gate. Process gaps resolved: G3 capability inventory,
+G5 release legal checklist, G6 git identity — all closed. The only remaining
+tracked item is G4 (automated visual evidence), confirmed as a documented,
+owner-approved deferral. v0.2.0 is ready to tag.
 Process follows guide §5 (Chat → Task → PR → Merge) with GitHub Actions as the
 free Task Runner. CI-first throughout.
