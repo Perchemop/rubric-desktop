@@ -18,11 +18,12 @@
   <Package
       Name="Rubric"
       Manufacturer="Rubric contributors"
-      Version="0.1.0"
+      Version="0.2.0"
       UpgradeCode="8A6E7B7E-6C1A-4ADD-9C14-2B9F5A5F1E10"
       Scope="perMachine"
       Language="1033"
       Codepage="1252">
+    <Extension Id="WixUIExtension" />
     <SummaryInformation
         Description="Rubric installer"
         Manufacturer="Rubric contributors" />
@@ -79,23 +80,22 @@
     <!-- Minimal UI: the sequence skips interactive licence/customisation pages
          but still shows progress. A full UI is a packaging follow-up. -->
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
-    <ui:WixUI Id="WixUI_InstallDir" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui" />
+    <WixUI Id="WixUI_InstallDir" />
 
-    <!-- EULA/licence: shipped as a file on disk rather than a rich-text dialog,
+    <!-- EULA/licence: shipped as files on disk rather than a rich-text dialog,
          so the WiX build stays a plain dotnet tool invocation. -->
-    <WixVariable Id="WixUILicenseRtf" Value="packaging/wix/License.rtf" />
   </Package>
 
   <Fragment>
     <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
       <Component Id="RubricExecutable" Guid="9F0E7C1D-2B34-4D5E-8A7B-1C9D7F0E2B34">
-        <File Id="rubricExe" Source="rubric.exe" KeyPath="yes">
-          <Shortcut
-              Id="StartMenuRubricFromExe"
-              Name="Rubric"
-              Description="Free, cross-platform PDF markup, review and measurement"
-              WorkingDirectory="INSTALLFOLDER" />
-        </File>
+        <File Id="rubricExe" Source="rubric.exe" KeyPath="yes" />
+        <Shortcut
+            Id="StartMenuRubricFromExe"
+            Name="Rubric"
+            Description="Free, cross-platform PDF markup, review and measurement"
+            Directory="INSTALLFOLDER"
+            WorkingDirectory="INSTALLFOLDER" />
       </Component>
 
       <Component Id="RubricDocs" Guid="5A1B7C2D-8E4F-4A0B-9C3D-7E1A2B4C6D8E">
