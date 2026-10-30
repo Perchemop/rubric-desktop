@@ -15,7 +15,6 @@
     repository. See docs/assumptions-and-questions.md (Q-PACK-1).
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <Extension Id="WixUIExtension" />
   <Package
       Name="Rubric"
       Manufacturer="Rubric contributors"
@@ -79,13 +78,9 @@
 
     <!-- Minimal UI: the sequence skips interactive licence/customisation pages
          but still shows progress. A full UI is a packaging follow-up. -->
-    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
-
     <!-- EULA/licence: shipped as files on disk rather than a rich-text dialog,
          so the WiX build stays a plain dotnet tool invocation. -->
   </Package>
-
-  <WixUI Id="WixUI_InstallDir" />
 
   <Fragment>
     <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
