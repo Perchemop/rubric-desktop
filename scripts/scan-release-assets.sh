@@ -27,7 +27,7 @@ done < <(find "$root" -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*.t
 # a whole file); `-a` is deliberate because a compiled binary can embed the
 # build machine's home path, which `-I` would skip.
 HOME_RE='/home/[A-Za-z0-9_.-]+|/Users/[A-Za-z0-9_.-]+|C:\\Users\\[A-Za-z0-9_.-]+'
-HOME_ALLOW='(/home/runner|/Users/runner|C:\\Users\\runner)$'
+HOME_ALLOW='(/home/runner|/Users/runner|C:\\Users\\runner|C:\\Users\\runneradmin)$'
 hits="$(
     grep -rHnaoE "$HOME_RE" "$tmp" "$root" 2>/dev/null | grep -vE "$HOME_ALLOW" || true
 )"
