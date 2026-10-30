@@ -82,7 +82,8 @@ jobs:
             <launchable type="desktop-id">rubric.desktop</launchable>
             <url type="homepage">https://github.com/Perchemop/rubric-desktop</url>
             <url type="bugtracker">https://github.com/Perchemop/rubric-desktop/issues</url>
-            <project_license>MIT</project_license>
+            <developer_name>Rubric contributors</developer_name>
+            <metadata_license>MIT AND Apache-2.0</metadata_license>
           </component>
           META
 
