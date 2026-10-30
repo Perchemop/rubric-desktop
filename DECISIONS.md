@@ -2,6 +2,31 @@
 
 Record significant architectural/implementation decisions.
 
+## 2026-10-31: Adopt a pure-Rust PDF engine (hayro + lopdf); PdfCraft not reused
+- **Decision**: Migrate Rubric's PDF engine from the native `pdfium-render`/PDFium
+  binding to the pure-Rust **`hayro`** rasteriser (rendering) and add **`lopdf`**
+  for PDF writing in a later slice. Do **not** depend on PdfCraft
+  (`storytold/pdfcraft`) and do **not** copy its source. Keep PDFium available as a
+  fallback until `hayro` passes a real-PDF fidelity corpus, then remove the native
+  dependency.
+- **Rationale**: (a) PDFium is a native library, which is the root cause of defect
+  H8 — the release must ship `.so`/`.dll` per platform and cannot render a PDF out
+  of the box. A pure-Rust engine removes that dependency and simplifies
+  builds/installers. (b) `hayro` is **Apache-2.0 OR MIT** (licence-compatible with
+  Rubric's dual MIT OR Apache-2.0) and ships a 1,600+ PDF visual regression suite.
+  (c) PdfCraft is also MIT OR Apache-2.0 but its `pdfcraft-*` crates are unpublished
+  workspace crates and its UI is pinned to a private egui fork — depending on it
+  would add a large, brittle supply chain and an egui-version conflict; copying its
+  code violates the project's "original work / capability-level inspiration only"
+  rule. Owner approved the direction 2026-10-31; research recorded in
+  `docs/research/hayro-pdf-engine.md`.
+- **Impact**: `apps/rubric/Cargo.toml` (+`hayro`, later +`lopdf`, −`pdfium-render`),
+  `apps/rubric/src/data/pdf.rs` (engine swap behind the existing API),
+  `deny.toml`, `ATTRIBUTION.md`, `docs/pdfium.md`, and the PDFium fetch/bundle steps
+  in `ci.yml`/`release.yml`/`package.yml` (removed once the native dep is gone).
+  Caveat: `hayro` is pre-1.0 — pin exactly, keep the render-cache/poisoning
+  behaviour, and validate before removing PDFium.
+
 ## 2026-10-17: Project name and branding
 - **Decision**: Name = "Rubric". Reason: historical "rubric" is a red mark on documents (perfect for markup/annotation), short, punchy, memorable, original.
 - **Branding**: SVG logo with red rubric/check mark over document page; indigo palette + red accent.
