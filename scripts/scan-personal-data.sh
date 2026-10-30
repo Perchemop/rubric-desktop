@@ -10,7 +10,8 @@
 # Scans for:
 #   * an absolute home path for a real user: /home/<name>, /Users/<name>
 #     (macOS), C:\Users\<name>. The CI build users /home/runner, /Users/runner
-#     and C:\Users\runner are permitted (guide II.29.6).
+#     and the Windows runner C:\Users\runner / C:\Users\runneradmin are
+#     permitted (guide II.29.6).
 #   * an email address that is not obviously synthetic (@example.*) or a GitHub
 #     noreply address.
 #
@@ -35,7 +36,7 @@ fi
 # keeps false positives out. Emails are scanned the same way for the same
 # reason.
 HOME_RE='/home/[A-Za-z0-9_.-]+|/Users/[A-Za-z0-9_.-]+|C:\\Users\\[A-Za-z0-9_.-]+'
-HOME_ALLOW='(/home/runner|/Users/runner|C:\\Users\\runner)$'
+HOME_ALLOW='(/home/runner|/Users/runner|C:\\Users\\runner|C:\\Users\\runneradmin)$'
 EMAIL_RE='[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
 EMAIL_ALLOW='@(example\.(com|org|net)|users\.noreply\.github\.com|noreply\.github\.com)$'
 
