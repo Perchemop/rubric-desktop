@@ -72,7 +72,7 @@ jobs:
           cat > "$APPDIR/usr/share/metainfo/rubric.appdata.xml" <<'META'
           <?xml version="1.0" encoding="UTF-8"?>
           <component type="desktop-application">
-            <id>rubric</id>
+            <id>desktop.rubric</id>
             <name>Rubric</name>
             <summary>Free, cross-platform PDF markup, review and measurement</summary>
             <description>
