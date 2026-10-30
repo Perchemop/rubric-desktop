@@ -11,7 +11,7 @@ This tracks mapping from requirements to implementation (files, modules, tests).
 | R-G-004 | Fresh git repo; exclude external material | DONE | .gitignore, local repo |
 | R-G-005 | Domain-first, testable headlessly | DONE | src/domain pure; tests in src + tests/ |
 | R-G-006 | Build/test/clippy/fmt gates | DONE | scripts, CI skeleton, AGENTS.md |
-| R-G-007 | Small vertical slices; docs updated | IN PROG | plan/traceability/progress/decisions/changelog |
+| R-G-007 | Small vertical slices; docs updated | DONE | plan/traceability/progress/decisions/changelog |
 | R-G-008 | No cloud/collaboration features | DONE | out of scope (noted in assumptions) |
 
 ## Domain model requirements (Slice 1)
@@ -81,11 +81,11 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 | F-003 | Review workflow (statuses, comments, subjects) | ReviewStatus, Comment | DONE | spec status set Open/In review/Approved/Rejected landed (F-301, 2026-10-19) |
 | F-004 | Layers/Toolsets | ToolSet + Layer field | DONE | visibility/lock + rename/reorder landed 2026-10-28 (layer-major paint order, default layer pinned) |
 | F-005 | Scale/calibration | Page.scale + units | DONE | inspector UI editor landed (Phase 3) |
-| F-006 | Page navigation/thumbnails | Document.pages | TODO | add UI |
+| F-006 | Page navigation/thumbnails | Document.pages | DONE | thumbnails sidebar + page jump UI (pages.rs) landed 2026-10-23 |
 | F-007 | Non-destructive markup (sidecar) | .rubric.json separate | DONE | PDF embedding later optional |
 | F-1xx | Markups/tools + selection/edit (spec) | MarkupKind, Geometry, ToolSet → Layer | DONE | docs/spec/README.md F-101–F-116; R-S-001–R-S-004; drag/multi-point/ink, text+callout editing (F-104/F-105), stamp library (F-111), copy properties (F-114), z-order (F-115) landed 2026-10-19/20/26; note popover (F-103) landed 2026-10-30 |
-| F-2xx | Measurements + scale/calibration (spec) | Measurement, Page.scale, units | PARTIAL | docs/spec/README.md F-201–F-209; R-S-005–R-S-007 |
-| F-3xx | Review workflow (spec) | ReviewStatus, Comment, author/subject | PARTIAL | docs/spec/README.md F-301–F-305; R-S-008–R-S-010; F-301/F-305 landed 2026-10-19, F-304 landed 2026-10-21 |
+| F-2xx | Measurements + scale/calibration (spec) | Measurement, Page.scale, units | DONE | docs/spec/README.md F-201–F-209; R-S-005–R-S-007 all DONE |
+| F-3xx | Review workflow (spec) | ReviewStatus, Comment, author/subject | DONE | docs/spec/README.md F-301–F-305; R-S-008–R-S-010; F-301/F-305 landed 2026-10-19, F-304 report export UI landed 2026-10-21 |
 | F-4xx | Navigation/pages (spec) | Document.pages, UiState camera | DONE | docs/spec/README.md F-401–F-406; R-S-011–R-S-012; F-404 (thumbnails), F-405 (grid + snap) and F-406 (rulers) done 2026-10-23; F-401 zoom presets done 2026-10-28 |
 | F-5xx | Persistence/I/O (spec) | .rubric.json store, PDF import, export/print | DONE | docs/spec/README.md F-501–F-507; R-S-013–R-S-015; native dialogs + recent files landed 2026-10-20; PDF import landed 2026-10-21; report export landed 2026-10-21; image export + print landed 2026-10-21; autosave + schema version landed 2026-10-26 |
 | F-6xx | UI/UX polish (spec) | shortcuts, theme, history | DONE | docs/spec/README.md F-601–F-605; R-S-016; F-601 (per-tool keys), F-602 (dark theme), F-603 (context menus) done 2026-10-23; F-605 (accessibility) done 2026-10-30 |

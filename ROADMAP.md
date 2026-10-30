@@ -76,7 +76,7 @@ Small, low-risk completions; each its own Task + release.
 
 ### v1.0.0 — finished (guide §9)
 
-- [ ] All 52 feature IDs done; all 17 requirement groups DONE
+- [x] All 52 feature IDs done; all 17 requirement groups DONE (CI-verified)
 - [ ] Multi-platform installers verified hands-on (Linux ✅, macOS, Windows)
 - [ ] §2.5 legal checklist clean for a public release
 - [ ] README/ROADMAP claims re-audited (no over-claiming)
