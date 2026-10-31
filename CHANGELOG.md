@@ -26,6 +26,23 @@ All notable changes to this project will be documented here. Format: semantic-is
   - Plan for ≥95% pixel match validation against PDFium baseline
   - Test corpus of 10 representative PDFs (text, images, vector, rotated pages)
 
+- **v0.3-04**: PDF export/print fixes (M4/M5)
+  - Created `docs/tasks/v0.3-04-pdf-export-fix.md` task brief
+  - Fix error handling for failed PDF background rendering
+  - Implement fixed-DPI (300 DPI) export instead of view-relative
+  - Page-cropped output for export/print
+
+- **v0.3-05**: lopdf write support
+  - Created `docs/tasks/v0.3-05-lopdf-write-support.md` task brief
+  - Plan to add lopdf dependency for PDF export functionality
+  - Implement File > Export PDF… menu
+
+- **v1.0-01**: installer verification (M4/M5/M8)
+  - Created `docs/tasks/v1.0-01-installer-verification.md` task brief
+  - Verify multi-platform installers (Linux, macOS, Windows)
+  - Verify §2.5 legal checklist for public release
+  - Re-audit README/ROADMAP claims
+
 ## [0.3-01] - 2026-10-31
 
 ### Fixed
