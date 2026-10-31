@@ -145,6 +145,28 @@ pub fn read_pdf_info(path: impl AsRef<Path>) -> Result<PdfSourceInfo, DataError>
     Ok(PdfSourceInfo { page_sizes })
 }
 
+// --- Hayro page-size probing support
+//
+// `hayro` is a pure‑Rust PDF parser/rendering library. It will be enabled via a
+// feature flag so the existing PDFium path remains the default. For now the
+// implementation just forwards to the old PDFium plumbing – the real parser
+// will be added in a later slice.   
+#[cfg(feature = "hayro")]
+fn probe_page_sizes_hayro(path: &Path) -> Result<Vec<(f32, f32)>, DataError> {
+    // Future implementation will use `hayro-syntax`/`hayro` to read media‐box
+    // dimensions. In the interim we error out so callers fall back to PDFium.
+    Err(DataError::PdfLibrary("hayro implementation pending".into()))
+}
+
+// Public helper that first tries the hayro path. If it fails the function
+// falls back to PDFium via `read_pdf_info`.
+pub fn probe_page_sizes(path: &Path) -> Result<Vec<(f32, f32)>, DataError> {
+    match probe_page_sizes_hayro(path) {
+        Ok(v) => Ok(v),
+        Err(_) => read_pdf_info(path).map(|info| info.page_sizes),
+    }
+}
+
 /// Render one PDF page to a cached PNG and return the cache file path.
 ///
 /// The page is rasterised to `target_width_px` pixels wide, with the aspect
