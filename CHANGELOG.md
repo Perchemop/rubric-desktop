@@ -4,6 +4,16 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ## [Unreleased]
 
+### Added
+
+- **v0.3-02 Phase 1**: hayro-syntax page-size probing for pure-Rust PDF engine adoption (H8 follow-up)
+  - Added optional `hayro-syntax v0.5` dependency with `hayro` feature flag
+  - Implemented `probe_pages_hayro()` using hayro-syntax v0.5 API
+  - Integrated with `read_pdf_info()` for PDF page-size detection using pure Rust
+  - PDFium remains the default rendering engine; hayro used for page-size probing when feature enabled
+
+## [0.3-01] - 2026-10-31
+
 ### Fixed
 
 Audit-fix wave `v0.3-01` (`docs/audits/v0.2.0-full-audit.md`, all high-severity

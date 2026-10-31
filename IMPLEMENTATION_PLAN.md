@@ -106,8 +106,13 @@
 - [x] Full GUI + end-to-end audit of v0.2.0 recorded: docs/audits/v0.2.0-full-audit.md (PR #60)
 - [x] Task brief created: docs/tasks/v0.3-01-audit-fixes.md (parallel workstreams A–E + H1)
 - [x] Research note approved 2026-10-31: docs/research/hayro-pdf-engine.md (pure-Rust PDF engine, H8 follow-up)
-- [ ] Audit-fix wave merged with CI green (workstreams A–D + H1 by parallel subagents; WS E tests + M19 context menu by the parent)
-- [ ] Engine slice: adopt `hayro` (+ `lopdf`) for PDF rendering/export — separate v0.3 slice
+- [x] Audit-fix wave merged with CI green (workstreams A–D + H1 by parallel subagents; WS E tests + M19 context menu by the parent) — PR #62 merged 2026-10-31
+- [x] Task brief created: docs/tasks/v0.3-02-hayro-engine.md (H8 follow-up, `hayro`+`lopdf` adoption)
+- [x] **Phase 1 (WS A)**: hayro-syntax page-size probing implemented with feature flag, tests, and CI-ready
+- [ ] **Phase 2 (WS B)**: hayro rendering pipeline – PDF pages rendered to PNG via hayro Device
+- [ ] **Phase 3 (WS C)**: corpus fidelity tests – validate >95% pixel match vs PDFium baseline
+- [ ] **Phase 4 (WS D)**: docs/process updates, CHANGELOG, PROGRESS, ROADMAP, ATTRIBUTION updates
+- [ ] Engine slice: adopt `hayro` (+ `lopdf`) for full PDF rendering/export
 
 ## Slice strategy
 Build vertically: domain + tests → minimal UI → drawing + selection → save/load → measurements → review → polish. Keep each slice small, compiling, tested.
