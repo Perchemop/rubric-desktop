@@ -20,6 +20,7 @@ tests, docs, and branding assets are original work.
 | `ureq` | 2.x | MIT OR Apache-2.0 | HTTP client for update checks (sync) |
 | `rfd` | 0.15 | MIT | Native file dialogs (xdg-portal backend on Linux) |
 | `pdfium-render` | 0.9 | MIT OR Apache-2.0 | Rust bindings to PDFium (runtime binding only) |
+| `hayro` | 0.8 | MIT OR Apache-2.0 | Pure-Rust PDF rendering (optional, `--features hayro`) |
 
 Full transitive tree is resolved in `Cargo.lock`. AGPL/GPL dependencies are
 prohibited (AGENTS.md); all crates above are permissively licensed.
@@ -37,6 +38,17 @@ prohibited (AGENTS.md); all crates above are permissively licensed.
   licence text alongside it.
 - **Rationale**: licence-compatible (BSD-3 is permissive), keeps builds
   pure Rust (decision: `DECISIONS.md` 2026-10-20).
+
+## Alternative runtime: hayro (pure-Rust)
+
+- **What**: `hayro` provides pure-Rust PDF parsing (`hayro-syntax`) and
+  rendering. Enabled via `--features hayro` Cargo feature flag.
+- **Licence**: MIT OR Apache-2.0 (same as the Rubric crate).
+- **Use**: PDF page-size probing and rendering when PDFium is not available
+  or when building on platforms where PDFium binaries are difficult to
+  distribute.
+- **Status**: v0.3-02 Phase 1 & 2 complete; v0.3-03 Phase 3 pending corpus
+  fidelity validation (≥95% pixel match vs PDFium baseline).
 
 ## Fonts and assets
 

@@ -111,7 +111,7 @@
 - [x] **Phase 1 (WS A)**: hayro-syntax page-size probing implemented with feature flag, tests, and CI-ready
 - [x] **Phase 2 (WS B)**: hayro rendering pipeline – PDF pages rendered to PNG via hayro render function (PR #67)
 - [ ] **Phase 3 (WS C)**: corpus fidelity tests – validate >95% pixel match vs PDFium baseline
-- [ ] **Phase 4 (WS D)**: docs/process updates, CHANGELOG, PROGRESS, ROADMAP, ATTRIBUTION updates
+- [x] **Phase 4 (WS D)**: docs/process updates (task briefs, roadmap, traceability, attribution, progress)
 - [ ] Engine slice: adopt `hayro` (+ `lopdf`) for full PDF rendering/export
 
 ## Slice strategy

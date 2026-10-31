@@ -17,9 +17,14 @@ All notable changes to this project will be documented here. Format: semantic-is
   - Implemented `render_page_hayro()` using hayro's render API
   - Updated `render_page_to_cache()` to use hayro when `--features hayro` is enabled
   - Made PDFium code paths conditional on hayro feature (PDFium code only compiles when hayro is disabled)
-  - Added CI test job for hayro feature: `cargo test --all --features hayro`
+  - Added CI test job for hayro feature: `cargo test -p rubric --features hayro`
   - Added `hayro_render_page_to_cache_works` test for hayro-specific PNG rendering
   - PNG output format parity with PDFium renderer
+
+- **v0.3-02 Phase 3**: corpus fidelity tests for hayro engine validation
+  - Created `docs/tasks/v0.3-03-corpus-fidelity.md` task brief
+  - Plan for ≥95% pixel match validation against PDFium baseline
+  - Test corpus of 10 representative PDFs (text, images, vector, rotated pages)
 
 ## [0.3-01] - 2026-10-31
 
