@@ -140,8 +140,7 @@ pub fn read_pdf_info(path: impl AsRef<Path>) -> Result<PdfSourceInfo, DataError>
     #[cfg(feature = "hayro")]
     {
         // When hayro is enabled, use hayro's parser exclusively
-        return hayro_pages::probe_pages_hayro(path)
-            .map(|page_sizes| PdfSourceInfo { page_sizes });
+        return hayro_pages::probe_pages_hayro(path).map(|page_sizes| PdfSourceInfo { page_sizes });
     }
 
     #[cfg(not(feature = "hayro"))]
@@ -223,8 +222,9 @@ mod hayro_pages {
         target_width_px: u32,
         cache_path: &Path,
     ) -> Result<PathBuf, DataError> {
-        let bytes = fs::read(pdf_path)
-            .map_err(|e| DataError::Pdf(format!("could not read PDF {}: {e}", pdf_path.display())))?;
+        let bytes = fs::read(pdf_path).map_err(|e| {
+            DataError::Pdf(format!("could not read PDF {}: {e}", pdf_path.display()))
+        })?;
 
         // Parse PDF using hayro-syntax (v0.8 API uses Pdf::new with Arc<Vec<u8>>)
         let pdf = hayro_syntax::Pdf::new(Arc::new(bytes)).map_err(|e| {
@@ -263,8 +263,8 @@ mod hayro_pages {
         // Media box dimensions are in PDF points (default 72 DPI)
         let src_width = media_box.width() as f32;
         let src_height = media_box.height() as f32;
-        let target_width = i32::try_from(target_width_px)
-            .unwrap_or_else(|_| target_width_px as i32);
+        let target_width =
+            i32::try_from(target_width_px).unwrap_or_else(|_| target_width_px as i32);
         let target_height = if src_width > 0.0 {
             ((src_height / src_width) * target_width as f32) as i32
         } else {
@@ -311,12 +311,13 @@ mod hayro_pages {
         }
 
         // Save as PNG
-        img.save_with_format(cache_path, image::ImageFormat::Png).map_err(|e| {
-            DataError::Pdf(format!(
-                "could not write rendered page to {}: {e}",
-                cache_path.display()
-            ))
-        })?;
+        img.save_with_format(cache_path, image::ImageFormat::Png)
+            .map_err(|e| {
+                DataError::Pdf(format!(
+                    "could not write rendered page to {}: {e}",
+                    cache_path.display()
+                ))
+            })?;
 
         Ok(cache_path.to_path_buf())
     }
