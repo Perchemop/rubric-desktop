@@ -129,7 +129,7 @@ fn pdfium_from_bindings(
 /// The file is opened read-only and never modified.
 pub fn read_pdf_info(path: impl AsRef<Path>) -> Result<PdfSourceInfo, DataError> {
     let path = path.as_ref();
-    
+
     #[cfg(feature = "hayro")]
     {
         match hayro_pages::probe_pages_hayro(path) {
@@ -137,7 +137,7 @@ pub fn read_pdf_info(path: impl AsRef<Path>) -> Result<PdfSourceInfo, DataError>
             Err(e) => eprintln!("hayro probe failed, falling back to PDFium: {e}"),
         }
     }
-    
+
     let pdfium = bind_pdfium()?;
     let document = load_document(&pdfium, path)?;
 
@@ -171,13 +171,15 @@ mod hayro_pages {
     /// Probe page sizes using hayro-syntax (pure Rust PDF parser).
     /// Returns page dimensions in PDF points (unrotated media-box).
     pub fn probe_pages_hayro(path: &Path) -> Result<Vec<(f32, f32)>, DataError> {
-        let bytes = fs::read(path).map_err(|e| {
-            DataError::Pdf(format!("could not read PDF {}: {e}", path.display()))
-        })?;
+        let bytes = fs::read(path)
+            .map_err(|e| DataError::Pdf(format!("could not read PDF {}: {e}", path.display())))?;
 
         // Parse PDF using hayro-syntax (v0.5 API uses Pdf::new)
         let pdf = hayro_syntax::Pdf::new(Arc::new(bytes)).map_err(|e| {
-            DataError::Pdf(format!("could not parse PDF {} with hayro-syntax: {e}", path.display()))
+            DataError::Pdf(format!(
+                "could not parse PDF {} with hayro-syntax: {e}",
+                path.display()
+            ))
         })?;
 
         // Get pages iterator - hayro provides typed page access
