@@ -10,7 +10,8 @@ use eframe::egui::{self, ComboBox, RichText, Ui};
 use uuid::Uuid;
 
 use crate::domain::{
-    MarkupGroupKey, MarkupList, MarkupListFilter, MarkupListSort, Project, ReviewStatus, NONE_LABEL,
+    MarkupGroupKey, MarkupKind, MarkupList, MarkupListFilter, MarkupListSort, Project,
+    ReviewStatus, NONE_LABEL,
 };
 use crate::ui::app::{MarkupLayerFilter, UiState};
 
@@ -41,6 +42,12 @@ pub(crate) fn filter_from_state(state: &UiState) -> MarkupListFilter {
     }
     if let Some(subject) = &state.markup_subject {
         filter.subjects = Some([subject.clone()].into_iter().collect());
+    }
+    if let Some(kind) = state.markup_kind {
+        filter.kinds = Some([kind].into_iter().collect());
+    }
+    if let Some(page) = state.markup_page {
+        filter.pages = Some([page].into_iter().collect());
     }
     match state.markup_layer {
         MarkupLayerFilter::All => {}
@@ -130,6 +137,8 @@ pub(crate) fn draw_markups_list(
                 state.markup_status = None;
                 state.markup_author = None;
                 state.markup_subject = None;
+                state.markup_kind = None;
+                state.markup_page = None;
                 state.markup_layer = MarkupLayerFilter::All;
                 state.status = "Markup filters cleared".to_string();
             }
@@ -144,7 +153,7 @@ pub(crate) fn draw_markups_list(
                 .desired_width(170.0),
         );
 
-        ComboBox::from_label("Status")
+        ComboBox::from_id_salt("markup_status_filter")
             .selected_text(
                 state
                     .markup_status
@@ -158,7 +167,7 @@ pub(crate) fn draw_markups_list(
                 }
             });
 
-        ComboBox::from_label("Author")
+        ComboBox::from_id_salt("markup_author_filter")
             .selected_text(state.markup_author.as_deref().unwrap_or("All authors"))
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut state.markup_author, None, "All authors");
@@ -171,7 +180,7 @@ pub(crate) fn draw_markups_list(
                 }
             });
 
-        ComboBox::from_label("Subject")
+        ComboBox::from_id_salt("markup_subject_filter")
             .selected_text(state.markup_subject.as_deref().unwrap_or("All subjects"))
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut state.markup_subject, None, "All subjects");
@@ -184,7 +193,32 @@ pub(crate) fn draw_markups_list(
                 }
             });
 
-        ComboBox::from_label("Layer")
+        ComboBox::from_id_salt("markup_kind_filter")
+            .selected_text(state.markup_kind.map(|k| k.label()).unwrap_or("All kinds"))
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut state.markup_kind, None, "All kinds");
+                for kind in MarkupKind::ALL {
+                    ui.selectable_value(&mut state.markup_kind, Some(kind), kind.label());
+                }
+            });
+
+        ComboBox::from_id_salt("markup_page_filter")
+            .selected_text(match state.markup_page {
+                Some(p) => format!("Page {}", p + 1),
+                None => "All pages".to_string(),
+            })
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut state.markup_page, None, "All pages");
+                for page in 0..doc.pages.len() {
+                    ui.selectable_value(
+                        &mut state.markup_page,
+                        Some(page),
+                        format!("Page {}", page + 1),
+                    );
+                }
+            });
+
+        ComboBox::from_id_salt("markup_layer_filter")
             .selected_text(match state.markup_layer {
                 MarkupLayerFilter::All => "All layers".to_string(),
                 MarkupLayerFilter::DefaultLayer => {
@@ -212,7 +246,7 @@ pub(crate) fn draw_markups_list(
                 }
             });
 
-        ComboBox::from_label("Sort")
+        ComboBox::from_id_salt("markup_sort_filter")
             .selected_text(state.markup_sort.label())
             .show_ui(ui, |ui| {
                 for sort in MarkupListSort::ALL {
@@ -220,7 +254,7 @@ pub(crate) fn draw_markups_list(
                 }
             });
 
-        ComboBox::from_label("Group")
+        ComboBox::from_id_salt("markup_group_filter")
             .selected_text(state.markup_group.map(|key| key.label()).unwrap_or("None"))
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut state.markup_group, None, "None");
@@ -317,22 +351,30 @@ fn render_rows(
                 let mut clicked = false;
                 clicked |= ui
                     .selectable_label(selected, (row.page + 1).to_string())
+                    .on_hover_text(format!("Page {}", row.page + 1))
                     .clicked();
-                clicked |= ui.selectable_label(selected, row.kind.label()).clicked();
+                clicked |= ui
+                    .selectable_label(selected, row.kind.label())
+                    .on_hover_text(row.kind.label())
+                    .clicked();
                 clicked |= ui
                     .selectable_label(selected, truncate(row.author.as_str(), 24))
+                    .on_hover_text(row.author.as_str())
                     .clicked();
                 clicked |= ui
                     .selectable_label(selected, truncate(row.subject.as_str(), 24))
+                    .on_hover_text(row.subject.as_str())
                     .clicked();
                 clicked |= ui
                     .selectable_label(selected, truncate(row.summary.as_str(), 40))
+                    .on_hover_text(row.summary.as_str())
                     .clicked();
                 clicked |= ui
                     .selectable_label(
                         selected,
                         RichText::new(row.status.label()).color(status_color(row.status)),
                     )
+                    .on_hover_text(row.status.label())
                     .clicked();
                 ui.end_row();
 

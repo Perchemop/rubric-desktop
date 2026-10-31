@@ -3,6 +3,7 @@
 use eframe::egui::{self, Align2, Color32, FontId, Painter, Pos2, Sense, Ui, Vec2};
 use uuid::Uuid;
 
+use crate::domain::markup::{count_markers_on_page, count_total_label, next_count_number};
 use crate::domain::{
     angle_degrees, ruler_ticks, Grid, Markup, MarkupGeometry, MarkupKind, Project, Pt,
     Rect as DRect, ReviewStatus, Tool,
@@ -36,6 +37,15 @@ fn screen_rect(r: DRect, origin: Pos2, pan: Vec2, zoom: f32) -> egui::Rect {
     let min = to_screen(Pt::new(r.x, r.y), pan, zoom, origin);
     let max = to_screen(Pt::new(r.right(), r.bottom()), pan, zoom, origin);
     egui::Rect::from_min_max(min, max)
+}
+
+/// Draw a small dark measurement badge with white text at `anchor` (screen
+/// space). Used for measurement labels and the running count total.
+fn draw_measure_badge(painter: &Painter, anchor: Pos2, label: String) {
+    let galley = painter.layout_no_wrap(label, FontId::proportional(12.0), Color32::WHITE);
+    let text_rect = galley.rect.translate(Vec2::new(anchor.x, anchor.y));
+    painter.rect_filled(text_rect.expand(4.0), 4.0, Color32::from_black_alpha(180));
+    painter.galley(anchor, galley, Color32::WHITE);
 }
 
 /// Refuse to begin a draft when the markup it would create could not be edited.
@@ -203,7 +213,14 @@ fn draw_rulers(
 }
 
 /// Draw a single markup.
-fn draw_markup(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup) {
+fn draw_markup(
+    painter: &Painter,
+    origin: Pos2,
+    pan: Vec2,
+    zoom: f32,
+    m: &Markup,
+    show_measurements: bool,
+) {
     let style = m.style;
     let stroke_c = to_color32(style.stroke);
     let fill_c = to_color32(style.fill.with_alpha(style.fill_mode.alpha(style.fill.a)));
@@ -255,6 +272,36 @@ fn draw_markup(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup
                     ];
                     for (center, radius) in bumps {
                         painter.add(egui::Shape::ellipse_stroke(center, radius, stroke_eg));
+                    }
+                }
+                MarkupKind::Strikeout => {
+                    // A horizontal line through the vertical middle of the box.
+                    let y = sr.center().y;
+                    painter
+                        .line_segment([Pos2::new(sr.min.x, y), Pos2::new(sr.max.x, y)], stroke_eg);
+                }
+                MarkupKind::Underline => {
+                    // A horizontal line just inside the bottom edge.
+                    let y = sr.max.y - stroke_w;
+                    painter
+                        .line_segment([Pos2::new(sr.min.x, y), Pos2::new(sr.max.x, y)], stroke_eg);
+                }
+                MarkupKind::Squiggly => {
+                    // A zig-zag near the baseline (bottom edge).
+                    let y = sr.max.y - stroke_w;
+                    let step = (sr.width() / 16.0).clamp(3.0, 12.0);
+                    let mut pts: Vec<Pos2> = Vec::new();
+                    let mut x = sr.min.x;
+                    let mut up = true;
+                    while x < sr.max.x {
+                        let dy = if up { -step * 0.5 } else { step * 0.5 };
+                        pts.push(Pos2::new(x, y + dy));
+                        x += step;
+                        up = !up;
+                    }
+                    pts.push(Pos2::new(sr.max.x, y));
+                    if pts.len() >= 2 {
+                        painter.add(egui::Shape::line(pts, stroke_eg));
                     }
                 }
                 _ => {
@@ -354,25 +401,33 @@ fn draw_markup(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup
             let sb = to_screen(*b, pan, zoom, origin);
             painter.line_segment([sv, sa], stroke_eg);
             painter.line_segment([sv, sb], stroke_eg);
-            let ang = format!("{:.0}°", angle_degrees(*a, *vertex, *b));
-            painter.text(
-                sv + Vec2::new(4.0, 4.0),
-                Align2::LEFT_TOP,
-                ang,
-                FontId::proportional(9.0 * zoom.max(0.7)),
-                stroke_c,
-            );
+            // The angle value is the markup's measurement label, so it obeys
+            // the same "show measurements" preference as the overlay badges.
+            if show_measurements {
+                let ang = format!("{:.0}°", angle_degrees(*a, *vertex, *b));
+                painter.text(
+                    sv + Vec2::new(4.0, 4.0),
+                    Align2::LEFT_TOP,
+                    ang,
+                    FontId::proportional(9.0 * zoom.max(0.7)),
+                    stroke_c,
+                );
+            }
         }
         MarkupGeometry::Count { at, number } => {
             let sa = to_screen(*at, pan, zoom, origin);
             painter.circle_filled(sa, 10.0 * zoom.max(0.7), Color32::from_rgb(30, 30, 36));
-            painter.text(
-                sa,
-                Align2::CENTER_CENTER,
-                number.to_string(),
-                FontId::proportional(10.0 * zoom.max(0.7)),
-                Color32::WHITE,
-            );
+            // The dot stays visible; its number is the count measurement, so
+            // it is hidden with the other measurement labels.
+            if show_measurements {
+                painter.text(
+                    sa,
+                    Align2::CENTER_CENTER,
+                    number.to_string(),
+                    FontId::proportional(10.0 * zoom.max(0.7)),
+                    Color32::WHITE,
+                );
+            }
         }
     }
 
@@ -624,7 +679,14 @@ pub(crate) fn draw_canvas(
     // Render markups in paint order (layer-major, then vector order).
     if let Some(doc) = project.active() {
         for m in doc.markups_in_paint_order(page.index) {
-            draw_markup(&painter, origin, pan, zoom, m);
+            draw_markup(
+                &painter,
+                origin,
+                pan,
+                zoom,
+                m,
+                project.settings.show_measurements,
+            );
         }
     }
 
@@ -647,17 +709,24 @@ pub(crate) fn draw_canvas(
         if let Some(doc) = project.active() {
             let unit = page.scale.unit;
             for m in doc.markups_in_paint_order(page.index) {
+                // Angle and count already draw their value from geometry (the
+                // degree text and the numbered dot), so an overlay label would
+                // stack a second copy on the same anchor. Skip it for those.
+                if matches!(m.kind, MarkupKind::MeasureAngle | MarkupKind::MeasureCount) {
+                    continue;
+                }
                 if let Some(meas) = m.measurement {
                     let label = meas.label_with(unit, project.settings.precision);
-                    let anchor_page = measure_anchor(m);
-                    let anchor = to_screen(anchor_page, pan, zoom, origin);
-                    let font = FontId::proportional(12.0);
-                    let galley = painter.layout_no_wrap(label, font, Color32::WHITE);
-                    let text_rect = galley.rect.translate(Vec2::new(anchor.x, anchor.y));
-                    let bg = text_rect.expand(4.0);
-                    painter.rect_filled(bg, 4.0, Color32::from_black_alpha(180));
-                    painter.galley(anchor, galley, Color32::WHITE);
+                    let anchor = to_screen(measure_anchor(m), pan, zoom, origin);
+                    draw_measure_badge(&painter, anchor, label);
                 }
+            }
+            // Running total for the page's count markers, drawn once near the
+            // page corner; each marker still draws its own number.
+            let total = count_markers_on_page(&doc.markups, page.index);
+            if total > 0 {
+                let anchor = page_rect.min + Vec2::new(8.0, 8.0);
+                draw_measure_badge(&painter, anchor, count_total_label(total));
             }
         }
     }
@@ -1163,7 +1232,16 @@ pub(crate) fn draw_canvas(
                         | MarkupKind::Highlight => {
                             MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv))
                         }
-                        MarkupKind::MeasureCount => MarkupGeometry::Count { at: pp, number: 1 },
+                        MarkupKind::MeasureCount => {
+                            // Number each new marker after the highest already
+                            // on this page, so the running count never repeats
+                            // (even after a marker is deleted).
+                            let number = match project.active() {
+                                Some(doc) => next_count_number(&doc.markups, page.index),
+                                None => 1,
+                            };
+                            MarkupGeometry::Count { at: pp, number }
+                        }
                         MarkupKind::Ink => MarkupGeometry::Ink {
                             strokes: vec![vec![pp]],
                         },

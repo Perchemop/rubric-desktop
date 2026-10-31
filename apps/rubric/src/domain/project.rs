@@ -1013,4 +1013,130 @@ mod tests {
             "\"measure_diameter\""
         );
     }
+
+    #[test]
+    fn history_new_starts_at_the_initial_project_with_no_travel() {
+        let initial = Project::new("Initial");
+        let history = History::new(initial.clone());
+        assert_eq!(history.snapshots.len(), 1);
+        assert_eq!(history.cursor, 0);
+        assert!(!history.can_undo());
+        assert!(!history.can_redo());
+        assert_eq!(history.current(), &initial);
+    }
+
+    #[test]
+    fn history_undo_redo_roundtrip() {
+        let initial = Project::new("Initial");
+        let mut modified = initial.clone();
+        modified.rename("Modified");
+
+        let mut history = History::new(initial.clone());
+        history.push(modified.clone());
+
+        assert!(history.undo());
+        assert_eq!(history.current(), &initial);
+        assert!(history.redo());
+        assert_eq!(history.current(), &modified);
+    }
+
+    #[test]
+    fn history_undo_at_bottom_and_redo_at_tip_change_nothing() {
+        let initial = Project::new("Initial");
+        let mut modified = initial.clone();
+        modified.rename("Modified");
+
+        let mut history = History::new(initial.clone());
+        history.push(modified);
+
+        assert!(history.undo());
+        assert!(!history.can_undo());
+        assert!(!history.undo());
+        assert_eq!(history.current(), &initial);
+
+        assert!(history.redo());
+        assert!(!history.can_redo());
+        assert!(!history.redo());
+        assert_eq!(history.current().name, "Modified");
+    }
+
+    #[test]
+    fn history_push_truncates_the_redo_branch() {
+        let initial = Project::new("Initial");
+        let mut a = initial.clone();
+        a.rename("A");
+        let mut b = initial.clone();
+        b.rename("B");
+
+        let mut history = History::new(initial);
+        history.push(a);
+        assert!(history.undo());
+        assert!(history.can_redo());
+
+        history.push(b);
+        assert!(!history.can_redo());
+        assert!(!history.redo());
+        assert_eq!(history.current().name, "B");
+    }
+
+    #[test]
+    fn history_push_caps_at_128_snapshots_dropping_the_oldest() {
+        let initial = Project::new("Initial");
+        let mut history = History::new(initial.clone());
+
+        for i in 1..=200 {
+            let mut project = initial.clone();
+            project.rename(format!("p{i}"));
+            history.push(project);
+        }
+
+        assert_eq!(history.snapshots.len(), 128);
+        assert_eq!(history.cursor, 127);
+        assert_eq!(history.current().name, "p200");
+        assert!(history.can_undo());
+
+        assert!(history.undo());
+        assert_eq!(history.current().name, "p199");
+
+        while history.undo() {
+            // Fully unwind to the oldest surviving snapshot.
+        }
+        assert_eq!(history.current().name, "p73");
+        assert!(!history.can_undo());
+    }
+
+    #[test]
+    fn history_overwrite_current_replaces_the_tip_without_a_new_entry() {
+        let initial = Project::new("Initial");
+        let mut updated = initial.clone();
+        updated.rename("Updated");
+
+        let mut history = History::new(initial);
+        let entries_before = history.snapshots.len();
+
+        history.overwrite_current(updated.clone());
+        assert_eq!(history.snapshots.len(), entries_before);
+        assert_eq!(history.current(), &updated);
+        assert!(!history.can_undo());
+        assert!(!history.can_redo());
+    }
+
+    #[test]
+    fn history_clear_resets_to_a_fresh_single_snapshot() {
+        let initial = Project::new("Initial");
+        let mut modified = initial.clone();
+        modified.rename("Modified");
+
+        let mut history = History::new(initial);
+        history.push(modified);
+        assert!(history.can_undo());
+
+        let fresh = Project::new("Fresh");
+        history.clear(fresh.clone());
+        assert_eq!(history.snapshots.len(), 1);
+        assert_eq!(history.cursor, 0);
+        assert_eq!(history.current(), &fresh);
+        assert!(!history.can_undo());
+        assert!(!history.can_redo());
+    }
 }

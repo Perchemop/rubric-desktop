@@ -85,7 +85,7 @@ pub(crate) fn draw_inspector(
             .map(|d| d.default_layer_id())
             .unwrap_or_default();
         for id in layer_ids {
-            let layer = project.active().and_then(|d| d.layer(id)).cloned();
+            let layer = project.active().and_then(|d| d.layer(id).cloned());
             let Some(layer) = layer else {
                 continue;
             };
@@ -128,11 +128,11 @@ pub(crate) fn draw_inspector(
                     if let Some(doc) = project.active_mut() {
                         if doc.rename_layer(id, &name) {
                             ui_state.status = format!("Layer renamed to '{}'", name);
+                            if name_resp.lost_focus() {
+                                committed = true;
+                            }
                         }
                     }
-                }
-                if name_resp.lost_focus() {
-                    committed = true;
                 }
                 // Reorder buttons
                 if is_default {
@@ -185,6 +185,148 @@ pub(crate) fn draw_inspector(
         }
     });
 
+    // Page / scale settings (always reachable, even with a selection).
+    ui.collapsing("Scale", |ui| {
+        let page_idx = if let Some(doc) = project.active() {
+            let count = doc.page_count();
+            if count == 0 {
+                0
+            } else {
+                ui_state.current_page.min(count - 1)
+            }
+        } else {
+            ui_state.current_page
+        };
+        let before = project
+            .active()
+            .and_then(|d| d.pages.get(page_idx).copied())
+            .map(|p| p.scale)
+            .unwrap_or(Scale::PAPER);
+        let mut scale = before;
+
+        ui.label("Presets");
+        ui.horizontal_wrapped(|ui| {
+            let presets: [(&str, Scale); 4] = [
+                ("1:1", Scale::PAPER),
+                (
+                    "1 in = 1 ft",
+                    Scale::from_ratio(MeasureUnit::Foot, 1.0, 72.0),
+                ),
+                (
+                    "1 in = 10 ft",
+                    Scale::from_ratio(MeasureUnit::Foot, 10.0, 72.0),
+                ),
+                (
+                    "1 in = 50 ft",
+                    Scale::from_ratio(MeasureUnit::Foot, 50.0, 72.0),
+                ),
+            ];
+            for (label, sc) in presets.iter() {
+                if ui.button(*label).clicked() && !same_scale(*sc, before) {
+                    scale = *sc;
+                    if let Some(doc) = project.active_mut() {
+                        if let Some(page) = doc.pages.get_mut(page_idx) {
+                            page.scale = scale;
+                        }
+                        let s = doc.pages.get(page_idx).map(|p| p.scale).unwrap_or(scale);
+                        for m in doc.markups.iter_mut().filter(|m| m.page == page_idx) {
+                            m.recompute_measurement(s);
+                        }
+                        doc.touch();
+                    }
+                    committed = true;
+                    ui_state.status = format!("Scale → {}", scale.describe());
+                }
+            }
+        });
+
+        ui.separator();
+        ui.label("Unit");
+        let mut unit_changed = false;
+        ComboBox::from_label("Display unit")
+            .selected_text(scale.unit.name())
+            .show_ui(ui, |ui| {
+                for u in MeasureUnit::ALL.iter() {
+                    if ui.selectable_value(&mut scale.unit, *u, u.name()).clicked() {
+                        unit_changed = true;
+                    }
+                }
+            });
+        if unit_changed && scale.unit != before.unit {
+            let new_unit = scale.unit;
+            scale = before.with_display_unit(new_unit);
+            if let Some(doc) = project.active_mut() {
+                if let Some(page) = doc.pages.get_mut(page_idx) {
+                    page.scale = scale;
+                }
+                let s = doc.pages.get(page_idx).map(|p| p.scale).unwrap_or(scale);
+                for m in doc.markups.iter_mut().filter(|m| m.page == page_idx) {
+                    m.recompute_measurement(s);
+                }
+                doc.touch();
+            }
+            committed = true;
+            ui_state.status = format!("Unit → {}", scale.unit.name());
+        }
+
+        ui.separator();
+        ui.label("Precision (decimal places)");
+        let precision_before = project.settings.precision;
+        let mut precision = precision_before;
+        let precision_resp = ui.add(
+            egui::DragValue::new(&mut precision)
+                .speed(1.0)
+                .range(0..=MAX_PRECISION),
+        );
+        if precision_resp.changed() {
+            project.settings.set_precision(precision);
+        }
+        if project.settings.precision != precision_before
+            && (precision_resp.drag_stopped() || precision_resp.lost_focus())
+        {
+            project.touch();
+            committed = true;
+            ui_state.status = format!("Precision → {}", project.settings.precision);
+        }
+
+        ui.separator();
+        ui.label("Custom ratio: paper inches = real units");
+        ui.horizontal(|ui| {
+            ui.label("1 in paper =");
+            let _ = ui.add(egui::DragValue::new(&mut ui_state.scale_real_units).speed(0.1));
+            ui.label(scale.unit.suffix());
+            ui.label("over");
+            let _ = ui.add(
+                egui::DragValue::new(&mut ui_state.scale_paper_inches)
+                    .speed(0.1)
+                    .range(0.01..=100.0),
+            );
+            ui.label("in paper");
+        });
+        if ui.button("Apply custom").clicked() {
+            let paper_pts = (ui_state.scale_paper_inches * 72.0).max(1.0);
+            let new_scale = Scale::from_ratio(scale.unit, ui_state.scale_real_units, paper_pts);
+            if !same_scale(new_scale, before) {
+                if let Some(doc) = project.active_mut() {
+                    if let Some(page) = doc.pages.get_mut(page_idx) {
+                        page.scale = new_scale;
+                    }
+                    let s = doc
+                        .pages
+                        .get(page_idx)
+                        .map(|p| p.scale)
+                        .unwrap_or(new_scale);
+                    for m in doc.markups.iter_mut().filter(|m| m.page == page_idx) {
+                        m.recompute_measurement(s);
+                    }
+                    doc.touch();
+                }
+                committed = true;
+                ui_state.status = format!("Scale → {}", new_scale.describe());
+            }
+        }
+    });
+
     let selected: Vec<Uuid> = ui_state.selected.iter().copied().collect();
 
     if selected.is_empty() {
@@ -194,179 +336,38 @@ pub(crate) fn draw_inspector(
 
         ui.collapsing("Project", |ui| {
             let mut name = project.name.clone();
-            if ui.text_edit_singleline(&mut name).changed() {
+            let resp = ui.text_edit_singleline(&mut name);
+            if resp.changed() {
                 project.rename(name);
+                if resp.lost_focus() {
+                    committed = true;
+                }
             }
             ui.label("Author");
-            if ui
-                .text_edit_singleline(&mut project.settings.author)
-                .changed()
-            {
+            let mut author = project.settings.author.clone();
+            let resp_a = ui.text_edit_singleline(&mut author);
+            if resp_a.changed() {
+                project.settings.author = author;
                 ui_state.status = "Author updated".to_string();
+                if resp_a.lost_focus() {
+                    committed = true;
+                }
             }
         });
 
         ui.collapsing("Document", |ui| {
             if let Some(doc) = project.active_mut() {
                 let mut title = doc.title.clone();
-                if ui.text_edit_singleline(&mut title).changed() {
+                let resp = ui.text_edit_singleline(&mut title);
+                if resp.changed() {
                     doc.title = title;
                     doc.touch();
+                    if resp.lost_focus() {
+                        committed = true;
+                    }
                 }
                 ui.label(format!("Pages: {}", doc.page_count()));
                 ui.label(format!("Markups: {}", doc.markups.len()));
-            }
-        });
-
-        // Page / scale settings.
-        ui.collapsing("Scale", |ui| {
-            // The page currently displayed on the canvas, clamped to the
-            // active document's page count.
-            let page_idx = if let Some(doc) = project.active() {
-                let count = doc.page_count();
-                if count == 0 {
-                    0
-                } else {
-                    ui_state.current_page.min(count - 1)
-                }
-            } else {
-                ui_state.current_page
-            };
-            // Read current scale, keeping a copy so we can tell whether a
-            // preset / unit / custom click actually changed anything.
-            let before = project
-                .active()
-                .and_then(|d| d.pages.get(page_idx).copied())
-                .map(|p| p.scale)
-                .unwrap_or(Scale::PAPER);
-            let mut scale = before;
-
-            ui.label("Presets");
-            ui.horizontal_wrapped(|ui| {
-                let presets: [(&str, Scale); 4] = [
-                    ("1:1", Scale::PAPER),
-                    (
-                        "1 in = 1 ft",
-                        Scale::from_ratio(MeasureUnit::Foot, 1.0, 72.0),
-                    ),
-                    (
-                        "1 in = 10 ft",
-                        Scale::from_ratio(MeasureUnit::Foot, 10.0, 72.0),
-                    ),
-                    (
-                        "1 in = 50 ft",
-                        Scale::from_ratio(MeasureUnit::Foot, 50.0, 72.0),
-                    ),
-                ];
-                for (label, sc) in presets.iter() {
-                    // Re-clicking the active preset is a no-op: no snapshot.
-                    if ui.button(*label).clicked() && !same_scale(*sc, before) {
-                        scale = *sc;
-                        // apply
-                        if let Some(doc) = project.active_mut() {
-                            if let Some(page) = doc.pages.get_mut(page_idx) {
-                                page.scale = scale;
-                            }
-                            let s = doc.pages.get(page_idx).map(|p| p.scale).unwrap_or(scale);
-                            for m in doc.markups.iter_mut().filter(|m| m.page == page_idx) {
-                                m.recompute_measurement(s);
-                            }
-                            doc.touch();
-                        }
-                        committed = true;
-                        ui_state.status = format!("Scale → {}", scale.describe());
-                    }
-                }
-            });
-
-            ui.separator();
-            ui.label("Unit");
-            let mut unit_changed = false;
-            ComboBox::from_label("Display unit")
-                .selected_text(scale.unit.name())
-                .show_ui(ui, |ui| {
-                    for u in MeasureUnit::ALL.iter() {
-                        if ui.selectable_value(&mut scale.unit, *u, u.name()).clicked() {
-                            unit_changed = true;
-                        }
-                    }
-                });
-            // Re-selecting the active unit is a no-op: no snapshot, no rewrite.
-            if unit_changed && scale.unit != before.unit {
-                // Convert the ratio so the physical length is preserved when the
-                // displayed unit changes (10 ft must not silently become 10 m).
-                let new_unit = scale.unit;
-                scale = scale.with_display_unit(new_unit);
-                if let Some(doc) = project.active_mut() {
-                    if let Some(page) = doc.pages.get_mut(page_idx) {
-                        page.scale = scale;
-                    }
-                    let s = doc.pages.get(page_idx).map(|p| p.scale).unwrap_or(scale);
-                    for m in doc.markups.iter_mut().filter(|m| m.page == page_idx) {
-                        m.recompute_measurement(s);
-                    }
-                    doc.touch();
-                }
-                committed = true;
-                ui_state.status = format!("Unit → {}", scale.unit.name());
-            }
-
-            ui.separator();
-            ui.label("Precision (decimal places)");
-            let precision_before = project.settings.precision;
-            let mut precision = precision_before;
-            let precision_resp = ui.add(
-                egui::DragValue::new(&mut precision)
-                    .speed(1.0)
-                    .range(0..=MAX_PRECISION),
-            );
-            if precision_resp.changed() {
-                project.settings.set_precision(precision);
-            }
-            // Commit once per drag/entry: snapshot only on release / focus loss.
-            if project.settings.precision != precision_before
-                && (precision_resp.drag_stopped() || precision_resp.lost_focus())
-            {
-                project.touch();
-                committed = true;
-                ui_state.status = format!("Precision → {}", project.settings.precision);
-            }
-
-            ui.separator();
-            ui.label("Custom ratio: paper inches = real units");
-            ui.horizontal(|ui| {
-                ui.label("1 in paper =");
-                let _ = ui.add(egui::DragValue::new(&mut ui_state.scale_real_units).speed(0.1));
-                ui.label(scale.unit.suffix());
-                ui.label("over");
-                let _ = ui.add(
-                    egui::DragValue::new(&mut ui_state.scale_paper_inches)
-                        .speed(0.1)
-                        .range(0.01..=100.0),
-                );
-                ui.label("in paper");
-            });
-            if ui.button("Apply custom").clicked() {
-                let paper_pts = (ui_state.scale_paper_inches * 72.0).max(1.0);
-                let new_scale = Scale::from_ratio(scale.unit, ui_state.scale_real_units, paper_pts);
-                if !same_scale(new_scale, before) {
-                    if let Some(doc) = project.active_mut() {
-                        if let Some(page) = doc.pages.get_mut(page_idx) {
-                            page.scale = new_scale;
-                        }
-                        let s = doc
-                            .pages
-                            .get(page_idx)
-                            .map(|p| p.scale)
-                            .unwrap_or(new_scale);
-                        for m in doc.markups.iter_mut().filter(|m| m.page == page_idx) {
-                            m.recompute_measurement(s);
-                        }
-                        doc.touch();
-                    }
-                    committed = true;
-                    ui_state.status = format!("Scale → {}", new_scale.describe());
-                }
             }
         });
 
@@ -412,18 +413,26 @@ pub(crate) fn draw_inspector(
         ui.horizontal(|ui| {
             ui.label("Subject");
             let mut subj = m.subject.clone();
-            if ui.text_edit_singleline(&mut subj).changed() {
+            let resp = ui.text_edit_singleline(&mut subj);
+            if resp.changed() {
                 m.subject = subj;
                 edited = true;
+                if resp.lost_focus() {
+                    committed = true;
+                }
             }
         });
 
         ui.horizontal(|ui| {
             ui.label("Author");
             let mut auth = m.author.clone();
-            if ui.text_edit_singleline(&mut auth).changed() {
+            let resp = ui.text_edit_singleline(&mut auth);
+            if resp.changed() {
                 m.author = auth;
                 edited = true;
+                if resp.lost_focus() {
+                    committed = true;
+                }
             }
         });
 
@@ -441,10 +450,13 @@ pub(crate) fn draw_inspector(
                             5.0,
                             domain_to_color32(s.color()),
                         );
-                        if ui.selectable_label(m.status == *s, s.label()).clicked() {
+                        if ui.selectable_label(m.status == *s, s.label()).clicked()
+                            && m.status != *s
+                        {
                             m.status = *s;
                             ui_state.status = format!("Status → {}", s.label());
                             edited = true;
+                            committed = true;
                         }
                     });
                 }
@@ -501,24 +513,28 @@ pub(crate) fn draw_inspector(
 
         ui.label("Stroke colour");
         let mut sc = domain_to_color32(m.style.stroke);
-        if ui.color_edit_button_srgba(&mut sc).changed() {
+        let resp = ui.color_edit_button_srgba(&mut sc);
+        if resp.changed() {
             let c = color32_to_domain(sc);
             m.style.stroke = c;
             m.style.fill = c;
             edited = true;
+            if resp.lost_focus() {
+                committed = true;
+            }
         }
         ui.horizontal(|ui| {
             ui.label("Stroke width");
-            if ui
-                .add(egui::Slider::new(&mut m.style.width, 0.25..=10.0))
-                .changed()
-            {
+            let resp = ui.add(egui::Slider::new(&mut m.style.width, 0.25..=10.0));
+            if resp.changed() {
                 edited = true;
+                if resp.drag_stopped() || resp.lost_focus() {
+                    committed = true;
+                }
             }
         });
 
         if m.kind.is_measure() {
-            // Current page scale.
             let scale = project
                 .active()
                 .and_then(|d| d.pages.get(m.page).copied())
@@ -553,9 +569,6 @@ pub(crate) fn draw_inspector(
                 ui.separator();
             }
         }
-        // Disabled while the markup is locked: a click would otherwise consume
-        // the typed text and the write-back guard would drop it, losing it
-        // with no feedback. The draft text is only cleared once added.
         ui.add_enabled_ui(editable, |ui| {
             ui.text_edit_multiline(comment_text);
             let add_clicked = ui.button("Add Comment").clicked();
@@ -565,16 +578,12 @@ pub(crate) fn draw_inspector(
                     comment_text.clear();
                     ui_state.status = "Comment added".to_string();
                     edited = true;
-                    // Adding a comment is a committed action: snapshot it once.
                     committed = true;
                 }
             }
         });
     });
 
-    // Write the markup back only when this frame actually edited it, otherwise
-    // merely selecting a markup would churn `modified` on every frame.
-    // Locked markups (per-markup or via a locked layer) are never written back.
     if edited && editable {
         m.touch();
         if let Some(doc) = project.active_mut() {

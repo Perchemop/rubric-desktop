@@ -4,6 +4,63 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ## [Unreleased]
 
+### Fixed
+
+Audit-fix wave `v0.3-01` (`docs/audits/v0.2.0-full-audit.md`, all high-severity
+defects except H8 (PDFium bundling, deferred to the v0.3 engine slice) and the
+in-scope medium findings):
+
+- **H1** — crate versions bumped `0.1.0` → `0.3.0`: binaries self-report the
+  right version and Help ▸ Check for Updates no longer reports the running
+  build as outdated.
+- **H2** — switching a page's display unit now preserves physical lengths
+  (the conversion reads the scale *before* the ComboBox write).
+- **H3** — count markers number sequentially per page (highest existing number
+  + 1; deleting a marker never reissues its number) and a running
+  `N count` total badge is drawn per page.
+- **H4** — strikeout, underline and squiggly render as their real strokes
+  (mid-line, bottom line, zig-zag) instead of plain rectangles, on canvas and
+  in PNG export.
+- **H5 / H9** — status, author, subject, stroke-colour/width, project name,
+  document title and project-author edits are committed: they push one undo
+  snapshot and mark the project dirty, so Ctrl+Z reverts them and autosave
+  persists them.
+- **H6** — print failures (render, temp-write, spool) surface in the status
+  line instead of failing silently, and the temporary PNG is always removed.
+- **H7** — Fit Page scales the current page to the actual canvas viewport
+  (with margin) instead of resetting zoom to 100 %.
+- **M1** — File ▸ Quit asks for confirmation when the project has unsaved
+  changes.
+- **M6** — the Pages panel renders thumbnails in multiple columns using the
+  pre-computed layout instead of stacking every cell in one column.
+- **M14** — Markups List gains the Kind and Page filters the domain already
+  supported.
+- **M15 / M16** — angle and count no longer draw two overlapping labels; all
+  geometry-carried measurement text (angle degrees, count numbers) obeys the
+  Show Measurements preference, which now has a View-menu checkbox.
+- **M17** — Scale / unit / precision controls are reachable while a markup is
+  selected (the section moved above the selection branch).
+- **M18** — `Scale::describe()` anchors on one inch (72 pt), so `1 in = 1 ft`
+  describes as `1 in = 1.000 ft`, not `12.000 ft`.
+- **M19** — Undo/Redo menu entries are disabled when history cannot serve
+  them, in both the Edit menu bar and the shared context menu.
+- **M20** — layer rename pushes a snapshot only when the name actually
+  changed.
+- **M21** — the spec no longer overstates ink: single stroke per gesture is
+  the documented canvas behaviour; multi-stroke Ink markups remain a
+  domain-level capability.
+- Markups List filter row no longer clips the last control (labels moved into
+  the combo `selected_text`), truncated cells gained hover tooltips, and the
+  top toolbar's tool names now match the Tools panel.
+
+### Added
+
+- Headless tests for `History` (undo/redo round-trip, redo-branch truncation,
+  the 128-snapshot cap, overwrite, clear) and the `view` zoom constants
+  (bounds, presets, clamping, idempotence), plus count-numbering and
+  `Scale::describe()` tests.
+- `AGENTS.md` records the 2026-10-31 owner directive on parallel workstreams.
+
 ## [0.2.0] - 2026-10-30
 
 ### Released

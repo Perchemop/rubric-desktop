@@ -24,12 +24,12 @@ pub(crate) fn draw_toolbar(ui: &mut Ui, active: &mut Tool, _status: &mut String)
         let kinds = [
             (Tool::Select, "Select"),
             (Tool::Highlight, "Highlight"),
-            (Tool::Rectangle, "Rect"),
+            (Tool::Rectangle, "Rectangle"),
             (Tool::Ellipse, "Ellipse"),
             (Tool::Line, "Line"),
             (Tool::Arrow, "Arrow"),
-            (Tool::Ink, "Ink"),
-            (Tool::Text, "Text"),
+            (Tool::Ink, "Pen"),
+            (Tool::Text, "Text Box"),
             (Tool::MeasureLength, "Length"),
         ];
         for (t, name) in kinds {

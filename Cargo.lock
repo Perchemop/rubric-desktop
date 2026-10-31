@@ -785,7 +785,7 @@ dependencies = [
 
 [[package]]
 name = "crash-report"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -3042,7 +3042,7 @@ dependencies = [
 
 [[package]]
 name = "rubric"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "crash-report",
@@ -3757,7 +3757,7 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "update-check"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde_json",
