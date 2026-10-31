@@ -15,7 +15,7 @@ implemented · **Todo** = not started · **Out of scope** = deliberately exclude
 
 | Capability (inspiration level) | Feature IDs | Status | Notes |
 |---|---|---|---|
-| Open & render PDF documents, page navigation | F-401–F-406, F-504 | Done | PDF import + page rendering, thumbnails (F-404), grid/snap (F-405), rulers (F-406), zoom presets (F-401) |
+| Open & render PDF documents, page navigation | F-401–F-406, F-504 | Done | PDF import + page rendering via PDFium/hayro hybrid; thumbnails (F-404), grid/snap (F-405), rulers (F-406), zoom presets (F-401); pure-Rust hayro renderer available via --features hayro |
 | Text & review markup (highlight, strikeout, underline, squiggly, text, callout, note, stamp) | F-101–F-111 | Done | tool set + note popover (F-103) 2026-10-30 |
 | Shape & path markup (rectangle, ellipse, cloud, polygon, polyline, line, arrow, ink) | F-101–F-116 | Done | shapes/paths + drag-to-draw; page+layer-scoped z-order and copy properties (F-114/F-115) |
 | Selection editing (select, move, delete, copy properties, z-order, layers) | F-113–F-116 | Done | select/move/delete, copy/paste visual style, page+layer-scoped z-order + layer visibility/lock/rename/reorder |
