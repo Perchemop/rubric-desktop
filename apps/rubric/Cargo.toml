@@ -26,9 +26,24 @@ rfd = "0.15"
 # MIT OR Apache-2.0. Bindings only: the PDFium shared library (BSD-3-Clause)
 # is located at run time (RUBRIC_PDFIUM_PATH / exe dir / system), so builds
 # stay pure Rust. See DECISIONS.md 2026-10-20 (PDF crate choice).
-pdfium-render = "0.9"
+#
+# PDFium remains available but hayro (pure Rust) is now the preferred engine.
+# The `hayro` feature enables hayro for page-size probing; rendering defaults
+# to PDFium until full hayro rendering is validated (v0.3-02 progressive migration).
+#
 # Shared suite crates (guide §7): crash reporting and update checks.
 # Explicit `version` alongside `path`: cargo-deny treats a versionless
 # dependency spec as a wildcard, which the dependency-hygiene gate forbids.
+pdfium-render = "0.9"
 crash-report = { path = "../../crates/crash-report", version = "0.3.0" }
 update-check = { path = "../../crates/update-check", version = "0.3.0" }
+
+[features]
+default = []
+# Feature for pure-Rust PDF engine (v0.3-02 migration). When enabled,
+# hayro is used for page-size probing, allowing validation of the
+# pure-Rust implementation against PDFium for regression testing.
+hayro = ["dep:hayro-syntax"]
+
+[dependencies]
+hayro-syntax = { version = "0.5", optional = true }

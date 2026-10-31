@@ -122,10 +122,22 @@ fn pdfium_from_bindings(
 
 /// Read the page sizes of the PDF at `path`, in PDF points and document order.
 ///
+/// When the `hayro` feature is enabled, uses the pure-Rust hayro-syntax parser
+/// for page-size probing. Otherwise falls back to PDFium.
+///
 /// Passwords are not supported yet; encrypted PDFs are reported as an error.
 /// The file is opened read-only and never modified.
 pub fn read_pdf_info(path: impl AsRef<Path>) -> Result<PdfSourceInfo, DataError> {
     let path = path.as_ref();
+    
+    #[cfg(feature = "hayro")]
+    {
+        match hayro_pages::probe_pages_hayro(path) {
+            Ok(page_sizes) => return Ok(PdfSourceInfo { page_sizes }),
+            Err(e) => eprintln!("hayro probe failed, falling back to PDFium: {e}"),
+        }
+    }
+    
     let pdfium = bind_pdfium()?;
     let document = load_document(&pdfium, path)?;
 
@@ -145,25 +157,45 @@ pub fn read_pdf_info(path: impl AsRef<Path>) -> Result<PdfSourceInfo, DataError>
     Ok(PdfSourceInfo { page_sizes })
 }
 
-// --- Hayro page-size probing support
+// --- Hayro page-size probing support ---
+// Pure-Rust PDF parser implementation using hayro-syntax.
+// This module is only compiled when the `hayro` feature is enabled.
 //
-// `hayro` is a pure‑Rust PDF parser/rendering library. It will be enabled via a
-// feature flag so the existing PDFium path remains the default. For now the
-// implementation just forwards to the old PDFium plumbing – the real parser
-// will be added in a later slice.   
-#[cfg(feature = "hayro")]
-fn probe_page_sizes_hayro(path: &Path) -> Result<Vec<(f32, f32)>, DataError> {
-    // Future implementation will use `hayro-syntax`/`hayro` to read media‐box
-    // dimensions. In the interim we error out so callers fall back to PDFium.
-    Err(DataError::PdfLibrary("hayro implementation pending".into()))
-}
+// Based on hayro-syntax v0.5 API (docs.rs/hayro_syntax/0.5.0).
 
-// Public helper that first tries the hayro path. If it fails the function
-// falls back to PDFium via `read_pdf_info`.
-pub fn probe_page_sizes(path: &Path) -> Result<Vec<(f32, f32)>, DataError> {
-    match probe_page_sizes_hayro(path) {
-        Ok(v) => Ok(v),
-        Err(_) => read_pdf_info(path).map(|info| info.page_sizes),
+#[cfg(feature = "hayro")]
+mod hayro_pages {
+    use super::*;
+    use std::sync::Arc;
+
+    /// Probe page sizes using hayro-syntax (pure Rust PDF parser).
+    /// Returns page dimensions in PDF points (unrotated media-box).
+    pub fn probe_pages_hayro(path: &Path) -> Result<Vec<(f32, f32)>, DataError> {
+        let bytes = fs::read(path).map_err(|e| {
+            DataError::Pdf(format!("could not read PDF {}: {e}", path.display()))
+        })?;
+
+        // Parse PDF using hayro-syntax (v0.5 API uses Pdf::new)
+        let pdf = hayro_syntax::Pdf::new(Arc::new(bytes)).map_err(|e| {
+            DataError::Pdf(format!("could not parse PDF {} with hayro-syntax: {e}", path.display()))
+        })?;
+
+        // Get pages iterator - hayro provides typed page access
+        let pages = pdf.pages();
+        let mut page_sizes = Vec::new();
+
+        for page in pages.iter() {
+            // Each page has a media_box() method
+            if let Some(media_box) = page.media_box() {
+                let w = media_box.width() as f32;
+                let h = media_box.height() as f32;
+                if w > 0.0 && h > 0.0 {
+                    page_sizes.push((w, h));
+                }
+            }
+        }
+
+        Ok(page_sizes)
     }
 }
 
