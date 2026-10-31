@@ -27,11 +27,15 @@ Fixes the 9 high-severity defects plus in-scope medium findings from
   no longer listed).
 
 ### Active
-- CI run on the PR (fmt, clippy `-D warnings`, tests, release build) — run ID
-  to be recorded here when green.
-
-### Blocked
-- None.
+- CI green on PR #62, commit `30267c5`: CI run `41139491539` (fmt, clippy
+  `-D warnings`, tests, release build, packaging plan) and Security run
+  `41139491548` (secret scan, personal-data scan, dependency review,
+  cargo-deny, SBOM) both SUCCESS. Two earlier runs on the branch were fixed
+  in-slice: run `41138282924` (rustfmt diffs in five files + the packaging
+  plan failing on the `^0.1.0` inter-crate requirement after the H1 bump) and
+  run `41138931009` (E0382 moved value in a History test).
+- Reviewer verdict pending; merge per the 2026-10-26 owner directive once
+  findings (if any) are addressed.
 
 ## 2026-10-17 — Phase 0 (initial commit)
 **Status**: in progress (verifying build)
