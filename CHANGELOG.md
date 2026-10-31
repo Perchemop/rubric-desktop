@@ -7,10 +7,19 @@ All notable changes to this project will be documented here. Format: semantic-is
 ### Added
 
 - **v0.3-02 Phase 1**: hayro-syntax page-size probing for pure-Rust PDF engine adoption (H8 follow-up)
-  - Added optional `hayro-syntax v0.5` dependency with `hayro` feature flag
-  - Implemented `probe_pages_hayro()` using hayro-syntax v0.5 API
+  - Added optional `hayro-syntax v0.8` dependency with `hayro` feature flag
+  - Implemented `probe_pages_hayro()` using hayro-syntax v0.8 API
   - Integrated with `read_pdf_info()` for PDF page-size detection using pure Rust
-  - PDFium remains the default rendering engine; hayro used for page-size probing when feature enabled
+  - PDFium remains the default page-size probing engine; hayro used when feature enabled
+
+- **v0.3-02 Phase 2**: hayro rendering pipeline for pure-Rust PDF to PNG conversion (H8 follow-up)
+  - Added optional `hayro v0.8` dependency for PDF page rendering
+  - Implemented `render_page_hayro()` using hayro's render API
+  - Updated `render_page_to_cache()` to use hayro when `--features hayro` is enabled
+  - Made PDFium code paths conditional on hayro feature (PDFium code only compiles when hayro is disabled)
+  - Added CI test job for hayro feature: `cargo test --all --features hayro`
+  - Added `hayro_render_page_to_cache_works` test for hayro-specific PNG rendering
+  - PNG output format parity with PDFium renderer
 
 ## [0.3-01] - 2026-10-31
 

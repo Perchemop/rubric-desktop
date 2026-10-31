@@ -221,6 +221,8 @@ mod hayro_pages {
         target_width_px: u32,
         cache_path: &Path,
     ) -> Result<PathBuf, DataError> {
+        use hayro::{render, PixmapSettings, RenderSettings};
+
         let bytes = fs::read(pdf_path)
             .map_err(|e| DataError::Pdf(format!("could not read PDF {}: {e}", pdf_path.display())))?;
 
@@ -241,18 +243,26 @@ mod hayro_pages {
             )));
         }
 
-        // Get the page we want to render
-        let page = pdf.pages().get(page_index).ok_or_else(|| {
+        // Get page dimensions from media box
+        let pages = pdf.pages();
+        let page = pages.get(page_index).ok_or_else(|| {
             DataError::Pdf(format!(
                 "could not load page {page_index} of {}",
                 pdf_path.display()
             ))
         })?;
 
-        // Calculate target height to maintain aspect ratio
-        let page_size = page.size();
-        let src_width = page_size.width() as f32;
-        let src_height = page_size.height() as f32;
+        // Get the media box for page dimensions (in PDF points at 72 DPI)
+        let media_box = page.media_box().ok_or_else(|| {
+            DataError::Pdf(format!(
+                "could not read media box for page {page_index} of {}",
+                pdf_path.display()
+            ))
+        })?;
+
+        // Media box dimensions are in PDF points (default 72 DPI)
+        let src_width = media_box.width() as f32;
+        let src_height = media_box.height() as f32;
         let target_width = i32::try_from(target_width_px)
             .unwrap_or_else(|_| target_width_px as i32);
         let target_height = if src_width > 0.0 {
@@ -260,9 +270,6 @@ mod hayro_pages {
         } else {
             target_width
         };
-
-        // Render using hayro's render function
-        use hayro::{render, PixmapSettings, RenderSettings};
 
         let render_settings = RenderSettings {
             page_size: hayro::PageSize::Physical {
@@ -290,9 +297,8 @@ mod hayro_pages {
         // Convert pixmap (RGBA8) to image crate's RGBA image
         // hayro's pixmap is a vector of RGBA bytes
         let pixels = pixmap.pixels();
-        let (w, h) = (target_width, target_height);
 
-        let img = image::RgbaImage::from_raw(w as u32, h as u32, pixels)
+        let img = image::RgbaImage::from_raw(target_width as u32, target_height as u32, pixels)
             .ok_or_else(|| {
                 DataError::Pdf(format!(
                     "could not create image from hayro pixmap: dimensions don't match pixel count"
