@@ -135,6 +135,10 @@ items stay marked LIVE and are re-verified per release (§2.5-style check).
 | R-C-010 | Dependency licence classes + SBOM in CI | DONE/LIVE | deny.toml; security.yml cargo-deny + sbom jobs; ATTRIBUTION.md policy section |
 | R-C-011 | SAST/SCA: CodeQL on schedule+main; Dependabot versions; dependency-review on PRs; branch protection, required check, security updates | DONE/LIVE | security.yml; .github/dependabot.yml; repo settings (branch protection + Dependabot security updates enabled 2026-10-24) |
 | R-C-012 | Launch/name/metrics hygiene: name-conflict check recorded, one home URL, metrics statement | DONE | docs/assumptions-and-questions.md Q28; README links; docs/metrics.md |
+| R-H8-01 | PDFium bundling issue: native library required at runtime, not bundled in releases | DEFERRED | PDFium bundled per platform; hayro (v0.3-02) provides pure-Rust fallback |
+| R-H8-02 | hayro page-size probing: use hayro-syntax for pure-Rust PDF metadata | DONE | apps/rubric/src/data/pdf.rs::probe_pages_hayro (hayro-syntax v0.8) |
+| R-H8-03 | hayro rendering pipeline: render PDF pages to PNG via hayro | DONE/PENDING | apps/rubric/src/data/pdf.rs::render_page_hayro; PR #67 pending CI |
+| R-H8-04 | Corpus fidelity validation: ≥95% pixel match vs PDFium baseline | PENDING | docs/tasks/v0.3-03-corpus-fidelity.md |
 
 Verification evidence for the settings rows: GitHub API read-outs recorded in
 `PROGRESS.md` (2026-10-24).
