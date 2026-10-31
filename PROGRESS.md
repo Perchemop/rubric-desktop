@@ -1031,6 +1031,24 @@ flow now enforced by branch protection.
 - Release notes derived from CHANGELOG; assets signed unsigned (Q-PACK-1);
   desktop icons SVG-only pending raster set (Q-PACK-2)
 
+## 2026-10-31 — v0.3-02 Phase 1: hayro page-size probing (H8 follow-up)
+**Status**: merged to main (PR #66, commit `80d1f67`). CI-green with 240 tests passing.
+
+### Completed
+- **WS A (Phase 1)**: Pure-Rust PDF page-size probing implemented with `hayro-syntax v0.5`
+  - Added optional `hayro-syntax` dependency with `hayro` feature flag in `apps/rubric/Cargo.toml`
+  - Implemented `probe_pages_hayro()` using hayro-syntax v0.5 API (`Pdf::new`, `pages().iter()`, `media_box()`)
+  - Integrated with `read_pdf_info()` — hayro used when feature enabled, PDFium fallback on failure
+  - Page sizes returned as `(width, height)` in PDF points via MediaBox extraction
+- **Tests**: All 240 tests pass (cargo test: 12 data::pdf, 8 history, 24 z-order, etc.)
+- **CI**: fmt check, clippy (`-D warnings`), tests, release build all green
+- **Docs**: CHANGELOG.md updated with v0.3-02 Phase 1 entry
+
+### Next (v0.3-02 Phase 2+)
+- **WS B**: hayro rendering pipeline — implement PDF page → PNG rendering with hayro Device
+- **WS C**: corpus fidelity tests — validate ≥95% pixel match vs PDFium baseline on 10 representative PDFs
+- **WS D**: docs/process updates — PROGRESS, ROADMAP, REQUIREMENTS_TRACEABILITY
+
 ## Summary
 Phases 1–6 complete and CI-green. All 52 spec feature IDs and all 17 requirement
 groups are implemented, including the v0.2 reviewer/auditor milestone
