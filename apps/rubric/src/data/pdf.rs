@@ -170,50 +170,52 @@ pub fn read_pdf_info(path: impl AsRef<Path>) -> Result<PdfSourceInfo, DataError>
 // Pure-Rust PDF implementation using hayro (v0.8.0).
 // This module is compiled when the `hayro` feature is enabled.
 //
-// hayro renders pages to pixmap (RGBA pixels) that we convert to PNG.
-// API reference: https://docs.rs/hayro/0.8.0/hayro/
+// hayro renders a page to a `vello_cpu` pixmap of premultiplied RGBA8, which we
+// convert to an `image::RgbaImage` and save as a PNG. API reference:
+// <https://docs.rs/hayro/0.8.0/hayro/>.
 
 #[cfg(feature = "hayro")]
 mod hayro_pages {
     use super::*;
 
-    use std::sync::Arc;
+    use hayro::hayro_interpret::InterpreterSettings;
+    use hayro::vello_cpu::color::palette::css::WHITE;
+    use hayro::{render, PixmapSettings, RenderCache, RenderSettings};
+    use hayro_syntax::Pdf;
 
-    use hayro::{render, PixmapSettings, RenderSettings};
-
-    /// Probe page sizes using hayro-syntax (pure Rust PDF parser).
-    /// Returns page dimensions in PDF points (unrotated media-box).
+    /// Probe page sizes using hayro-syntax (pure-Rust PDF parser).
+    ///
+    /// Returns the unrotated media-box `(width, height)` in PDF points for every
+    /// page, in document order — matching what the PDFium path reports.
     pub fn probe_pages_hayro(path: &Path) -> Result<Vec<(f32, f32)>, DataError> {
         let bytes = fs::read(path)
             .map_err(|e| DataError::Pdf(format!("could not read PDF {}: {e}", path.display())))?;
 
-        // Parse PDF using hayro-syntax (v0.8 API uses Pdf::new with Arc<Vec<u8>>)
-        let pdf = hayro_syntax::Pdf::new(Arc::new(bytes)).map_err(|e| {
+        let pdf = Pdf::new(bytes).map_err(|e| {
             DataError::Pdf(format!(
-                "could not parse PDF {} with hayro-syntax: {e}",
+                "could not parse PDF {} with hayro-syntax: {e:?}",
                 path.display()
             ))
         })?;
 
-        // Get pages iterator - hayro provides typed page access
-        let pages = pdf.pages();
-        let mut page_sizes = Vec::new();
-
-        for page in pages.iter() {
-            // Each page has a media_box() method
-            if let Some(media_box) = page.media_box() {
-                let w = media_box.width() as f32;
-                let h = media_box.height() as f32;
-                if w > 0.0 && h > 0.0 {
-                    page_sizes.push((w, h));
-                }
-            }
-        }
+        let page_sizes = pdf
+            .pages()
+            .iter()
+            .map(|page| {
+                let media_box = page.media_box();
+                (media_box.width() as f32, media_box.height() as f32)
+            })
+            .collect();
 
         Ok(page_sizes)
     }
 
     /// Render a PDF page using hayro (pure Rust) and save as PNG.
+    ///
+    /// `target_width_px` is the desired output width in pixels; the height is
+    /// derived from the page's own aspect ratio so the scale stays uniform. The
+    /// page is composited over an opaque white background so the exported PNG
+    /// has no transparency (matching the PDFium renderer).
     ///
     /// Returns the path to the cached PNG file.
     pub fn render_page_hayro(
@@ -226,15 +228,15 @@ mod hayro_pages {
             DataError::Pdf(format!("could not read PDF {}: {e}", pdf_path.display()))
         })?;
 
-        // Parse PDF using hayro-syntax (v0.8 API uses Pdf::new with Arc<Vec<u8>>)
-        let pdf = hayro_syntax::Pdf::new(Arc::new(bytes)).map_err(|e| {
+        let pdf = Pdf::new(bytes).map_err(|e| {
             DataError::Pdf(format!(
-                "could not parse PDF {} with hayro-syntax: {e}",
+                "could not parse PDF {} with hayro-syntax: {e:?}",
                 pdf_path.display()
             ))
         })?;
 
-        let page_count = pdf.len();
+        let pages = pdf.pages();
+        let page_count = pages.len();
         if page_index >= page_count {
             return Err(DataError::Pdf(format!(
                 "page index {page_index} is out of range for {} ({} page(s))",
@@ -243,74 +245,55 @@ mod hayro_pages {
             )));
         }
 
-        // Get page dimensions from media box
-        let pages = pdf.pages();
-        let page = pages.get(page_index).ok_or_else(|| {
-            DataError::Pdf(format!(
-                "could not load page {page_index} of {}",
-                pdf_path.display()
-            ))
-        })?;
+        let page = &pages[page_index];
 
-        // Get the media box for page dimensions (in PDF points at 72 DPI)
-        let media_box = page.media_box().ok_or_else(|| {
-            DataError::Pdf(format!(
-                "could not read media box for page {page_index} of {}",
-                pdf_path.display()
-            ))
-        })?;
-
-        // Media box dimensions are in PDF points (default 72 DPI)
-        let src_width = media_box.width() as f32;
-        let src_height = media_box.height() as f32;
-        let target_width =
-            i32::try_from(target_width_px).unwrap_or_else(|_| target_width_px as i32);
-        let target_height = if src_width > 0.0 {
-            ((src_height / src_width) * target_width as f32) as i32
+        // Render dimensions are in PDF points (72 pt = 1 in). They already
+        // account for the media/crop box and the page's intrinsic rotation, so a
+        // uniform scale factor is all that is needed to hit the target width.
+        let (src_width, _src_height) = page.render_dimensions();
+        let scale = if src_width > 0.0 {
+            target_width_px as f32 / src_width
         } else {
-            target_width
+            1.0
         };
 
-        let render_settings = RenderSettings {
-            page_size: hayro::PageSize::Physical {
-                width: src_width as usize,
-                height: src_height as usize,
-                dpi: 72.0, // PDF default: 72 points per inch
-            },
-            ..Default::default()
-        };
-
+        // The render cache is reusable across pages; one render per call here.
+        let cache = RenderCache::new();
+        let interpreter_settings = InterpreterSettings::default();
+        let render_settings = RenderSettings::default();
         let pixmap_settings = PixmapSettings {
-            width: target_width,
-            height: target_height,
-            ..Default::default()
+            x_scale: scale,
+            y_scale: scale,
+            bg_color: WHITE,
         };
 
-        // Render the page to a pixmap
-        let pixmap = render(&pdf, page_index, render_settings, pixmap_settings).map_err(|e| {
-            DataError::Pdf(format!(
-                "could not render page {page_index} of {} with hayro: {e}",
-                pdf_path.display()
-            ))
+        let pixmap = render(
+            page,
+            &cache,
+            &interpreter_settings,
+            &render_settings,
+            &pixmap_settings,
+        );
+
+        let width = u32::from(pixmap.width());
+        let height = u32::from(pixmap.height());
+
+        // `data_as_u8_slice` yields premultiplied RGBA8 in row-major order. The
+        // pixmap is composited over an opaque white background, so every pixel
+        // is fully opaque and premultiplied values equal straight-alpha values.
+        let rgba = pixmap.data_as_u8_slice().to_vec();
+        let img = image::RgbaImage::from_raw(width, height, rgba).ok_or_else(|| {
+            DataError::Pdf(
+                "could not build an image from the hayro pixmap: \
+                 dimensions do not match the pixel buffer length"
+                    .into(),
+            )
         })?;
 
-        // Convert pixmap (RGBA8) to image crate's RGBA image
-        // hayro's pixmap is a vector of RGBA bytes
-        let pixels = pixmap.pixels();
-
-        let img = image::RgbaImage::from_raw(target_width as u32, target_height as u32, pixels)
-            .ok_or_else(|| {
-                DataError::Pdf(format!(
-                    "could not create image from hayro pixmap: dimensions don't match pixel count"
-                ))
-            })?;
-
-        // Ensure parent directory exists
         if let Some(parent) = cache_path.parent() {
             fs::create_dir_all(parent)?;
         }
 
-        // Save as PNG
         img.save_with_format(cache_path, image::ImageFormat::Png)
             .map_err(|e| {
                 DataError::Pdf(format!(
