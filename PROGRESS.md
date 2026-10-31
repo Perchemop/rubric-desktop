@@ -2,7 +2,8 @@
 
 ## 2026-10-31 — v0.3-01 audit-fix wave (parallel workstreams)
 **Status**: implemented on the audit-fix branch; CI verification in progress.
-Fixes the 9 high-severity defects plus in-scope medium findings from
+Fixes the 9 high-severity defects (H8 PDFium bundling deferred to the v0.3
+engine slice) plus in-scope medium findings from
 `docs/audits/v0.2.0-full-audit.md`, per `docs/tasks/v0.3-01-audit-fixes.md`.
 
 ### Completed

@@ -7,7 +7,8 @@ All notable changes to this project will be documented here. Format: semantic-is
 ### Fixed
 
 Audit-fix wave `v0.3-01` (`docs/audits/v0.2.0-full-audit.md`, all high-severity
-defects and the in-scope medium findings):
+defects except H8 (PDFium bundling, deferred to the v0.3 engine slice) and the
+in-scope medium findings):
 
 - **H1** — crate versions bumped `0.1.0` → `0.3.0`: binaries self-report the
   right version and Help ▸ Check for Updates no longer reports the running

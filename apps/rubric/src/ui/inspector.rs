@@ -128,7 +128,9 @@ pub(crate) fn draw_inspector(
                     if let Some(doc) = project.active_mut() {
                         if doc.rename_layer(id, &name) {
                             ui_state.status = format!("Layer renamed to '{}'", name);
-                            committed = true;
+                            if name_resp.lost_focus() {
+                                committed = true;
+                            }
                         }
                     }
                 }
@@ -334,27 +336,35 @@ pub(crate) fn draw_inspector(
 
         ui.collapsing("Project", |ui| {
             let mut name = project.name.clone();
-            if ui.text_edit_singleline(&mut name).changed() {
+            let resp = ui.text_edit_singleline(&mut name);
+            if resp.changed() {
                 project.rename(name);
-                committed = true;
+                if resp.lost_focus() {
+                    committed = true;
+                }
             }
             ui.label("Author");
-            if ui
-                .text_edit_singleline(&mut project.settings.author)
-                .changed()
-            {
+            let mut author = project.settings.author.clone();
+            let resp_a = ui.text_edit_singleline(&mut author);
+            if resp_a.changed() {
+                project.settings.author = author;
                 ui_state.status = "Author updated".to_string();
-                committed = true;
+                if resp_a.lost_focus() {
+                    committed = true;
+                }
             }
         });
 
         ui.collapsing("Document", |ui| {
             if let Some(doc) = project.active_mut() {
                 let mut title = doc.title.clone();
-                if ui.text_edit_singleline(&mut title).changed() {
+                let resp = ui.text_edit_singleline(&mut title);
+                if resp.changed() {
                     doc.title = title;
                     doc.touch();
-                    committed = true;
+                    if resp.lost_focus() {
+                        committed = true;
+                    }
                 }
                 ui.label(format!("Pages: {}", doc.page_count()));
                 ui.label(format!("Markups: {}", doc.markups.len()));
@@ -403,20 +413,26 @@ pub(crate) fn draw_inspector(
         ui.horizontal(|ui| {
             ui.label("Subject");
             let mut subj = m.subject.clone();
-            if ui.text_edit_singleline(&mut subj).changed() {
+            let resp = ui.text_edit_singleline(&mut subj);
+            if resp.changed() {
                 m.subject = subj;
                 edited = true;
-                committed = true;
+                if resp.lost_focus() {
+                    committed = true;
+                }
             }
         });
 
         ui.horizontal(|ui| {
             ui.label("Author");
             let mut auth = m.author.clone();
-            if ui.text_edit_singleline(&mut auth).changed() {
+            let resp = ui.text_edit_singleline(&mut auth);
+            if resp.changed() {
                 m.author = auth;
                 edited = true;
-                committed = true;
+                if resp.lost_focus() {
+                    committed = true;
+                }
             }
         });
 
@@ -497,21 +513,24 @@ pub(crate) fn draw_inspector(
 
         ui.label("Stroke colour");
         let mut sc = domain_to_color32(m.style.stroke);
-        if ui.color_edit_button_srgba(&mut sc).changed() {
+        let resp = ui.color_edit_button_srgba(&mut sc);
+        if resp.changed() {
             let c = color32_to_domain(sc);
             m.style.stroke = c;
             m.style.fill = c;
             edited = true;
-            committed = true;
+            if resp.lost_focus() {
+                committed = true;
+            }
         }
         ui.horizontal(|ui| {
             ui.label("Stroke width");
-            if ui
-                .add(egui::Slider::new(&mut m.style.width, 0.25..=10.0))
-                .changed()
-            {
+            let resp = ui.add(egui::Slider::new(&mut m.style.width, 0.25..=10.0));
+            if resp.changed() {
                 edited = true;
-                committed = true;
+                if resp.drag_stopped() || resp.lost_focus() {
+                    committed = true;
+                }
             }
         });
 
