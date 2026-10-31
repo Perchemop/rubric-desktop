@@ -139,8 +139,8 @@ pub fn read_pdf_info(path: impl AsRef<Path>) -> Result<PdfSourceInfo, DataError>
 
     #[cfg(feature = "hayro")]
     {
-        // When hayro is enabled, use hayro's parser exclusively
-        return hayro_pages::probe_pages_hayro(path).map(|page_sizes| PdfSourceInfo { page_sizes });
+        // When hayro is enabled, use hayro's parser exclusively.
+        hayro_pages::probe_pages_hayro(path).map(|page_sizes| PdfSourceInfo { page_sizes })
     }
 
     #[cfg(not(feature = "hayro"))]
@@ -337,10 +337,10 @@ pub fn render_page_to_cache(
         return Ok(cache_path);
     }
 
-    // When hayro feature is enabled, use hayro for rendering (pure Rust)
+    // When the hayro feature is enabled, render with the pure-Rust engine.
     #[cfg(feature = "hayro")]
     {
-        return hayro_pages::render_page_hayro(pdf_path, page_index, target_width_px, &cache_path);
+        hayro_pages::render_page_hayro(pdf_path, page_index, target_width_px, &cache_path)
     }
 
     // PDFium fallback (when hayro feature is not enabled)
