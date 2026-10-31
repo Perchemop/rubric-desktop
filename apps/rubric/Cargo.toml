@@ -35,6 +35,8 @@ rfd = "0.15"
 # Explicit `version` alongside `path`: cargo-deny treats a versionless
 # dependency spec as a wildcard, which the dependency-hygiene gate forbids.
 pdfium-render = "0.9"
+# Optional: pure-Rust PDF syntax parser (hayro-syntax 0.5.x for v0.3-02)
+hayro-syntax = { version = "0.5", optional = true }
 crash-report = { path = "../../crates/crash-report", version = "0.3.0" }
 update-check = { path = "../../crates/update-check", version = "0.3.0" }
 
@@ -44,6 +46,3 @@ default = []
 # hayro is used for page-size probing, allowing validation of the
 # pure-Rust implementation against PDFium for regression testing.
 hayro = ["dep:hayro-syntax"]
-
-[dependencies]
-hayro-syntax = { version = "0.5", optional = true }
