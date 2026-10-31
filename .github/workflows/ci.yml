@@ -22,10 +22,12 @@ jobs:
         curl -fsSL -o /tmp/pdfium.tgz "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7881/pdfium-linux-x64.tgz"
         mkdir -p "$HOME/pdfium"
         tar -xzf /tmp/pdfium.tgz -C "$HOME/pdfium"
-    - name: Tests
+    - name: Tests (default features)
       run: cargo test --all
       env:
         RUBRIC_PDFIUM_PATH: /home/runner/pdfium/lib
+    - name: Tests (with hayro feature)
+      run: cargo test --all --features hayro
     - name: Build release
       run: cargo build --release
 

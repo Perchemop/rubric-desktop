@@ -10,6 +10,9 @@
 //!
 //! Rendered pages are cached as PNG files under the app config directory so the
 //! UI can ask for the same page size repeatedly without re-rasterising.
+//!
+//! When the `hayro` feature is enabled, hayro (pure-Rust) is used for rendering;
+//! otherwise PDFium is the default renderer.
 
 use std::collections::hash_map::DefaultHasher;
 use std::fs;
@@ -17,6 +20,7 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
 use directories::ProjectDirs;
+#[cfg(not(feature = "hayro"))]
 use pdfium_render::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +33,7 @@ use super::DataError;
 /// the library file itself. When set, it is authoritative: a failure to load
 /// from this path is reported instead of silently falling back to the system
 /// library, so misconfiguration is visible.
+#[cfg(not(feature = "hayro"))]
 pub const PDFIUM_PATH_ENV: &str = "RUBRIC_PDFIUM_PATH";
 
 /// Page sizes read from a PDF, in PDF points and document order.
@@ -52,6 +57,7 @@ pub struct PdfSourceInfo {
 ///
 /// Returns [`DataError::PdfLibrary`] when no library can be loaded, with a
 /// message that names the environment variable to set.
+#[cfg(not(feature = "hayro"))]
 pub fn bind_pdfium() -> Result<Pdfium, DataError> {
     if let Some(configured) = std::env::var_os(PDFIUM_PATH_ENV) {
         let configured = PathBuf::from(configured);
@@ -110,6 +116,7 @@ pub fn bind_pdfium() -> Result<Pdfium, DataError> {
 /// In that case [`Pdfium::default`] takes its already-initialised branch and
 /// hands out another handle to the same global bindings (it cannot panic on
 /// that path because no library load is attempted).
+#[cfg(not(feature = "hayro"))]
 fn pdfium_from_bindings(
     bindings: Result<Box<dyn PdfiumLibraryBindings>, PdfiumError>,
 ) -> Result<Pdfium, PdfiumError> {
@@ -132,40 +139,45 @@ pub fn read_pdf_info(path: impl AsRef<Path>) -> Result<PdfSourceInfo, DataError>
 
     #[cfg(feature = "hayro")]
     {
-        match hayro_pages::probe_pages_hayro(path) {
-            Ok(page_sizes) => return Ok(PdfSourceInfo { page_sizes }),
-            Err(e) => eprintln!("hayro probe failed, falling back to PDFium: {e}"),
-        }
+        // When hayro is enabled, use hayro's parser exclusively
+        return hayro_pages::probe_pages_hayro(path)
+            .map(|page_sizes| PdfSourceInfo { page_sizes });
     }
 
-    let pdfium = bind_pdfium()?;
-    let document = load_document(&pdfium, path)?;
+    #[cfg(not(feature = "hayro"))]
+    {
+        // When hayro is not enabled, fall back to PDFium
+        let pdfium = bind_pdfium()?;
+        let document = load_document(&pdfium, path)?;
 
-    let page_sizes = document
-        .pages()
-        .page_sizes()
-        .map_err(|error| {
-            DataError::Pdf(format!(
-                "could not read page sizes from {}: {error}",
-                path.display()
-            ))
-        })?
-        .into_iter()
-        .map(|rect| (rect.width().value, rect.height().value))
-        .collect();
+        let page_sizes = document
+            .pages()
+            .page_sizes()
+            .map_err(|error| {
+                DataError::Pdf(format!(
+                    "could not read page sizes from {}: {error}",
+                    path.display()
+                ))
+            })?
+            .into_iter()
+            .map(|rect| (rect.width().value, rect.height().value))
+            .collect();
 
-    Ok(PdfSourceInfo { page_sizes })
+        Ok(PdfSourceInfo { page_sizes })
+    }
 }
 
-// --- Hayro page-size probing support ---
-// Pure-Rust PDF parser implementation using hayro-syntax.
-// This module is only compiled when the `hayro` feature is enabled.
+// --- Hayro support (page-size probing and rendering) ---
+// Pure-Rust PDF implementation using hayro (v0.8.0).
+// This module is compiled when the `hayro` feature is enabled.
 //
-// Based on hayro-syntax v0.5 API (docs.rs/hayro_syntax/0.5.0).
+// hayro renders pages to pixmap (RGBA pixels) that we convert to PNG.
+// API reference: https://docs.rs/hayro/0.8.0/hayro/
 
 #[cfg(feature = "hayro")]
 mod hayro_pages {
     use super::*;
+
     use std::sync::Arc;
 
     /// Probe page sizes using hayro-syntax (pure Rust PDF parser).
@@ -174,7 +186,7 @@ mod hayro_pages {
         let bytes = fs::read(path)
             .map_err(|e| DataError::Pdf(format!("could not read PDF {}: {e}", path.display())))?;
 
-        // Parse PDF using hayro-syntax (v0.5 API uses Pdf::new)
+        // Parse PDF using hayro-syntax (v0.8 API uses Pdf::new with Arc<Vec<u8>>)
         let pdf = hayro_syntax::Pdf::new(Arc::new(bytes)).map_err(|e| {
             DataError::Pdf(format!(
                 "could not parse PDF {} with hayro-syntax: {e}",
@@ -199,6 +211,109 @@ mod hayro_pages {
 
         Ok(page_sizes)
     }
+
+    /// Render a PDF page using hayro (pure Rust) and save as PNG.
+    ///
+    /// Returns the path to the cached PNG file.
+    pub fn render_page_hayro(
+        pdf_path: &Path,
+        page_index: usize,
+        target_width_px: u32,
+        cache_path: &Path,
+    ) -> Result<PathBuf, DataError> {
+        let bytes = fs::read(pdf_path)
+            .map_err(|e| DataError::Pdf(format!("could not read PDF {}: {e}", pdf_path.display())))?;
+
+        // Parse PDF using hayro-syntax (v0.8 API uses Pdf::new with Arc<Vec<u8>>)
+        let pdf = hayro_syntax::Pdf::new(Arc::new(bytes)).map_err(|e| {
+            DataError::Pdf(format!(
+                "could not parse PDF {} with hayro-syntax: {e}",
+                pdf_path.display()
+            ))
+        })?;
+
+        let page_count = pdf.len();
+        if page_index >= page_count {
+            return Err(DataError::Pdf(format!(
+                "page index {page_index} is out of range for {} ({} page(s))",
+                pdf_path.display(),
+                page_count
+            )));
+        }
+
+        // Get the page we want to render
+        let page = pdf.pages().get(page_index).ok_or_else(|| {
+            DataError::Pdf(format!(
+                "could not load page {page_index} of {}",
+                pdf_path.display()
+            ))
+        })?;
+
+        // Calculate target height to maintain aspect ratio
+        let page_size = page.size();
+        let src_width = page_size.width() as f32;
+        let src_height = page_size.height() as f32;
+        let target_width = i32::try_from(target_width_px)
+            .unwrap_or_else(|_| target_width_px as i32);
+        let target_height = if src_width > 0.0 {
+            ((src_height / src_width) * target_width as f32) as i32
+        } else {
+            target_width
+        };
+
+        // Render using hayro's render function
+        use hayro::{render, PixmapSettings, RenderSettings};
+
+        let render_settings = RenderSettings {
+            page_size: hayro::PageSize::Physical {
+                width: src_width as usize,
+                height: src_height as usize,
+                dpi: 72.0, // PDF default: 72 points per inch
+            },
+            ..Default::default()
+        };
+
+        let pixmap_settings = PixmapSettings {
+            width: target_width,
+            height: target_height,
+            ..Default::default()
+        };
+
+        // Render the page to a pixmap
+        let pixmap = render(&pdf, page_index, render_settings, pixmap_settings).map_err(|e| {
+            DataError::Pdf(format!(
+                "could not render page {page_index} of {} with hayro: {e}",
+                pdf_path.display()
+            ))
+        })?;
+
+        // Convert pixmap (RGBA8) to image crate's RGBA image
+        // hayro's pixmap is a vector of RGBA bytes
+        let pixels = pixmap.pixels();
+        let (w, h) = (target_width, target_height);
+
+        let img = image::RgbaImage::from_raw(w as u32, h as u32, pixels)
+            .ok_or_else(|| {
+                DataError::Pdf(format!(
+                    "could not create image from hayro pixmap: dimensions don't match pixel count"
+                ))
+            })?;
+
+        // Ensure parent directory exists
+        if let Some(parent) = cache_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        // Save as PNG
+        img.save_with_format(cache_path, image::ImageFormat::Png).map_err(|e| {
+            DataError::Pdf(format!(
+                "could not write rendered page to {}: {e}",
+                cache_path.display()
+            ))
+        })?;
+
+        Ok(cache_path.to_path_buf())
+    }
 }
 
 /// Render one PDF page to a cached PNG and return the cache file path.
@@ -212,6 +327,9 @@ mod hayro_pages {
 ///
 /// A zero width is rejected, as is an out-of-range `page_index`. The cache
 /// directory is created on demand.
+///
+/// When the `hayro` feature is enabled, uses the pure-Rust hayro renderer.
+/// Otherwise falls back to PDFium (requires PDFium native library at runtime).
 pub fn render_page_to_cache(
     pdf_path: impl AsRef<Path>,
     page_index: usize,
@@ -229,56 +347,66 @@ pub fn render_page_to_cache(
         return Ok(cache_path);
     }
 
-    let pdfium = bind_pdfium()?;
-    let document = load_document(&pdfium, pdf_path)?;
-    let pages = document.pages();
-    let page_count = pages.len();
-
-    if page_index >= page_count as usize {
-        return Err(DataError::Pdf(format!(
-            "page index {page_index} is out of range for {} ({} page(s))",
-            pdf_path.display(),
-            page_count
-        )));
+    // When hayro feature is enabled, use hayro for rendering (pure Rust)
+    #[cfg(feature = "hayro")]
+    {
+        return hayro_pages::render_page_hayro(pdf_path, page_index, target_width_px, &cache_path);
     }
 
-    let page = pages.get(page_index as PdfPageIndex).map_err(|error| {
-        DataError::Pdf(format!(
-            "could not load page {page_index} of {}: {error}",
-            pdf_path.display()
-        ))
-    })?;
+    // PDFium fallback (when hayro feature is not enabled)
+    #[cfg(not(feature = "hayro"))]
+    {
+        let pdfium = bind_pdfium()?;
+        let document = load_document(&pdfium, pdf_path)?;
+        let pages = document.pages();
+        let page_count = pages.len();
 
-    let target_width_px = i32::try_from(target_width_px).unwrap_or(i32::MAX);
-    let bitmap = page
-        .render_with_config(&PdfRenderConfig::new().set_target_width(target_width_px))
-        .map_err(|error| {
+        if page_index >= page_count as usize {
+            return Err(DataError::Pdf(format!(
+                "page index {page_index} is out of range for {} ({} page(s))",
+                pdf_path.display(),
+                page_count
+            )));
+        }
+
+        let page = pages.get(page_index as PdfPageIndex).map_err(|error| {
             DataError::Pdf(format!(
-                "could not render page {page_index} of {}: {error}",
+                "could not load page {page_index} of {}: {error}",
                 pdf_path.display()
             ))
         })?;
 
-    let image = bitmap.as_image().map_err(|error| {
-        DataError::Pdf(format!(
-            "could not convert page {page_index} of {} to an image: {error}",
-            pdf_path.display()
-        ))
-    })?;
+        let target_width_px = i32::try_from(target_width_px).unwrap_or(i32::MAX);
+        let bitmap = page
+            .render_with_config(&PdfRenderConfig::new().set_target_width(target_width_px))
+            .map_err(|error| {
+                DataError::Pdf(format!(
+                    "could not render page {page_index} of {}: {error}",
+                    pdf_path.display()
+                ))
+            })?;
 
-    if let Some(parent) = cache_path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    image
-        .save_with_format(&cache_path, image::ImageFormat::Png)
-        .map_err(|error| {
+        let image = bitmap.as_image().map_err(|error| {
             DataError::Pdf(format!(
-                "could not write rendered page to {}: {error}",
-                cache_path.display()
+                "could not convert page {page_index} of {} to an image: {error}",
+                pdf_path.display()
             ))
         })?;
 
-    Ok(cache_path)
+        if let Some(parent) = cache_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        image
+            .save_with_format(&cache_path, image::ImageFormat::Png)
+            .map_err(|error| {
+                DataError::Pdf(format!(
+                    "could not write rendered page to {}: {error}",
+                    cache_path.display()
+                ))
+            })?;
+
+        Ok(cache_path)
+    }
 }
 
 /// Directory holding rendered page PNGs, or `None` when no base directory can
@@ -302,6 +430,10 @@ pub fn render_cache_dir() -> Option<PathBuf> {
 }
 
 /// Load a PDF from disk, mapping PDFium's failure into a data error.
+///
+/// Only available when the `hayro` feature is not enabled. When hayro is enabled,
+/// PDF loading is done directly in the hayro render module.
+#[cfg(not(feature = "hayro"))]
 fn load_document<'a>(pdfium: &'a Pdfium, path: &Path) -> Result<PdfDocument<'a>, DataError> {
     pdfium
         .load_pdf_from_file(path, None)
@@ -352,17 +484,25 @@ fn pdf_cache_key(path: &Path) -> Result<String, DataError> {
 mod tests {
     use super::*;
 
-    /// Bind PDFium for a library-dependent test.
+    /// Check if PDFium is available for testing (PDFium runtime library).
     ///
     /// Tests skip gracefully when CI has not provisioned the shared library
     /// (`RUBRIC_PDFIUM_PATH` unset locally). No test mutates the environment;
     /// the guard relies on the CI-provided value.
+    #[cfg(not(feature = "hayro"))]
     fn test_pdfium() -> Option<Pdfium> {
         if std::env::var_os(PDFIUM_PATH_ENV).is_none() {
             eprintln!("skipping: {PDFIUM_PATH_ENV} not set");
             return None;
         }
         Some(bind_pdfium().expect("PDFium must bind when RUBRIC_PDFIUM_PATH is set"))
+    }
+
+    /// Check if hayro is available for testing (always available when feature enabled).
+    #[cfg(feature = "hayro")]
+    fn test_hayro() -> bool {
+        // hayro is always available when the feature is enabled
+        true
     }
 
     /// Path for a per-test temporary PDF, unique per process and thread.
@@ -479,13 +619,23 @@ mod tests {
         }
     }
 
+    /// Test that read_pdf_info works with PDFium (or falls back to hayro for page-size probing).
+    /// When hayro feature is enabled, this test always runs with hayro.
     #[test]
     fn read_pdf_info_reads_us_letter_page() {
-        let Some(_pdfium) = test_pdfium() else {
-            return;
-        };
+        #[cfg(not(feature = "hayro"))]
+        {
+            let Some(_pdfium) = test_pdfium() else {
+                return;
+            };
+        }
+
+        #[cfg(feature = "hayro")]
+        let _ = test_hayro();
+
         let path = write_minimal_pdf("info", 612.0, 792.0);
 
+        // When hayro is enabled, use hayro's probe; otherwise use PDFium
         let info = read_pdf_info(&path).expect("read PDF info");
         assert_eq!(info.page_sizes.len(), 1);
         let (width, height) = info.page_sizes[0];
@@ -495,11 +645,19 @@ mod tests {
         let _ = fs::remove_file(&path);
     }
 
+    /// Test PNG rendering - uses PDFium when hayro is disabled, hayro when enabled.
     #[test]
     fn render_page_to_cache_writes_png_and_reuses_cache() {
-        let Some(_pdfium) = test_pdfium() else {
-            return;
-        };
+        #[cfg(not(feature = "hayro"))]
+        {
+            let Some(_pdfium) = test_pdfium() else {
+                return;
+            };
+        }
+
+        #[cfg(feature = "hayro")]
+        let _ = test_hayro();
+
         let path = write_minimal_pdf("render", 612.0, 792.0);
 
         let first = render_page_to_cache(&path, 0, 400).expect("render page");
@@ -522,11 +680,19 @@ mod tests {
         let _ = fs::remove_file(&path);
     }
 
+    /// Test out-of-range page rejection.
     #[test]
     fn render_page_to_cache_rejects_out_of_range_page() {
-        let Some(_pdfium) = test_pdfium() else {
-            return;
-        };
+        #[cfg(not(feature = "hayro"))]
+        {
+            let Some(_pdfium) = test_pdfium() else {
+                return;
+            };
+        }
+
+        #[cfg(feature = "hayro")]
+        let _ = test_hayro();
+
         let path = write_minimal_pdf("out_of_range", 612.0, 792.0);
 
         let error = render_page_to_cache(&path, 5, 200).expect_err("page 5 must not render");
@@ -613,11 +779,19 @@ mod tests {
         let _ = fs::remove_file(&path);
     }
 
+    /// Test that re-rendering after PDF replacement works.
     #[test]
     fn render_page_to_cache_re_renders_after_pdf_is_replaced() {
-        let Some(_pdfium) = test_pdfium() else {
-            return;
-        };
+        #[cfg(not(feature = "hayro"))]
+        {
+            let Some(_pdfium) = test_pdfium() else {
+                return;
+            };
+        }
+
+        #[cfg(feature = "hayro")]
+        let _ = test_hayro();
+
         let path = write_minimal_pdf("invalidate", 612.0, 792.0);
 
         let stale = render_page_to_cache(&path, 0, 400).expect("render original PDF");
@@ -648,11 +822,19 @@ mod tests {
         let _ = fs::remove_file(&path);
     }
 
+    /// Test that different widths produce different cache files.
     #[test]
     fn render_page_to_cache_keeps_a_separate_file_per_width() {
-        let Some(_pdfium) = test_pdfium() else {
-            return;
-        };
+        #[cfg(not(feature = "hayro"))]
+        {
+            let Some(_pdfium) = test_pdfium() else {
+                return;
+            };
+        }
+
+        #[cfg(feature = "hayro")]
+        let _ = test_hayro();
+
         let path = write_minimal_pdf("width_api", 612.0, 792.0);
 
         let narrow = render_page_to_cache(&path, 0, 300).expect("render at 300 px");
@@ -677,11 +859,19 @@ mod tests {
         let _ = fs::remove_file(&path);
     }
 
+    /// Test that missing files are rejected.
     #[test]
     fn read_pdf_info_rejects_missing_file() {
-        let Some(_pdfium) = test_pdfium() else {
-            return;
-        };
+        #[cfg(not(feature = "hayro"))]
+        {
+            let Some(_pdfium) = test_pdfium() else {
+                return;
+            };
+        }
+
+        #[cfg(feature = "hayro")]
+        let _ = test_hayro();
+
         let path = temp_pdf_path("missing");
         let _ = fs::remove_file(&path);
 
@@ -689,17 +879,43 @@ mod tests {
         assert!(matches!(error, DataError::Pdf(_)));
     }
 
+    /// Test that corrupt PDFs are rejected.
     #[test]
     fn read_pdf_info_rejects_corrupt_pdf() {
-        let Some(_pdfium) = test_pdfium() else {
-            return;
-        };
+        #[cfg(not(feature = "hayro"))]
+        {
+            let Some(_pdfium) = test_pdfium() else {
+                return;
+            };
+        }
+
+        #[cfg(feature = "hayro")]
+        let _ = test_hayro();
+
         let path = temp_pdf_path("corrupt");
         fs::write(&path, b"this is not a PDF").expect("write corrupt file");
 
         let error = read_pdf_info(&path).expect_err("corrupt file must fail");
         assert!(matches!(error, DataError::Pdf(_)));
 
+        let _ = fs::remove_file(&path);
+    }
+
+    /// Test hayro-specific: render page using hayro engine.
+    #[test]
+    #[cfg(feature = "hayro")]
+    fn hayro_render_page_to_cache_works() {
+        let _ = test_hayro();
+
+        let path = write_minimal_pdf("hayro_render", 612.0, 792.0);
+
+        let rendered = render_page_to_cache(&path, 0, 400).expect("render page with hayro");
+        assert!(rendered.is_file(), "{:?} should exist", rendered);
+        let bytes = fs::read(&rendered).expect("read PNG");
+        assert!(bytes.len() > 8, "PNG should not be empty");
+        assert_eq!(&bytes[..4], b"\x89PNG", "should be a valid PNG");
+
+        cleanup_render(&rendered);
         let _ = fs::remove_file(&path);
     }
 }
