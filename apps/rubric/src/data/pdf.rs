@@ -180,6 +180,8 @@ mod hayro_pages {
 
     use std::sync::Arc;
 
+    use hayro::{render, PixmapSettings, RenderSettings};
+
     /// Probe page sizes using hayro-syntax (pure Rust PDF parser).
     /// Returns page dimensions in PDF points (unrotated media-box).
     pub fn probe_pages_hayro(path: &Path) -> Result<Vec<(f32, f32)>, DataError> {
@@ -221,8 +223,6 @@ mod hayro_pages {
         target_width_px: u32,
         cache_path: &Path,
     ) -> Result<PathBuf, DataError> {
-        use hayro::{render, PixmapSettings, RenderSettings};
-
         let bytes = fs::read(pdf_path)
             .map_err(|e| DataError::Pdf(format!("could not read PDF {}: {e}", pdf_path.display())))?;
 
