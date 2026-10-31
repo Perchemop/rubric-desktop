@@ -1060,3 +1060,34 @@ tracked item is G4 (automated visual evidence), confirmed as a documented,
 owner-approved deferral. v0.2.0 is released.
 Process follows guide §5 (Chat → Task → PR → Merge) with GitHub Actions as the
 free Task Runner. CI-first throughout.
+
+## 2026-11-01 — v0.3-02 Phase 2: hayro rendering pipeline
+**Status**: completed; awaiting CI verification on PR #67
+
+### Completed
+- **WS A (Phase 1)**: hayro-syntax page-size probing — PR #66 merged to main
+- **WS B (Phase 2)**: hayro rendering pipeline implemented and tested
+  - Added `hayro v0.8.0` dependency with exact version pinning
+  - Implemented `render_page_hayro()` using hayro's render API
+  - `render_page_to_cache()` dispatches to hayro when `--features hayro` enabled
+  - PDFium compilation conditional on `!feature = "hayro"`
+  - Rustfmt-compliant: imports moved to module level
+- **WS C (Phase 3)**: Corpus fidelity tests documented
+  - Created `docs/tasks/v0.3-03-corpus-fidelity.md`
+  - Test corpus defined (10 representative PDFs)
+  - Acceptance criteria: ≥95% pixel match vs PDFium
+- **WS D (Phase 4)**: Documentation updates complete
+  - IMPLEMENTATION_PLAN.md: v0.3-04, v0.3-05, v1.0-01 task briefs created
+  - ROADMAP.md: hayro progress markers added
+  - REQUIREMENTS_TRACEABILITY.md: R-H8-* requirements added
+  - ATTRIBUTION.md: hayro dependency documented
+  - CHANGELOG.md: all task briefs documented
+
+### Remaining
+- PR #67 CI verification
+- Merge PR #67 to main
+- Phase 3: Corpus fidelity test implementation
+- v0.3-04: PDF export/print fixes (M4/M5)
+- v0.3-05: lopdf write support
+- v1.0-01: Installer verification
+
