@@ -35,14 +35,22 @@ rfd = "0.15"
 # Explicit `version` alongside `path`: cargo-deny treats a versionless
 # dependency spec as a wildcard, which the dependency-hygiene gate forbids.
 pdfium-render = "0.9"
-# Optional: pure-Rust PDF syntax parser (hayro-syntax 0.5.x for v0.3-02)
-hayro-syntax = { version = "0.5", optional = true }
+# Optional: pure-Rust PDF syntax parser (hayro-syntax 0.8.x), used by the
+# `hayro` feature for page-size probing. Pinned exact because hayro is pre-1.0
+# and semver drift is not permitted (v0.3-02 task brief).
+hayro-syntax = { version = "=0.8.0", optional = true }
+# Optional: pure-Rust PDF rasterizer (hayro 0.8.x). Default features are kept:
+# `embed-fonts` (base-14 substitutes), `embed-cmaps` (CJK maps) and `simd` are
+# all needed for real-world fidelity; dropping them would silently fail to
+# render standard-font and CJK text.
+hayro = { version = "=0.8.0", optional = true }
 crash-report = { path = "../../crates/crash-report", version = "0.3.0" }
 update-check = { path = "../../crates/update-check", version = "0.3.0" }
 
 [features]
 default = []
 # Feature for pure-Rust PDF engine (v0.3-02 migration). When enabled,
-# hayro is used for page-size probing, allowing validation of the
-# pure-Rust implementation against PDFium for regression testing.
-hayro = ["dep:hayro-syntax"]
+# hayro is used for rendering pages and page-size probing, allowing
+# validation of the pure-Rust implementation. PDFium remains the default
+# until hayro passes corpus fidelity tests.
+hayro = ["dep:hayro", "dep:hayro-syntax"]
