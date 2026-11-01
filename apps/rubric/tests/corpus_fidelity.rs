@@ -37,8 +37,9 @@ fn build_pdf(
     height: f32,
     rotate: Option<i32>,
     resources: &str,
-    content: &str,
+    content: impl AsRef<str>,
 ) -> Vec<u8> {
+    let content = content.as_ref();
     let mut objects: Vec<String> = Vec::new();
 
     // Object 1: Catalog
@@ -66,7 +67,8 @@ fn build_pdf(
 }
 
 /// Build a PDF with font and content stream (for text pages).
-fn build_text_pdf(width: f32, height: f32, content: &str) -> Vec<u8> {
+fn build_text_pdf(width: f32, height: f32, content: impl AsRef<str>) -> Vec<u8> {
+    let content = content.as_ref();
     let mut objects: Vec<String> = Vec::new();
     objects.push("<< /Type /Catalog /Pages 2 0 R >>".to_string());
     objects.push("<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string());
@@ -117,7 +119,7 @@ fn vector_content() -> String {
 }
 
 /// Content stream for simple text (single word).
-fn simple_text_content() -> String {
+fn simple_text_content() -> &'static str {
     "BT\n/F1 12 Tf\n100 700 Td\n(Hello) Tj\nET\n"
 }
 
