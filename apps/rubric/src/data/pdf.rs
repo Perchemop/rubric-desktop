@@ -757,22 +757,148 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             ));
             ops.push(Operation::new("ET", vec![])); // end text
         }
-        MarkupGeometry::Callout { .. }
-        | MarkupGeometry::Angle { .. }
-        | MarkupGeometry::Count { .. } => {
-            // Not yet rendered into the PDF overlay; draw a placeholder rect so
-            // the export still produces valid output. Follow-up slice adds full
-            // support for these geometry types.
+        MarkupGeometry::Callout { rect, tail, text } => {
+            // Draw the callout box
+            let x0 = rect.x;
+            let y0 = pdf_y(rect.y, height) - rect.h;
             ops.push(Operation::new(
                 "re",
                 vec![
-                    Object::Real(50.0_f32),
-                    Object::Real(50.0_f32),
-                    Object::Real(60.0_f32),
-                    Object::Real(40.0_f32),
+                    Object::Real(x0),
+                    Object::Real(y0),
+                    Object::Real(rect.w),
+                    Object::Real(rect.h),
+                ],
+            ));
+            match style.fill_mode {
+                FillMode::None => ops.push(Operation::new("S", vec![])), // stroke only
+                FillMode::Solid | FillMode::Highlight => ops.push(Operation::new("f", vec![])),
+            }
+
+            // Draw tail line from box center to tail point
+            ops.push(Operation::new(
+                "m",
+                vec![
+                    Object::Real(x0 + rect.w / 2.0),
+                    Object::Real(pdf_y(rect.y + rect.h / 2.0, height)),
+                ],
+            ));
+            ops.push(Operation::new(
+                "l",
+                vec![
+                    Object::Real(tail.x),
+                    Object::Real(pdf_y(tail.y, height)),
                 ],
             ));
             ops.push(Operation::new("S", vec![]));
+
+            // Draw text inside the box
+            ops.push(Operation::new("BT", vec![])); // begin text
+            ops.push(Operation::new(
+                "Tf",
+                vec![
+                    Object::Name(b"/F1".to_vec()),
+                    Object::Real(style.font_size),
+                ],
+            ));
+            ops.push(Operation::new(
+                "Td",
+                vec![
+                    Object::Real(x0 + 3.0),
+                    Object::Real(pdf_y(rect.y + rect.h / 2.0, height) - style.font_size / 2.0),
+                ],
+            ));
+            ops.push(Operation::new(
+                "Tj",
+                vec![Object::string_literal(text.as_str())],
+            ));
+            ops.push(Operation::new("ET", vec![])); // end text
+        }
+        MarkupGeometry::Angle { a, vertex, b } => {
+            // Draw two lines from vertex to a and vertex to b
+            ops.push(Operation::new(
+                "m",
+                vec![
+                    Object::Real(vertex.x),
+                    Object::Real(pdf_y(vertex.y, height)),
+                ],
+            ));
+            ops.push(Operation::new(
+                "l",
+                vec![Object::Real(a.x), Object::Real(pdf_y(a.y, height))],
+            ));
+            ops.push(Operation::new("S", vec![]));
+
+            ops.push(Operation::new(
+                "m",
+                vec![
+                    Object::Real(vertex.x),
+                    Object::Real(pdf_y(vertex.y, height)),
+                ],
+            ));
+            ops.push(Operation::new(
+                "l",
+                vec![Object::Real(b.x), Object::Real(pdf_y(b.y, height))],
+            ));
+            ops.push(Operation::new("S", vec![]));
+
+            // Draw angle marker text near vertex
+            ops.push(Operation::new("BT", vec![])); // begin text
+            ops.push(Operation::new(
+                "Tf",
+                vec![
+                    Object::Name(b"/F1".to_vec()),
+                    Object::Real(style.font_size),
+                ],
+            ));
+            ops.push(Operation::new(
+                "Td",
+                vec![
+                    Object::Real(vertex.x + 4.0),
+                    Object::Real(pdf_y(vertex.y, height) + 4.0),
+                ],
+            ));
+            ops.push(Operation::new(
+                "Tj",
+                vec![Object::string_literal("∠")],
+            ));
+            ops.push(Operation::new("ET", vec![])); // end text
+        }
+        MarkupGeometry::Count { at, number } => {
+            // Draw a filled circle dot at the point
+            let r = 5.0;
+            ops.push(Operation::new(
+                "re",
+                vec![
+                    Object::Real(at.x - r),
+                    Object::Real(pdf_y(at.y, height) - r),
+                    Object::Real(r * 2.0),
+                    Object::Real(r * 2.0),
+                ],
+            ));
+            ops.push(Operation::new("f", vec![])); // filled
+
+            // Draw count number next to dot
+            ops.push(Operation::new("BT", vec![])); // begin text
+            ops.push(Operation::new(
+                "Tf",
+                vec![
+                    Object::Name(b"/F1".to_vec()),
+                    Object::Real(style.font_size),
+                ],
+            ));
+            ops.push(Operation::new(
+                "Td",
+                vec![
+                    Object::Real(at.x + r + 3.0),
+                    Object::Real(pdf_y(at.y, height) - style.font_size / 2.0),
+                ],
+            ));
+            ops.push(Operation::new(
+                "Tj",
+                vec![Object::string_literal(&number.to_string())],
+            ));
+            ops.push(Operation::new("ET", vec![])); // end text
         }
     }
 
