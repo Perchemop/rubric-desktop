@@ -391,7 +391,8 @@ fn draw_markup(
                 // in-canvas editor; the `bounds()` line count is only an
                 // approximation of the wrapped height.
                 let font = FontId::proportional(11.0 * zoom.max(0.8));
-                let galley = painter.layout(text.as_str().to_string(), font, stroke_c, *wrap * zoom);
+                let galley =
+                    painter.layout(text.as_str().to_string(), font, stroke_c, *wrap * zoom);
                 painter.galley(sa, galley, stroke_c);
             }
         }
@@ -892,14 +893,16 @@ pub(crate) fn draw_canvas(
                 .active()
                 .and_then(|d| d.find_markup(note_id).map(|m| d.is_markup_editable(m)))
                 .unwrap_or(false);
-            let (_draft_r, add_resp) = ui.add_enabled_ui(note_editable, |ui| {
-                let dr = ui.put(
-                    next_row(60.0),
-                    egui::TextEdit::multiline(&mut ui_state.note_draft),
-                );
-                let ar = ui.put(next_row(20.0), egui::Button::new("Add comment"));
-                (dr, ar)
-            }).inner;
+            let (_draft_r, add_resp) = ui
+                .add_enabled_ui(note_editable, |ui| {
+                    let dr = ui.put(
+                        next_row(60.0),
+                        egui::TextEdit::multiline(&mut ui_state.note_draft),
+                    );
+                    let ar = ui.put(next_row(20.0), egui::Button::new("Add comment"));
+                    (dr, ar)
+                })
+                .inner;
             let close_resp = ui.put(next_row(20.0), egui::Button::new("Close"));
             if !note_editable {
                 ui.put(next_row(16.0), egui::Label::new("Selection is locked"));
