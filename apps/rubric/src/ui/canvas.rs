@@ -1205,17 +1205,15 @@ pub(crate) fn draw_canvas(
                 if response.drag_started()
                     && ui_state.text_edit.is_none()
                     && ui_state.marquee_start.is_none()
-                {
-                    if pick_markup_id(
+                    && pick_markup_id(
                         project,
                         page.index,
                         raw_pos.unwrap_or(pp),
                         hit_tolerance_page(zoom),
                     )
                     .is_none()
-                    {
-                        ui_state.marquee_start = Some(response.hover_pos().unwrap_or(Pos2::ZERO));
-                    }
+                {
+                    ui_state.marquee_start = Some(response.hover_pos().unwrap_or(Pos2::ZERO));
                 }
                 // Marquee drag end: select all markups whose bounds intersect
                 // the marquee rectangle.
@@ -1223,13 +1221,13 @@ pub(crate) fn draw_canvas(
                     let start = ui_state.marquee_start.take().unwrap();
                     let end = response.interact_pointer_pos().unwrap_or(start);
                     let rect = egui::Rect::from_two_pos(start, end);
-                    let mut selected_any = false;
+                    
                     if let Some(doc) = project.active() {
                         for m in doc.markups_in_paint_order(page.index) {
                             let mr = screen_rect(m.bounds(), origin, pan, zoom);
                             if rect.intersects(mr) {
                                 ui_state.selected.insert(m.id);
-                                selected_any = true;
+                                
                             }
                         }
                     }
