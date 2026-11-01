@@ -18,7 +18,9 @@ URLs or manual checks, not by assertion.
 ## Priorities (in order)
 
 1. **Full keyboard operation** — every panel, tool, dialog, and menu is
-   usable without a mouse. The keyboard map is documented in the README.
+   usable without a mouse. The README documents the global shortcuts
+   (Ctrl/Cmd combos, Esc, Delete, page navigation); the per-tool single
+   keys are shown on each tool's tooltip and in the context menu.
    Shortcuts are single-key when safe (Esc, Delete, Space) and Ctrl/Cmd-prefixed
    when they collide with text entry (Save, Undo, Redo).
 2. **Visible focus and cancel** — the active tool, hovered surfaces, and

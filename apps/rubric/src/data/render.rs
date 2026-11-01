@@ -2,8 +2,10 @@
 //!
 //! The canvas is drawn once inside a headless `egui::Context` frame; the
 //! resulting shapes are tessellated and rasterised on the CPU, so the exported
-//! image matches what the user sees (page background + markup overlays,
-//! including text labels and stamps) without any GPU or display.
+//! image matches the page content (page background + markup overlays,
+//! including text labels and stamps) without any GPU or display. The export is
+//! view-independent: it rasterises the page at a fixed [`EXPORT_DPI`], not the
+//! user's current pan/zoom editor view.
 
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -19,6 +21,15 @@ use crate::domain::geom::Pt;
 use crate::domain::Project;
 use crate::ui::app::{DrawState, UiState};
 use crate::ui::canvas;
+
+/// Dots per inch used by page-image export and print rasterisation.
+///
+/// 150 DPI keeps a Letter/A4 page at a comfortable few-megapixel surface while
+/// staying well inside the engines' `u16` pixmap limits. Exports must not
+/// depend on the live editor view, so [`render_page_to_png_bytes`] pins this
+/// zoom and zeroes pan/page origin on its `UiState` clone: the page is drawn
+/// from the origin, filling the off-screen surface edge-to-edge.
+const EXPORT_DPI: f32 = 150.0;
 
 /// Rasterise a slice of tessellated egui primitives into a colour image.
 ///
@@ -280,9 +291,19 @@ pub(crate) fn render_page_to_png_bytes(
         )?;
     }
 
-    let zoom = ui_state.zoom;
-    let w = (page.width * zoom + 80.0).max(64.0);
-    let h = (page.height * zoom + 80.0).max(64.0);
+    // Export/print must rasterise the page itself, not the editor view: the
+    // live `UiState` carries the user's zoom and pan, and the canvas draws the
+    // page at `page_origin` with chrome around it, so an export built from the
+    // live state would be a pan/zoom-dependent screen-DPI screenshot that can
+    // even crop the page. Pin an explicit, view-independent transform instead:
+    // the page is drawn at [`EXPORT_DPI`] from the origin, filling the
+    // off-screen surface edge-to-edge.
+    //
+    // Suppressing the grid/rulers/backdrop inside `draw_canvas` is a
+    // canvas-side follow-up (it needs a flag owned by the canvas module).
+    let zoom = EXPORT_DPI / 72.0;
+    let w = (page.width * zoom).round().max(1.0);
+    let h = (page.height * zoom).round().max(1.0);
     let size = [w as usize, h as usize];
 
     let raw_input = egui::RawInput {
@@ -291,6 +312,9 @@ pub(crate) fn render_page_to_png_bytes(
     };
 
     let mut ui_state = ui_state.clone();
+    ui_state.zoom = zoom;
+    ui_state.pan = Vec2::ZERO;
+    ui_state.page_origin = Pos2::ZERO;
     let mut draw_state = draw_state.clone();
     let full_output = ctx.run_ui(raw_input, |ui| {
         egui::CentralPanel::default().show(ui, |ui| {

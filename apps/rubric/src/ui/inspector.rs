@@ -1,5 +1,8 @@
 //! Inspector: properties, comments, measurement display and settings.
 
+use std::cell::RefCell;
+use std::collections::HashMap;
+
 use uuid::Uuid;
 
 use eframe::egui::{self, ComboBox, Ui};
@@ -23,6 +26,13 @@ fn domain_to_color32(c: Color) -> egui::Color32 {
 /// Whether two scales describe the same mapping, within float tolerance.
 fn same_scale(a: Scale, b: Scale) -> bool {
     a.unit == b.unit && (a.units_per_point - b.units_per_point).abs() < 1e-9
+}
+
+// UI-only session state that cannot live in UiState (which we may not extend).
+thread_local! {
+    static LAYER_NAMES: RefCell<HashMap<Uuid, String>> = RefCell::new(HashMap::new());
+    static COLOUR_PENDING: RefCell<Option<egui::Color32>> = RefCell::new(None);
+    static LAST_SCALE_PAGE: RefCell<Option<usize>> = RefCell::new(None);
 }
 
 pub(crate) fn draw_inspector(
@@ -121,16 +131,25 @@ pub(crate) fn draw_inspector(
                         }
                     }
                 }
-                // Editable layer name (rename)
-                let mut name = layer.name.clone();
-                let name_resp = ui.add(egui::TextEdit::singleline(&mut name).desired_width(120.0));
+                // Editable layer name (rename): edit a local buffer, commit on
+                // lost focus (Enter included), never more than one snapshot.
+                let mut name = LAYER_NAMES
+                    .with(|m| m.borrow().get(&id).cloned())
+                    .unwrap_or_else(|| layer.name.clone());
+                let name_resp = ui
+                    .add(egui::TextEdit::singleline(&mut name).desired_width(120.0))
+                    .on_hover_text("Layer name");
                 if name_resp.changed() {
+                    LAYER_NAMES.with(|m| m.borrow_mut().insert(id, name.clone()));
+                }
+                if name_resp.lost_focus() {
                     if let Some(doc) = project.active_mut() {
                         if doc.rename_layer(id, &name) {
-                            ui_state.status = format!("Layer renamed to '{}'", name);
-                            if name_resp.lost_focus() {
-                                committed = true;
-                            }
+                            LAYER_NAMES.with(|m| m.borrow_mut().remove(&id));
+                            committed = true;
+                            ui_state.status = format!("Layer renamed to '{}'", name.trim());
+                        } else {
+                            ui_state.status = "Layer name cannot be empty".to_string();
                         }
                     }
                 }
@@ -203,6 +222,21 @@ pub(crate) fn draw_inspector(
             .map(|p| p.scale)
             .unwrap_or(Scale::PAPER);
         let mut scale = before;
+
+        // Re-sync custom-ratio inputs when the page changes.
+        let page_changed = LAST_SCALE_PAGE.with(|c| {
+            let mut last = c.borrow_mut();
+            if *last != Some(page_idx) {
+                *last = Some(page_idx);
+                true
+            } else {
+                false
+            }
+        });
+        if page_changed {
+            ui_state.scale_real_units = before.units_per_point * 72.0;
+            ui_state.scale_paper_inches = 1.0;
+        }
 
         ui.label("Presets");
         ui.horizontal_wrapped(|ui| {
@@ -293,7 +327,11 @@ pub(crate) fn draw_inspector(
         ui.label("Custom ratio: paper inches = real units");
         ui.horizontal(|ui| {
             ui.label("1 in paper =");
-            let _ = ui.add(egui::DragValue::new(&mut ui_state.scale_real_units).speed(0.1));
+            let _ = ui.add(
+                egui::DragValue::new(&mut ui_state.scale_real_units)
+                    .speed(0.1)
+                    .range(0.001..=1_000_000.0),
+            );
             ui.label(scale.unit.suffix());
             ui.label("over");
             let _ = ui.add(
@@ -304,294 +342,394 @@ pub(crate) fn draw_inspector(
             ui.label("in paper");
         });
         if ui.button("Apply custom").clicked() {
-            let paper_pts = (ui_state.scale_paper_inches * 72.0).max(1.0);
-            let new_scale = Scale::from_ratio(scale.unit, ui_state.scale_real_units, paper_pts);
-            if !same_scale(new_scale, before) {
-                if let Some(doc) = project.active_mut() {
-                    if let Some(page) = doc.pages.get_mut(page_idx) {
-                        page.scale = new_scale;
+            if ui_state.scale_real_units <= 0.0 || ui_state.scale_paper_inches <= 0.0 {
+                ui_state.status = "Scale values must be positive".to_string();
+            } else {
+                let paper_pts = (ui_state.scale_paper_inches * 72.0).max(1.0);
+                let new_scale =
+                    Scale::from_ratio(scale.unit, ui_state.scale_real_units, paper_pts);
+                if !same_scale(new_scale, before) {
+                    if let Some(doc) = project.active_mut() {
+                        if let Some(page) = doc.pages.get_mut(page_idx) {
+                            page.scale = new_scale;
+                        }
+                        let s = doc
+                            .pages
+                            .get(page_idx)
+                            .map(|p| p.scale)
+                            .unwrap_or(new_scale);
+                        for m in doc.markups.iter_mut().filter(|m| m.page == page_idx) {
+                            m.recompute_measurement(s);
+                        }
+                        doc.touch();
                     }
-                    let s = doc
-                        .pages
-                        .get(page_idx)
-                        .map(|p| p.scale)
-                        .unwrap_or(new_scale);
-                    for m in doc.markups.iter_mut().filter(|m| m.page == page_idx) {
-                        m.recompute_measurement(s);
-                    }
-                    doc.touch();
+                    committed = true;
+                    ui_state.status = format!("Scale → {}", new_scale.describe());
+                } else {
+                    ui_state.status = "Scale unchanged".to_string();
                 }
-                committed = true;
-                ui_state.status = format!("Scale → {}", new_scale.describe());
             }
         }
     });
 
     let selected: Vec<Uuid> = ui_state.selected.iter().copied().collect();
+    let multi = selected.len() > 1;
 
     if selected.is_empty() {
         ui.label("No selection");
         ui.small("Click a markup on the canvas to edit it.");
-        ui.separator();
-
-        ui.collapsing("Project", |ui| {
-            let mut name = project.name.clone();
-            let resp = ui.text_edit_singleline(&mut name);
-            if resp.changed() {
-                project.rename(name);
-                if resp.lost_focus() {
-                    committed = true;
-                }
-            }
-            ui.label("Author");
-            let mut author = project.settings.author.clone();
-            let resp_a = ui.text_edit_singleline(&mut author);
-            if resp_a.changed() {
-                project.settings.author = author;
-                ui_state.status = "Author updated".to_string();
-                if resp_a.lost_focus() {
-                    committed = true;
-                }
-            }
-        });
-
-        ui.collapsing("Document", |ui| {
-            if let Some(doc) = project.active_mut() {
-                let mut title = doc.title.clone();
-                let resp = ui.text_edit_singleline(&mut title);
+    } else {
+        // Work on a clone of the first selected markup; write it back at the end.
+        let first = selected[0];
+        let Some(mut m) = project.active().and_then(|d| d.find_markup(first)).cloned() else {
+            ui.small("Selected markup no longer exists.");
+            // Skip property editing; Project/Document sections render below.
+            // Jump to them by leaving this block.
+            // (Nothing else to do here.)
+            // We still need to avoid running the property code, so return early
+            // but the common sections below would be skipped. To keep them
+            // reachable, duplicate minimal: actually fall through by not returning.
+            // Rust requires the binding, so handle via a flag instead.
+            ui.separator();
+            // Render common sections then return.
+            ui.collapsing("Project", |ui| {
+                let mut name = project.name.clone();
+                let resp = ui.text_edit_singleline(&mut name);
                 if resp.changed() {
-                    doc.title = title;
-                    doc.touch();
+                    project.rename(name);
                     if resp.lost_focus() {
                         committed = true;
                     }
                 }
-                ui.label(format!("Pages: {}", doc.page_count()));
-                ui.label(format!("Markups: {}", doc.markups.len()));
-            }
-        });
-
-        // Compact stamp-preset selector for the active Stamp tool (UI state only).
-        if ui_state.active_tool.to_kind() == Some(MarkupKind::Stamp) {
-            ui.separator();
-            ui.label("Stamp preset (tool)");
-            ComboBox::from_label("Preset")
-                .selected_text(ui_state.active_stamp.label())
-                .show_ui(ui, |ui| {
-                    for preset in StampPreset::ALL.iter() {
-                        if ui
-                            .selectable_value(&mut ui_state.active_stamp, *preset, preset.label())
-                            .clicked()
-                        {
-                            ui_state.status = format!("Stamp tool → {}", preset.label());
-                        }
+                ui.label("Author");
+                let mut author = project.settings.author.clone();
+                let resp_a = ui.text_edit_singleline(&mut author);
+                if resp_a.changed() {
+                    project.settings.author = author;
+                    ui_state.status = "Author updated".to_string();
+                    if resp_a.lost_focus() {
+                        committed = true;
                     }
-                });
-        }
-
-        return committed;
-    }
-
-    // Work on a clone of the first selected markup; write it back at the end.
-    let first = selected[0];
-    let Some(mut m) = project.active().and_then(|d| d.find_markup(first)).cloned() else {
-        ui.small("Selected markup no longer exists.");
-        return committed;
-    };
-
-    let mut edited = false;
-    let editable = project
-        .active()
-        .map(|d| d.is_markup_editable(&m))
-        .unwrap_or(true);
-
-    ui.collapsing("Properties", |ui| {
-        ui.label(format!("ID: {}", m.id));
-        ui.label(format!("Kind: {}", m.kind.label()));
-        ui.label(format!("Page: {}", m.page));
-
-        ui.horizontal(|ui| {
-            ui.label("Subject");
-            let mut subj = m.subject.clone();
-            let resp = ui.text_edit_singleline(&mut subj);
-            if resp.changed() {
-                m.subject = subj;
-                edited = true;
-                if resp.lost_focus() {
-                    committed = true;
                 }
-            }
-        });
-
-        ui.horizontal(|ui| {
-            ui.label("Author");
-            let mut auth = m.author.clone();
-            let resp = ui.text_edit_singleline(&mut auth);
-            if resp.changed() {
-                m.author = auth;
-                edited = true;
-                if resp.lost_focus() {
-                    committed = true;
-                }
-            }
-        });
-
-        ComboBox::from_label("Status")
-            .selected_text(
-                egui::RichText::new(m.status.label()).color(domain_to_color32(m.status.color())),
-            )
-            .show_ui(ui, |ui| {
-                for s in ReviewStatus::ALL.iter() {
-                    ui.horizontal(|ui| {
-                        let (rect, _) =
-                            ui.allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
-                        ui.painter().circle_filled(
-                            rect.center(),
-                            5.0,
-                            domain_to_color32(s.color()),
-                        );
-                        if ui.selectable_label(m.status == *s, s.label()).clicked()
-                            && m.status != *s
-                        {
-                            m.status = *s;
-                            ui_state.status = format!("Status → {}", s.label());
-                            edited = true;
+            });
+            ui.collapsing("Document", |ui| {
+                if let Some(doc) = project.active_mut() {
+                    let mut title = doc.title.clone();
+                    let resp = ui.text_edit_singleline(&mut title);
+                    if resp.changed() {
+                        doc.title = title;
+                        doc.touch();
+                        if resp.lost_focus() {
                             committed = true;
                         }
+                    }
+                    ui.label(format!("Pages: {}", doc.page_count()));
+                    ui.label(format!("Markups: {}", doc.markups.len()));
+                }
+            });
+            if ui_state.active_tool.to_kind() == Some(MarkupKind::Stamp) {
+                ui.separator();
+                ui.label("Stamp preset (tool)");
+                ComboBox::from_label("Preset")
+                    .selected_text(ui_state.active_stamp.label())
+                    .show_ui(ui, |ui| {
+                        for preset in StampPreset::ALL.iter() {
+                            if ui
+                                .selectable_value(
+                                    &mut ui_state.active_stamp,
+                                    *preset,
+                                    preset.label(),
+                                )
+                                .clicked()
+                            {
+                                ui_state.status = format!("Stamp tool → {}", preset.label());
+                            }
+                        }
                     });
+            }
+            return committed;
+        };
+
+        let editable = project
+            .active()
+            .map(|d| d.is_markup_editable(&m))
+            .unwrap_or(true);
+
+        if multi {
+            ui.label(format!("{} selected", selected.len()));
+        }
+
+        let mut edited = false;
+
+        egui::CollapsingHeader::new("Properties")
+            .default_open(true)
+            .show(ui, |ui| {
+                ui.label(format!("ID: {}", m.id));
+                ui.label(format!("Kind: {}", m.kind.label()));
+                ui.label(format!("Page: {}", m.page));
+
+                ui.add_enabled_ui(editable, |ui| {
+                    if !multi {
+                        ui.horizontal(|ui| {
+                            ui.label("Subject");
+                            let mut subj = m.subject.clone();
+                            let resp = ui.text_edit_singleline(&mut subj);
+                            if resp.changed() {
+                                m.subject = subj;
+                                edited = true;
+                                if resp.lost_focus() {
+                                    committed = true;
+                                }
+                            }
+                        });
+
+                        ui.horizontal(|ui| {
+                            ui.label("Author");
+                            let mut auth = m.author.clone();
+                            let resp = ui.text_edit_singleline(&mut auth);
+                            if resp.changed() {
+                                m.author = auth;
+                                edited = true;
+                                if resp.lost_focus() {
+                                    committed = true;
+                                }
+                            }
+                        });
+
+                        ComboBox::from_label("Status")
+                            .selected_text(
+                                egui::RichText::new(m.status.label())
+                                    .color(domain_to_color32(m.status.color())),
+                            )
+                            .show_ui(ui, |ui| {
+                                for s in ReviewStatus::ALL.iter() {
+                                    ui.horizontal(|ui| {
+                                        let (rect, _) = ui.allocate_exact_size(
+                                            egui::vec2(12.0, 12.0),
+                                            egui::Sense::hover(),
+                                        );
+                                        ui.painter().circle_filled(
+                                            rect.center(),
+                                            5.0,
+                                            domain_to_color32(s.color()),
+                                        );
+                                        if ui
+                                            .selectable_label(m.status == *s, s.label())
+                                            .clicked()
+                                            && m.status != *s
+                                        {
+                                            m.status = *s;
+                                            ui_state.status = format!("Status → {}", s.label());
+                                            edited = true;
+                                            committed = true;
+                                        }
+                                    });
+                                }
+                            });
+
+                        // Stamp preset (spec F-111): only for stamp markups.
+                        if editable && m.kind == MarkupKind::Stamp {
+                            ui.label("Preset");
+                            for preset in StampPreset::ALL.iter() {
+                                let clicked = ui
+                                    .selectable_label(m.stamp == Some(*preset), preset.label())
+                                    .clicked();
+                                if clicked && m.stamp != Some(*preset) {
+                                    m.stamp = Some(*preset);
+                                    m.style = m.style.with_stroke(preset.color());
+                                    edited = true;
+                                    committed = true;
+                                    ui_state.status = format!("Stamp → {}", preset.label());
+                                }
+                            }
+                        }
+
+                        // Layer assignment.
+                        let default_id = project
+                            .active()
+                            .map(|d| d.default_layer_id())
+                            .unwrap_or_default();
+                        let layers: Vec<(Uuid, String)> = project
+                            .active()
+                            .map(|d| d.layers.iter().map(|l| (l.id, l.name.clone())).collect())
+                            .unwrap_or_default();
+                        let current_id = m.layer_id.unwrap_or(default_id);
+                        let current_name = layers
+                            .iter()
+                            .find(|(id, _)| *id == current_id)
+                            .map(|(_, n)| n.clone())
+                            .unwrap_or_else(|| "Layer 1".to_string());
+                        ComboBox::from_label("Layer")
+                            .selected_text(current_name)
+                            .show_ui(ui, |ui| {
+                                for (id, name) in &layers {
+                                    if ui.selectable_label(current_id == *id, name).clicked() {
+                                        m.layer_id =
+                                            if *id == default_id { None } else { Some(*id) };
+                                        edited = true;
+                                        committed = true;
+                                        ui_state.status = format!("Layer → {}", name);
+                                    }
+                                }
+                            });
+                    }
+
+                    ui.label("Stroke colour");
+                    let mut sc = domain_to_color32(m.style.stroke);
+                    let colour_changed = ui
+                        .color_edit_button_srgba(&mut sc)
+                        .on_hover_text("Stroke colour")
+                        .changed();
+                    if colour_changed {
+                        let c = color32_to_domain(sc);
+                        m.style.stroke = c;
+                        m.style.fill = c;
+                        edited = true;
+                        COLOUR_PENDING.with(|p| *p.borrow_mut() = Some(sc));
+                    }
+                    // Commit when the value stops changing (popup closed / no
+                    // change this frame), exactly one snapshot.
+                    let pending_commit = COLOUR_PENDING.with(|p| {
+                        p.borrow().is_some() && !colour_changed
+                    });
+                    if pending_commit {
+                        COLOUR_PENDING.with(|p| *p.borrow_mut() = None);
+                        committed = true;
+                    }
+
+                    ui.horizontal(|ui| {
+                        ui.label("Stroke width");
+                        let resp = ui.add(egui::Slider::new(&mut m.style.width, 0.25..=10.0));
+                        if resp.changed() {
+                            edited = true;
+                            if resp.drag_stopped() || resp.lost_focus() {
+                                committed = true;
+                            }
+                        }
+                    });
+                });
+
+                if !editable {
+                    ui.small("Locked layer — edits disabled");
+                }
+
+                if m.kind.is_measure() {
+                    let scale = project
+                        .active()
+                        .and_then(|d| d.pages.get(m.page).copied())
+                        .map(|p| p.scale)
+                        .unwrap_or(Scale::PAPER);
+                    if let Some(meas) = m.measurement {
+                        ui.separator();
+                        ui.label("Measurement");
+                        ui.small(format!(
+                            "Value: {}",
+                            meas.label_with(scale.unit, project.settings.precision)
+                        ));
+                        ui.small(format!("Points: {:.2} pt", meas.value_points));
+                        ui.small(format!(
+                            "Scale: {:.6} {}/pt",
+                            scale.units_per_point,
+                            scale.unit.suffix()
+                        ));
+                    } else {
+                        ui.small("Measurement not computed");
+                    }
                 }
             });
 
-        // Stamp preset (spec F-111): only for stamp markups.
-        if editable && m.kind == MarkupKind::Stamp {
-            ui.label("Preset");
-            for preset in StampPreset::ALL.iter() {
-                let clicked = ui
-                    .selectable_label(m.stamp == Some(*preset), preset.label())
-                    .clicked();
-                if clicked && m.stamp != Some(*preset) {
-                    m.stamp = Some(*preset);
-                    m.style = m.style.with_stroke(preset.color());
-                    edited = true;
-                    committed = true;
-                    ui_state.status = format!("Stamp → {}", preset.label());
+        ui.collapsing("Comments", |ui| {
+            if m.comments.is_empty() {
+                ui.small("No comments yet.");
+            } else {
+                for c in &m.comments {
+                    ui.label(format!("{} · {}", c.author, c.created.format("%H:%M:%S")));
+                    ui.small(&c.text);
+                    ui.separator();
+                }
+            }
+            ui.add_enabled_ui(editable, |ui| {
+                ui.text_edit_multiline(comment_text).on_hover_text("Comment text");
+                let add_clicked = ui.button("Add Comment").clicked();
+                if add_clicked {
+                    let author = project.settings.author.clone();
+                    if m.add_comment(author, comment_text.clone()).is_some() {
+                        comment_text.clear();
+                        ui_state.status = "Comment added".to_string();
+                        edited = true;
+                        committed = true;
+                    }
+                }
+            });
+        });
+
+        if edited && editable {
+            m.touch();
+            if let Some(doc) = project.active_mut() {
+                if multi {
+                    doc.apply_style_to(&selected, m.style);
+                } else if let Some(slot) = doc.markups.iter().position(|x| x.id == m.id) {
+                    doc.markups[slot] = m;
+                    doc.touch();
                 }
             }
         }
+    }
 
-        // Layer assignment.
-        if editable {
-            let default_id = project
-                .active()
-                .map(|d| d.default_layer_id())
-                .unwrap_or_default();
-            let layers: Vec<(Uuid, String)> = project
-                .active()
-                .map(|d| d.layers.iter().map(|l| (l.id, l.name.clone())).collect())
-                .unwrap_or_default();
-            let current_id = m.layer_id.unwrap_or(default_id);
-            let current_name = layers
-                .iter()
-                .find(|(id, _)| *id == current_id)
-                .map(|(_, n)| n.clone())
-                .unwrap_or_else(|| "Layer 1".to_string());
-            ComboBox::from_label("Layer")
-                .selected_text(current_name)
-                .show_ui(ui, |ui| {
-                    for (id, name) in &layers {
-                        if ui.selectable_label(current_id == *id, name).clicked() {
-                            m.layer_id = if *id == default_id { None } else { Some(*id) };
-                            edited = true;
-                            committed = true;
-                            ui_state.status = format!("Layer → {}", name);
-                        }
-                    }
-                });
-        } else {
-            ui.small("Locked layer — edits disabled");
-        }
-
-        ui.label("Stroke colour");
-        let mut sc = domain_to_color32(m.style.stroke);
-        let resp = ui.color_edit_button_srgba(&mut sc);
+    // Project / Document editors and tool stamp-preset picker: always reachable.
+    ui.collapsing("Project", |ui| {
+        let mut name = project.name.clone();
+        let resp = ui.text_edit_singleline(&mut name);
         if resp.changed() {
-            let c = color32_to_domain(sc);
-            m.style.stroke = c;
-            m.style.fill = c;
-            edited = true;
+            project.rename(name);
             if resp.lost_focus() {
                 committed = true;
             }
         }
-        ui.horizontal(|ui| {
-            ui.label("Stroke width");
-            let resp = ui.add(egui::Slider::new(&mut m.style.width, 0.25..=10.0));
-            if resp.changed() {
-                edited = true;
-                if resp.drag_stopped() || resp.lost_focus() {
-                    committed = true;
-                }
-            }
-        });
-
-        if m.kind.is_measure() {
-            let scale = project
-                .active()
-                .and_then(|d| d.pages.get(m.page).copied())
-                .map(|p| p.scale)
-                .unwrap_or(Scale::PAPER);
-            if let Some(meas) = m.measurement {
-                ui.separator();
-                ui.label("Measurement");
-                ui.small(format!(
-                    "Value: {}",
-                    meas.label_with(scale.unit, project.settings.precision)
-                ));
-                ui.small(format!("Points: {:.2} pt", meas.value_points));
-                ui.small(format!(
-                    "Scale: {:.6} {}/pt",
-                    scale.units_per_point,
-                    scale.unit.suffix()
-                ));
-            } else {
-                ui.small("Measurement not computed");
+        ui.label("Author");
+        let mut author = project.settings.author.clone();
+        let resp_a = ui.text_edit_singleline(&mut author);
+        if resp_a.changed() {
+            project.settings.author = author;
+            ui_state.status = "Author updated".to_string();
+            if resp_a.lost_focus() {
+                committed = true;
             }
         }
     });
 
-    ui.collapsing("Comments", |ui| {
-        if m.comments.is_empty() {
-            ui.small("No comments yet.");
-        } else {
-            for c in &m.comments {
-                ui.label(format!("{} · {}", c.author, c.created.format("%H:%M:%S")));
-                ui.small(&c.text);
-                ui.separator();
-            }
-        }
-        ui.add_enabled_ui(editable, |ui| {
-            ui.text_edit_multiline(comment_text);
-            let add_clicked = ui.button("Add Comment").clicked();
-            if add_clicked {
-                let author = project.settings.author.clone();
-                if m.add_comment(author, comment_text.clone()).is_some() {
-                    comment_text.clear();
-                    ui_state.status = "Comment added".to_string();
-                    edited = true;
-                    committed = true;
-                }
-            }
-        });
-    });
-
-    if edited && editable {
-        m.touch();
+    ui.collapsing("Document", |ui| {
         if let Some(doc) = project.active_mut() {
-            if let Some(slot) = doc.markups.iter().position(|x| x.id == m.id) {
-                doc.markups[slot] = m;
+            let mut title = doc.title.clone();
+            let resp = ui.text_edit_singleline(&mut title);
+            if resp.changed() {
+                doc.title = title;
                 doc.touch();
+                if resp.lost_focus() {
+                    committed = true;
+                }
             }
+            ui.label(format!("Pages: {}", doc.page_count()));
+            ui.label(format!("Markups: {}", doc.markups.len()));
         }
+    });
+
+    // Compact stamp-preset selector for the active Stamp tool (UI state only).
+    if ui_state.active_tool.to_kind() == Some(MarkupKind::Stamp) {
+        ui.separator();
+        ui.label("Stamp preset (tool)");
+        ComboBox::from_label("Preset")
+            .selected_text(ui_state.active_stamp.label())
+            .show_ui(ui, |ui| {
+                for preset in StampPreset::ALL.iter() {
+                    if ui
+                        .selectable_value(&mut ui_state.active_stamp, *preset, preset.label())
+                        .clicked()
+                    {
+                        ui_state.status = format!("Stamp tool → {}", preset.label());
+                    }
+                }
+            });
     }
 
     committed

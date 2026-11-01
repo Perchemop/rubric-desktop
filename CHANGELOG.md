@@ -45,18 +45,75 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ### Fixed
 
-- **M4** — exporting or printing a page whose PDF background cannot be produced
-  (missing PDF, engine failure, or an undecodable render) now fails with a
-  clear status message instead of silently writing/printing a blank white page.
-  The background loader (`data::render::load_page_background`) propagates the
-  error; a unit test covers the missing-PDF case.
-- **M3** — `save_project` is now atomic: it serialises first, writes a sibling
-  temp file, `sync_all`s and then renames over the target, so a crash or error
-  mid-write can no longer truncate an existing `.rubric.json`. No temp file is
-  left behind on a failed rename; a unit test covers the round-trip, the
-  no-leftover guarantee and overwrite.
-- **M2** — File ▸ Clear Recent reports the real outcome: it no longer claims
-  "Recent list cleared" when `save_recent` fails.
+- **M4 (v0.3-04, PR #68)** — exporting or printing a page whose PDF background
+  cannot be produced (missing PDF, engine failure, or an undecodable render)
+  now fails with a clear status message instead of silently writing/printing a
+  blank white page. A unit test covers the missing-PDF case.
+- **M3 / M2 (v0.3-06, PR #69)** — `save_project` is now atomic (serialise
+  first, sibling temp file, `sync_all`, rename over the target; a failed rename
+  removes the temp file; unit-tested), and File ▸ Clear Recent reports the real
+  outcome instead of claiming success when `save_recent` fails.
+- **M7 / M9 (v0.3-07, PR #70)** — the wheel zoom uses the domain `view`
+  constants instead of magic numbers, and the status-bar cursor readout reports
+  the true pointer (matching what a click selects) rather than the snapped
+  point.
+- **Full-app audit wave (v0.3-08)** — three blockers and the majority of the
+  majors from `docs/audits/v0.3-full-app-audit.md`:
+  - **B1** — Backspace/Delete while typing in any text field no longer deletes
+    the selection; Ctrl+Z/Ctrl+Y and PageUp/PageDown are keyboard-focus-gated.
+  - **B2** — New / Open Project / Import PDF / Recent / Ctrl+O park behind a
+    "Replace Unsaved Project?" confirmation instead of discarding work.
+  - **B3** — dragging a measurement markup now recomputes its value, so labels
+    and autosaves stop lying after a move.
+  - **M1** — the OS close button is vetoed while the project is dirty and
+    routed through the same confirmation as File ▸ Quit.
+  - **M2** — autosave writes only the recovery sidecar and no longer clears
+    the dirty flag (status now reads "Recovery snapshot saved").
+  - **M3** — a crash report parked by a previous run is now loaded at startup
+    and shown once in the review-and-send dialog.
+  - **M4** — Help ▸ About shows a real window (version, licence, links).
+  - **M7** — Delete is disabled when every selected markup is locked.
+  - **M8** — the update-check window can be dismissed while a check runs and a
+    poisoned update mutex no longer panics the UI loop.
+  - **M9** — a 0-page PDF import is rejected honestly instead of reporting
+    "Imported 1 page(s)".
+  - **M10** — Edit ▸ Select All, View ▸ Previous/Next Page and View ▸ Full
+    Screen.
+  - **M11/M14–M16/M20/M21 (canvas)** — the commit-click trap, screen-space hit
+    tolerance, degenerate-drag rejection, drag-to-select-then-move, the note
+    popover lock check, and empty-markup cleanup on a cancelled first edit.
+  - **M17/M25 (PDF engines)** — hayro page-size probing now reports the same
+    crop∩media rotation-applied dimensions as PDFium; encrypted PDFs surface a
+    single-line honest message on both engines; render-cache writes are
+    atomic; the render width is clamped to the u16 pixmap ceiling; PDFium
+    discovery also tries the exe-dir `lib/` subdirectory.
+  - **M22–M24 (inspector)** — locked markups no longer accept edits that are
+    silently discarded (with phantom undo snapshots); "N selected" replaces
+    edits landing on an arbitrary hash-order markup; stroke-colour changes
+    commit with exactly one snapshot.
+  - **M26 (export/print)** — exports and prints render through a fixed 150 DPI
+    page transform instead of the user's pan/zoom editor view.
+  - **M27 (packaging)** — the installer workflows fetch the pinned PDFium
+    runtime themselves and fail rather than ship a PDF-less installer; also
+    fixes the Windows portable-zip `$env:LOCALAPPDATA` bash bug.
+  - **M28–M30 (docs)** — `docs/pdfium.md` documents both engines; traceability
+    and DECISIONS match the actual shipping policy; CONTRIBUTING/development
+    merge-authority wording matches the 2026-10-26 directive.
+
+### Added
+
+- `docs/audits/v0.3-full-app-audit.md` — the full-app audit report (10 parallel
+  workstreams + capability parity + design tooling).
+- `docs/research/v0.4-capability-gap-analysis.md` — code-verified parity
+  analysis vs Bluebeam Revu / Adobe Acrobat with the ranked v0.4 gap list.
+- `docs/research/design-tooling-2026-11.md` — free/OSS design tooling for an
+  egui app (icons, palettes, fonts, `egui_kittest` visual evidence) with an
+  adoption plan.
+- Domain tests for `remove_page` re-indexing, open vs closed perimeters,
+  ruler-tick overshoot/cap, diff layer moves, style-preset lock handling and
+  list-filter case folding; canvas tests for hit tolerance and ink-stroke
+  validity; data tests for atomic render-cache writes and the render-width
+  clamp.
 
 ## [0.3-01] - 2026-10-31
 

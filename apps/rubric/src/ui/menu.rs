@@ -16,7 +16,7 @@ use crate::ui::app::UiState;
 
 /// Menu label for a tool. `Select` has no markup kind, so it is named
 /// explicitly; every other tool uses its kind label.
-fn tool_label(tool: Tool) -> &'static str {
+pub(crate) fn tool_label(tool: Tool) -> &'static str {
     match tool {
         Tool::Select => "Select",
         other => other.to_kind().map(MarkupKind::label).unwrap_or("Tool"),
@@ -25,7 +25,13 @@ fn tool_label(tool: Tool) -> &'static str {
 
 /// Record `action` on `ui_state` when its menu entry is clicked.
 fn action_button(ui: &mut Ui, ui_state: &mut UiState, action: EditorAction) {
-    let enabled = action.is_enabled(ui_state.selected.len(), ui_state.style_clipboard.is_some());
+    let mut enabled =
+        action.is_enabled(ui_state.selected.len(), ui_state.style_clipboard.is_some());
+    // Delete must be a real command, not a no-op: skip it entirely when every
+    // selected markup is locked (full-app audit M7).
+    if action == EditorAction::DeleteSelection && !ui_state.can_delete {
+        enabled = false;
+    }
     if ui
         .add_enabled(enabled, egui::Button::new(action.label()))
         .clicked()

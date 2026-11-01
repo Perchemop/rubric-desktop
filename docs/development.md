@@ -38,8 +38,10 @@ Every change is a **Task** in the CTO.new-style cycle
 4. **Review** — GitHub Actions (the free Task Runner) runs fmt → clippy
    `-D warnings` → `cargo test --all` → release build; the `reviewer` subagent
    and the human review the PR. Route failures to `fixer`.
-5. **Merge** — the **human** merges once satisfied (trust but verify, guide
-   §9). Record exact results in `PROGRESS.md` / `CHANGELOG.md`; update
+5. **Merge** — the **agent merges** once CI is green and review findings are
+   addressed (owner directive 2026-10-26); the owner may ask to review a PR
+   first, in which case the agent holds. Record exact results in
+   `PROGRESS.md` / `CHANGELOG.md`; update
    `REQUIREMENTS_TRACEABILITY.md`, `docs/parity.md` and `ROADMAP.md`. Never claim a feature is
    done before CI is green.
 
