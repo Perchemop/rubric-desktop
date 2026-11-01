@@ -77,22 +77,27 @@ fn ensure_dir(p: &Path) -> Result<(), DataError> {
 /// The write is atomic: the JSON is serialised first, written to a sibling
 /// temporary file, and then renamed over the target. A crash or an error
 /// mid-write therefore never leaves a truncated `.rubric.json` in place of the
-/// previous good one (audit M3).
+/// previous good one (audit M3), and every error path after the temporary file
+/// was created removes it so no `.tmp` siblings accumulate.
 pub fn save_project<P: AsRef<Path>>(project: &Project, path: P) -> Result<PathBuf, DataError> {
     let p = path.as_ref().to_path_buf();
     ensure_dir(&p)?;
     let json = serde_json::to_string_pretty(project)?;
 
     let tmp = temp_sibling(&p);
-    {
+
+    // Every error path after the temp file is created must clean it up: a
+    // leaked `.name.<uuid>.tmp` sibling would otherwise accumulate forever.
+    let write = (|| -> Result<(), DataError> {
         let mut f = File::create(&tmp)?;
         f.write_all(json.as_bytes())?;
         f.sync_all()?;
-    }
-    if let Err(e) = fs::rename(&tmp, &p) {
-        // Never leave the temporary file behind on a failed rename.
+        fs::rename(&tmp, &p)?;
+        Ok(())
+    })();
+    if let Err(e) = write {
         let _ = fs::remove_file(&tmp);
-        return Err(DataError::Io(e));
+        return Err(e);
     }
     Ok(p)
 }
@@ -262,6 +267,42 @@ mod tests {
         // Overwriting an existing project still succeeds (rename replaces).
         save_project(&Project::new("Atomic v2"), &path).expect("overwrite");
         assert_eq!(load_project(&path).expect("reload").name, "Atomic v2");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Every error path after the temp file was created must remove it. Here
+    /// the atomic rename fails (the target path is occupied by a non-empty
+    /// directory) long after the temp file was fully written and synced —
+    /// deterministic, no permissions tricks needed.
+    #[test]
+    fn save_project_removes_the_temp_file_when_the_rename_fails() {
+        let dir = std::env::temp_dir().join(format!(
+            "rubric_save_rename_fail_{}_{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("create test dir");
+
+        let target = dir.join("occupied.rubric.json");
+        fs::create_dir(target.join("inner")).expect("occupy target with a directory");
+
+        assert!(
+            save_project(&Project::new("Blocked"), &target).is_err(),
+            "rename over a directory must fail"
+        );
+
+        let leftovers: Vec<String> = fs::read_dir(&dir)
+            .expect("read dir")
+            .filter_map(Result::ok)
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .filter(|n| n.ends_with(".tmp"))
+            .collect();
+        assert!(
+            leftovers.is_empty(),
+            "temp files left behind: {leftovers:?}"
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }

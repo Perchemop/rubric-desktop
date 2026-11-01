@@ -103,7 +103,7 @@ in `docs/inspiration.md`. Dependency licences are tracked in
 | Esc | Cancel current action / close dialog |
 | Page Up / Page Down | Previous / next page |
 
-See `ACCESSIBILITY.md` for the full accessibility commitment and `apps/rubric/src/ui/app.rs` for the implementation.
+See `ACCESSIBILITY.md` for the full accessibility commitment and `apps/rubric/src/ui/app.rs` for the implementation. In addition to the global shortcuts above, every tool has a single-key shortcut (letter or digit) shown on its toolbar tooltip and in the Tools context menu.
 
 ## License
 
