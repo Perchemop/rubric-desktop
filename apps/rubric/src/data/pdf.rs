@@ -1032,7 +1032,7 @@ mod tests {
         fs::create_dir_all(&dir).expect("create test dir");
 
         let target = dir.join("page_0_400.png");
-        fs::create_dir(target.join("inner")).expect("occupy target with a directory");
+        fs::create_dir_all(target.join("inner")).expect("occupy target with a directory");
 
         let error = save_png_atomically(&target, |_path| Ok(()))
             .expect_err("rename over a directory must fail");
