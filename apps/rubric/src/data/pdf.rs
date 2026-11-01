@@ -483,7 +483,7 @@ pub fn export_pdf_to(source_pdf: &Path, output_path: &Path) -> Result<(), DataEr
 /// Build a minimal overlay content stream: a red rectangle proof-of-concept
 /// drawn in the top-left of the page. This demonstrates the lopdf content
 /// pipeline; real markup rendering replaces this body.
-fn overlay_content_stream() -> lopdf::content::Content<Vec<u8>> {
+fn overlay_content_stream() -> lopdf::content::Content {
     use lopdf::content::Operation;
 
     // PDF content coordinates: y=0 at bottom. The rectangle is drawn in the
