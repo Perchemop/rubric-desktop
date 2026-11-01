@@ -473,8 +473,9 @@ pub fn export_pdf_to(source_pdf: &Path, output_path: &Path) -> Result<(), DataEr
             .map_err(|e| DataError::Pdf(format!("could not add overlay to page: {e}")))?;
     }
 
-    doc.save(output_path)
-        .map_err(|e| DataError::Pdf(format!("could not save PDF {}: {e}", output_path.display())))?;
+    doc.save(output_path).map_err(|e| {
+        DataError::Pdf(format!("could not save PDF {}: {e}", output_path.display()))
+    })?;
 
     Ok(())
 }
@@ -488,11 +489,11 @@ fn overlay_content_stream() -> lopdf::content::Content<Vec<u8>> {
     // PDF content coordinates: y=0 at bottom. The rectangle is drawn in the
     // top-left of an 8.5x11in page (612x792pt) as a proof of concept.
     let ops = vec![
-        Operation::new("q", vec![]), // save graphics state
-        Operation::new("1 0 0 RG", vec![]), // red stroke
-        Operation::new("2 w", vec![]), // line width 2
+        Operation::new("q", vec![]),                  // save graphics state
+        Operation::new("1 0 0 RG", vec![]),           // red stroke
+        Operation::new("2 w", vec![]),                // line width 2
         Operation::new("50 700 100 50 re S", vec![]), // rect + stroke
-        Operation::new("Q", vec![]), // restore graphics state
+        Operation::new("Q", vec![]),                  // restore graphics state
     ];
 
     lopdf::content::Content { operations: ops }
