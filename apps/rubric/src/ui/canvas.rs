@@ -391,7 +391,7 @@ fn draw_markup(
                 // in-canvas editor; the `bounds()` line count is only an
                 // approximation of the wrapped height.
                 let font = FontId::proportional(11.0 * zoom.max(0.8));
-                let galley = painter.layout(text.as_str(), font, stroke_c, *wrap * zoom);
+                let galley = painter.layout(text.as_str().to_string(), font, stroke_c, *wrap * zoom);
                 painter.galley(sa, galley, stroke_c);
             }
         }
@@ -715,7 +715,7 @@ pub(crate) fn draw_canvas(
     // once per frame and reused for the measurement labels below.
     let paint_order: Vec<&crate::domain::Markup> = project
         .active()
-        .map(|doc| doc.markups_in_paint_order(page.index).collect())
+        .map(|doc| doc.markups_in_paint_order(page.index).into_iter().collect())
         .unwrap_or_default();
     for m in &paint_order {
         draw_markup(
@@ -786,7 +786,7 @@ pub(crate) fn draw_canvas(
                     let lines = (text.lines().count().max(1)) as f32;
                     // Same metrics the domain uses for bounds/hit testing, so
                     // the editor overlay covers exactly what is drawn.
-                    let line_h = markup::text_line_height(m.style.font_size);
+                    let line_h = text_line_height(m.style.font_size);
                     screen_rect(
                         DRect::new(at.x, at.y, wrap.max(1.0), lines * line_h),
                         origin,
@@ -899,7 +899,7 @@ pub(crate) fn draw_canvas(
                 );
                 let ar = ui.put(next_row(20.0), egui::Button::new("Add comment"));
                 (dr, ar)
-            });
+            }).inner;
             let close_resp = ui.put(next_row(20.0), egui::Button::new("Close"));
             if !note_editable {
                 ui.put(next_row(16.0), egui::Label::new("Selection is locked"));
@@ -1600,7 +1600,7 @@ pub(crate) fn draw_canvas(
                         }
                     }
                     super::app::DrawState::Segment { start, end, kind } => {
-                        if start.distance(*end) < 1.0 {
+                        if start.distance(end) < 1.0 {
                             // drop degenerate
                         } else {
                             let geom = MarkupGeometry::Segment { a: start, b: end };
