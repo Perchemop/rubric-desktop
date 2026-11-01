@@ -433,13 +433,13 @@ pub fn render_page_to_cache(
     // When the hayro feature is enabled, render with the pure-Rust engine.
     #[cfg(feature = "hayro")]
     {
-        return hayro_pages::render_page_hayro(pdf_path, page_index, target_width_px, &cache_path);
+        hayro_pages::render_page_hayro(pdf_path, page_index, target_width_px, &cache_path)
     }
 
     // PDFium fallback (when hayro feature is not enabled).
     #[cfg(not(feature = "hayro"))]
     {
-        return render_page_pdfium(pdf_path, page_index, target_width_px, &cache_path);
+        render_page_pdfium(pdf_path, page_index, target_width_px, &cache_path)
     }
 }
 
