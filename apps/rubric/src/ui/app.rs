@@ -1153,15 +1153,11 @@ impl RubricApp {
                                     &doc.markups,
                                 ) {
                                     Ok(()) => {
-                                        self.ui.status = format!(
-                                            "PDF exported to {}",
-                                            path.display()
-                                        );
+                                        self.ui.status =
+                                            format!("PDF exported to {}", path.display());
                                     }
                                     Err(e) => {
-                                        self.ui.status = format!(
-                                            "PDF export failed: {e}"
-                                        );
+                                        self.ui.status = format!("PDF export failed: {e}");
                                     }
                                 }
                             }
