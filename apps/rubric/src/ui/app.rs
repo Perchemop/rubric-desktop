@@ -1146,10 +1146,7 @@ impl RubricApp {
                         .save_file()
                     {
                         if !source_pdf.is_empty() {
-                            let _ = crate::data::pdf::export_pdf_to(
-                                Path::new(&source_pdf),
-                                &path,
-                            );
+                            let _ = crate::data::pdf::export_pdf_to(Path::new(&source_pdf), &path);
                         }
                     }
                     ui.close();
