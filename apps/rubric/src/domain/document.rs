@@ -395,6 +395,33 @@ impl Document {
         changed
     }
 
+    /// Apply `status` to every editable markup in `ids` and return the number
+    /// changed.
+    ///
+    /// Missing and locked ids are skipped. Only the review status (and each
+    /// markup's `modified` timestamp) changes; geometry, visual style,
+    /// comments, lock state and measurements are untouched.
+    pub fn apply_status_to(&mut self, ids: &[Uuid], status: ReviewStatus) -> usize {
+        let mut changed = 0;
+        for id in ids {
+            let editable = self
+                .find_markup(*id)
+                .is_some_and(|markup| self.is_markup_editable(markup));
+            if !editable {
+                continue;
+            }
+            if let Some(markup) = self.find_markup_mut(*id) {
+                markup.status = status;
+                markup.touch();
+                changed += 1;
+            }
+        }
+        if changed > 0 {
+            self.touch();
+        }
+        changed
+    }
+
     pub fn clear_markups(&mut self) {
         if !self.markups.is_empty() {
             self.markups.clear();

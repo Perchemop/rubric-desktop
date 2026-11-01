@@ -4,6 +4,7 @@
 //! inspector render the same menu, so the command set, its labels and the
 //! rules for when an entry is applicable live here rather than being
 //! duplicated in the UI.
+use crate::markup::ReviewStatus;
 
 /// A user-invocable editor action offered by the canvas and inspector
 /// context menus (spec F-603).
@@ -22,11 +23,12 @@ pub enum EditorAction {
     ZoomIn,
     ZoomOut,
     FitPage,
+    BatchStatus(ReviewStatus),
 }
 
 impl EditorAction {
     /// Every action, in menu order.
-    pub const ALL: [EditorAction; 13] = [
+    pub const ALL: [EditorAction; 14] = [
         EditorAction::Undo,
         EditorAction::Redo,
         EditorAction::DeleteSelection,
@@ -40,6 +42,7 @@ impl EditorAction {
         EditorAction::ZoomIn,
         EditorAction::ZoomOut,
         EditorAction::FitPage,
+        EditorAction::BatchStatus(ReviewStatus::Open),
     ];
 
     /// Human-readable menu label.
@@ -58,6 +61,7 @@ impl EditorAction {
             EditorAction::ZoomIn => "Zoom In",
             EditorAction::ZoomOut => "Zoom Out",
             EditorAction::FitPage => "Fit Page",
+            EditorAction::BatchStatus(status) => status.label(),
         }
     }
 
@@ -77,6 +81,7 @@ impl EditorAction {
             | EditorAction::BringToFront
             | EditorAction::SendToBack => selection_count == 1,
             EditorAction::PasteProperties => selection_count > 0 && has_style_clipboard,
+            EditorAction::BatchStatus(_) => selection_count > 0,
             _ => true,
         }
     }
