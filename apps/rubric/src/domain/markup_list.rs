@@ -641,11 +641,11 @@ mod tests {
 
         MarkupListSort::KindAsc.apply(&mut rows);
         let labels: Vec<&str> = rows.iter().map(|r| r.kind.label()).collect();
-        assert_eq!(labels, vec!["Highlight", "Sticky Note", "Rectangle"]);
+        assert_eq!(labels, vec!["Highlight", "Rectangle", "Sticky Note"]);
 
         MarkupListSort::KindDesc.apply(&mut rows);
         let labels: Vec<&str> = rows.iter().map(|r| r.kind.label()).collect();
-        assert_eq!(labels, vec!["Rectangle", "Sticky Note", "Highlight"]);
+        assert_eq!(labels, vec!["Sticky Note", "Rectangle", "Highlight"]);
     }
 
     #[test]
