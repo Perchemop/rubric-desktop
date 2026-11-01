@@ -31,8 +31,8 @@ fn same_scale(a: Scale, b: Scale) -> bool {
 // UI-only session state that cannot live in UiState (which we may not extend).
 thread_local! {
     static LAYER_NAMES: RefCell<HashMap<Uuid, String>> = RefCell::new(HashMap::new());
-    static COLOUR_PENDING: RefCell<Option<egui::Color32>> = RefCell::new(None);
-    static LAST_SCALE_PAGE: RefCell<Option<usize>> = RefCell::new(None);
+    static COLOUR_PENDING: RefCell<Option<egui::Color32>> = const { RefCell::new(None) };
+    static LAST_SCALE_PAGE: RefCell<Option<usize>> = const { RefCell::new(None) };
 }
 
 pub(crate) fn draw_inspector(
