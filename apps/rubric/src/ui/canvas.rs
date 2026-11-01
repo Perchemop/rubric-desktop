@@ -1126,10 +1126,12 @@ pub(crate) fn draw_canvas(
                             // Shift+click toggles selection without clearing.
                             if ui_state.selected.contains(&id) {
                                 ui_state.selected.remove(&id);
-                                ui_state.status = format!("Selected {} markup(s)", ui_state.selected.len());
+                                ui_state.status =
+                                format!("Selected {} markup(s)", ui_state.selected.len());
                             } else {
                                 ui_state.selected.insert(id);
-                                ui_state.status = format!("Selected {} markup(s)", ui_state.selected.len());
+                                ui_state.status =
+                                format!("Selected {} markup(s)", ui_state.selected.len());
                             }
                         } else {
                             ui_state.selected.clear();
@@ -1230,7 +1232,8 @@ pub(crate) fn draw_canvas(
                     }
                     let n = ui_state.selected.len();
                     if n > 0 {
-                        ui_state.status = format!("Selected {} markup{}", n, if n == 1 { "" } else { "s" });
+                        ui_state.status =
+                            format!("Selected {} markup{}", n, if n == 1 { "" } else { "s" });
                     } else {
                         ui_state.status = "Nothing selected".to_string();
                     }
