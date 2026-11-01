@@ -785,10 +785,7 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             ));
             ops.push(Operation::new(
                 "l",
-                vec![
-                    Object::Real(tail.x),
-                    Object::Real(pdf_y(tail.y, height)),
-                ],
+                vec![Object::Real(tail.x), Object::Real(pdf_y(tail.y, height))],
             ));
             ops.push(Operation::new("S", vec![]));
 
@@ -796,10 +793,7 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             ops.push(Operation::new("BT", vec![])); // begin text
             ops.push(Operation::new(
                 "Tf",
-                vec![
-                    Object::Name(b"/F1".to_vec()),
-                    Object::Real(style.font_size),
-                ],
+                vec![Object::Name(b"/F1".to_vec()), Object::Real(style.font_size)],
             ));
             ops.push(Operation::new(
                 "Td",
@@ -846,10 +840,7 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             ops.push(Operation::new("BT", vec![])); // begin text
             ops.push(Operation::new(
                 "Tf",
-                vec![
-                    Object::Name(b"/F1".to_vec()),
-                    Object::Real(style.font_size),
-                ],
+                vec![Object::Name(b"/F1".to_vec()), Object::Real(style.font_size)],
             ));
             ops.push(Operation::new(
                 "Td",
@@ -858,10 +849,7 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
                     Object::Real(pdf_y(vertex.y, height) + 4.0),
                 ],
             ));
-            ops.push(Operation::new(
-                "Tj",
-                vec![Object::string_literal("∠")],
-            ));
+            ops.push(Operation::new("Tj", vec![Object::string_literal("∠")]));
             ops.push(Operation::new("ET", vec![])); // end text
         }
         MarkupGeometry::Count { at, number } => {
@@ -882,10 +870,7 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             ops.push(Operation::new("BT", vec![])); // begin text
             ops.push(Operation::new(
                 "Tf",
-                vec![
-                    Object::Name(b"/F1".to_vec()),
-                    Object::Real(style.font_size),
-                ],
+                vec![Object::Name(b"/F1".to_vec()), Object::Real(style.font_size)],
             ));
             ops.push(Operation::new(
                 "Td",
