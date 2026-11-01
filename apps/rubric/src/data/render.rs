@@ -204,7 +204,7 @@ fn rasterize_mesh(
 /// problem instead of silently emitting a blank white page (audit M4).
 fn load_page_background(
     ctx: &Context,
-    pdf_path: &Path,
+    pdf_path: impl AsRef<Path>,
     page_index: usize,
     page_width: f32,
     page_textures: &mut HashMap<String, TextureHandle>,
