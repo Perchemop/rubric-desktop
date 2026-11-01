@@ -27,26 +27,32 @@ of PDFs.
   multi-select, batch status first)
 
 ## 2026-11-01 — v0.3-05: lopdf write support (Export PDF…)
-**Status**: merged to main, CI green (PR #79, commit `45d7228`). Core PDF
-export infrastructure implemented.
+**Status**: merged to main, CI green (PRs #79-84). Full PDF export
+infrastructure implemented.
 
 ### Completed
 - Added `lopdf 0.42.0` dependency (pinned exact; 0.6.0 has RUSTSEC-2026-0187
   stack-overflow vuln, bumped to 0.42.0)
 - `export_pdf_to()` in `data/pdf.rs`: opens source PDF with lopdf, appends an
   overlay content stream to each page via `doc.add_to_page_content()`, saves
-  result. Renders BBox/Segment/Path/Ink markups with stroke color, width, and
-  fill mode. Domain coords (y-down from top) flipped to PDF coords (y-up from
-  bottom). Text/Callout/Angle/Count draw a placeholder rect (follow-up slice).
+  result. Renders BBox/Segment/Path/Ink/Text/Callout/Angle/Count markups with
+  stroke color, width, fill mode. Domain coords (y-down) flipped to PDF coords
+  (y-up). Scale calibration is inherent: page geometry is in PDF points
+  (absolute units) and measurement text is pre-computed in the domain with
+  correct page-unit values.
 - File ▸ Export PDF… menu item with native `rfd` save dialog, gated on having
   a source PDF. Passes the active document's markups to `export_pdf_to`.
+- Honest status messages: success shows output path; failure shows error
+- Unit test `export_pdf_to_writes_valid_pdf` verifies output is a valid PDF
 - CI: fmt, clippy (-D warnings), all tests, release build, security scan —
-  all green.
+  all green
 
 ### Next
-- Full markup overlay rendering (text with font support, callout, angle, count)
-- Scale calibration (page.scale units_per_point applied to export)
-- Honest status messages on export success/failure
+- v0.3-04 M5 (fixed-DPI, page-cropped export/print) — pending export-scope
+  decision
+- v1.0-0: multi-platform installer verification (macOS, Windows hands-on)
+- v0.4 cycle: discovery from the ranked gap list (flatten-to-PDF,
+  multi-select, batch status first)
 
 ## 2026-11-01 — full-app audit + v0.3-08 remediation wave
 **Status**: merged to main, CI green (PR #72, commit `f56a4b4`). All 3 blockers
