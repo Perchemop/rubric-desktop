@@ -486,7 +486,7 @@ pub fn export_pdf_to(
     }
 
     // Register a base-14 Helvetica font object once, for text markups.
-    let font_dict: lopdf::Dictionary = lopdf::Dictionary::from_iter([
+    let font_dict: lopdf::Dictionary = [
         ("Type".into(), lopdf::Object::Name(b"/Font".to_vec())),
         ("Subtype".into(), lopdf::Object::Name(b"/Type1".to_vec())),
         (
@@ -497,7 +497,9 @@ pub fn export_pdf_to(
             "Encoding".into(),
             lopdf::Object::Name(b"/WinAnsiEncoding".to_vec()),
         ),
-    ]);
+    ]
+    .into_iter()
+    .collect();
     let font_id = doc.add_object(lopdf::Object::Dictionary(font_dict));
 
     for (page_num, page_id) in doc.get_pages() {
@@ -549,7 +551,7 @@ fn add_font_resource_to_page(
         match dict.get(b"Resources") {
             Ok(Object::Dictionary(d)) => Some(d.clone()),
             Ok(Object::Reference(id)) => Some(
-                doc.get_dictionary(id)
+                doc.get_dictionary(*id)
                     .map(|d| d.clone())
                     .map_err(|e| DataError::Pdf(format!("could not get resources: {e}")))?,
             ),
@@ -758,7 +760,7 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             ));
             ops.push(Operation::new("ET", vec![])); // end text
         }
-        MarkupGeometry::Callout { rect: _, .. }
+        MarkupGeometry::Callout { .. }
         | MarkupGeometry::Angle { .. }
         | MarkupGeometry::Count { .. } => {
             // Not yet rendered into the PDF overlay; draw a placeholder rect so
