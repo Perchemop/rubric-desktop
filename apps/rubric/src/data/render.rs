@@ -210,11 +210,12 @@ fn load_page_background(
     page_textures: &mut HashMap<String, TextureHandle>,
 ) -> Result<(), DataError> {
     let target_width = ((page_width * 2.0).round() as u32).max(64);
-    let cache_path = pdf::render_page_to_cache(pdf_path, page_index, target_width).map_err(|e| {
-        DataError::Pdf(format!(
-            "could not render the PDF page background for export: {e}"
-        ))
-    })?;
+    let cache_path =
+        pdf::render_page_to_cache(pdf_path, page_index, target_width).map_err(|e| {
+            DataError::Pdf(format!(
+                "could not render the PDF page background for export: {e}"
+            ))
+        })?;
 
     // Reuse an already-loaded texture for this render; otherwise read, decode
     // and register it.
