@@ -1126,16 +1126,10 @@ pub(crate) fn draw_canvas(
                             // Shift+click toggles selection without clearing.
                             if ui_state.selected.contains(&id) {
                                 ui_state.selected.remove(&id);
-                                ui_state.status = format!(
-                                    "Selected {} markup(s)",
-                                    ui_state.selected.len()
-                                );
+                                ui_state.status = format!("Selected {} markup(s)", ui_state.selected.len());
                             } else {
                                 ui_state.selected.insert(id);
-                                ui_state.status = format!(
-                                    "Selected {} markup(s)",
-                                    ui_state.selected.len()
-                                );
+                                ui_state.status = format!("Selected {} markup(s)", ui_state.selected.len());
                             }
                         } else {
                             ui_state.selected.clear();
@@ -1161,13 +1155,7 @@ pub(crate) fn draw_canvas(
                                 let m = doc.and_then(|d| d.find_markup(id));
                                 let kind_ok = m
                                     .map(|mk| {
-                                        matches!(
-                                            mk.kind,
-                                            MarkupKind::Text | MarkupKind::Callout
-                                        )
-                                    })
-                                    .unwrap_or(false);
-                                let editable = doc
+                                matches!(mk.kind, MarkupKind::Text | MarkupKind::Callout)
                                     .and_then(|d| m.map(|mk| d.is_markup_editable(mk)))
                                     .unwrap_or(false);
                                 let visible = doc
@@ -1175,12 +1163,8 @@ pub(crate) fn draw_canvas(
                                     .unwrap_or(false);
                                 let original = m
                                     .and_then(|mk| match &mk.geometry {
-                                        MarkupGeometry::Text { text, .. } => {
-                                            Some(text.clone())
-                                        }
-                                        MarkupGeometry::Callout { text, .. } => {
-                                            Some(text.clone())
-                                        }
+                                        MarkupGeometry::Text { text, .. } => Some(text.clone()),
+                                        MarkupGeometry::Callout { text, .. } => Some(text.clone()),
                                         _ => None,
                                     })
                                     .unwrap_or_default();
@@ -1188,18 +1172,16 @@ pub(crate) fn draw_canvas(
                             };
                             if kind_ok {
                                 if !editable {
-                                    ui_state.status =
-                                        "Locked layer — edits disabled".to_string();
+                                    ui_state.status = "Locked layer — edits disabled".to_string();
                                 } else if !visible {
                                     // not pickable when hidden; nothing to do
                                 } else {
-                                    ui_state.text_edit =
-                                        Some(super::app::TextEditState {
-                                            id,
-                                            original: original.clone(),
-                                            text: original,
-                                            focus_requested: false,
-                                        });
+                                    ui_state.text_edit = Some(super::app::TextEditState {
+                                        id,
+                                        original: original.clone(),
+                                        text: original,
+                                        focus_requested: false,
+                                    });
                                     ui_state.status = "Editing text".to_string();
                                 }
                             }
@@ -1227,9 +1209,7 @@ pub(crate) fn draw_canvas(
                     )
                     .is_none()
                     {
-                        ui_state.marquee_start = Some(
-                            response.hover_pos().unwrap_or(Pos2::ZERO),
-                        );
+                        ui_state.marquee_start = Some(response.hover_pos().unwrap_or(Pos2::ZERO));
                     }
                 }
                 // Marquee drag end: select all markups whose bounds intersect
