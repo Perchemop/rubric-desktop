@@ -529,7 +529,7 @@ fn page_dimensions(
     }
     let width = array_num(&arr[2])? - array_num(&arr[0])?;
     let height = array_num(&arr[3])? - array_num(&arr[1])?;
-    Ok((width as f32, height ))
+    Ok((width as f32, height))
 }
 
 /// Convert a MediaBox array element to f64.
@@ -615,17 +615,11 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
         MarkupGeometry::Segment { a, b } => {
             ops.push(Operation::new(
                 "m",
-                vec![
-                    Object::Real(a.x),
-                    Object::Real(pdf_y(a.y, height)),
-                ],
+                vec![Object::Real(a.x), Object::Real(pdf_y(a.y, height))],
             ));
             ops.push(Operation::new(
                 "l",
-                vec![
-                    Object::Real(b.x),
-                    Object::Real(pdf_y(b.y, height)),
-                ],
+                vec![Object::Real(b.x), Object::Real(pdf_y(b.y, height))],
             ));
             ops.push(Operation::new("S", vec![]));
         }
@@ -633,18 +627,12 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             if let Some(first) = points.first() {
                 ops.push(Operation::new(
                     "m",
-                    vec![
-                        Object::Real(first.x),
-                        Object::Real(pdf_y(first.y, height)),
-                    ],
+                    vec![Object::Real(first.x), Object::Real(pdf_y(first.y, height))],
                 ));
                 for p in points.iter().skip(1) {
                     ops.push(Operation::new(
                         "l",
-                        vec![
-                            Object::Real(p.x),
-                            Object::Real(pdf_y(p.y, height)),
-                        ],
+                        vec![Object::Real(p.x), Object::Real(pdf_y(p.y, height))],
                     ));
                 }
                 if *closed {
@@ -661,18 +649,12 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
                 if let Some(first) = stroke.first() {
                     ops.push(Operation::new(
                         "m",
-                        vec![
-                            Object::Real(first.x),
-                            Object::Real(pdf_y(first.y, height)),
-                        ],
+                        vec![Object::Real(first.x), Object::Real(pdf_y(first.y, height))],
                     ));
                     for p in stroke.iter().skip(1) {
                         ops.push(Operation::new(
                             "l",
-                            vec![
-                                Object::Real(p.x),
-                                Object::Real(pdf_y(p.y, height)),
-                            ],
+                            vec![Object::Real(p.x), Object::Real(pdf_y(p.y, height))],
                         ));
                     }
                     ops.push(Operation::new("S", vec![]));
