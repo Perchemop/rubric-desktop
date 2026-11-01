@@ -529,7 +529,7 @@ fn page_dimensions(
     }
     let width = array_num(&arr[2])? - array_num(&arr[0])?;
     let height = array_num(&arr[3])? - array_num(&arr[1])?;
-    Ok((width as f32, height as f32))
+    Ok((width as f32, height ))
 }
 
 /// Convert a MediaBox array element to f64.
@@ -591,7 +591,7 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
                 Object::Real(b as f32),
             ],
         ),
-        Operation::new("w", vec![Object::Real(style.width as f32)]),
+        Operation::new("w", vec![Object::Real(style.width)]),
     ];
 
     match &m.geometry {
@@ -601,10 +601,10 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             ops.push(Operation::new(
                 "re",
                 vec![
-                    Object::Real(x0 as f32),
-                    Object::Real(y0 as f32),
-                    Object::Real(rct.w as f32),
-                    Object::Real(rct.h as f32),
+                    Object::Real(x0),
+                    Object::Real(y0),
+                    Object::Real(rct.w),
+                    Object::Real(rct.h),
                 ],
             ));
             match style.fill_mode {
@@ -616,15 +616,15 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             ops.push(Operation::new(
                 "m",
                 vec![
-                    Object::Real(a.x as f32),
-                    Object::Real(pdf_y(a.y, height) as f32),
+                    Object::Real(a.x),
+                    Object::Real(pdf_y(a.y, height)),
                 ],
             ));
             ops.push(Operation::new(
                 "l",
                 vec![
-                    Object::Real(b.x as f32),
-                    Object::Real(pdf_y(b.y, height) as f32),
+                    Object::Real(b.x),
+                    Object::Real(pdf_y(b.y, height)),
                 ],
             ));
             ops.push(Operation::new("S", vec![]));
@@ -634,16 +634,16 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
                 ops.push(Operation::new(
                     "m",
                     vec![
-                        Object::Real(first.x as f32),
-                        Object::Real(pdf_y(first.y, height) as f32),
+                        Object::Real(first.x),
+                        Object::Real(pdf_y(first.y, height)),
                     ],
                 ));
                 for p in points.iter().skip(1) {
                     ops.push(Operation::new(
                         "l",
                         vec![
-                            Object::Real(p.x as f32),
-                            Object::Real(pdf_y(p.y, height) as f32),
+                            Object::Real(p.x),
+                            Object::Real(pdf_y(p.y, height)),
                         ],
                     ));
                 }
@@ -662,16 +662,16 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
                     ops.push(Operation::new(
                         "m",
                         vec![
-                            Object::Real(first.x as f32),
-                            Object::Real(pdf_y(first.y, height) as f32),
+                            Object::Real(first.x),
+                            Object::Real(pdf_y(first.y, height)),
                         ],
                     ));
                     for p in stroke.iter().skip(1) {
                         ops.push(Operation::new(
                             "l",
                             vec![
-                                Object::Real(p.x as f32),
-                                Object::Real(pdf_y(p.y, height) as f32),
+                                Object::Real(p.x),
+                                Object::Real(pdf_y(p.y, height)),
                             ],
                         ));
                     }
@@ -690,10 +690,10 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             ops.push(Operation::new(
                 "re",
                 vec![
-                    Object::Real(50.0 as f32),
-                    Object::Real(50.0 as f32),
-                    Object::Real(60.0 as f32),
-                    Object::Real(40.0 as f32),
+                    Object::Real(50.0_f32),
+                    Object::Real(50.0_f32),
+                    Object::Real(60.0_f32),
+                    Object::Real(40.0_f32),
                 ],
             ));
             ops.push(Operation::new("S", vec![]));
