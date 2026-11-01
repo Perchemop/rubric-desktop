@@ -563,6 +563,7 @@ pub(crate) fn draw_canvas(
     page_textures: &mut std::collections::HashMap<String, egui::TextureHandle>,
     failed_page_textures: &mut std::collections::HashSet<String>,
     bg_error: &mut Option<String>,
+    is_export: bool,
 ) -> bool {
     let mut mutated = false;
 
@@ -576,10 +577,14 @@ pub(crate) fn draw_canvas(
 
     // The area around the page follows the application theme; the page itself
     // always stays paper-white so exported images match what is measured.
-    let backdrop = ui.visuals().extreme_bg_color;
-    let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
+    if !is_export {
+        let backdrop = ui.visuals().extreme_bg_color;
+        let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
 
-    painter.rect_filled(response.rect, egui::CornerRadius::ZERO, backdrop);
+        painter.rect_filled(response.rect, egui::CornerRadius::ZERO, backdrop);
+    } else {
+        let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
+    }
 
     // Clamp the displayed page defensively; never panic on an out-of-range index.
     if let Some(doc) = project.active() {
@@ -685,32 +690,36 @@ pub(crate) fn draw_canvas(
     if !painted_texture {
         painter.rect_filled(page_rect, egui::CornerRadius::same(12), Color32::WHITE);
     }
-    painter.rect_stroke(
-        page_rect,
-        egui::CornerRadius::same(12),
-        egui::Stroke::new(1.0, Color32::from_rgb(200, 206, 218)),
-        egui::StrokeKind::Middle,
-    );
+    if !is_export {
+        painter.rect_stroke(
+            page_rect,
+            egui::CornerRadius::same(12),
+            egui::Stroke::new(1.0, Color32::from_rgb(200, 206, 218)),
+            egui::StrokeKind::Middle,
+        );
+    }
 
     // Canvas grid (F-405) and rulers (F-406). Both are guides: they are painted
     // before the markups so they always sit under the content.
-    draw_grid(
-        &painter,
-        page.bounds(),
-        ui_state.grid,
-        ui_state.pan,
-        ui_state.zoom,
-        origin,
-    );
-    draw_rulers(
-        &painter,
-        ui,
-        page_rect,
-        page.bounds(),
-        ui_state.pan,
-        ui_state.zoom,
-        origin,
-    );
+    if !is_export {
+        draw_grid(
+            &painter,
+            page.bounds(),
+            ui_state.grid,
+            ui_state.pan,
+            ui_state.zoom,
+            origin,
+        );
+        draw_rulers(
+            &painter,
+            ui,
+            page_rect,
+            page.bounds(),
+            ui_state.pan,
+            ui_state.zoom,
+            origin,
+        );
+    }
 
     // Render markups in paint order (layer-major, then vector order). Computed
     // once per frame and reused for the measurement labels below.

@@ -1856,6 +1856,7 @@ impl App for RubricApp {
                 &mut self.page_textures,
                 &mut self.failed_page_textures,
                 &mut self.bg_error,
+                false, // is_export: show chrome in live editor
             );
         });
         if need_snapshot {
