@@ -10,8 +10,8 @@ use eframe::egui::{self, ComboBox, RichText, Ui};
 use uuid::Uuid;
 
 use crate::domain::{
-    MarkupGroupKey, MarkupKind, MarkupList, MarkupListFilter, MarkupListSort, Project,
-    ReviewStatus, NONE_LABEL, style::Color,
+    style::Color, MarkupGroupKey, MarkupKind, MarkupList, MarkupListFilter, MarkupListSort,
+    Project, ReviewStatus, NONE_LABEL,
 };
 use crate::ui::app::{MarkupLayerFilter, UiState};
 
