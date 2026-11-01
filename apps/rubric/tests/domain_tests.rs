@@ -521,8 +521,7 @@ fn style_preset_never_captures_or_imposes_lock() {
     assert_eq!(locked_target.style, before_style);
     assert!(locked_target.locked);
     assert_eq!(
-        locked_target.modified,
-        before_modified,
+        locked_target.modified, before_modified,
         "a locked target must not be touched"
     );
 }
