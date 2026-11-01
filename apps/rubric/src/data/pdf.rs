@@ -552,7 +552,7 @@ fn add_font_resource_to_page(
             Ok(Object::Dictionary(d)) => Some(d.clone()),
             Ok(Object::Reference(id)) => Some(
                 doc.get_dictionary(*id)
-                    .map(|d| d.clone())
+                    .cloned()
                     .map_err(|e| DataError::Pdf(format!("could not get resources: {e}")))?,
             ),
             Err(e) => {
@@ -561,7 +561,7 @@ fn add_font_resource_to_page(
                 )));
             }
             _ => {
-                return Err(DataError::Pdf(format!("unexpected Resources type")));
+                return Err(DataError::Pdf("unexpected Resources type".to_string()));
             }
         }
     };
@@ -744,7 +744,7 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
                 "Tf",
                 vec![
                     Object::Name(b"/F1".to_vec()),
-                    Object::Real(style.font_size as f32),
+                    Object::Real(style.font_size),
                 ],
             ));
             ops.push(Operation::new(
