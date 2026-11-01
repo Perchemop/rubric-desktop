@@ -50,6 +50,13 @@ All notable changes to this project will be documented here. Format: semantic-is
   clear status message instead of silently writing/printing a blank white page.
   The background loader (`data::render::load_page_background`) propagates the
   error; a unit test covers the missing-PDF case.
+- **M3** — `save_project` is now atomic: it serialises first, writes a sibling
+  temp file, `sync_all`s and then renames over the target, so a crash or error
+  mid-write can no longer truncate an existing `.rubric.json`. No temp file is
+  left behind on a failed rename; a unit test covers the round-trip, the
+  no-leftover guarantee and overwrite.
+- **M2** — File ▸ Clear Recent reports the real outcome: it no longer claims
+  "Recent list cleared" when `save_recent` fails.
 
 ## [0.3-01] - 2026-10-31
 
