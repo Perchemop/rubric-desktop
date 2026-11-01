@@ -93,14 +93,17 @@ fn multi_line_text_content() -> String {
 
 /// Content stream for vector graphics (rectangles, lines).
 fn vector_content() -> String {
-    "0.5 w\n"
-    "50 700 m 550 700 l S\n"
-    "50 700 m 50 100 l S\n"
-    "550 700 m 550 100 l S\n"
-    "50 100 m 550 100 l S\n"
-    "100 650 m 200 650 l 200 550 l 100 550 l h S\n"
-    "250 650 re 100 100 f\n"
-    "\n"
+    concat!(
+        "0.5 w\n",
+        "50 700 m 550 700 l S\n",
+        "50 700 m 50 100 l S\n",
+        "550 700 m 550 100 l S\n",
+        "50 100 m 550 100 l S\n",
+        "100 650 m 200 650 l 200 550 l 100 550 l h S\n",
+        "250 650 re 100 100 f\n",
+        "\n"
+    )
+    .to_string()
 }
 
 /// Content stream for simple text (single word).
