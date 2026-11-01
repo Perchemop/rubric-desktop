@@ -888,7 +888,9 @@ pub(crate) fn draw_canvas(
     // so new markups land on grid intersections.
     let raw_pos = response.hover_pos().map(|h| to_page(h, pan, zoom, origin));
     let page_pos = raw_pos.map(|p| ui_state.grid.snap(p));
-    *last_page_pos = page_pos;
+    // The status-bar readout reports the *true* pointer (audit M9), matching
+    // what hit-testing uses; snapping only affects where new markups land.
+    *last_page_pos = raw_pos;
 
     // Pan state.
     let space_held = ui.ctx().input(|i| i.key_down(egui::Key::Space));
@@ -906,7 +908,7 @@ pub(crate) fn draw_canvas(
                 if let Some(hover) = response.hover_pos() {
                     let page_before = to_page(hover, pan, zoom, origin);
                     let factor = (scroll.y * 0.001).exp();
-                    let new_zoom = (zoom * factor).clamp(0.1, 16.0);
+                    let new_zoom = crate::domain::view::clamp_zoom(zoom * factor);
                     let new_pan = hover
                         - origin
                         - Vec2::new(page_before.x * new_zoom, page_before.y * new_zoom);
