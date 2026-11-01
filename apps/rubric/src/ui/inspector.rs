@@ -346,8 +346,7 @@ pub(crate) fn draw_inspector(
                 ui_state.status = "Scale values must be positive".to_string();
             } else {
                 let paper_pts = (ui_state.scale_paper_inches * 72.0).max(1.0);
-                let new_scale =
-                    Scale::from_ratio(scale.unit, ui_state.scale_real_units, paper_pts);
+                let new_scale = Scale::from_ratio(scale.unit, ui_state.scale_real_units, paper_pts);
                 if !same_scale(new_scale, before) {
                     if let Some(doc) = project.active_mut() {
                         if let Some(page) = doc.pages.get_mut(page_idx) {
@@ -513,9 +512,7 @@ pub(crate) fn draw_inspector(
                                             5.0,
                                             domain_to_color32(s.color()),
                                         );
-                                        if ui
-                                            .selectable_label(m.status == *s, s.label())
-                                            .clicked()
+                                        if ui.selectable_label(m.status == *s, s.label()).clicked()
                                             && m.status != *s
                                         {
                                             m.status = *s;
@@ -589,9 +586,8 @@ pub(crate) fn draw_inspector(
                     }
                     // Commit when the value stops changing (popup closed / no
                     // change this frame), exactly one snapshot.
-                    let pending_commit = COLOUR_PENDING.with(|p| {
-                        p.borrow().is_some() && !colour_changed
-                    });
+                    let pending_commit =
+                        COLOUR_PENDING.with(|p| p.borrow().is_some() && !colour_changed);
                     if pending_commit {
                         COLOUR_PENDING.with(|p| *p.borrow_mut() = None);
                         committed = true;
@@ -649,7 +645,8 @@ pub(crate) fn draw_inspector(
                 }
             }
             ui.add_enabled_ui(editable, |ui| {
-                ui.text_edit_multiline(comment_text).on_hover_text("Comment text");
+                ui.text_edit_multiline(comment_text)
+                    .on_hover_text("Comment text");
                 let add_clicked = ui.button("Add Comment").clicked();
                 if add_clicked {
                     let author = project.settings.author.clone();

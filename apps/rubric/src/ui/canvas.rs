@@ -1557,44 +1557,46 @@ pub(crate) fn draw_canvas(
                         if r.w.abs() < 1.0 || r.h.abs() < 1.0 {
                             // nothing
                         } else {
-                        let geom = match kind {
-                            MarkupKind::Text => MarkupGeometry::Text {
-                                at: Pt::new(r.x, r.y),
-                                wrap: r.w,
-                                text: String::new(),
-                            },
-                            MarkupKind::Callout => MarkupGeometry::Callout {
-                                rect: r,
-                                // The press point anchors the tail; the dragged
-                                // rect is the box (see doc comment in task).
-                                tail: start,
-                                text: String::new(),
-                            },
-                            _ => MarkupGeometry::Bounds(r),
-                        };
-                        let m =
-                            finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
-                        let new_id = m.id;
-                        let is_text = matches!(kind, MarkupKind::Text | MarkupKind::Callout);
-                        if let Some(doc) = project.active_mut() {
-                            doc.add_markup(m);
-                        }
-                        ui_state.status = format!("Added {}", kind.label());
-                        mutated = true;
-                        if is_text {
-                            ui_state.text_edit = Some(super::app::TextEditState {
-                                id: new_id,
-                                original: String::new(),
-                                text: String::new(),
-                                focus_requested: false,
-                            });
-                            ui_state.status = "Editing text".to_string();
-                        }
-                        if kind == MarkupKind::Note {
-                            ui_state.note_popover = Some(new_id);
-                            ui_state.note_draft.clear();
-                            ui_state.status = "Note added — add a comment".to_string();
-                        }
+                            let geom = match kind {
+                                MarkupKind::Text => MarkupGeometry::Text {
+                                    at: Pt::new(r.x, r.y),
+                                    wrap: r.w,
+                                    text: String::new(),
+                                },
+                                MarkupKind::Callout => MarkupGeometry::Callout {
+                                    rect: r,
+                                    // The press point anchors the tail; the dragged
+                                    // rect is the box (see doc comment in task).
+                                    tail: start,
+                                    text: String::new(),
+                                },
+                                _ => MarkupGeometry::Bounds(r),
+                            };
+                            let m = finish_markup(
+                                Markup::new(page.index, kind, geom, author),
+                                ui_state,
+                            );
+                            let new_id = m.id;
+                            let is_text = matches!(kind, MarkupKind::Text | MarkupKind::Callout);
+                            if let Some(doc) = project.active_mut() {
+                                doc.add_markup(m);
+                            }
+                            ui_state.status = format!("Added {}", kind.label());
+                            mutated = true;
+                            if is_text {
+                                ui_state.text_edit = Some(super::app::TextEditState {
+                                    id: new_id,
+                                    original: String::new(),
+                                    text: String::new(),
+                                    focus_requested: false,
+                                });
+                                ui_state.status = "Editing text".to_string();
+                            }
+                            if kind == MarkupKind::Note {
+                                ui_state.note_popover = Some(new_id);
+                                ui_state.note_draft.clear();
+                                ui_state.status = "Note added — add a comment".to_string();
+                            }
                         }
                     }
                     super::app::DrawState::Segment { start, end, kind } => {
@@ -1602,11 +1604,10 @@ pub(crate) fn draw_canvas(
                             // drop degenerate
                         } else {
                             let geom = MarkupGeometry::Segment { a: start, b: end };
-                            let m =
-                                finish_markup(
-                                    Markup::new(page.index, kind, geom, author),
-                                    ui_state,
-                                );
+                            let m = finish_markup(
+                                Markup::new(page.index, kind, geom, author),
+                                ui_state,
+                            );
                             if let Some(doc) = project.active_mut() {
                                 doc.add_markup(m);
                             }
@@ -1746,7 +1747,8 @@ pub(crate) fn draw_canvas(
             ui_state.text_edit = None;
             mutated = true;
             ui_state.status = "Text edit cancelled".to_string();
-            ui.ctx().input_mut(|i| i.consume_key(egui::Modifiers::default(), egui::Key::Escape));
+            ui.ctx()
+                .input_mut(|i| i.consume_key(egui::Modifiers::default(), egui::Key::Escape));
         }
     }
 
@@ -1766,6 +1768,9 @@ mod tests {
     #[test]
     fn ink_stroke_ok_rejects_single_point() {
         assert!(!ink_stroke_ok(&[vec![Pt::new(0.0, 0.0)]]));
-        assert!(ink_stroke_ok(&[vec![Pt::new(0.0, 0.0), Pt::new(10.0, 0.0)]]));
+        assert!(ink_stroke_ok(&[vec![
+            Pt::new(0.0, 0.0),
+            Pt::new(10.0, 0.0)
+        ]]));
     }
 }
