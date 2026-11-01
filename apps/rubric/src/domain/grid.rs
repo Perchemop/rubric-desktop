@@ -86,7 +86,9 @@ pub fn nice_step(min_step: f64) -> f64 {
 /// `min_step`, aligned to the step so ticks land on round numbers.
 ///
 /// The result is strictly ascending and empty for an empty, inverted or
-/// nonsensical range — a ruler must never loop forever.
+/// nonsensical range — a ruler must never loop forever. A range that would
+/// need more than 10 000 ticks returns empty instead of allocating without
+/// bound.
 pub fn ruler_ticks(from: f64, to: f64, min_step: f64) -> Vec<f64> {
     // NaN is not finite, so this also rejects NaN bounds outright.
     if !from.is_finite() || !to.is_finite() || !min_step.is_finite() {
@@ -95,11 +97,17 @@ pub fn ruler_ticks(from: f64, to: f64, min_step: f64) -> Vec<f64> {
     if to <= from || min_step <= 0.0 {
         return Vec::new();
     }
+    const MAX_TICKS: usize = 10_000;
     let step = nice_step(min_step);
     let mut ticks = Vec::new();
     let mut v = (from / step).ceil() * step;
-    // `+ step` guards against a float that lands just past `to` after rounding.
-    while v <= to + step * 0.5 {
+    // A hair of tolerance admits a float that lands just past `to` after
+    // rounding; a half-step guard would emit a real tick beyond the range.
+    let end = to + step * 1e-9;
+    while v <= end {
+        if ticks.len() >= MAX_TICKS {
+            return Vec::new();
+        }
         ticks.push(v);
         v += step;
     }
@@ -207,6 +215,32 @@ mod tests {
         assert!(ruler_ticks(10.0, 5.0, 5.0).is_empty());
         assert!(ruler_ticks(0.0, 8.0, 0.0).is_empty());
         assert!(ruler_ticks(0.0, 8.0, f64::INFINITY).is_empty());
+    }
+
+    #[test]
+    fn ruler_ticks_never_emit_a_tick_beyond_the_range_end() {
+        // A half-step overshoot guard used to admit 100 for a 0..=90 range.
+        let ticks = ruler_ticks(0.0, 90.0, 30.0);
+        assert_eq!(ticks, vec![0.0, 50.0]);
+        assert!(ticks.iter().all(|t| (0.0..=90.0).contains(t)));
+        // A tick that only lands just past `to` through float rounding is
+        // still kept, so the range end is not silently dropped.
+        let ticks = ruler_ticks(0.0, 0.3, 0.05);
+        let last = ticks.last().copied().unwrap_or(f64::NAN);
+        assert!(
+            (last - 0.3).abs() < 1e-9,
+            "the final tick must still cover the range end, got {last}"
+        );
+    }
+
+    #[test]
+    fn ruler_ticks_bail_out_past_the_iteration_cap() {
+        // 0..=100 000 at a 0.01 step needs ~10 million ticks; the cap must
+        // stop the allocation instead of looping effectively forever.
+        assert!(ruler_ticks(0.0, 100_000.0, 0.01).is_empty());
+        // Ranges within the cap are unaffected.
+        let ticks = ruler_ticks(0.0, 9_000.0, 1.0);
+        assert_eq!(ticks.len(), 9_001);
     }
 
     #[test]

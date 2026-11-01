@@ -392,3 +392,169 @@ fn style_preset_apply_and_roundtrip() {
     let back: StylePreset = serde_json::from_str(&json).unwrap();
     assert_eq!(preset, back);
 }
+
+#[test]
+fn remove_page_keeps_and_shifts_later_page_markups() {
+    let mut doc = Document::empty("Doc");
+    doc.add_page(Page::letter(1));
+    doc.add_page(Page::legal(2));
+    let mut on_removed = Markup::new(
+        0,
+        MarkupKind::Highlight,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        "a",
+    );
+    let mut on_middle = Markup::new(
+        1,
+        MarkupKind::Note,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        "b",
+    );
+    let mut on_last = Markup::new(
+        2,
+        MarkupKind::Rectangle,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        "c",
+    );
+    on_removed.page = 0;
+    on_middle.page = 1;
+    on_last.page = 2;
+    let (removed_id, middle_id, last_id) = (on_removed.id, on_middle.id, on_last.id);
+    for m in [on_removed, on_middle, on_last] {
+        doc.add_markup(m);
+    }
+
+    doc.remove_page(0);
+
+    assert_eq!(doc.page_count(), 2);
+    assert!(
+        doc.find_markup(removed_id).is_none(),
+        "the removed page's markups go with it"
+    );
+    assert!(
+        doc.find_markup(middle_id).is_some() && doc.find_markup(last_id).is_some(),
+        "no markup on a later page is lost"
+    );
+    // Survivors shift up with the renumbering instead of being re-pointed
+    // onto the wrong page.
+    let pages: Vec<usize> = doc.markups.iter().map(|m| m.page).collect();
+    assert_eq!(pages, vec![0, 1]);
+    assert_eq!(doc.markups_on_page(0).len(), 1);
+    assert_eq!(doc.markups_on_page(1).len(), 1);
+}
+
+#[test]
+fn diff_documents_detects_layer_move() {
+    use rubric::domain::diff_documents;
+    use uuid::Uuid;
+
+    let mut a = Document::empty("A");
+    let layer = a.add_layer("Notes");
+    let mut original = Markup::new(
+        0,
+        MarkupKind::Highlight,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0)),
+        "Alice",
+    );
+    original.id = Uuid::from_u128(1);
+    a.add_markup(original);
+
+    let mut b = Document::empty("B");
+    let mut moved = Markup::new(
+        0,
+        MarkupKind::Highlight,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0)),
+        "Alice",
+    );
+    moved.id = Uuid::from_u128(1);
+    moved.layer_id = Some(layer);
+    b.add_markup(moved);
+
+    let diff = diff_documents(&a, &b);
+    assert_eq!(
+        diff.changed.len(),
+        1,
+        "moving a markup between layers must not read as no change"
+    );
+    assert_eq!(diff.changed[0].before.as_ref().unwrap().layer_id, None);
+    assert_eq!(
+        diff.changed[0].after.as_ref().unwrap().layer_id,
+        Some(layer)
+    );
+}
+
+#[test]
+fn style_preset_never_captures_or_imposes_lock() {
+    use rubric::domain::StylePreset;
+
+    let mut locked_source = Markup::new(
+        0,
+        MarkupKind::Highlight,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        "Carol",
+    );
+    locked_source.locked = true;
+    let preset = StylePreset::from_markup(&locked_source, "From Locked");
+    assert!(!preset.locked, "lock state is not style");
+
+    // An unlocked target is styled but never locked by the preset.
+    let mut target = Markup::new(
+        0,
+        MarkupKind::Rectangle,
+        MarkupGeometry::Bounds(Rect::new(2.0, 2.0, 1.0, 1.0)),
+        "David",
+    );
+    preset.apply_to(&mut target);
+    assert!(!target.locked, "a preset must not impose lock state");
+
+    // A locked target is skipped entirely, like `Document::apply_style_to`.
+    let mut locked_target = Markup::new(
+        0,
+        MarkupKind::Rectangle,
+        MarkupGeometry::Bounds(Rect::new(3.0, 3.0, 1.0, 1.0)),
+        "Eve",
+    );
+    locked_target.locked = true;
+    let before_style = locked_target.style;
+    let before_modified = locked_target.modified;
+    preset.apply_to(&mut locked_target);
+    assert_eq!(locked_target.style, before_style);
+    assert!(locked_target.locked);
+    assert_eq!(
+        locked_target.modified,
+        before_modified,
+        "a locked target must not be touched"
+    );
+}
+
+#[test]
+fn markup_list_filters_fold_case_beyond_ascii() {
+    use rubric::domain::{MarkupList, MarkupListFilter};
+
+    let mut doc = Document::empty("Review");
+    let mut m = Markup::new(
+        0,
+        MarkupKind::Note,
+        MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        "José",
+    );
+    m.subject = "Änderung".to_string();
+    doc.add_markup(m);
+
+    let list = MarkupList::from_document(&doc);
+    let mut filter = MarkupListFilter::default();
+    filter.authors = Some(["josé".to_string()].into_iter().collect());
+    assert_eq!(
+        list.filter(&filter).rows.len(),
+        1,
+        "é folds case-insensitively (ASCII-only folding would miss it)"
+    );
+
+    let mut filter = MarkupListFilter::default();
+    filter.subjects = Some(["änderung".to_string()].into_iter().collect());
+    assert_eq!(
+        list.filter(&filter).rows.len(),
+        1,
+        "Ä folds to ä via Unicode lowercase"
+    );
+}

@@ -164,6 +164,12 @@ pub(crate) struct UiState {
     /// frame; the shared context menu reads it to keep Undo/Redo honest.
     pub(crate) can_undo: bool,
     pub(crate) can_redo: bool,
+    /// True when at least one selected markup is actually editable — gates
+    /// Delete so the menu does not offer a no-op on a locked selection
+    /// (full-app audit M7).
+    pub(crate) can_delete: bool,
+    /// View ▸ Full Screen session state (full-app audit M10).
+    pub(crate) fullscreen: bool,
     /// Markups List filter controls. Kept as UI state so the domain filter can
     /// be rebuilt on every frame; none of it is written into `.rubric.json`.
     pub(crate) markup_search: String,
@@ -208,6 +214,8 @@ impl Default for UiState {
             quit_confirm: false,
             can_undo: false,
             can_redo: false,
+            can_delete: false,
+            fullscreen: false,
             markup_search: String::new(),
             markup_status: None,
             markup_author: None,
@@ -231,6 +239,17 @@ pub struct RubricApp {
     /// Session-only association with a file on disk. Not part of the project
     /// snapshot, so it never undoes/redoes with history.
     current_path: Option<PathBuf>,
+    /// A project install waiting for the user to confirm discarding unsaved
+    /// changes (full-app audit B2). `None` when nothing is pending.
+    pending_replace: Option<PendingReplace>,
+    /// Help ▸ About window visibility (full-app audit M4).
+    show_about: bool,
+    /// Set when the user closed the update-check window, so it stays closed
+    /// until a new check is requested (full-app audit M8).
+    update_dismissed: bool,
+    /// Set by "Quit Anyway" so the close-request veto (audit M1) lets the
+    /// explicitly-confirmed close through instead of re-prompting forever.
+    force_close: bool,
     /// Set when the window title needs to be re-synced with `current_path`.
     title_dirty: bool,
     /// Instant of the most recent autosave **attempt** in this session, or
@@ -268,6 +287,17 @@ pub(crate) struct UpdateCheck {
     pub(crate) result: Option<update_check::UpdateStatus>,
 }
 
+/// A project install waiting on the "replace unsaved project?" confirmation
+/// (full-app audit B2). New / Open / Import / Recent all funnel through
+/// [`RubricApp::install_project`], which parks the install here while the
+/// current project has unsaved changes.
+#[derive(Debug, Clone, PartialEq)]
+struct PendingReplace {
+    project: Project,
+    current_path: Option<PathBuf>,
+    status: String,
+}
+
 /// Session-only bug report dialog state (guide §7.1): the captured report plus
 /// the editable user notes. Never persisted, never uploaded without consent.
 #[derive(Debug, Clone, PartialEq)]
@@ -292,7 +322,7 @@ impl BugReportUi {
 }
 
 impl RubricApp {
-    pub fn new(cc: &CreationContext<'_>) -> Self {
+    pub fn new(cc: &CreationContext<'_>, parked_crash: Option<crash_report::CrashReport>) -> Self {
         let prefs = load_prefs();
         theme::apply_theme(&cc.egui_ctx, prefs.theme);
         let project = Project::new("Untitled Rubric Project");
@@ -303,6 +333,10 @@ impl RubricApp {
             last_page_pos: None,
             comment_text: String::new(),
             current_path: None,
+            pending_replace: None,
+            show_about: false,
+            update_dismissed: false,
+            force_close: false,
             title_dirty: true,
             last_autosave: None,
             page_textures: HashMap::new(),
@@ -311,7 +345,14 @@ impl RubricApp {
             bg_error: None,
             report_export: None,
             theme: prefs.theme,
-            report: None,
+            // A crash report parked by a previous run (audit M3) is surfaced in
+            // the review-and-send dialog once; nothing is sent without consent.
+            report: parked_crash.map(|report| BugReportUi {
+                report,
+                notes: String::new(),
+                token: String::new(),
+                open_in_browser: true,
+            }),
             update: Arc::new(Mutex::new(UpdateCheck::default())),
             repo: "Perchemop/rubric-desktop".to_string(),
         }
@@ -322,8 +363,9 @@ impl RubricApp {
     /// thread requests a repaint when done. `egui::Context` is cheap to clone,
     /// so the worker keeps its own handle for the repaint signal.
     fn begin_update_check(&mut self, ctx: &egui::Context) {
+        self.update_dismissed = false;
         {
-            let mut state = self.update.lock().expect("update lock");
+            let mut state = self.update.lock().unwrap_or_else(|p| p.into_inner());
             if state.running {
                 return;
             }
@@ -555,7 +597,10 @@ impl RubricApp {
     /// Update-check status window (guide §7.2). Shows one honest state and a
     /// link out to the release page; never blocks and never auto-installs.
     fn draw_update_result(&mut self, ctx: &egui::Context) {
-        let snapshot = self.update.lock().expect("update lock").clone();
+        if self.update_dismissed {
+            return; // The user closed the window; keep it closed (audit M8).
+        }
+        let snapshot = self.update.lock().unwrap_or_else(|p| p.into_inner()).clone();
         if !snapshot.running && snapshot.result.is_none() {
             return; // Nothing to show until a check has been requested.
         }
@@ -599,7 +644,11 @@ impl RubricApp {
                 }
             });
         if !open {
-            self.update.lock().expect("update lock").result.take();
+            let mut state = self.update.lock().unwrap_or_else(|p| p.into_inner());
+            state.result.take();
+            // Keep the window closed even while the check is still running
+            // (audit M8): previously `running` kept re-opening it every frame.
+            self.update_dismissed = true;
         }
     }
 
@@ -722,7 +771,39 @@ impl RubricApp {
     /// Shared reset used by New / Open / Import: installs a project into the
     /// session, clearing history, UI state, draw state, textures and clamping
     /// the current page. `current_path` is `Some` only for an opened file.
-    fn install_project(&mut self, project: Project, current_path: Option<PathBuf>, status: String) {
+    ///
+    /// While the current project has unsaved changes the install is parked in
+    /// [`Self::pending_replace`] behind a confirmation, so New / Open / Import
+    /// / Recent can no longer discard work silently (full-app audit B2).
+    /// Returns `true` when the install happened now, `false` when it was
+    /// parked behind the confirmation.
+    fn install_project(
+        &mut self,
+        project: Project,
+        current_path: Option<PathBuf>,
+        status: String,
+    ) -> bool {
+        if self.ui.dirty {
+            self.pending_replace = Some(PendingReplace {
+                project,
+                current_path,
+                status,
+            });
+            self.ui.status =
+                "Unsaved changes — save first (Ctrl+S) or confirm to replace".to_string();
+            return false;
+        }
+        self.install_project_now(project, current_path, status);
+        true
+    }
+
+    /// The unconditional install (confirmation already resolved).
+    fn install_project_now(
+        &mut self,
+        project: Project,
+        current_path: Option<PathBuf>,
+        status: String,
+    ) {
         self.history = History::new(project);
         self.ui = UiState::default();
         self.draw = DrawState::Idle;
@@ -870,12 +951,18 @@ impl RubricApp {
                     .file_name()
                     .map(|n| n.to_string_lossy().to_string())
                     .unwrap_or_else(|| path.to_string_lossy().to_string());
-                self.install_project(proj, Some(path.clone()), format!("Opened {name}"));
-                // Record the open in the app-level recents store. A failed
-                // save (e.g. read-only config dir) must not fail the open.
-                let mut recent = load_recent();
-                recent.push(path.to_string_lossy().to_string());
-                let _ = save_recent(&recent);
+                let installed =
+                    self.install_project(proj, Some(path.clone()), format!("Opened {name}"));
+                // Record the open in the app-level recents store only when the
+                // project actually replaced the session (audit B2: a deferred
+                // install behind the unsaved-changes confirm is not an open).
+                // A failed save (e.g. read-only config dir) must not fail the
+                // open.
+                if installed {
+                    let mut recent = load_recent();
+                    recent.push(path.to_string_lossy().to_string());
+                    let _ = save_recent(&recent);
+                }
             }
             Err(e) => {
                 self.ui.status = format!("Open failed: {e}");
@@ -929,8 +1016,12 @@ impl RubricApp {
         let path = self.current_path.clone();
         match autosave(self.history.current(), path.as_deref()) {
             Ok(Some(path)) => {
-                self.ui.dirty = false;
-                self.ui.status = format!("Autosaved: {}", path.display());
+                // Audit M2: the autosave writes the *recovery sidecar*
+                // (`<stem>.autosave.rubric.json`), not the project file, so the
+                // project stays dirty — clearing the flag here suppressed the
+                // Quit confirmation while the real `.rubric.json` was stale.
+                // Only `save_project_to` may clear `dirty`.
+                self.ui.status = format!("Recovery snapshot saved: {}", path.display());
             }
             Ok(None) => {
                 // No writable location (no project path and no data dir). Leave
@@ -987,12 +1078,18 @@ impl RubricApp {
                         .pick_file()
                     {
                         match crate::data::pdf::read_pdf_info(&path) {
+                            // Audit M9: a 0-page PDF used to report "Imported
+                            // 1 page(s)" and fabricate an unrenderable page.
+                            Ok(info) if info.page_sizes.is_empty() => {
+                                self.ui.status =
+                                    "Import failed: the PDF has no pages".to_string();
+                            }
                             Ok(info) => {
                                 let stem = path
                                     .file_stem()
                                     .map(|n| n.to_string_lossy().to_string())
                                     .unwrap_or_else(|| "Imported PDF".to_string());
-                                let count = info.page_sizes.len().max(1);
+                                let count = info.page_sizes.len();
                                 let project = Project::from_pdf(
                                     stem,
                                     path.to_string_lossy().to_string(),
@@ -1137,6 +1234,31 @@ impl RubricApp {
                     ui.close();
                 }
                 ui.separator();
+                // Select All (full-app audit M10): select every editable,
+                // visible markup on the current page — the delete and
+                // apply-style paths already operate on the whole selection.
+                if ui.button("Select All").clicked() {
+                    let doc = self.active_doc();
+                    let page = self.ui.current_page;
+                    let ids: Vec<_> = doc
+                        .map(|d| {
+                            d.markups
+                                .iter()
+                                .filter(|m| m.page == page && d.is_markup_editable(m))
+                                .map(|m| m.id)
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    self.ui.selected = ids.into_iter().collect();
+                    let n = self.ui.selected.len();
+                    self.ui.status = if n == 0 {
+                        "Nothing to select on this page".to_string()
+                    } else {
+                        format!("Selected {n} markup{}", if n == 1 { "" } else { "s" })
+                    };
+                    ui.close();
+                }
+                ui.separator();
                 menu::draw_selection_commands(ui, &mut self.ui);
             });
             ui.menu_button("View", |ui| {
@@ -1148,6 +1270,34 @@ impl RubricApp {
                 }
                 if ui.button("Fit Page").clicked() {
                     self.apply_editor_action(EditorAction::FitPage);
+                }
+                ui.separator();
+                // Page navigation in the menu (full-app audit M10): the arrows
+                // and PageUp/PageDown were the only paths before.
+                if ui.button("Previous Page").clicked() {
+                    self.jump_to_page(self.ui.current_page.saturating_sub(1));
+                }
+                if ui.button("Next Page").clicked() {
+                    let count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
+                    if self.ui.current_page + 1 < count {
+                        self.jump_to_page(self.ui.current_page + 1);
+                    }
+                }
+                if ui.button("Full Screen").clicked() {
+                    // Read the live state so the toggle is truthful even if the
+                    // WM changed it out from under us.
+                    let fullscreen = ui
+                        .ctx()
+                        .input(|i| i.viewport().fullscreen)
+                        .unwrap_or(self.ui.fullscreen);
+                    self.ui.fullscreen = !fullscreen;
+                    ui.ctx()
+                        .send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
+                    self.ui.status = if self.ui.fullscreen {
+                        "Full screen on (Esc-exit via the View menu)".to_string()
+                    } else {
+                        "Full screen off".to_string()
+                    };
                 }
                 ui.separator();
                 for pct in view::ZOOM_PRESETS {
@@ -1230,8 +1380,7 @@ impl RubricApp {
             });
             ui.menu_button("Help", |ui| {
                 if ui.button("About Rubric").clicked() {
-                    self.ui.status =
-                        "Rubric — free, cross-platform PDF markup & measurement".to_string();
+                    self.show_about = !self.show_about;
                     ui.close();
                 }
                 if ui.button("Check for Updates…").clicked() {
@@ -1330,7 +1479,7 @@ impl RubricApp {
             .shortcut_key()
             .map(|k| k.to_ascii_uppercase())
             .unwrap_or('-');
-        self.ui.status = format!("{:?} ({key})", tool);
+        self.ui.status = format!("{} ({key})", menu::tool_label(tool));
     }
 }
 
@@ -1411,16 +1560,37 @@ impl App for RubricApp {
         // them (audit M19).
         self.ui.can_undo = self.history.can_undo();
         self.ui.can_redo = self.history.can_redo();
+        // Refresh Delete enablement so the menu does not offer a no-op when the
+        // whole selection is locked (full-app audit M7).
+        let can_delete = self.active_doc().is_some_and(|doc| {
+            self.ui
+                .selected
+                .iter()
+                .any(|id| doc.find_markup(*id).is_some_and(|m| doc.is_markup_editable(m)))
+        });
+        self.ui.can_delete = can_delete;
         // Computed before `ctx.input` so the immutable borrow of `ctx` for
         // `egui_wants_keyboard_input` does not overlap the input closure.
         let wants_kb = ctx.egui_wants_keyboard_input();
         ctx.input(|i| {
             let editing = self.ui.text_edit.is_some();
-            if (i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace)) && !editing
+            // `wants_kb` gates every destructive/shortcut branch: while the
+            // user is typing in ANY egui text field (Markups List search,
+            // inspector subject/author/layer-rename/comment), Backspace and
+            // Delete must edit the text, not delete the selected markup, and
+            // Ctrl+Z/Ctrl+Y must not run history under the user's hands
+            // (full-app audit B1).
+            if (i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace))
+                && !editing
+                && !wants_kb
             {
                 self.delete_selected();
             }
-            if i.modifiers.command && i.key_pressed(egui::Key::Z) && !i.modifiers.shift {
+            if i.modifiers.command
+                && i.key_pressed(egui::Key::Z)
+                && !i.modifiers.shift
+                && !wants_kb
+            {
                 // Never mutate history mid-edit: undoing past the markup's
                 // creation would leave a stale `text_edit` pointing at a
                 // markup that no longer exists.
@@ -1431,7 +1601,7 @@ impl App for RubricApp {
                     self.clear_selection();
                 }
             }
-            if i.modifiers.command && i.key_pressed(egui::Key::Y) {
+            if i.modifiers.command && i.key_pressed(egui::Key::Y) && !wants_kb {
                 if self.ui.text_edit.is_some() {
                     self.ui.status = "Finish or cancel text edit first".to_string();
                 } else if self.history.redo() {
@@ -1454,7 +1624,7 @@ impl App for RubricApp {
                 // status; no override here.
                 self.save_project_action();
             }
-            if i.key_pressed(egui::Key::PageUp) {
+            if i.key_pressed(egui::Key::PageUp) && !wants_kb {
                 // Never switch pages mid-edit: the edit context would be lost
                 // and the text could be committed onto the wrong page.
                 if self.ui.text_edit.is_some() {
@@ -1463,7 +1633,7 @@ impl App for RubricApp {
                     self.jump_to_page(self.ui.current_page - 1);
                 }
             }
-            if i.key_pressed(egui::Key::PageDown) {
+            if i.key_pressed(egui::Key::PageDown) && !wants_kb {
                 // Never switch pages mid-edit: the edit context would be lost
                 // and the text could be committed onto the wrong page.
                 if self.ui.text_edit.is_some() {
@@ -1518,6 +1688,19 @@ impl App for RubricApp {
                 }
             }
         });
+
+        // Audit M1: the OS close button (and any window-manager close) must not
+        // discard unsaved work. egui 0.36 exits the root viewport after this
+        // frame unless `CancelClose` is sent, so veto the close while the
+        // project is dirty and route it through the same confirmation as
+        // File ▸ Quit.
+        let close_requested = ctx.input(|i| i.viewport().close_requested());
+        if close_requested && self.ui.dirty && !self.force_close {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            self.ui.quit_confirm = true;
+            self.ui.status = "The project has unsaved changes — save or confirm to quit".into();
+        }
+        self.force_close = false;
     }
 
     fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
@@ -1641,6 +1824,41 @@ impl App for RubricApp {
         // sent until the user explicitly chooses to.
         self.draw_bug_report(ui.ctx());
 
+        // About window (full-app audit M4): version, licence and links instead
+        // of a transient status line.
+        if self.show_about {
+            let mut open = true;
+            egui::Window::new("About Rubric")
+                .open(&mut open)
+                .resizable(false)
+                .show(ui.ctx(), |ui| {
+                    ui.heading("Rubric");
+                    ui.label("Free, cross-platform PDF markup & measurement");
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        ui.label("Version:");
+                        ui.label(env!("CARGO_PKG_VERSION"));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Licence:");
+                        ui.label("MIT");
+                    });
+                    ui.hyperlink_to(
+                        "Source & releases",
+                        "https://github.com/Perchemop/rubric-desktop",
+                    );
+                    ui.separator();
+                    if ui.button("Close").clicked() {
+                        self.show_about = false;
+                    }
+                });
+            if !open {
+                self.show_about = false;
+            }
+            self.ui.status =
+                "Rubric — free, cross-platform PDF markup & measurement".to_string();
+        }
+
         if self.ui.quit_confirm {
             let mut open = true;
             egui::Window::new("Unsaved Changes")
@@ -1651,6 +1869,9 @@ impl App for RubricApp {
                     ui.horizontal(|ui| {
                         if ui.button("Quit Anyway").clicked() {
                             self.ui.quit_confirm = false;
+                            // Tell the close veto this close was confirmed
+                            // (audit M1); otherwise it would re-prompt.
+                            self.force_close = true;
                             ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                         }
                         if ui.button("Cancel").clicked() {
@@ -1660,6 +1881,41 @@ impl App for RubricApp {
                 });
             if !open {
                 self.ui.quit_confirm = false;
+            }
+        }
+
+        // Replace-unsaved-project confirmation (full-app audit B2): New / Open
+        // / Import / Recent park their install here instead of discarding work
+        // silently.
+        if self.pending_replace.is_some() {
+            let mut open = true;
+            egui::Window::new("Replace Unsaved Project")
+                .open(&mut open)
+                .resizable(false)
+                .show(ui.ctx(), |ui| {
+                    ui.label(
+                        "The current project has unsaved changes that will be lost. \
+                         Save first (Ctrl+S) to keep them.",
+                    );
+                    ui.horizontal(|ui| {
+                        if ui.button("Discard Changes").clicked() {
+                            if let Some(pending) = self.pending_replace.take() {
+                                self.install_project_now(
+                                    pending.project,
+                                    pending.current_path,
+                                    pending.status,
+                                );
+                            }
+                        }
+                        if ui.button("Cancel").clicked() {
+                            self.pending_replace = None;
+                            self.ui.status = "Replace cancelled — project kept".to_string();
+                        }
+                    });
+                });
+            if !open {
+                self.pending_replace = None;
+                self.ui.status = "Replace cancelled — project kept".to_string();
             }
         }
 

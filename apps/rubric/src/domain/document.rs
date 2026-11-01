@@ -209,15 +209,32 @@ impl Document {
         self.touch();
     }
 
+    /// Remove the page at `index` (no-op when `index` is out of range).
+    ///
+    /// Markups on the removed page are deleted along with it. Markups on
+    /// later pages shift up with the page renumbering, so each survivor stays
+    /// on its own (renumbered) page and nothing is silently re-pointed or
+    /// lost. Any markup still pointing past the new last page (only possible
+    /// in hand-edited files) is dropped.
     pub fn remove_page(&mut self, index: usize) {
-        if index < self.pages.len() {
-            self.pages.remove(index);
-            for (i, p) in self.pages.iter_mut().enumerate() {
-                p.index = i;
-            }
-            self.markups.retain(|m| m.page < self.pages.len());
-            self.touch();
+        if index >= self.pages.len() {
+            return;
         }
+        // Drop the removed page's own markups and shift later pages' markups
+        // up together with the renumbering.
+        self.markups.retain(|m| m.page != index);
+        for m in &mut self.markups {
+            if m.page > index {
+                m.page -= 1;
+            }
+        }
+        self.pages.remove(index);
+        for (i, p) in self.pages.iter_mut().enumerate() {
+            p.index = i;
+        }
+        // Fail-safe for hand-edited files that carried out-of-range indices.
+        self.markups.retain(|m| m.page < self.pages.len());
+        self.touch();
     }
 
     pub fn add_markup(&mut self, mut m: Markup) {
@@ -759,6 +776,71 @@ mod tests {
         assert_eq!(first.subject, "Keep me");
         assert_eq!(first.status, crate::domain::markup::ReviewStatus::Approved);
         assert_eq!(doc.find_markup(locked_id).unwrap().style, locked_style);
+    }
+
+    #[test]
+    fn remove_page_shifts_later_markups_and_drops_the_removed_pages_markups() {
+        let mut doc = Document::empty("Doc");
+        doc.add_page(Page::a4(1));
+        doc.add_page(Page::a4(2));
+        let mut on_removed = markup();
+        on_removed.page = 0;
+        let mut on_middle = markup();
+        on_middle.page = 1;
+        let mut on_last = markup();
+        on_last.page = 2;
+        let (removed_id, middle_id, last_id) = (on_removed.id, on_middle.id, on_last.id);
+        for m in [on_removed, on_middle, on_last] {
+            doc.add_markup(m);
+        }
+
+        doc.remove_page(0);
+
+        assert_eq!(doc.page_count(), 2);
+        assert!(
+            doc.find_markup(removed_id).is_none(),
+            "the removed page's markups go with it"
+        );
+        assert!(
+            doc.find_markup(middle_id).is_some(),
+            "markups on later pages survive the removal"
+        );
+        assert!(
+            doc.find_markup(last_id).is_some(),
+            "markups on the last page survive the removal"
+        );
+        // Survivors shift up with the page renumbering: none lost, none
+        // re-pointed onto the wrong page.
+        let pages: Vec<usize> = doc.markups.iter().map(|m| m.page).collect();
+        assert_eq!(pages, vec![0, 1]);
+        for m in &doc.markups {
+            assert_eq!(doc.pages[m.page].index, m.page);
+        }
+    }
+
+    #[test]
+    fn remove_page_is_a_no_op_for_an_out_of_range_index() {
+        let mut doc = Document::empty("Doc");
+        doc.add_markup(markup());
+        let before = doc.clone();
+        doc.remove_page(5);
+        assert_eq!(doc, before);
+    }
+
+    #[test]
+    fn add_markup_clamps_the_page_index_to_the_last_page() {
+        let mut doc = Document::empty("Doc");
+        doc.add_page(Page::a4(1));
+        let mut far = markup();
+        far.page = 9;
+        let id = far.id;
+        doc.add_markup(far);
+        assert_eq!(doc.markups.len(), 1);
+        assert_eq!(
+            doc.find_markup(id).unwrap().page,
+            1,
+            "clamped to the last page"
+        );
     }
 
     #[test]

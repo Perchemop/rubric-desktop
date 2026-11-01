@@ -73,7 +73,8 @@ requires a token to be embedded in the app. See the privacy note in `README.md`.
 
 - Issues are triaged regularly; accessibility reports are treated with the
   same priority as high-severity bugs.
-- PRs are reviewed by CI + the reviewer subagent; a human merges.
+- PRs are reviewed by CI + the reviewer subagent; the agent merges once CI is
+  green and findings are addressed (owner directive 2026-10-26).
 - Security vulnerabilities are handled privately per `SECURITY.md` (no public
   issues). Typical first response is within 7 days.
 

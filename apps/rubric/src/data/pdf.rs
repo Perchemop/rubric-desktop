@@ -5,7 +5,8 @@
 //!
 //! 1. the `RUBRIC_PDFIUM_PATH` environment variable (a directory containing the
 //!    platform library, or the library file itself);
-//! 2. the directory containing the running executable;
+//! 2. the directory containing the running executable, and its `lib/`
+//!    subdirectory (some packagers ship the library there);
 //! 3. the system library path.
 //!
 //! Rendered pages are cached as PNG files under the app config directory so the
@@ -36,12 +37,30 @@ use super::DataError;
 #[cfg(not(feature = "hayro"))]
 pub const PDFIUM_PATH_ENV: &str = "RUBRIC_PDFIUM_PATH";
 
+/// Ceiling for the requested page-render width, in pixels.
+///
+/// Both engines rasterise into pixmaps with limited dimensions: hayro's
+/// `vello_cpu` pixmap is addressed with `u16` sizes and pdfium-render limits
+/// bitmap dimensions to `u16` as well. A requested width beyond that would
+/// either fail obscurely or silently render smaller than the cache file name
+/// suggests, so oversized requests are clamped to this documented maximum by
+/// [`clamp_render_width`] before anything is rendered or cached.
+pub const MAX_RENDER_WIDTH_PX: u32 = 8192;
+
+/// Clamp a requested render width to [`MAX_RENDER_WIDTH_PX`].
+fn clamp_render_width(target_width_px: u32) -> u32 {
+    target_width_px.min(MAX_RENDER_WIDTH_PX)
+}
+
 /// Page sizes read from a PDF, in PDF points and document order.
 ///
-/// Each entry is `(width, height)` as reported by PDFium. Width and height are
-/// unrotated media-box dimensions; any intrinsic page rotation is not applied
-/// here (the domain [`crate::domain::Page::rotation`] field tracks rotation for
-/// the UI to apply).
+/// Each entry is `(width, height)` as reported by the active engine (PDFium,
+/// or hayro when the `hayro` feature is enabled), with identical semantics in
+/// both engines: the crop box intersected with the media box, with the page's
+/// intrinsic rotation already applied — a `/Rotate 90|270` page reports
+/// swapped width and height, matching the orientation of the rendered page
+/// bitmap. The domain [`crate::domain::Page::rotation`] field separately
+/// tracks the page's `/Rotate` value for the UI.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct PdfSourceInfo {
     /// `(width, height)` in PDF points for every page, in document order.
@@ -51,9 +70,9 @@ pub struct PdfSourceInfo {
 /// Bind to PDFium, loading the shared library if this is the first call.
 ///
 /// Binding is attempted from [`PDFIUM_PATH_ENV`], then the executable's
-/// directory, then the system library path. PDFium itself initialises its
-/// global bindings once per process; subsequent calls reuse those bindings and
-/// still return a usable [`Pdfium`] handle.
+/// directory (and its `lib/` subdirectory), then the system library path.
+/// PDFium itself initialises its global bindings once per process; subsequent
+/// calls reuse those bindings and still return a usable [`Pdfium`] handle.
 ///
 /// Returns [`DataError::PdfLibrary`] when no library can be loaded, with a
 /// message that names the environment variable to set.
@@ -85,10 +104,15 @@ pub fn bind_pdfium() -> Result<Pdfium, DataError> {
         .ok()
         .and_then(|exe| exe.parent().map(Path::to_path_buf))
     {
-        let library = Pdfium::pdfium_platform_library_name_at_path(&exe_dir);
-        match pdfium_from_bindings(Pdfium::bind_to_library(&library)) {
-            Ok(pdfium) => return Ok(pdfium),
-            Err(error) => errors.push(format!("{}: {error}", library.display())),
+        // Packagers may ship the library beside the executable or in a `lib/`
+        // subdirectory (see docs/pdfium.md); try both, collecting every
+        // failure so the final error names all attempted locations.
+        for dir in [exe_dir.clone(), exe_dir.join("lib")] {
+            let library = Pdfium::pdfium_platform_library_name_at_path(&dir);
+            match pdfium_from_bindings(Pdfium::bind_to_library(&library)) {
+                Ok(pdfium) => return Ok(pdfium),
+                Err(error) => errors.push(format!("{}: {error}", library.display())),
+            }
         }
     } else {
         errors.push("could not determine the executable directory".into());
@@ -132,8 +156,8 @@ fn pdfium_from_bindings(
 /// When the `hayro` feature is enabled, uses the pure-Rust hayro-syntax parser
 /// for page-size probing. Otherwise falls back to PDFium.
 ///
-/// Passwords are not supported yet; encrypted PDFs are reported as an error.
-/// The file is opened read-only and never modified.
+/// Passwords are not supported yet; encrypted PDFs are reported as an explicit
+/// single-line error. The file is opened read-only and never modified.
 pub fn read_pdf_info(path: impl AsRef<Path>) -> Result<PdfSourceInfo, DataError> {
     let path = path.as_ref();
 
@@ -181,30 +205,48 @@ mod hayro_pages {
     use hayro::hayro_interpret::InterpreterSettings;
     use hayro::vello_cpu::color::palette::css::WHITE;
     use hayro::{render, PixmapSettings, RenderCache, RenderSettings};
-    use hayro_syntax::Pdf;
+    use hayro_syntax::{LoadPdfError, Pdf};
+
+    /// Single-line, honest message for a hayro-syntax document-open failure.
+    ///
+    /// `LoadPdfError` implements `Debug` but not `Display`; the decryption case
+    /// is mapped to an explicit encrypted-PDF message and everything else falls
+    /// back to a compact single-line `Debug` format so status lines stay
+    /// readable.
+    fn open_error_message(error: LoadPdfError, path: &Path) -> String {
+        match error {
+            LoadPdfError::Decryption(_) => format!(
+                "could not open PDF {}: the PDF is encrypted or password-protected; \
+                 Rubric cannot open encrypted PDFs",
+                path.display()
+            ),
+            LoadPdfError::Invalid => format!(
+                "could not parse PDF {} with hayro-syntax: {error:?}",
+                path.display()
+            ),
+        }
+    }
 
     /// Probe page sizes using hayro-syntax (pure-Rust PDF parser).
     ///
-    /// Returns the unrotated media-box `(width, height)` in PDF points for every
-    /// page, in document order — matching what the PDFium path reports.
+    /// Returns the `(width, height)` in PDF points for every page, in document
+    /// order, using `Page::render_dimensions()`: the crop box intersected with
+    /// the media box, with the page's intrinsic rotation applied (`/Rotate
+    /// 90|270` swaps width and height). This is the same semantics as PDFium's
+    /// `pages().page_sizes()`, so both engines report identical geometry for
+    /// the same document.
     pub fn probe_pages_hayro(path: &Path) -> Result<Vec<(f32, f32)>, DataError> {
         let bytes = fs::read(path)
             .map_err(|e| DataError::Pdf(format!("could not read PDF {}: {e}", path.display())))?;
 
-        let pdf = Pdf::new(bytes).map_err(|e| {
-            DataError::Pdf(format!(
-                "could not parse PDF {} with hayro-syntax: {e:?}",
-                path.display()
-            ))
-        })?;
+        let pdf = Pdf::new(bytes).map_err(|e| DataError::Pdf(open_error_message(e, path)))?;
 
+        // `render_dimensions()` is what hayro's own render path uses, so the
+        // probed geometry always matches the rendered bitmap.
         let page_sizes = pdf
             .pages()
             .iter()
-            .map(|page| {
-                let media_box = page.media_box();
-                (media_box.width() as f32, media_box.height() as f32)
-            })
+            .map(|page| page.render_dimensions())
             .collect();
 
         Ok(page_sizes)
@@ -228,12 +270,7 @@ mod hayro_pages {
             DataError::Pdf(format!("could not read PDF {}: {e}", pdf_path.display()))
         })?;
 
-        let pdf = Pdf::new(bytes).map_err(|e| {
-            DataError::Pdf(format!(
-                "could not parse PDF {} with hayro-syntax: {e:?}",
-                pdf_path.display()
-            ))
-        })?;
+        let pdf = Pdf::new(bytes).map_err(|e| DataError::Pdf(open_error_message(e, pdf_path)))?;
 
         let pages = pdf.pages();
         let page_count = pages.len();
@@ -294,13 +331,9 @@ mod hayro_pages {
             fs::create_dir_all(parent)?;
         }
 
-        img.save_with_format(cache_path, image::ImageFormat::Png)
-            .map_err(|e| {
-                DataError::Pdf(format!(
-                    "could not write rendered page to {}: {e}",
-                    cache_path.display()
-                ))
-            })?;
+        save_png_atomically(cache_path, |path| {
+            img.save_with_format(path, image::ImageFormat::Png)
+        })?;
 
         Ok(cache_path.to_path_buf())
     }
@@ -309,14 +342,17 @@ mod hayro_pages {
 /// Render one PDF page to a cached PNG and return the cache file path.
 ///
 /// The page is rasterised to `target_width_px` pixels wide, with the aspect
-/// ratio preserved. The cache location is
+/// ratio preserved. Widths above [`MAX_RENDER_WIDTH_PX`] are clamped to that
+/// ceiling before the cache path is computed, so the file name always matches
+/// the width actually rendered. The cache location is
 /// `<config dir>/render_cache/<key>/page_<index>_<width>.png`, where `<key>` is a
 /// non-cryptographic hash of the canonical PDF path, its modification time and
 /// its length. The key changes when the PDF changes, so stale renders are not
 /// served. When the file already exists it is returned without rendering.
 ///
 /// A zero width is rejected, as is an out-of-range `page_index`. The cache
-/// directory is created on demand.
+/// directory is created on demand, and the PNG is written atomically (a crash
+/// or two concurrent instances can never leave a truncated PNG in the cache).
 ///
 /// When the `hayro` feature is enabled, uses the pure-Rust hayro renderer.
 /// Otherwise falls back to PDFium (requires PDFium native library at runtime).
@@ -330,6 +366,7 @@ pub fn render_page_to_cache(
             "render width must be greater than zero".into(),
         ));
     }
+    let target_width_px = clamp_render_width(target_width_px);
 
     let pdf_path = pdf_path.as_ref();
     let cache_path = render_cache_page_path(pdf_path, page_index, target_width_px)?;
@@ -386,14 +423,9 @@ pub fn render_page_to_cache(
         if let Some(parent) = cache_path.parent() {
             fs::create_dir_all(parent)?;
         }
-        image
-            .save_with_format(&cache_path, image::ImageFormat::Png)
-            .map_err(|error| {
-                DataError::Pdf(format!(
-                    "could not write rendered page to {}: {error}",
-                    cache_path.display()
-                ))
-            })?;
+        save_png_atomically(&cache_path, |path| {
+            image.save_with_format(path, image::ImageFormat::Png)
+        })?;
 
         Ok(cache_path)
     }
@@ -427,7 +459,30 @@ pub fn render_cache_dir() -> Option<PathBuf> {
 fn load_document<'a>(pdfium: &'a Pdfium, path: &Path) -> Result<PdfDocument<'a>, DataError> {
     pdfium
         .load_pdf_from_file(path, None)
-        .map_err(|error| DataError::Pdf(format!("could not open PDF {}: {error}", path.display())))
+        .map_err(|error| DataError::Pdf(pdfium_open_error(&error, path)))
+}
+
+/// Single-line, honest message for a PDFium document-open failure.
+///
+/// `PdfiumError`'s `Display` implementation pretty-`Debug`s its payload, which
+/// produces unreadable multi-line status text. Password and security failures
+/// are mapped to an explicit encrypted-PDF message; everything else falls back
+/// to a compact single-line `Debug` format so status lines stay readable.
+#[cfg(not(feature = "hayro"))]
+fn pdfium_open_error(error: &PdfiumError, path: &Path) -> String {
+    if let PdfiumError::PdfiumLibraryInternalError(internal) = error {
+        if matches!(
+            internal,
+            PdfiumInternalError::PasswordError | PdfiumInternalError::SecurityError
+        ) {
+            return format!(
+                "could not open PDF {}: the PDF is encrypted or password-protected; \
+                 Rubric cannot open encrypted PDFs",
+                path.display()
+            );
+        }
+    }
+    format!("could not open PDF {}: {error:?}", path.display())
 }
 
 /// Cache path for one page render, creating neither directories nor files.
@@ -468,6 +523,49 @@ fn pdf_cache_key(path: &Path) -> Result<String, DataError> {
     modified.hash(&mut hasher);
 
     Ok(format!("{:016x}", hasher.finish()))
+}
+
+/// A unique sibling path used by [`save_png_atomically`]'s atomic rename. It
+/// lives in the target's directory so the rename stays on one filesystem (and
+/// is thus atomic).
+fn temp_cache_sibling(target: &Path) -> PathBuf {
+    let name = target
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "page.png".to_string());
+    target.with_file_name(format!(".{name}.{}.tmp", uuid::Uuid::new_v4()))
+}
+
+/// Save a rendered page PNG to `cache_path` atomically.
+///
+/// `save` receives the path to write the PNG to; the helper points it at a
+/// unique temporary sibling in the same directory and then renames it over the
+/// target, mirroring [`super::store::save_project`]. Writing directly to the
+/// target would let a crash mid-write — or two concurrent instances — leave a
+/// truncated PNG that the `exists()` cache check would then serve forever. The
+/// temporary file is removed on every error path.
+fn save_png_atomically<F>(cache_path: &Path, save: F) -> Result<(), DataError>
+where
+    F: FnOnce(&Path) -> Result<(), image::ImageError>,
+{
+    let tmp = temp_cache_sibling(cache_path);
+
+    // Every error path after the temp file is created must clean it up.
+    let result = (|| -> Result<(), DataError> {
+        save(&tmp).map_err(|e| {
+            DataError::Pdf(format!(
+                "could not write rendered page to {}: {e}",
+                tmp.display()
+            ))
+        })?;
+        fs::rename(&tmp, cache_path)?;
+        Ok(())
+    })();
+    if let Err(e) = result {
+        let _ = fs::remove_file(&tmp);
+        return Err(e);
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -907,5 +1005,86 @@ mod tests {
 
         cleanup_render(&rendered);
         let _ = fs::remove_file(&path);
+    }
+
+    /// Oversized render widths are clamped to the documented ceiling: hayro's
+    /// pixmap and pdfium-render's bitmaps are both `u16`-limited, so a runaway
+    /// width must never be passed to an engine (or into a cache file name).
+    #[test]
+    fn render_width_is_clamped_to_the_documented_ceiling() {
+        assert_eq!(clamp_render_width(400), 400);
+        assert_eq!(
+            clamp_render_width(MAX_RENDER_WIDTH_PX),
+            MAX_RENDER_WIDTH_PX
+        );
+        assert_eq!(clamp_render_width(u32::MAX), MAX_RENDER_WIDTH_PX);
+        assert!(clamp_render_width(u32::MAX) <= u16::MAX as u32);
+    }
+
+    /// The atomic cache write must remove its temporary file on every error
+    /// path. Here the final rename fails (the target is occupied by a
+    /// non-empty directory) long after the temp file was written.
+    #[test]
+    fn png_cache_write_cleans_up_its_temp_file_when_the_rename_fails() {
+        let dir = std::env::temp_dir().join(format!(
+            "rubric_png_atomic_{}_{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("create test dir");
+
+        let target = dir.join("page_0_400.png");
+        fs::create_dir(target.join("inner")).expect("occupy target with a directory");
+
+        let error = save_png_atomically(&target, |_path| Ok(()))
+            .expect_err("rename over a directory must fail");
+        assert!(matches!(error, DataError::Io(_)), "got {error:?}");
+
+        let leftovers: Vec<String> = fs::read_dir(&dir)
+            .expect("read dir")
+            .filter_map(Result::ok)
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .filter(|n| n.ends_with(".tmp"))
+            .collect();
+        assert!(
+            leftovers.is_empty(),
+            "temp files left behind: {leftovers:?}"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A successful atomic cache write must leave the PNG at the target and no
+    /// temporary sibling behind.
+    #[test]
+    fn png_cache_write_renames_its_temp_file_into_place() {
+        let dir = std::env::temp_dir().join(format!(
+            "rubric_png_atomic_ok_{}_{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("create test dir");
+
+        let target = dir.join("page_1_300.png");
+        save_png_atomically(&target, |path| {
+            fs::write(path, b"png-bytes").map_err(image::ImageError::IoError)
+        })
+        .expect("atomic save");
+
+        assert_eq!(fs::read(&target).expect("read target"), b"png-bytes");
+        let leftovers: Vec<String> = fs::read_dir(&dir)
+            .expect("read dir")
+            .filter_map(Result::ok)
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .filter(|n| n.ends_with(".tmp"))
+            .collect();
+        assert!(
+            leftovers.is_empty(),
+            "temp files left behind: {leftovers:?}"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
     }
 }

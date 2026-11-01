@@ -43,6 +43,15 @@ jobs:
       - name: Build release binary
         run: cargo build --release --locked
 
+      - name: Fetch PDFium runtime (pinned; bundled into the AppImage)
+        shell: bash
+        run: |
+          set -eux
+          curl -fsSL -o /tmp/pdfium.tgz \
+            "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7881/pdfium-linux-x64.tgz"
+          mkdir -p "$HOME/pdfium"
+          tar -xzf /tmp/pdfium.tgz -C "$HOME/pdfium"
+
       - name: Assemble AppDir and bundle
         shell: bash
         run: |
@@ -98,12 +107,16 @@ jobs:
 
           # Bundle PDFium next to the binary (run-time dependency, see
           # docs/pdfium.md). linuxdeploy copies it into the AppDir because it
-          # is declared a library of the binary below.
+          # is declared a library of the binary below. The library is fetched
+          # by the pinned "Fetch PDFium runtime" step above; a missing library
+          # fails the job — a PDF-less installer must never ship silently.
           PDFIUM=$(find "$HOME/pdfium" /usr/lib -name 'libpdfium.so*' 2>/dev/null | head -1 || true)
-          if [ -n "$PDFIUM" ]; then
-            mkdir -p "$APPDIR/usr/lib"
-            cp "$PDFIUM" "$APPDIR/usr/lib/"
-          fi
+          test -n "$PDFIUM" || {
+            echo "PDFium library not found in $HOME/pdfium or /usr/lib" >&2
+            exit 1
+          }
+          mkdir -p "$APPDIR/usr/lib"
+          cp "$PDFIUM" "$APPDIR/usr/lib/"
 
           OUTPUT=Rubric-x86_64.AppImage
           # Fail loudly rather than shipping a broken bundle.
@@ -137,6 +150,14 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Build release binary
         run: cargo build --release --locked
+      - name: Fetch PDFium runtime (pinned; bundled into the DMG)
+        shell: bash
+        run: |
+          set -eux
+          curl -fsSL -o /tmp/pdfium.tgz \
+            "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7881/pdfium-mac-arm64.tgz"
+          mkdir -p "$HOME/pdfium"
+          tar -xzf /tmp/pdfium.tgz -C "$HOME/pdfium"
       - name: Assemble .app bundle
         shell: bash
         run: |
@@ -172,10 +193,17 @@ jobs:
 
           # PDFium is a run-time dependency; ship it inside the bundle for
           # macOS because there is no sensible system location on stock setups.
+          # The library is fetched by the pinned "Fetch PDFium runtime" step
+          # above; a missing library fails the job — a PDF-less DMG must never
+          # ship silently.
           mkdir -p "$APP/Contents/Frameworks"
           PDFIUM=$(find "$HOME/pdfium" /opt/homebrew/lib /usr/local/lib \
             -name 'libpdfium.dylib' 2>/dev/null | head -1 || true)
-          if [ -n "$PDFIUM" ]; then cp "$PDFIUM" "$APP/Contents/Frameworks/"; fi
+          test -n "$PDFIUM" || {
+            echo "PDFium library not found in $HOME/pdfium" >&2
+            exit 1
+          }
+          cp "$PDFIUM" "$APP/Contents/Frameworks/"
 
           hdiutil create -volname Rubric -srcfolder "$APP" -ov -format UDZO \
             rubric-macos.dmg
@@ -198,6 +226,14 @@ jobs:
         run: |
           cargo build --release --locked
           copy target\release\rubric.exe .
+      - name: Fetch PDFium runtime (pinned; bundled into the MSI and zip)
+        shell: bash
+        run: |
+          set -eux
+          curl -fsSL -o /tmp/pdfium.tgz \
+            "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7881/pdfium-win-x64.tgz"
+          mkdir -p "$HOME/pdfium"
+          tar -xzf /tmp/pdfium.tgz -C "$HOME/pdfium"
       - name: Build MSI with WiX
         shell: pwsh
         run: |
@@ -208,9 +244,16 @@ jobs:
           # installer metadata is reviewable; this only runs it. Both preprocessor
           # variables it references must be defined here, or the build fails with
           # WIX0150 ("Undefined preprocessor variable").
+          #
+          # The PDFium runtime is fetched by the pinned "Fetch PDFium runtime"
+          # step above; a missing DLL fails the build here rather than silently
+          # installing without PDF support.
           $pdfium = Get-ChildItem -Path "$HOME","$env:LOCALAPPDATA" -Recurse -Filter pdfium.dll -ErrorAction SilentlyContinue | Select-Object -First 1
-          $pdfiumPath = if ($null -ne $pdfium) { $pdfium.FullName } else { "" }
-          $found = if ($null -ne $pdfium) { "1" } else { "0" }
+          if ($null -eq $pdfium) {
+            throw "PDFium runtime (pdfium.dll) not found under $HOME or $env:LOCALAPPDATA — refusing to build a PDF-less MSI"
+          }
+          $pdfiumPath = $pdfium.FullName
+          $found = "1"
           Push-Location packaging/wix
           wix build Product.wxs `
             -d "PdfiumDllPath=$pdfiumPath" `
@@ -228,9 +271,15 @@ jobs:
           cp README.md LICENSE ATTRIBUTION.md "$STAGE/"
           cp docs/pdfium.md "$STAGE/"
 
-          # Bundle the PDFium runtime beside the executable when present.
-          PDFIUM=$(find "$HOME/pdfium" "$env:LOCALAPPDATA" -iname 'pdfium.dll' 2>/dev/null | head -1 || true)
-          if [ -n "$PDFIUM" ]; then cp "$PDFIUM" "$STAGE/"; fi
+          # Bundle the PDFium runtime beside the executable. The library is
+          # fetched by the pinned "Fetch PDFium runtime" step above; a missing
+          # DLL fails the job — a PDF-less zip must never ship silently.
+          PDFIUM=$(find "$HOME/pdfium" "$LOCALAPPDATA" -iname 'pdfium.dll' 2>/dev/null | head -1 || true)
+          test -n "$PDFIUM" || {
+            echo "PDFium library not found in $HOME/pdfium or $LOCALAPPDATA" >&2
+            exit 1
+          }
+          cp "$PDFIUM" "$STAGE/"
 
           cd "$STAGE"
           7z a "../rubric-windows-x86_64.zip" . >/dev/null 2>&1 || \

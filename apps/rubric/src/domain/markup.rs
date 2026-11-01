@@ -261,8 +261,10 @@ impl MarkupGeometry {
                 Rect::from_bounds(&all).unwrap_or(Rect::new(0.0, 0.0, 0.0, 0.0))
             }
             MarkupGeometry::Text { at, wrap, text } => {
-                let lines = (text.lines().count().max(1)) as f32;
-                Rect::new(at.x, at.y, *wrap, lines * 16.0)
+                // Style-free fallback estimate: the default font size stands
+                // in for the markup's own. `Markup::bounds` refines this with
+                // the markup's real `style.font_size`.
+                text_box_rect(*at, *wrap, text, MarkupStyle::default().font_size)
             }
             MarkupGeometry::Callout { rect, tail, .. } => {
                 rect.union(&Rect::new(tail.x, tail.y, 0.0, 0.0))
@@ -307,6 +309,31 @@ impl MarkupGeometry {
             MarkupGeometry::Count { at, .. } => t(at),
         }
     }
+}
+
+/// Estimated height of one rendered text line, in page points.
+///
+/// The renderer lays text out at roughly 1.35 × the font size; bounds and hit
+/// testing must use the same factor so a markup is hittable everywhere it is
+/// drawn.
+const TEXT_LINE_HEIGHT_FACTOR: f32 = 1.35;
+
+/// Line height for `font_size`, clamped to the style's 6 pt minimum so a
+/// degenerate deserialised font size can never collapse the box.
+///
+/// Public so the canvas text editor sizes its overlay with the exact same
+/// metrics the domain uses for bounds and hit testing.
+pub fn text_line_height(font_size: f32) -> f32 {
+    TEXT_LINE_HEIGHT_FACTOR * font_size.max(6.0)
+}
+
+/// The on-page rectangle of a text box anchored at `at`, wrapping within
+/// `wrap` points: one [`text_line_height`] per line, with the wrap width
+/// clamped to at least 1 pt so a degenerate stored wrap cannot make the box
+/// unhittable.
+fn text_box_rect(at: Pt, wrap: f32, text: &str, font_size: f32) -> Rect {
+    let lines = text.lines().count().max(1) as f32;
+    Rect::new(at.x, at.y, wrap.max(1.0), lines * text_line_height(font_size))
 }
 
 /// How many [`MarkupKind::MeasureCount`] markers lie on `page`.
@@ -615,8 +642,19 @@ impl Markup {
         self
     }
 
+    /// Tight bounding box in page points.
+    ///
+    /// For text markups the height is estimated from the markup's own
+    /// `style.font_size` (see `text_box_rect`), so a 24 pt text occupies its
+    /// drawn height; the geometry-only [`MarkupGeometry::bounds`] estimate
+    /// falls back to the default font size.
     pub fn bounds(&self) -> Rect {
-        self.geometry.bounds()
+        match &self.geometry {
+            MarkupGeometry::Text { at, wrap, text } => {
+                text_box_rect(*at, *wrap, text, self.style.font_size)
+            }
+            _ => self.geometry.bounds(),
+        }
     }
 
     /// Hit test with a tolerance in page points.
@@ -688,8 +726,7 @@ impl Markup {
                 .iter()
                 .any(|s| polyline_hit(p, s, false, tolerance.max(3.0))),
             MarkupGeometry::Text { at, wrap, text } => {
-                let h = (text.lines().count().max(1) as f32) * 16.0;
-                Rect::new(at.x, at.y, *wrap, h)
+                text_box_rect(*at, *wrap, text, self.style.font_size)
                     .expanded(tolerance)
                     .contains(p)
             }
@@ -706,6 +743,12 @@ impl Markup {
     }
 
     /// Recompute the measurement (if this is a measure markup) using `scale`.
+    ///
+    /// A measure kind whose geometry does not fit it (possible for imported or
+    /// hand-edited files, e.g. a length measure carrying path geometry) is
+    /// left with no measurement rather than a misleading zero value.
+    /// Non-measure kinds always clear the measurement. An open perimeter
+    /// measures only its drawn segments; a closed one adds the closing edge.
     pub fn recompute_measurement(&mut self, points: Scale) {
         let Some(kind) = self.kind.measure_kind() else {
             self.measurement = None;
@@ -714,18 +757,30 @@ impl Markup {
         let raw = match (&self.geometry, kind) {
             (MarkupGeometry::Segment { a, b }, MeasureKind::Length)
             | (MarkupGeometry::Segment { a, b }, MeasureKind::Diameter)
-            | (MarkupGeometry::Segment { a, b }, MeasureKind::Radius) => a.distance(*b) as f64,
-            (MarkupGeometry::Path { points, .. }, MeasureKind::Perimeter) => {
-                geom::closed_path_length(points) as f64
+            | (MarkupGeometry::Segment { a, b }, MeasureKind::Radius) => {
+                Some(a.distance(*b) as f64)
+            }
+            (MarkupGeometry::Path { points, closed }, MeasureKind::Perimeter) => {
+                let length = if *closed {
+                    geom::closed_path_length(points)
+                } else {
+                    geom::path_length(points)
+                };
+                Some(length as f64)
             }
             (MarkupGeometry::Path { points, .. }, MeasureKind::Area) => {
-                geom::polygon_area(points) as f64
+                Some(geom::polygon_area(points) as f64)
             }
             (MarkupGeometry::Angle { a, vertex, b }, MeasureKind::Angle) => {
-                geom::angle_degrees(*a, *vertex, *b) as f64
+                Some(geom::angle_degrees(*a, *vertex, *b) as f64)
             }
-            (MarkupGeometry::Count { number, .. }, MeasureKind::Count) => *number as f64,
-            _ => 0.0,
+            (MarkupGeometry::Count { number, .. }, MeasureKind::Count) => Some(*number as f64),
+            // Unmatched kind/geometry pair: no measurement, not a fake zero.
+            _ => None,
+        };
+        let Some(raw) = raw else {
+            self.measurement = None;
+            return;
         };
         // Radius is half the segment length; diameter is the full length.
         let raw = match kind {
@@ -777,15 +832,29 @@ impl Markup {
     }
 
     /// Plain-text summary line used in lists and exports.
+    ///
+    /// Measurement values are formatted in raw PDF points (uncalibrated); use
+    /// [`Markup::summary_with`] to format them in a page's display unit, as
+    /// the canvas does.
     pub fn summary(&self) -> String {
+        self.summary_with(Scale::PAPER)
+    }
+
+    /// Plain-text summary line, formatting any measurement in `scale`'s
+    /// display unit.
+    ///
+    /// The value is recomputed from the stored raw points exactly as
+    /// [`Markup::recompute_measurement`] does, so a calibrated page lists
+    /// `10.000 ft` where the canvas shows `10.000 ft`.
+    pub fn summary_with(&self, scale: Scale) -> String {
         let mut s = self.subject.clone();
         if let Some(m) = &self.measurement {
             s.push_str(": ");
-            s.push_str(&units::format_value(
-                m.kind,
-                units::MeasureUnit::Point,
-                m.value_points,
-            ));
+            let value = match m.kind {
+                MeasureKind::Angle | MeasureKind::Count => m.value_points,
+                _ => scale.points_to_units(m.value_points),
+            };
+            s.push_str(&units::format_value(m.kind, scale.unit, value));
         }
         s
     }
@@ -944,6 +1013,102 @@ mod tests {
         r.recompute_measurement(Scale::PAPER);
         assert!((d.measurement.unwrap().value - 100.0).abs() < 1e-6);
         assert!((r.measurement.unwrap().value - 50.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn perimeter_measurement_honours_the_closed_flag() {
+        // Three sides of a 72 pt square: 216 pt drawn, 288 pt when closed.
+        let points = vec![
+            Pt::new(0.0, 0.0),
+            Pt::new(72.0, 0.0),
+            Pt::new(72.0, 72.0),
+            Pt::new(0.0, 72.0),
+        ];
+        let mut open = Markup::new(
+            0,
+            MarkupKind::MeasurePerimeter,
+            MarkupGeometry::Path {
+                points: points.clone(),
+                closed: false,
+            },
+            "t",
+        );
+        open.recompute_measurement(Scale::PAPER);
+        assert!(
+            (open.measurement.unwrap().value_points - 216.0).abs() < 1e-6,
+            "an open perimeter measures only the drawn segments"
+        );
+
+        let mut closed = Markup::new(
+            0,
+            MarkupKind::MeasurePerimeter,
+            MarkupGeometry::Path {
+                points,
+                closed: true,
+            },
+            "t",
+        );
+        closed.recompute_measurement(Scale::PAPER);
+        assert!(
+            (closed.measurement.unwrap().value_points - 288.0).abs() < 1e-6,
+            "a closed perimeter adds the closing segment"
+        );
+    }
+
+    #[test]
+    fn mismatched_measure_kind_and_geometry_leaves_no_measurement() {
+        // Importers can pair a measure kind with alien geometry; the markup
+        // must carry no measurement rather than a misleading zero.
+        let mut m = Markup::new(
+            0,
+            MarkupKind::MeasureLength,
+            MarkupGeometry::Path {
+                points: vec![Pt::new(0.0, 0.0), Pt::new(72.0, 0.0)],
+                closed: false,
+            },
+            "t",
+        );
+        m.recompute_measurement(Scale::PAPER);
+        assert_eq!(m.measurement, None);
+
+        // Non-measure kinds still clear a stale measurement.
+        let mut r = Markup::new(
+            0,
+            MarkupKind::Rectangle,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0)),
+            "t",
+        );
+        r.measurement = Some(Measurement {
+            kind: MeasureKind::Length,
+            value: 1.0,
+            value_points: 1.0,
+        });
+        r.recompute_measurement(Scale::PAPER);
+        assert_eq!(r.measurement, None);
+    }
+
+    #[test]
+    fn summary_formats_measurements_in_the_page_unit() {
+        let mut m = Markup::new(
+            0,
+            MarkupKind::MeasureLength,
+            MarkupGeometry::Segment {
+                a: Pt::new(0.0, 0.0),
+                b: Pt::new(720.0, 0.0),
+            },
+            "t",
+        );
+        m.recompute_measurement(scale()); // 1 in = 1 ft
+        assert_eq!(
+            m.summary(),
+            "Length: 720.000 pt",
+            "uncalibrated fallback formats raw points"
+        );
+        assert_eq!(
+            m.summary_with(scale()),
+            "Length: 10.000 ft",
+            "the page's display unit, as the canvas shows it"
+        );
     }
 
     #[test]
@@ -1273,7 +1438,8 @@ mod tests {
         assert_eq!(text_m.geometry, back.geometry);
 
         // Hit box (per `hit_test`): `at` is the top-left corner, width is
-        // `wrap`, height is the estimated 16 pt per line (2 lines = 32).
+        // `wrap`, height is the estimated line height at the markup's font
+        // size (default 12 pt × 1.35 ≈ 16.2 pt per line; 2 lines ≈ 32.4).
         assert!(text_m.hit_test(Pt::new(10.0, 10.0), 2.0), "at the anchor");
         assert!(
             text_m.hit_test(Pt::new(40.0, 30.0), 2.0),
@@ -1309,6 +1475,57 @@ mod tests {
             "the tail point hits within tolerance"
         );
         assert!(!callout_m.hit_test(Pt::new(200.0, 200.0), 2.0), "far away");
+    }
+
+    #[test]
+    fn text_bounds_and_hit_box_scale_with_font_size() {
+        let geom = MarkupGeometry::Text {
+            at: Pt::new(10.0, 10.0),
+            wrap: 60.0,
+            text: "a\nb\nc".to_string(),
+        };
+        let small = Markup::new(0, MarkupKind::Text, geom.clone(), "t");
+        let mut big = Markup::new(0, MarkupKind::Text, geom, "t");
+        big.style.font_size = 24.0;
+
+        let small_h = small.bounds().h;
+        let big_h = big.bounds().h;
+        assert!(
+            (big_h - small_h * 2.0).abs() < 1e-4,
+            "doubling the font size doubles the estimated text height"
+        );
+        assert!(
+            (big_h - 3.0 * 1.35 * 24.0).abs() < 1e-4,
+            "3 lines at 24 pt ≈ 3 × 1.35 × 24"
+        );
+
+        // bounds() and hit_test() agree: a point below the small box but
+        // inside the 24 pt box hits only the big markup.
+        let below_small = Pt::new(40.0, 70.0);
+        assert!(
+            !small.hit_test(below_small, 1.0),
+            "a point below the small box must not hit it"
+        );
+        assert!(big.hit_test(below_small, 1.0), "inside the 24 pt box");
+    }
+
+    #[test]
+    fn text_with_degenerate_wrap_stays_hittable() {
+        let m = Markup::new(
+            0,
+            MarkupKind::Text,
+            MarkupGeometry::Text {
+                at: Pt::new(10.0, 10.0),
+                wrap: 0.0, // hand-edited or imported file
+                text: "one line".to_string(),
+            },
+            "t",
+        );
+        // The wrap width is clamped to at least 1 pt so the box cannot
+        // collapse into an unhittable sliver.
+        assert_eq!(m.bounds().w, 1.0);
+        assert!(m.hit_test(Pt::new(10.5, 12.0), 1.0));
+        assert!(!m.hit_test(Pt::new(20.0, 12.0), 1.0), "still bounded");
     }
 
     #[test]

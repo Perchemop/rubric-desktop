@@ -14,13 +14,15 @@ use super::markup::{Markup, MarkupKind, ReviewStatus};
 use super::project::Project;
 use super::report::normalise_group_value;
 use super::report::NONE_LABEL;
+use super::units::Scale;
 
 /// A filter describing an inclusive query over markups.
 ///
 /// All fields are optional; `None` means the criterion is not applied.  String
-/// comparisons are case-insensitive for `authors`, `subjects` and `search`.
-/// The `layers` criterion works on the raw [`Markup::layer_id`]; markups with
-/// `None` layer_id match only when `include_default_layer` is true.
+/// comparisons are Unicode case-insensitive (via `to_lowercase`) for
+/// `authors`, `subjects` and `search`. The `layers` criterion works on the
+/// raw [`Markup::layer_id`]; markups with `None` layer_id match only when
+/// `include_default_layer` is true.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct MarkupListFilter {
     #[serde(default)]
@@ -60,12 +62,14 @@ impl MarkupListFilter {
             }
         }
         if let Some(authors) = &self.authors {
-            if !authors.iter().any(|a| a.eq_ignore_ascii_case(author)) {
+            let author = author.to_lowercase();
+            if !authors.iter().any(|a| a.to_lowercase() == author) {
                 return false;
             }
         }
         if let Some(subjects) = &self.subjects {
-            if !subjects.iter().any(|s| s.eq_ignore_ascii_case(subject)) {
+            let subject = subject.to_lowercase();
+            if !subjects.iter().any(|s| s.to_lowercase() == subject) {
                 return false;
             }
         }
@@ -259,7 +263,9 @@ impl MarkupGroupKey {
     /// Group value for a full [`Markup`]; layer name resolution is not applied,
     /// the raw id string is used.
     pub fn group_value(&self, markup: &Markup) -> String {
-        self.group_value_for_row(&MarkupRow::from_markup(markup), None)
+        // Grouping never reads the summary line, so the uncalibrated fallback
+        // scale is fine here.
+        self.group_value_for_row(&MarkupRow::from_markup(markup, Scale::PAPER), None)
     }
 
     /// Group value with an explicit layer name resolver.
@@ -267,7 +273,7 @@ impl MarkupGroupKey {
     where
         F: Fn(Uuid) -> String,
     {
-        let row = MarkupRow::from_markup(markup);
+        let row = MarkupRow::from_markup(markup, Scale::PAPER);
         let name = |id| layer_name(id);
         self.group_value_for_row(&row, Some(&name))
     }
@@ -312,7 +318,10 @@ pub struct MarkupRow {
 }
 
 impl MarkupRow {
-    fn from_markup(markup: &Markup) -> Self {
+    /// Snapshot `markup` for list display, formatting any measurement with
+    /// `scale` — the owning page's scale, so calibrated values read exactly
+    /// as the canvas shows them.
+    fn from_markup(markup: &Markup, scale: Scale) -> Self {
         Self {
             id: markup.id,
             page: markup.page,
@@ -323,9 +332,15 @@ impl MarkupRow {
             layer_id: markup.layer_id,
             created: markup.created,
             modified: markup.modified,
-            summary: markup.summary(),
+            summary: markup.summary_with(scale),
         }
     }
+}
+
+/// The display scale of `page` in `doc`; an out-of-range page index (only
+/// possible in hand-edited files) falls back to uncalibrated paper points.
+fn page_scale(doc: &Document, page: usize) -> Scale {
+    doc.pages.get(page).map(|p| p.scale).unwrap_or(Scale::PAPER)
 }
 
 /// A list view of markups, built from a document or project.
@@ -340,8 +355,15 @@ impl MarkupList {
     }
 
     /// Build a list from `doc`, preserving markup order.
+    ///
+    /// Each row's summary is formatted with its own page's scale, so a
+    /// calibrated page lists `10.000 ft` where the canvas shows `10.000 ft`.
     pub fn from_document(doc: &Document) -> Self {
-        let rows = doc.markups.iter().map(MarkupRow::from_markup).collect();
+        let rows = doc
+            .markups
+            .iter()
+            .map(|m| MarkupRow::from_markup(m, page_scale(doc, m.page)))
+            .collect();
         Self { rows }
     }
 
@@ -530,8 +552,94 @@ mod tests {
         };
         assert!(filter.matches(&m));
         // Row search does not include comments — matches row checks summary only
-        let row = MarkupRow::from_markup(&m);
+        let row = MarkupRow::from_markup(&m, Scale::PAPER);
         assert!(!filter.matches_row(&row));
+    }
+
+    #[test]
+    fn filter_authors_and_subjects_fold_case_beyond_ascii() {
+        let mut doc = Document::empty("D");
+        doc.add_markup(make_markup(
+            1,
+            0,
+            MarkupKind::Note,
+            "José",
+            "Änderung",
+            ReviewStatus::Open,
+        ));
+        let list = MarkupList::from_document(&doc);
+
+        // `eq_ignore_ascii_case` would miss both of these; the Unicode fold
+        // keeps them matching.
+        let mut filter = MarkupListFilter::default();
+        filter.authors = Some(["josé".to_string()].into_iter().collect());
+        let filtered = list.filter(&filter);
+        assert_eq!(filtered.len(), 1, "é folds case-insensitively");
+
+        let mut filter = MarkupListFilter::default();
+        filter.subjects = Some(["änderung".to_string()].into_iter().collect());
+        let filtered = list.filter(&filter);
+        assert_eq!(filtered.len(), 1, "Ä folds to ä via Unicode lowercase");
+
+        // The filter side folds too, not just the markup's own strings.
+        let mut filter = MarkupListFilter::default();
+        filter.subjects = Some(["ÄNDERUNG".to_string()].into_iter().collect());
+        let filtered = list.filter(&filter);
+        assert_eq!(filtered.len(), 1);
+    }
+
+    #[test]
+    fn list_summaries_use_the_page_display_unit() {
+        let mut doc = Document::empty("D");
+        doc.pages[0].scale = Scale::new(crate::domain::units::MeasureUnit::Foot, 1.0 / 72.0);
+        doc.add_markup(Markup::new(
+            0,
+            MarkupKind::MeasureLength,
+            MarkupGeometry::Segment {
+                a: Pt::new(0.0, 0.0),
+                b: Pt::new(720.0, 0.0),
+            },
+            "t",
+        ));
+        let list = MarkupList::from_document(&doc);
+        assert_eq!(
+            list.rows[0].summary,
+            "Length: 10.000 ft",
+            "a calibrated page lists what the canvas shows"
+        );
+    }
+
+    #[test]
+    fn sort_kind_asc_and_desc_orders_by_label() {
+        let mut doc = Document::empty("D");
+        // Labels sort "Highlight" < "Note" < "Rectangle" alphabetically.
+        doc.add_markup(make_markup(1, 0, MarkupKind::Note, "A", "S", ReviewStatus::Open));
+        doc.add_markup(make_markup(
+            2,
+            0,
+            MarkupKind::Highlight,
+            "B",
+            "T",
+            ReviewStatus::Open,
+        ));
+        doc.add_markup(make_markup(
+            3,
+            0,
+            MarkupKind::Rectangle,
+            "C",
+            "U",
+            ReviewStatus::Open,
+        ));
+        let list = MarkupList::from_document(&doc);
+        let mut rows = list.rows.clone();
+
+        MarkupListSort::KindAsc.apply(&mut rows);
+        let labels: Vec<&str> = rows.iter().map(|r| r.kind.label()).collect();
+        assert_eq!(labels, vec!["Highlight", "Note", "Rectangle"]);
+
+        MarkupListSort::KindDesc.apply(&mut rows);
+        let labels: Vec<&str> = rows.iter().map(|r| r.kind.label()).collect();
+        assert_eq!(labels, vec!["Rectangle", "Note", "Highlight"]);
     }
 
     #[test]

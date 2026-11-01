@@ -3,7 +3,9 @@
 use eframe::egui::{self, Align2, Color32, FontId, Painter, Pos2, Sense, Ui, Vec2};
 use uuid::Uuid;
 
-use crate::domain::markup::{count_markers_on_page, count_total_label, next_count_number};
+use crate::domain::markup::{
+    count_markers_on_page, count_total_label, next_count_number, text_line_height,
+};
 use crate::domain::{
     angle_degrees, ruler_ticks, Grid, Markup, MarkupGeometry, MarkupKind, Project, Pt,
     Rect as DRect, ReviewStatus, Tool,
@@ -70,6 +72,25 @@ fn creation_allowed(project: &Project, ui_state: &mut super::app::UiState) -> bo
 /// repeated clicks produce, do not count.
 fn path_points_ok(points: &[Pt], min: usize, _closed: bool) -> bool {
     points.len() >= min && points.windows(2).any(|w| w[0].distance(w[1]) > 0.5)
+}
+
+/// Hit tolerance expressed in page units for a given zoom, so a fixed screen
+/// pixel budget (~6 px) is used at every zoom level.
+fn hit_tolerance_page(zoom: f32) -> f32 {
+    let z = zoom.max(0.1);
+    (6.0 / z).clamp(0.5, 30.0)
+}
+
+/// Whether an ink stroke is worth committing: it must contain at least two
+/// distinct points and a small amount of total length.
+fn ink_stroke_ok(strokes: &[Vec<Pt>]) -> bool {
+    let point_count: usize = strokes.iter().map(|s| s.len()).sum();
+    let total_len: f32 = strokes
+        .iter()
+        .flat_map(|s| s.windows(2))
+        .map(|w| w[0].distance(w[1]))
+        .sum();
+    point_count >= 2 && (point_count >= 3 || total_len >= 1.0)
 }
 
 /// Apply the active stamp preset to a freshly created stamp markup. Non-stamp
@@ -370,7 +391,7 @@ fn draw_markup(
                 // in-canvas editor; the `bounds()` line count is only an
                 // approximation of the wrapped height.
                 let font = FontId::proportional(11.0 * zoom.max(0.8));
-                let galley = painter.layout(text.clone(), font, stroke_c, *wrap * zoom);
+                let galley = painter.layout(text.as_str(), font, stroke_c, *wrap * zoom);
                 painter.galley(sa, galley, stroke_c);
             }
         }
@@ -508,8 +529,22 @@ pub(crate) fn commit_text_edit(ui_state: &mut super::app::UiState, project: &mut
         }
         ui_state.status = "Text updated".to_string();
     }
+    // A fresh Text/Callout that never received any text is removed on cancel/
+    // commit so no empty markup is left behind.
+    let fresh_empty = original.is_empty() && !changed;
+    if fresh_empty {
+        if let Some(doc) = project.active_mut() {
+            doc.remove_markup(id);
+            doc.touch();
+        }
+        ui_state.status = "Text edit cancelled".to_string();
+    }
     ui_state.text_edit = None;
-    changed && editable
+    if fresh_empty {
+        true
+    } else {
+        changed && editable
+    }
 }
 
 /// Draw and interact with the page canvas. Returns `true` when the caller
@@ -676,18 +711,21 @@ pub(crate) fn draw_canvas(
         origin,
     );
 
-    // Render markups in paint order (layer-major, then vector order).
-    if let Some(doc) = project.active() {
-        for m in doc.markups_in_paint_order(page.index) {
-            draw_markup(
-                &painter,
-                origin,
-                pan,
-                zoom,
-                m,
-                project.settings.show_measurements,
-            );
-        }
+    // Render markups in paint order (layer-major, then vector order). Computed
+    // once per frame and reused for the measurement labels below.
+    let paint_order: Vec<&crate::domain::Markup> = project
+        .active()
+        .map(|doc| doc.markups_in_paint_order(page.index).collect())
+        .unwrap_or_default();
+    for m in &paint_order {
+        draw_markup(
+            &painter,
+            origin,
+            pan,
+            zoom,
+            m,
+            project.settings.show_measurements,
+        );
     }
 
     // Render selection. Handles are not drawn for a selected markup whose
@@ -706,23 +744,23 @@ pub(crate) fn draw_canvas(
 
     // Measurement labels on canvas.
     if project.settings.show_measurements {
-        if let Some(doc) = project.active() {
-            let unit = page.scale.unit;
-            for m in doc.markups_in_paint_order(page.index) {
-                // Angle and count already draw their value from geometry (the
-                // degree text and the numbered dot), so an overlay label would
-                // stack a second copy on the same anchor. Skip it for those.
-                if matches!(m.kind, MarkupKind::MeasureAngle | MarkupKind::MeasureCount) {
-                    continue;
-                }
-                if let Some(meas) = m.measurement {
-                    let label = meas.label_with(unit, project.settings.precision);
-                    let anchor = to_screen(measure_anchor(m), pan, zoom, origin);
-                    draw_measure_badge(&painter, anchor, label);
-                }
+        let unit = page.scale.unit;
+        for m in &paint_order {
+            // Angle and count already draw their value from geometry (the
+            // degree text and the numbered dot), so an overlay label would
+            // stack a second copy on the same anchor. Skip it for those.
+            if matches!(m.kind, MarkupKind::MeasureAngle | MarkupKind::MeasureCount) {
+                continue;
             }
-            // Running total for the page's count markers, drawn once near the
-            // page corner; each marker still draws its own number.
+            if let Some(meas) = m.measurement {
+                let label = meas.label_with(unit, project.settings.precision);
+                let anchor = to_screen(measure_anchor(m), pan, zoom, origin);
+                draw_measure_badge(&painter, anchor, label);
+            }
+        }
+        // Running total for the page's count markers, drawn once near the
+        // page corner; each marker still draws its own number.
+        if let Some(doc) = project.active() {
             let total = count_markers_on_page(&doc.markups, page.index);
             if total > 0 {
                 let anchor = page_rect.min + Vec2::new(8.0, 8.0);
@@ -730,10 +768,14 @@ pub(crate) fn draw_canvas(
             }
         }
     }
-
-    // In-canvas text editor overlay (Text/Callout markups). Rendered above all
+    // Release the immutable borrow of `project` taken for paint order so later
+    // interaction code can mutate it.
+    // (paint_order goes out of scope here)
+    let _ = &paint_order;
+    drop(paint_order);
     // markups/labels; commits on focus loss.
     let mut commit_edit = false;
+    let mut text_edit_committed_this_frame = false;
     if ui_state.text_edit.is_some() {
         let edit_id = ui_state.text_edit.as_ref().unwrap().id;
         let sr = project
@@ -742,8 +784,11 @@ pub(crate) fn draw_canvas(
             .map(|m| match &m.geometry {
                 MarkupGeometry::Text { at, wrap, text } => {
                     let lines = (text.lines().count().max(1)) as f32;
+                    // Same metrics the domain uses for bounds/hit testing, so
+                    // the editor overlay covers exactly what is drawn.
+                    let line_h = markup::text_line_height(m.style.font_size);
                     screen_rect(
-                        DRect::new(at.x, at.y, *wrap, lines * 16.0),
+                        DRect::new(at.x, at.y, wrap.max(1.0), lines * line_h),
                         origin,
                         pan,
                         zoom,
@@ -780,6 +825,7 @@ pub(crate) fn draw_canvas(
         if commit_text_edit(ui_state, project) {
             mutated = true;
         }
+        text_edit_committed_this_frame = true;
     }
 
     // Floating comment popover for a selected note pin (spec F-103). Rendered
@@ -842,13 +888,23 @@ pub(crate) fn draw_canvas(
                     }
                 }
             }
-            let _ = ui.put(
-                next_row(60.0),
-                egui::TextEdit::multiline(&mut ui_state.note_draft),
-            );
-            let add_resp = ui.put(next_row(20.0), egui::Button::new("Add comment"));
+            let note_editable = project
+                .active()
+                .and_then(|d| d.find_markup(note_id).map(|m| d.is_markup_editable(m)))
+                .unwrap_or(false);
+            let (_draft_r, add_resp) = ui.add_enabled_ui(note_editable, |ui| {
+                let dr = ui.put(
+                    next_row(60.0),
+                    egui::TextEdit::multiline(&mut ui_state.note_draft),
+                );
+                let ar = ui.put(next_row(20.0), egui::Button::new("Add comment"));
+                (dr, ar)
+            });
             let close_resp = ui.put(next_row(20.0), egui::Button::new("Close"));
-            if add_resp.clicked() && !ui_state.note_draft.trim().is_empty() {
+            if !note_editable {
+                ui.put(next_row(16.0), egui::Label::new("Selection is locked"));
+            }
+            if add_resp.clicked() && note_editable && !ui_state.note_draft.trim().is_empty() {
                 let author = project.settings.author.clone();
                 if let Some(doc) = project.active_mut() {
                     if let Some(m) = doc.find_markup_mut(note_id) {
@@ -1046,12 +1102,20 @@ pub(crate) fn draw_canvas(
 
     // Click handling. `clicked_by` (not `clicked`) so a focused widget's fake
     // click cannot place or commit a markup on the canvas.
-    if ui_state.text_edit.is_none() && response.clicked_by(egui::PointerButton::Primary) && !panning
+    if !text_edit_committed_this_frame
+        && ui_state.text_edit.is_none()
+        && response.clicked_by(egui::PointerButton::Primary)
+        && !panning
     {
         if let Some(pp) = page_pos {
             if ui_state.active_tool == Tool::Select {
                 // Hit-testing ignores the grid (F-405).
-                match pick_markup_id(project, page.index, raw_pos.unwrap_or(pp), 6.0) {
+                match pick_markup_id(
+                    project,
+                    page.index,
+                    raw_pos.unwrap_or(pp),
+                    hit_tolerance_page(zoom),
+                ) {
                     Some(id) => {
                         ui_state.selected.clear();
                         ui_state.selected.insert(id);
@@ -1488,6 +1552,11 @@ pub(crate) fn draw_canvas(
                 match std::mem::replace(draw_state, super::app::DrawState::Idle) {
                     super::app::DrawState::Bounds { start, end, kind } => {
                         let r = DRect::from_corners(start, end);
+                        // Drop degenerate (near-zero extent) drags without a
+                        // snapshot.
+                        if r.w.abs() < 1.0 || r.h.abs() < 1.0 {
+                            // nothing
+                        } else {
                         let geom = match kind {
                             MarkupKind::Text => MarkupGeometry::Text {
                                 at: Pt::new(r.x, r.y),
@@ -1526,16 +1595,24 @@ pub(crate) fn draw_canvas(
                             ui_state.note_draft.clear();
                             ui_state.status = "Note added — add a comment".to_string();
                         }
+                        }
                     }
                     super::app::DrawState::Segment { start, end, kind } => {
-                        let geom = MarkupGeometry::Segment { a: start, b: end };
-                        let m =
-                            finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
-                        if let Some(doc) = project.active_mut() {
-                            doc.add_markup(m);
+                        if start.distance(*end) < 1.0 {
+                            // drop degenerate
+                        } else {
+                            let geom = MarkupGeometry::Segment { a: start, b: end };
+                            let m =
+                                finish_markup(
+                                    Markup::new(page.index, kind, geom, author),
+                                    ui_state,
+                                );
+                            if let Some(doc) = project.active_mut() {
+                                doc.add_markup(m);
+                            }
+                            ui_state.status = format!("Added {}", kind.label());
+                            mutated = true;
                         }
-                        ui_state.status = format!("Added {}", kind.label());
-                        mutated = true;
                     }
                     super::app::DrawState::Ink {
                         mut strokes,
@@ -1544,7 +1621,7 @@ pub(crate) fn draw_canvas(
                         if !current.is_empty() {
                             strokes.push(current);
                         }
-                        if !strokes.is_empty() {
+                        if !strokes.is_empty() && ink_stroke_ok(&strokes) {
                             let geom = MarkupGeometry::Ink { strokes };
                             let m = finish_markup(
                                 Markup::new(page.index, MarkupKind::Ink, geom, author),
@@ -1579,7 +1656,24 @@ pub(crate) fn draw_canvas(
             // dragging from empty space must not touch the selection or history.
             // Hit-testing ignores the grid (F-405): a drag must grab the markup
             // the pointer is actually over, grid-aligned or not.
-            let picked = raw_pos.and_then(|pp| pick_markup_id(project, page.index, pp, 6.0));
+            let picked = raw_pos.and_then(|pp| {
+                pick_markup_id(project, page.index, pp, hit_tolerance_page(ui_state.zoom))
+            });
+            if let Some(id) = picked {
+                let editable = project
+                    .active()
+                    .and_then(|d| d.find_markup(id).map(|m| d.is_markup_editable(m)))
+                    .unwrap_or(false);
+                if editable {
+                    let shift = ui.ctx().input(|i| i.modifiers.shift);
+                    if shift {
+                        ui_state.selected.insert(id);
+                    } else {
+                        ui_state.selected.clear();
+                        ui_state.selected.insert(id);
+                    }
+                }
+            }
             let can_move = picked
                 .map(|id| {
                     let editable = project
@@ -1618,6 +1712,9 @@ pub(crate) fn draw_canvas(
                         if let Some(m) = doc.find_markup_mut(id) {
                             m.geometry.translate(dx, dy);
                             m.touch();
+                            if m.kind.is_measure() {
+                                m.recompute_measurement(page.scale);
+                            }
                             ui_state.move_changed = true;
                         }
                     }
@@ -1634,5 +1731,41 @@ pub(crate) fn draw_canvas(
         }
     }
 
+    // Cancel a freshly created empty text edit on Escape without leaving an
+    // empty markup behind.
+    if ui.ctx().input(|i| i.key_pressed(egui::Key::Escape)) && ui_state.text_edit.is_some() {
+        let (id, original, text) = {
+            let e = ui_state.text_edit.as_ref().unwrap();
+            (e.id, e.original.clone(), e.text.clone())
+        };
+        if original.is_empty() && (text.is_empty() || text == original) {
+            if let Some(doc) = project.active_mut() {
+                doc.remove_markup(id);
+                doc.touch();
+            }
+            ui_state.text_edit = None;
+            mutated = true;
+            ui_state.status = "Text edit cancelled".to_string();
+            ui.ctx().input_mut(|i| i.consume_key(egui::Modifiers::default(), egui::Key::Escape));
+        }
+    }
+
     mutated
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hit_tolerance_scales_with_zoom() {
+        assert!((hit_tolerance_page(1.0) - 6.0).abs() < 1e-6);
+        assert!((hit_tolerance_page(2.0) - 3.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn ink_stroke_ok_rejects_single_point() {
+        assert!(!ink_stroke_ok(&[vec![Pt::new(0.0, 0.0)]]));
+        assert!(ink_stroke_ok(&[vec![Pt::new(0.0, 0.0), Pt::new(10.0, 0.0)]]));
+    }
 }

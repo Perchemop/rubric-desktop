@@ -40,7 +40,17 @@ fn main() -> Result {
         native_options,
         Box::new(|cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
-            Ok(Box::new(RubricApp::new(cc)))
+            // Audit M3: pick up a crash report parked by a previous run so the
+            // review-and-send dialog actually appears; the file is removed now
+            // because the report lives in the in-memory dialog from here on
+            // (a fresh crash simply writes a new one).
+            let parked_crash = std::fs::read_to_string(crash_report_path())
+                .ok()
+                .and_then(|json| serde_json::from_str::<crash_report::CrashReport>(&json).ok());
+            if parked_crash.is_some() {
+                let _ = std::fs::remove_file(crash_report_path());
+            }
+            Ok(Box::new(RubricApp::new(cc, parked_crash)))
         }),
     )
 }

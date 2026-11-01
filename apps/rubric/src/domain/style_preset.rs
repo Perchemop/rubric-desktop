@@ -12,9 +12,9 @@ use super::style::MarkupStyle;
 
 /// A reusable style and metadata preset for markups.
 ///
-/// The preset records a visual style, kind, author, subject, status and lock
-/// state. Applying a preset never touches geometry, id, page, comments,
-/// measurement or creation timestamps.
+/// The preset records a visual style, kind, author, subject and status.
+/// Applying a preset never touches geometry, id, page, comments, measurement,
+/// lock state or creation timestamps, and it skips locked targets entirely.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StylePreset {
     pub id: Uuid,
@@ -24,6 +24,10 @@ pub struct StylePreset {
     pub author: String,
     pub subject: String,
     pub status: ReviewStatus,
+    /// Legacy capture of the source markup's per-markup lock. A *style*
+    /// preset neither captures nor imposes lock state any more; the field is
+    /// kept only so previously saved presets still load. Presets captured
+    /// today always store `false`.
     pub locked: bool,
     pub created: DateTime<Utc>,
 }
@@ -39,7 +43,9 @@ impl StylePreset {
             author: markup.author.clone(),
             subject: markup.subject.clone(),
             status: markup.status,
-            locked: markup.locked,
+            // Lock state is not style: a preset must not capture it (the
+            // field remains for serialisation compatibility).
+            locked: false,
             created: Utc::now(),
         }
     }
@@ -49,9 +55,19 @@ impl StylePreset {
     /// - Replaces the visual [`MarkupStyle`].
     /// - Sets `subject` only if the target's subject is empty.
     /// - Sets `author` only if the target's author is empty.
-    /// - Overwrites `status` and `locked`.
-    /// - Does not modify geometry, id, page, comments, measurement or `created`.
+    /// - Overwrites `status`: a preset captures a review verdict alongside
+    ///   the look, and preserving that contract keeps existing presets and
+    ///   tests working.
+    /// - Never copies `locked`: lock state is not style, so a preset must not
+    ///   capture or impose it.
+    /// - Skips locked targets entirely (a no-op, like
+    ///   `Document::apply_style_to`).
+    /// - Does not modify geometry, id, page, comments, measurement or
+    ///   `created`.
     pub fn apply_to(&self, markup: &mut Markup) {
+        if markup.locked {
+            return;
+        }
         markup.style = self.style;
         if markup.subject.is_empty() {
             markup.subject = self.subject.clone();
@@ -60,7 +76,6 @@ impl StylePreset {
             markup.author = self.author.clone();
         }
         markup.status = self.status;
-        markup.locked = self.locked;
         markup.touch();
     }
 }
@@ -284,5 +299,39 @@ mod tests {
         let before = target.modified;
         preset.apply_to(&mut target);
         assert!(target.modified >= before);
+    }
+
+    #[test]
+    fn from_markup_captures_no_lock_state() {
+        let mut locked = sample_markup();
+        locked.locked = true;
+        let preset = StylePreset::from_markup(&locked, "From Locked");
+        assert!(!preset.locked, "a preset must not capture lock state");
+    }
+
+    #[test]
+    fn apply_to_never_imposes_lock_and_skips_locked_targets() {
+        let preset = StylePreset::from_markup(&sample_markup(), "Test");
+
+        // An unlocked target is styled but never locked by a preset.
+        let mut target = sample_markup();
+        preset.apply_to(&mut target);
+        assert!(!target.locked, "a preset must not impose lock state");
+
+        // A locked target is left entirely alone.
+        let mut locked_target = sample_markup();
+        locked_target.locked = true;
+        let before_style = locked_target.style;
+        let before_status = locked_target.status;
+        let before_modified = locked_target.modified;
+        preset.apply_to(&mut locked_target);
+        assert_eq!(locked_target.style, before_style);
+        assert_eq!(locked_target.status, before_status);
+        assert!(locked_target.locked);
+        assert_eq!(
+            locked_target.modified,
+            before_modified,
+            "a locked target must not be touched"
+        );
     }
 }

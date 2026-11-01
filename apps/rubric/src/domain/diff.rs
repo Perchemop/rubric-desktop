@@ -16,6 +16,13 @@ use super::style::MarkupStyle;
 pub struct MarkupSummaryRow {
     pub id: Uuid,
     pub page: usize,
+    /// Layer the markup belongs to (`None` = the document's default layer).
+    ///
+    /// Serde-defaulted so snapshots saved before layers existed still load,
+    /// and compared by `rows_equal` so moving a markup between layers is
+    /// reported as a change rather than reading as "no change".
+    #[serde(default)]
+    pub layer_id: Option<Uuid>,
     pub kind: MarkupKind,
     pub author: String,
     pub subject: String,
@@ -32,6 +39,7 @@ impl MarkupSummaryRow {
         Self {
             id: markup.id,
             page: markup.page,
+            layer_id: markup.layer_id,
             kind: markup.kind,
             author: markup.author.clone(),
             subject: markup.subject.clone(),
@@ -154,6 +162,7 @@ fn geometry_fingerprint_of(g: &MarkupGeometry) -> String {
 
 fn rows_equal(a: &MarkupSummaryRow, b: &MarkupSummaryRow) -> bool {
     a.page == b.page
+        && a.layer_id == b.layer_id
         && a.kind == b.kind
         && a.status == b.status
         && a.style == b.style
@@ -510,6 +519,66 @@ mod tests {
         );
         assert!(!c.before.as_ref().unwrap().locked);
         assert!(c.after.as_ref().unwrap().locked);
+    }
+
+    #[test]
+    fn diff_detects_a_layer_move() {
+        let mut a = Document::empty("D");
+        let layer = a.add_layer("Notes");
+        a.add_markup(make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        ));
+
+        let mut b = Document::empty("D");
+        let mut moved = make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        );
+        moved.layer_id = Some(layer);
+        b.add_markup(moved);
+
+        let diff = diff_documents(&a, &b);
+        assert_eq!(
+            diff.changed.len(),
+            1,
+            "a layer move must not read as no change"
+        );
+        assert_eq!(diff.changed[0].before.as_ref().unwrap().layer_id, None);
+        assert_eq!(
+            diff.changed[0].after.as_ref().unwrap().layer_id,
+            Some(layer)
+        );
+    }
+
+    #[test]
+    fn summary_row_layer_id_defaults_for_legacy_snapshots() {
+        let mut a = Document::empty("D");
+        a.add_markup(make_markup(
+            1,
+            0,
+            MarkupKind::Highlight,
+            "A",
+            "S",
+            ReviewStatus::Open,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
+        ));
+        let row = MarkupSummaryRow::from_markup(&a.markups[0]);
+        let mut value = serde_json::to_value(&row).expect("json");
+        value.as_object_mut().expect("object").remove("layer_id");
+        let back: MarkupSummaryRow = serde_json::from_value(value).expect("legacy row loads");
+        assert_eq!(back.layer_id, None);
+        assert_eq!(back.id, row.id);
     }
 
     #[test]
