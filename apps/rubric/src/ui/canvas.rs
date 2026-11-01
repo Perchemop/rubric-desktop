@@ -1221,13 +1221,13 @@ pub(crate) fn draw_canvas(
                     let start = ui_state.marquee_start.take().unwrap();
                     let end = response.interact_pointer_pos().unwrap_or(start);
                     let rect = egui::Rect::from_two_pos(start, end);
-                    
+
                     if let Some(doc) = project.active() {
                         for m in doc.markups_in_paint_order(page.index) {
                             let mr = screen_rect(m.bounds(), origin, pan, zoom);
                             if rect.intersects(mr) {
                                 ui_state.selected.insert(m.id);
-                                
+
                             }
                         }
                     }
