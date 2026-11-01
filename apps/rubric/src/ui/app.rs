@@ -1147,11 +1147,23 @@ impl RubricApp {
                     {
                         if !source_pdf.is_empty() {
                             if let Some(doc) = self.active_doc() {
-                                let _ = crate::data::pdf::export_pdf_to(
+                                match crate::data::pdf::export_pdf_to(
                                     Path::new(&source_pdf),
                                     &path,
                                     &doc.markups,
-                                );
+                                ) {
+                                    Ok(()) => {
+                                        self.ui.status = format!(
+                                            "PDF exported to {}",
+                                            path.display()
+                                        );
+                                    }
+                                    Err(e) => {
+                                        self.ui.status = format!(
+                                            "PDF export failed: {e}"
+                                        );
+                                    }
+                                }
                             }
                         }
                     }
