@@ -121,7 +121,9 @@
 
 ### v0.3-05 — lopdf write support
 - [x] Add `lopdf` (pinned) for PDF write/export
-- [x] File ▸ Export PDF… (markups over the original page) — export_pdf_to() renders BBox/Segment/Path/Ink overlay; text/callout/angle/count draw placeholder rect; scale calibration and honest status follow-up
+- [x] File ▸ Export PDF… (markups over the original page) — export_pdf_to()
+  renders BBox/Segment/Path/Ink/Text/Callout/Angle/Count overlay; File ▸
+  Export PDF… menu with native rfd dialog; honest status messages
 - Task brief: `docs/tasks/v0.3-05-lopdf-write-support.md`
 
 ### v1.0-0 — installer verification
