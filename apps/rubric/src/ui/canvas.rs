@@ -1160,6 +1160,9 @@ pub(crate) fn draw_canvas(
                                         matches!(mk.kind, MarkupKind::Text | MarkupKind::Callout)
                                     })
                                     .unwrap_or(false);
+                                let editable = doc
+                                    .and_then(|d| m.map(|mk| d.is_markup_editable(mk)))
+                                    .unwrap_or(false);
                                 let visible = doc
                                     .and_then(|d| m.map(|mk| d.is_markup_visible(mk)))
                                     .unwrap_or(false);
