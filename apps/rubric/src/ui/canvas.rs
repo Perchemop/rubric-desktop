@@ -1227,7 +1227,6 @@ pub(crate) fn draw_canvas(
                             let mr = screen_rect(m.bounds(), origin, pan, zoom);
                             if rect.intersects(mr) {
                                 ui_state.selected.insert(m.id);
-
                             }
                         }
                     }
