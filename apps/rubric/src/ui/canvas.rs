@@ -1110,6 +1110,8 @@ pub(crate) fn draw_canvas(
         && response.clicked_by(egui::PointerButton::Primary)
         && !panning
     {
+        let modifiers = ui.ctx().input(|i| i.modifiers);
+        let shift = modifiers.shift;
         if let Some(pp) = page_pos {
             if ui_state.active_tool == Tool::Select {
                 // Hit-testing ignores the grid (F-405).
@@ -1120,9 +1122,26 @@ pub(crate) fn draw_canvas(
                     hit_tolerance_page(zoom),
                 ) {
                     Some(id) => {
-                        ui_state.selected.clear();
-                        ui_state.selected.insert(id);
-                        ui_state.status = format!("Selected {}", id);
+                        if shift {
+                            // Shift+click toggles selection without clearing.
+                            if ui_state.selected.contains(&id) {
+                                ui_state.selected.remove(&id);
+                                ui_state.status = format!(
+                                    "Selected {} markup(s)",
+                                    ui_state.selected.len()
+                                );
+                            } else {
+                                ui_state.selected.insert(id);
+                                ui_state.status = format!(
+                                    "Selected {} markup(s)",
+                                    ui_state.selected.len()
+                                );
+                            }
+                        } else {
+                            ui_state.selected.clear();
+                            ui_state.selected.insert(id);
+                            ui_state.status = format!("Selected {}", id);
+                        }
                         // Note pins open a floating comment popover (F-103);
                         // selecting anything else closes an open one.
                         let is_note = project
@@ -1136,13 +1155,16 @@ pub(crate) fn draw_canvas(
                             ui_state.note_popover = None;
                         }
                         // Enter edit mode on double-click for Text/Callout markups.
-                        if response.double_clicked() {
+                        if response.double_clicked() && !shift {
                             let (kind_ok, editable, visible, original) = {
                                 let doc = project.active();
                                 let m = doc.and_then(|d| d.find_markup(id));
                                 let kind_ok = m
                                     .map(|mk| {
-                                        matches!(mk.kind, MarkupKind::Text | MarkupKind::Callout)
+                                        matches!(
+                                            mk.kind,
+                                            MarkupKind::Text | MarkupKind::Callout
+                                        )
                                     })
                                     .unwrap_or(false);
                                 let editable = doc
@@ -1153,8 +1175,12 @@ pub(crate) fn draw_canvas(
                                     .unwrap_or(false);
                                 let original = m
                                     .and_then(|mk| match &mk.geometry {
-                                        MarkupGeometry::Text { text, .. } => Some(text.clone()),
-                                        MarkupGeometry::Callout { text, .. } => Some(text.clone()),
+                                        MarkupGeometry::Text { text, .. } => {
+                                            Some(text.clone())
+                                        }
+                                        MarkupGeometry::Callout { text, .. } => {
+                                            Some(text.clone())
+                                        }
                                         _ => None,
                                     })
                                     .unwrap_or_default();
@@ -1162,24 +1188,71 @@ pub(crate) fn draw_canvas(
                             };
                             if kind_ok {
                                 if !editable {
-                                    ui_state.status = "Locked layer — edits disabled".to_string();
+                                    ui_state.status =
+                                        "Locked layer — edits disabled".to_string();
                                 } else if !visible {
                                     // not pickable when hidden; nothing to do
                                 } else {
-                                    ui_state.text_edit = Some(super::app::TextEditState {
-                                        id,
-                                        original: original.clone(),
-                                        text: original,
-                                        focus_requested: false,
-                                    });
+                                    ui_state.text_edit =
+                                        Some(super::app::TextEditState {
+                                            id,
+                                            original: original.clone(),
+                                            text: original,
+                                            focus_requested: false,
+                                        });
                                     ui_state.status = "Editing text".to_string();
                                 }
                             }
                         }
                     }
                     None => {
-                        ui_state.selected.clear();
-                        ui_state.note_popover = None;
+                        if !shift {
+                            ui_state.selected.clear();
+                            ui_state.note_popover = None;
+                        }
+                    }
+                }
+                // Marquee drag start: dragging on empty canvas space with
+                // Select tool. If a markup was under the pointer, it's a
+                // move-drag, not a marquee.
+                if response.drag_started()
+                    && ui_state.text_edit.is_none()
+                    && ui_state.marquee_start.is_none()
+                {
+                    if pick_markup_id(
+                        project,
+                        page.index,
+                        raw_pos.unwrap_or(pp),
+                        hit_tolerance_page(zoom),
+                    )
+                    .is_none()
+                    {
+                        ui_state.marquee_start = Some(
+                            response.hover_pos().unwrap_or(Pos2::ZERO),
+                        );
+                    }
+                }
+                // Marquee drag end: select all markups whose bounds intersect
+                // the marquee rectangle.
+                if ui_state.marquee_start.is_some() && response.drag_stopped() {
+                    let start = ui_state.marquee_start.take().unwrap();
+                    let end = response.interact_pointer_pos().unwrap_or(start);
+                    let rect = egui::Rect::from_two_pos(start, end);
+                    let mut selected_any = false;
+                    if let Some(doc) = project.active() {
+                        for m in doc.markups_in_paint_order(page.index) {
+                            let mr = screen_rect(m.bounds(), origin, pan, zoom);
+                            if rect.intersects(mr) {
+                                ui_state.selected.insert(m.id);
+                                selected_any = true;
+                            }
+                        }
+                    }
+                    let n = ui_state.selected.len();
+                    if n > 0 {
+                        ui_state.status = format!("Selected {} markup{}", n, if n == 1 { "" } else { "s" });
+                    } else {
+                        ui_state.status = "Nothing selected".to_string();
                     }
                 }
             } else if let Some(kind) = ui_state.active_tool.to_kind() {
@@ -1464,6 +1537,23 @@ pub(crate) fn draw_canvas(
             }
             _ => {}
         }
+    }
+
+    // Marquee selection overlay: draw while dragging on empty canvas.
+    if let Some(start) = ui_state.marquee_start {
+        let end = response.interact_pointer_pos().unwrap_or(start);
+        let rect = egui::Rect::from_two_pos(start, end);
+        painter.rect_stroke(
+            rect,
+            egui::CornerRadius::same(0.0),
+            egui::Stroke::new(1.0, egui::Color32::from_black_alpha(120)),
+            egui::StrokeKind::Middle,
+        );
+        painter.rect_filled(
+            rect,
+            egui::CornerRadius::same(0.0),
+            egui::Color32::from_black_alpha(30),
+        );
     }
 
     // Drag-to-draw (bounds/segment/ink only; multi-point tools use clicks).
