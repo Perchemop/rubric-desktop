@@ -635,10 +635,10 @@ fn array_num(obj: &lopdf::Object) -> Result<f64, DataError> {
 /// Returns true if any part of the markup falls within the page rectangle.
 fn markup_intersects_page(m: &Markup, width: f32, height: f32) -> bool {
     use crate::domain::markup::{DRect, MarkupGeometry};
-    
+
     // Page rectangle in domain coordinates (y-down from top-left)
     let page_rect = DRect::new(0.0, 0.0, width, height);
-    
+
     match &m.geometry {
         MarkupGeometry::Bounds(rct) => {
             // Check if rectangle intersects page bounds
@@ -646,8 +646,9 @@ fn markup_intersects_page(m: &Markup, width: f32, height: f32) -> bool {
         }
         MarkupGeometry::Segment { a, b } => {
             // Check if either endpoint is in bounds, or segment crosses bounds
-            point_in_bounds(a, width, height) || point_in_bounds(b, width, height) ||
-            segment_intersects_rect(a, b, page_rect)
+            point_in_bounds(a, width, height)
+                || point_in_bounds(b, width, height)
+                || segment_intersects_rect(a, b, page_rect)
         }
         MarkupGeometry::Path { points, closed: _ } => {
             // Check if any point is in bounds
@@ -655,16 +656,29 @@ fn markup_intersects_page(m: &Markup, width: f32, height: f32) -> bool {
         }
         MarkupGeometry::Ink { strokes } => {
             // Check if any stroke point is in bounds
-            strokes.iter().any(|stroke| stroke.iter().any(|p| point_in_bounds(p, width, height)))
+            strokes
+                .iter()
+                .any(|stroke| stroke.iter().any(|p| point_in_bounds(p, width, height)))
         }
-        MarkupGeometry::Text { at, wrap: _, text: _ } => {
+        MarkupGeometry::Text {
+            at,
+            wrap: _,
+            text: _,
+        } => {
             // Text anchor point - check if in bounds with some margin for text extent
             point_in_bounds(at, width, height)
         }
-        MarkupGeometry::Callout { rect, tail, text: _ } => {
+        MarkupGeometry::Callout {
+            rect,
+            tail,
+            text: _,
+        } => {
             // Check callout box or tail
-            !(rect.x + rect.w <= 0.0 || rect.x >= width || rect.y + rect.h <= 0.0 || rect.y >= height) ||
-            point_in_bounds(tail, width, height)
+            !(rect.x + rect.w <= 0.0
+                || rect.x >= width
+                || rect.y + rect.h <= 0.0
+                || rect.y >= height)
+                || point_in_bounds(tail, width, height)
         }
         MarkupGeometry::MeasureCount { .. } => {
             // Count markers are points
@@ -691,7 +705,7 @@ fn segment_intersects_rect(
     let (x2, y2) = (b.x, b.y);
     let (rx1, ry1) = (rect.x, rect.y);
     let (rx2, ry2) = (rect.x + rect.w, rect.y + rect.h);
-    
+
     // Trivial reject: both points left, right, above, or below
     if x1 < rx1 && x2 < rx1 {
         return false;
@@ -705,7 +719,7 @@ fn segment_intersects_rect(
     if y1 > ry2 && y2 > ry2 {
         return false;
     }
-    
+
     true // Potential intersection
 }
 
