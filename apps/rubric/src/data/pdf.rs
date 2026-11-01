@@ -486,7 +486,7 @@ pub fn export_pdf_to(
     }
 
     // Register a base-14 Helvetica font object once, for text markups.
-    let font_dict = lopdf::Dictionary::from_iter([
+    let font_dict: lopdf::Dictionary = lopdf::Dictionary::from_iter([
         ("Type".into(), lopdf::Object::Name(b"/Font".to_vec())),
         ("Subtype".into(), lopdf::Object::Name(b"/Type1".to_vec())),
         (
@@ -548,10 +548,11 @@ fn add_font_resource_to_page(
             .map_err(|e| DataError::Pdf(format!("could not get page dict: {e}")))?;
         match dict.get(b"Resources") {
             Some(Object::Dictionary(d)) => Some(d.clone()),
-            Some(Object::Reference(id)) => doc
-                .get_dictionary(*id)
-                .map(|d| d.clone())
-                .map_err(|e| DataError::Pdf(format!("could not get resources: {e}")))?,
+            Some(Object::Reference(id)) => Some(
+                doc.get_dictionary(*id)
+                    .map(|d| d.clone())
+                    .map_err(|e| DataError::Pdf(format!("could not get resources: {e}")))?,
+            ),
             other => {
                 return Err(DataError::Pdf(format!(
                     "unexpected Resources type: {other:?}"
@@ -748,7 +749,7 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
                     Object::Real(pdf_y(at.y, height) - style.font_size),
                 ],
             ));
-            ops.push(Operation::new("Tj", vec![Object::string_literal(text)]));
+            ops.push(Operation::new("Tj", vec![Object::string_literal(text.as_str())]));
             ops.push(Operation::new("ET", vec![])); // end text
         }
     }
