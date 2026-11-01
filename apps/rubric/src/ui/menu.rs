@@ -12,6 +12,7 @@
 use eframe::egui::{self, Ui};
 
 use crate::domain::{EditorAction, MarkupKind, Tool};
+use crate::domain::markup::ReviewStatus;
 use crate::ui::app::UiState;
 
 /// Menu label for a tool. `Select` has no markup kind, so it is named
@@ -64,6 +65,12 @@ pub(crate) fn draw_selection_commands(ui: &mut Ui, ui_state: &mut UiState) {
             EditorAction::SendToBack,
         ] {
             action_button(ui, ui_state, action);
+        }
+    });
+
+    ui.menu_button("Batch Status", |ui| {
+        for status in ReviewStatus::ALL {
+            action_button(ui, ui_state, EditorAction::BatchStatus(status));
         }
     });
 }
