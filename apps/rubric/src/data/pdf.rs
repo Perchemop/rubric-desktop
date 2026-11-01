@@ -749,7 +749,10 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
                     Object::Real(pdf_y(at.y, height) - style.font_size),
                 ],
             ));
-            ops.push(Operation::new("Tj", vec![Object::string_literal(text.as_str())]));
+            ops.push(Operation::new(
+                "Tj",
+                vec![Object::string_literal(text.as_str())],
+            ));
             ops.push(Operation::new("ET", vec![])); // end text
         }
     }
