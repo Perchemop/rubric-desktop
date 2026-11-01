@@ -50,6 +50,11 @@ update-check = { path = "../../crates/update-check", version = "0.3.0" }
 [dev-dependencies]
 image = { version = "0.25", default-features = false, features = ["png"] }
 
+# PDF writer for Export PDF… (v0.3-05). Used to layer markups over the
+# original page background. Pinned exact because lopdf is pre-1.0 and
+# semver drift is not permitted.
+lopdf = { version = "=0.6.0" }
+
 [features]
 default = []
 # Feature for pure-Rust PDF engine (v0.3-02 migration). When enabled,
