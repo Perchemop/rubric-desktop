@@ -329,8 +329,7 @@ mod tests {
         assert_eq!(locked_target.status, before_status);
         assert!(locked_target.locked);
         assert_eq!(
-            locked_target.modified,
-            before_modified,
+            locked_target.modified, before_modified,
             "a locked target must not be touched"
         );
     }

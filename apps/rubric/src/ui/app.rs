@@ -600,7 +600,11 @@ impl RubricApp {
         if self.update_dismissed {
             return; // The user closed the window; keep it closed (audit M8).
         }
-        let snapshot = self.update.lock().unwrap_or_else(|p| p.into_inner()).clone();
+        let snapshot = self
+            .update
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone();
         if !snapshot.running && snapshot.result.is_none() {
             return; // Nothing to show until a check has been requested.
         }
@@ -1081,8 +1085,7 @@ impl RubricApp {
                             // Audit M9: a 0-page PDF used to report "Imported
                             // 1 page(s)" and fabricate an unrenderable page.
                             Ok(info) if info.page_sizes.is_empty() => {
-                                self.ui.status =
-                                    "Import failed: the PDF has no pages".to_string();
+                                self.ui.status = "Import failed: the PDF has no pages".to_string();
                             }
                             Ok(info) => {
                                 let stem = path
@@ -1563,10 +1566,10 @@ impl App for RubricApp {
         // Refresh Delete enablement so the menu does not offer a no-op when the
         // whole selection is locked (full-app audit M7).
         let can_delete = self.active_doc().is_some_and(|doc| {
-            self.ui
-                .selected
-                .iter()
-                .any(|id| doc.find_markup(*id).is_some_and(|m| doc.is_markup_editable(m)))
+            self.ui.selected.iter().any(|id| {
+                doc.find_markup(*id)
+                    .is_some_and(|m| doc.is_markup_editable(m))
+            })
         });
         self.ui.can_delete = can_delete;
         // Computed before `ctx.input` so the immutable borrow of `ctx` for
@@ -1586,10 +1589,7 @@ impl App for RubricApp {
             {
                 self.delete_selected();
             }
-            if i.modifiers.command
-                && i.key_pressed(egui::Key::Z)
-                && !i.modifiers.shift
-                && !wants_kb
+            if i.modifiers.command && i.key_pressed(egui::Key::Z) && !i.modifiers.shift && !wants_kb
             {
                 // Never mutate history mid-edit: undoing past the markup's
                 // creation would leave a stale `text_edit` pointing at a
@@ -1855,8 +1855,7 @@ impl App for RubricApp {
             if !open {
                 self.show_about = false;
             }
-            self.ui.status =
-                "Rubric — free, cross-platform PDF markup & measurement".to_string();
+            self.ui.status = "Rubric — free, cross-platform PDF markup & measurement".to_string();
         }
 
         if self.ui.quit_confirm {

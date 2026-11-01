@@ -1013,10 +1013,7 @@ mod tests {
     #[test]
     fn render_width_is_clamped_to_the_documented_ceiling() {
         assert_eq!(clamp_render_width(400), 400);
-        assert_eq!(
-            clamp_render_width(MAX_RENDER_WIDTH_PX),
-            MAX_RENDER_WIDTH_PX
-        );
+        assert_eq!(clamp_render_width(MAX_RENDER_WIDTH_PX), MAX_RENDER_WIDTH_PX);
         assert_eq!(clamp_render_width(u32::MAX), MAX_RENDER_WIDTH_PX);
         assert!(clamp_render_width(u32::MAX) <= u16::MAX as u32);
     }

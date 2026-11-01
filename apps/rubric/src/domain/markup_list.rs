@@ -603,8 +603,7 @@ mod tests {
         ));
         let list = MarkupList::from_document(&doc);
         assert_eq!(
-            list.rows[0].summary,
-            "Length: 10.000 ft",
+            list.rows[0].summary, "Length: 10.000 ft",
             "a calibrated page lists what the canvas shows"
         );
     }
@@ -613,7 +612,14 @@ mod tests {
     fn sort_kind_asc_and_desc_orders_by_label() {
         let mut doc = Document::empty("D");
         // Labels sort "Highlight" < "Note" < "Rectangle" alphabetically.
-        doc.add_markup(make_markup(1, 0, MarkupKind::Note, "A", "S", ReviewStatus::Open));
+        doc.add_markup(make_markup(
+            1,
+            0,
+            MarkupKind::Note,
+            "A",
+            "S",
+            ReviewStatus::Open,
+        ));
         doc.add_markup(make_markup(
             2,
             0,
