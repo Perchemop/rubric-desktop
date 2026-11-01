@@ -1,48 +1,36 @@
 # PROGRESS.md
 
 ## 2026-11-01 — full-app audit + v0.3-08 remediation wave
-**Status**: audit complete (10 parallel workstreams); remediation integrated on
-branch `v0.3-08-audit-fixes`, awaiting CI.
+**Status**: merged to main, CI green (PR #72, commit `f56a4b4`). All 3 blockers
+and the majority of the 27 majors from `docs/audits/v0.3-full-app-audit.md`
+fixed, file-partitioned across parallel agents and integrated by the parent.
 
-### Audit
-- `docs/audits/v0.3-full-app-audit.md` — 10 parallel read-only audits (menus,
-  toolbar, inspector, canvas, shell, data, domain, docs) + a code-verified
-  capability-parity review + free-design-tooling research. Headline: 3 blockers,
-  27 majors, ~30 minors, ~20 polish.
-- Parity verdict (blunt): Rubric does **not** yet look/feel like its paid
-  inspirations — the workflow half (multi-select, resize, batch status,
-  calibrate-by-gesture, export back to PDF) is missing. Captured as
-  `docs/research/v0.4-capability-gap-analysis.md` with a ranked gap list; v0.4
-  exists to close it.
+### Completed
+- B1/B2/B3 (blockers): keyboard-focus gating, unsaved-work replace confirm,
+  measurement move recompute ✔
+- Majors M1–M30 (except M12, M13, M19 v0.4-scoped): close veto, autosave
+  dirty semantics, crash-report pickup, About window, shortcut hints,
+  Delete gating, update-window dismissal, 0-page import, Select All / page
+  nav / Full Screen, screen-space hit tolerance, degenerate-drag rejection,
+  popover lock check, engine probe parity, encrypted-PDF messages, atomic
+  cache writes, render-width clamp, exe-dir lib/ probing, inspector locked-edit
+  gating / N-selected / colour commit, fixed-DPI page-cropped export
+  transform, installer PDFium fetch, docs claim accuracy ✔
+- Domain: remove_page re-index, perimeter closed, measurement fallback,
+  font-size-aware text hit box, summary units, ruler ticks cap, diff layer
+  moves, style-preset locks, list folding + 21 new tests ✔
+- CI: fmt, clippy (-D warnings), all tests, release build, security scan —
+  all green on PR #72 ✔
 
-### Remediation (file-partitioned agents, parent integrates)
-- canvas agent ✔ — B3 + M11/M14–M16/M20/M21 + paint-path allocations
-- inspector agent ✔ — M22/M23/M24 + reachability + a11y tooltips (thread-local
-  session drafts flagged as a `UiState` follow-up)
-- data agent ✔ — M17/M25/M26-transform/M27 + atomic cache writes, encrypted-PDF
-  messages, render-width clamp, exe-dir `lib/` probing, Windows-zip bash bug
-- domain agent — `remove_page` re-index, perimeter `closed`, measurement
-  fallback, text hit box, summary units, ruler ticks, diff layer moves,
-  style-preset locks, list folding + tests (in flight at integration time)
-- **app-shell agent reported complete but wrote nothing** — the parent applied
-  the app-shell wave by hand: B1 keyboard gating, B2 replace-confirmation,
-  M1 close veto (`ViewportCommand::CancelClose`, verified against the vendored
-  egui 0.36 source), M2 autosave dirty semantics, M3 crash-report pickup
-  (`RubricApp::new` signature change), M4 About window, M7 Delete gating,
-  M8 update window/mutex, M9 0-page import, M10 Select All / page nav /
-  Full Screen, M6 tool status labels
-- docs wave ✔ — M28/M29/M30 (`docs/pdfium.md`, traceability R-H8 rows,
-  DECISIONS amendment, merge-authority wording, ACCESSIBILITY/README note)
-
-### Verification evidence gathered
-- All four v0.2.0 release zips verify against `SHA256SUMS`; the arm64 binary
-  links cleanly here (`ldd`: 0 unresolved) — v1.0-0 artefact evidence.
-- `package.yml` YAML parses after the PDFium-fetch edits.
+### Docs wave (M28–M30) ✔
+docs/pdfium.md, traceability R-H8 rows, DECISIONS amendment, merge-authority
+wording, ACCESSIBILITY/README shortcut note.
 
 ### Next
-- Integrate the domain agent's report, then one PR, CI, review, merge.
-- v0.4 cycle: discovery from the ranked gap list (flatten-to-PDF, multi-select,
-  batch status first).
+- Integrate the domain agent's report (already included above), then one PR,
+  CI, review, merge — done for v0.3-08.
+- v0.4 cycle: discovery from the ranked gap list (flatten-to-PDF,
+  multi-select, batch status first).
 
 ## 2026-11-01 — v0.3-06 (M2, M3): persistence medium fixes
 **Status**: implemented + tested; awaiting CI on PR (branch `v0.3-06-persistence-mediums`).
