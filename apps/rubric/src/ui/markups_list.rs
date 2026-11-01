@@ -293,19 +293,11 @@ pub(crate) fn draw_markups_list(
                 .show_ui(ui, |ui| {
                     for s in ReviewStatus::ALL.iter() {
                         ui.horizontal(|ui| {
-                            let (rect, _) = ui.allocate_exact_size(
-                                egui::vec2(12.0, 12.0),
-                                egui::Sense::hover(),
-                            );
-                            ui.painter().circle_filled(
-                                rect.center(),
-                                5.0,
-                                status_color(*s),
-                            );
-                            if ui
-                                .selectable_label(false, s.label())
-                                .clicked()
-                            {
+                            let (rect, _) = ui
+                                .allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
+                            ui.painter()
+                                .circle_filled(rect.center(), 5.0, status_color(*s));
+                            if ui.selectable_label(false, s.label()).clicked() {
                                 for id in &state.selected {
                                     let doc = project.active_mut();
                                     if let Some(doc) = doc {
