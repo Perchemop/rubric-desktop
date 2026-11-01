@@ -163,7 +163,10 @@ fn corpus_pdfs() -> Vec<(String, Vec<u8>)> {
             build_text_pdf(595.28, 841.89, simple_text_content()),
         ),
         // 9. annotations.pdf — annotations placeholder
-        ("annotations".to_string(), build_pdf(612.0, 792.0, None, "", "")),
+        (
+            "annotations".to_string(),
+            build_pdf(612.0, 792.0, None, "", ""),
+        ),
         // 10. scan.pdf — scanned page (image-only) placeholder
         ("scan".to_string(), build_pdf(612.0, 792.0, None, "", "")),
     ]
