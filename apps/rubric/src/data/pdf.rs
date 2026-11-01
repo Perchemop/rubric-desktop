@@ -510,25 +510,33 @@ pub fn export_pdf_to(
 
     for (page_num, page_id) in doc.get_pages() {
         let page_index = (page_num - 1) as usize;
-        let page_markups = markups_by_page.get(&page_index).cloned().unwrap_or_default();
+        let page_markups = markups_by_page
+            .get(&page_index)
+            .cloned()
+            .unwrap_or_default();
         if page_markups.is_empty() {
             continue;
         }
 
         let (width, height) = page_dimensions(&doc, page_id)?;
         let content = render_page_overlay(&page_markups, width, height);
-        doc.add_to_page_content(page_id, content)
-            .map_err(|e| DataError::Pdf(format!("could not add overlay to page {page_num}: {e}")))?;
+        doc.add_to_page_content(page_id, content).map_err(|e| {
+            DataError::Pdf(format!("could not add overlay to page {page_num}: {e}"))
+        })?;
     }
 
-    doc.save(output_path)
-        .map_err(|e| DataError::Pdf(format!("could not save PDF {}: {e}", output_path.display())))?;
+    doc.save(output_path).map_err(|e| {
+        DataError::Pdf(format!("could not save PDF {}: {e}", output_path.display()))
+    })?;
 
     Ok(())
 }
 
 /// Read a page's MediaBox and return its (width, height) in PDF points.
-fn page_dimensions(doc: &lopdf::Document, page_id: lopdf::ObjectId) -> Result<(f32, f32), DataError> {
+fn page_dimensions(
+    doc: &lopdf::Document,
+    page_id: lopdf::ObjectId,
+) -> Result<(f32, f32), DataError> {
     let dict = doc
         .get_dictionary(page_id)
         .map_err(|e| DataError::Pdf(format!("could not read page dictionary: {e}")))?;
@@ -590,8 +598,14 @@ fn render_markup(m: &Markup, width: f32, height: f32) -> Vec<lopdf::content::Ope
 
     let mut ops: Vec<Operation> = vec![
         Operation::new("q", vec![]), // save
-        Operation::new("RG", vec![Object::Real(r), Object::Real(g), Object::Real(b)]),
-        Operation::new("rg", vec![Object::Real(r), Object::Real(g), Object::Real(b)]),
+        Operation::new(
+            "RG",
+            vec![Object::Real(r), Object::Real(g), Object::Real(b)],
+        ),
+        Operation::new(
+            "rg",
+            vec![Object::Real(r), Object::Real(g), Object::Real(b)],
+        ),
         Operation::new("w", vec![Object::Real(style.width as f64)]),
     ];
 
