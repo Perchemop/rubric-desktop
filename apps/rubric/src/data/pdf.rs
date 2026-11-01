@@ -881,7 +881,7 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             ));
             ops.push(Operation::new(
                 "Tj",
-                vec![Object::string_literal(&number.to_string())],
+                vec![Object::string_literal(&*number.to_string())],
             ));
             ops.push(Operation::new("ET", vec![])); // end text
         }
