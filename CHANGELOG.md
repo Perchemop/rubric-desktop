@@ -37,11 +37,19 @@ All notable changes to this project will be documented here. Format: semantic-is
   - Plan to add lopdf dependency for PDF export functionality
   - Implement File > Export PDF… menu
 
-- **v1.0-01**: installer verification (M4/M5/M8)
-  - Created `docs/tasks/v1.0-01-installer-verification.md` task brief
+- **v1.0-0**: installer verification
+  - Created `docs/tasks/v1.0-0-installer-verification.md` task brief
   - Verify multi-platform installers (Linux, macOS, Windows)
   - Verify §2.5 legal checklist for public release
   - Re-audit README/ROADMAP claims
+
+### Fixed
+
+- **M4** — exporting or printing a page whose PDF background cannot be produced
+  (missing PDF, engine failure, or an undecodable render) now fails with a
+  clear status message instead of silently writing/printing a blank white page.
+  The background loader (`data::render::load_page_background`) propagates the
+  error; a unit test covers the missing-PDF case.
 
 ## [0.3-01] - 2026-10-31
 

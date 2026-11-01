@@ -6,6 +6,7 @@
 //! including text labels and stamps) without any GPU or display.
 
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
 
 use eframe::egui::{
     self, Color32, ColorImage, Context, Pos2, Rect, TextureHandle, TextureId, Vec2,
@@ -196,6 +197,48 @@ fn rasterize_mesh(
     }
 }
 
+/// Load (and cache) the PDF page-background texture used by an export or print.
+///
+/// Returns an error when the page background cannot be produced — a missing
+/// PDF, an engine failure, or an undecodable PNG — so the caller reports the
+/// problem instead of silently emitting a blank white page (audit M4).
+fn load_page_background(
+    ctx: &Context,
+    pdf_path: &Path,
+    page_index: usize,
+    page_width: f32,
+    page_textures: &mut HashMap<String, TextureHandle>,
+) -> Result<(), DataError> {
+    let target_width = ((page_width * 2.0).round() as u32).max(64);
+    let cache_path = pdf::render_page_to_cache(pdf_path, page_index, target_width).map_err(|e| {
+        DataError::Pdf(format!(
+            "could not render the PDF page background for export: {e}"
+        ))
+    })?;
+
+    // Reuse an already-loaded texture for this render; otherwise read, decode
+    // and register it.
+    let key = cache_path.to_string_lossy().to_string();
+    if let std::collections::hash_map::Entry::Vacant(vacant) = page_textures.entry(key.clone()) {
+        let bytes = std::fs::read(&cache_path).map_err(DataError::Io)?;
+        let img = image::load_from_memory(&bytes).map_err(|e| {
+            DataError::Pdf(format!(
+                "could not decode the rendered page background {}: {e}",
+                cache_path.display()
+            ))
+        })?;
+        let rgba = img.to_rgba8();
+        let color_image = ColorImage::from_rgba_unmultiplied(
+            [rgba.width() as usize, rgba.height() as usize],
+            rgba.as_raw(),
+        );
+        let handle = ctx.load_texture(key.clone(), color_image, egui::TextureOptions::LINEAR);
+        vacant.insert(handle);
+    }
+
+    Ok(())
+}
+
 /// Render the currently displayed page (+ markup overlays) to PNG bytes.
 pub(crate) fn render_page_to_png_bytes(
     project: &mut Project,
@@ -224,32 +267,16 @@ pub(crate) fn render_page_to_png_bytes(
     let ctx = Context::default();
     let pixels_per_point = 1.0_f32;
 
-    // Page background texture (loaded now that we have a ctx).
+    // Page background texture (loaded now that we have a ctx). A failure here
+    // is reported instead of silently exporting a blank page (audit M4).
     if let Some(pdf_path) = &project.source_pdf {
-        let target_width = ((page.width * 2.0).round() as u32).max(64);
-        if let Ok(cache_path) =
-            pdf::render_page_to_cache(pdf_path, ui_state.current_page, target_width)
-        {
-            let key = cache_path.to_string_lossy().to_string();
-            let entry = page_textures.entry(key.clone());
-            if let std::collections::hash_map::Entry::Vacant(vacant) = entry {
-                if let Ok(bytes) = std::fs::read(&cache_path) {
-                    if let Ok(img) = image::load_from_memory(&bytes) {
-                        let rgba = img.to_rgba8();
-                        let color_image = ColorImage::from_rgba_unmultiplied(
-                            [rgba.width() as usize, rgba.height() as usize],
-                            rgba.as_raw(),
-                        );
-                        let handle = ctx.load_texture(
-                            key.clone(),
-                            color_image,
-                            egui::TextureOptions::LINEAR,
-                        );
-                        vacant.insert(handle);
-                    }
-                }
-            }
-        }
+        load_page_background(
+            &ctx,
+            pdf_path,
+            ui_state.current_page,
+            page.width,
+            page_textures,
+        )?;
     }
 
     let zoom = ui_state.zoom;
@@ -433,5 +460,23 @@ mod tests {
             centre == Color32::RED || centre == Color32::BLUE,
             "expected a texture-sampled colour, got {centre:?}"
         );
+    }
+
+    /// Audit M4: a page background that cannot be produced must surface as an
+    /// error, not a silently blank white export/print.
+    #[test]
+    fn export_background_failure_is_reported() {
+        let ctx = Context::default();
+        let mut textures: HashMap<String, TextureHandle> = HashMap::new();
+        let missing = std::env::temp_dir().join(format!(
+            "rubric_missing_background_{}_{:?}.pdf",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let _ = std::fs::remove_file(&missing);
+
+        let err = load_page_background(&ctx, &missing, 0, 612.0, &mut textures)
+            .expect_err("a missing PDF must fail the export background");
+        assert!(matches!(err, DataError::Pdf(_)), "got {err:?}");
     }
 }
