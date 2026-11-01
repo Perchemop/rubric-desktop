@@ -1,5 +1,31 @@
 # PROGRESS.md
 
+## 2026-11-01 — v0.3-02 Phase 3: corpus fidelity tests
+**Status**: merged to main, CI green (PR #74, commit `c340315`). Pixel-by-pixel
+comparison of hayro (pure-Rust) vs PDFium rendering for a representative corpus
+of PDFs.
+
+### Completed
+- Refactored `apps/rubric/src/data/pdf.rs` to make both engines callable from
+  the same build:
+  - `render_page_pdfium()` extracted from `render_page_to_cache`, always
+    compiled
+  - `render_page_hayro_direct()` new public wrapper (hayro feature only)
+  - `PDFIUM_PATH_ENV`, `bind_pdfium()`, `pdfium_open_error()`,
+    `load_document()`, `pdfium_from_bindings()` always compiled
+- Added `apps/rubric/tests/corpus_fidelity.rs` with pixel-by-pixel comparison
+  (≥95% threshold) for 6 corpus PDFs: text-heavy, vector, rotated,
+  simple-letter, simple-a4, complex. Plus structural placeholders for images,
+  form, annotations, scan.
+- Added `image` dev-dependency for PNG decoding in integration tests.
+- CI runs tests with `--features hayro` and `RUBRIC_PDFIUM_PATH` provisioned.
+
+### Next
+- v0.3-05: lopdf write support (Export PDF…) — task brief exists
+- v1.0-0: installer verification — task brief exists
+- v0.4 cycle: discovery from the ranked gap list (flatten-to-PDF,
+  multi-select, batch status first)
+
 ## 2026-11-01 — full-app audit + v0.3-08 remediation wave
 **Status**: merged to main, CI green (PR #72, commit `f56a4b4`). All 3 blockers
 and the majority of the 27 majors from `docs/audits/v0.3-full-app-audit.md`
