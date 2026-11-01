@@ -547,15 +547,20 @@ fn add_font_resource_to_page(
             .get_dictionary(page_id)
             .map_err(|e| DataError::Pdf(format!("could not get page dict: {e}")))?;
         match dict.get(b"Resources") {
-            Some(Object::Dictionary(d)) => Some(d.clone()),
-            Some(Object::Reference(id)) => Some(
-                doc.get_dictionary(*id)
+            Ok(Object::Dictionary(d)) => Some(d.clone()),
+            Ok(Object::Reference(id)) => Some(
+                doc.get_dictionary(id)
                     .map(|d| d.clone())
                     .map_err(|e| DataError::Pdf(format!("could not get resources: {e}")))?,
             ),
-            other => {
+            Err(e) => {
                 return Err(DataError::Pdf(format!(
-                    "unexpected Resources type: {other:?}"
+                    "could not read page resources: {e}"
+                )));
+            }
+            _ => {
+                return Err(DataError::Pdf(format!(
+                    "unexpected Resources type"
                 )));
             }
         }
@@ -755,7 +760,7 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             ));
             ops.push(Operation::new("ET", vec![])); // end text
         }
-        MarkupGeometry::Callout { rect, .. }
+        MarkupGeometry::Callout { rect: _, .. }
         | MarkupGeometry::Angle { .. }
         | MarkupGeometry::Count { .. } => {
             // Not yet rendered into the PDF overlay; draw a placeholder rect so
