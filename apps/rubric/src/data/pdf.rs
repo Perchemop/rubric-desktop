@@ -489,8 +489,14 @@ pub fn export_pdf_to(
     let font_dict = lopdf::Dictionary::from_iter([
         ("Type".into(), lopdf::Object::Name(b"/Font".to_vec())),
         ("Subtype".into(), lopdf::Object::Name(b"/Type1".to_vec())),
-        ("BaseFont".into(), lopdf::Object::Name(b"/Helvetica".to_vec())),
-        ("Encoding".into(), lopdf::Object::Name(b"/WinAnsiEncoding".to_vec())),
+        (
+            "BaseFont".into(),
+            lopdf::Object::Name(b"/Helvetica".to_vec()),
+        ),
+        (
+            "Encoding".into(),
+            lopdf::Object::Name(b"/WinAnsiEncoding".to_vec()),
+        ),
     ]);
     let font_id = doc.add_object(lopdf::Object::Dictionary(font_dict));
 
