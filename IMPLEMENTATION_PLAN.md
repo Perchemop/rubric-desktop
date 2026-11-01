@@ -120,8 +120,8 @@
 - Task brief: `docs/tasks/v0.3-04-pdf-export-fix.md`
 
 ### v0.3-05 — lopdf write support
-- [ ] Add `lopdf` (pinned) for PDF write/export
-- [ ] File ▸ Export PDF… (markups over the original page)
+- [x] Add `lopdf` (pinned) for PDF write/export
+- [x] File ▸ Export PDF… (markups over the original page) — export_pdf_to() renders BBox/Segment/Path/Ink overlay; text/callout/angle/count draw placeholder rect; scale calibration and honest status follow-up
 - Task brief: `docs/tasks/v0.3-05-lopdf-write-support.md`
 
 ### v1.0-0 — installer verification

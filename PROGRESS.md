@@ -21,10 +21,32 @@ of PDFs.
 - CI runs tests with `--features hayro` and `RUBRIC_PDFIUM_PATH` provisioned.
 
 ### Next
-- v0.3-05: lopdf write support (Export PDF…) — task brief exists
+- v0.3-05: lopdf write support — in progress (see below)
 - v1.0-0: installer verification — task brief exists
 - v0.4 cycle: discovery from the ranked gap list (flatten-to-PDF,
   multi-select, batch status first)
+
+## 2026-11-01 — v0.3-05: lopdf write support (Export PDF…)
+**Status**: merged to main, CI green (PR #79, commit `45d7228`). Core PDF
+export infrastructure implemented.
+
+### Completed
+- Added `lopdf 0.42.0` dependency (pinned exact; 0.6.0 has RUSTSEC-2026-0187
+  stack-overflow vuln, bumped to 0.42.0)
+- `export_pdf_to()` in `data/pdf.rs`: opens source PDF with lopdf, appends an
+  overlay content stream to each page via `doc.add_to_page_content()`, saves
+  result. Renders BBox/Segment/Path/Ink markups with stroke color, width, and
+  fill mode. Domain coords (y-down from top) flipped to PDF coords (y-up from
+  bottom). Text/Callout/Angle/Count draw a placeholder rect (follow-up slice).
+- File ▸ Export PDF… menu item with native `rfd` save dialog, gated on having
+  a source PDF. Passes the active document's markups to `export_pdf_to`.
+- CI: fmt, clippy (-D warnings), all tests, release build, security scan —
+  all green.
+
+### Next
+- Full markup overlay rendering (text with font support, callout, angle, count)
+- Scale calibration (page.scale units_per_point applied to export)
+- Honest status messages on export success/failure
 
 ## 2026-11-01 — full-app audit + v0.3-08 remediation wave
 **Status**: merged to main, CI green (PR #72, commit `f56a4b4`). All 3 blockers
