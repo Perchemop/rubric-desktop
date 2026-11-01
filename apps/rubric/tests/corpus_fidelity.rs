@@ -24,7 +24,7 @@ const PIXEL_MATCH_THRESHOLD: f32 = 0.95;
 const RENDER_WIDTH: u32 = 400;
 
 /// Rendered image dimensions (width, height in pixels).
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct Dims {
     width: u32,
     height: u32,
