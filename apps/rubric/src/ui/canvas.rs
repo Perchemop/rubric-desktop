@@ -1233,7 +1233,7 @@ pub(crate) fn draw_canvas(
                     let n = ui_state.selected.len();
                     if n > 0 {
                         ui_state.status =
-                                format!("Selected {} markup{}", n, if n == 1 { "" } else { "s" });
+                            format!("Selected {} markup{}", n, if n == 1 { "" } else { "s" });
                     } else {
                         ui_state.status = "Nothing selected".to_string();
                     }
