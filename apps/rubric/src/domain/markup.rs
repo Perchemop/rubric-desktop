@@ -333,7 +333,12 @@ pub fn text_line_height(font_size: f32) -> f32 {
 /// unhittable.
 fn text_box_rect(at: Pt, wrap: f32, text: &str, font_size: f32) -> Rect {
     let lines = text.lines().count().max(1) as f32;
-    Rect::new(at.x, at.y, wrap.max(1.0), lines * text_line_height(font_size))
+    Rect::new(
+        at.x,
+        at.y,
+        wrap.max(1.0),
+        lines * text_line_height(font_size),
+    )
 }
 
 /// How many [`MarkupKind::MeasureCount`] markers lie on `page`.
