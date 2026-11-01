@@ -307,15 +307,24 @@ pub(crate) fn draw_markups_list(
                                 .clicked()
                             {
                                 for id in &state.selected {
-                                    if let Some(markup) = project.active_mut().and_then(|d| d.find_markup_mut(*id)) {
-                                        if project.active().map(|d| d.is_markup_editable(markup)).unwrap_or(false) {
-                                            markup.status = *s;
-                                            markup.touch();
+                                    let doc = project.active_mut();
+                                    if let Some(doc) = doc {
+                                        if let Some(markup) = doc.find_markup_mut(*id) {
+                                            if doc.is_markup_editable(markup) {
+                                                markup.status = *s;
+                                                markup.touch();
+                                            }
                                         }
                                     }
                                 }
-                                project.active_mut().map(|d| d.touch());
-                                state.status = format!("Batch status → {} for {} markup(s)", s.label(), selected_count);
+                                if let Some(doc) = project.active_mut() {
+                                    doc.touch();
+                                }
+                                state.status = format!(
+                                    "Batch status → {} for {} markup(s)",
+                                    s.label(),
+                                    selected_count
+                                );
                             }
                         });
                     }
