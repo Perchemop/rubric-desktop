@@ -70,7 +70,7 @@ Small, low-risk completions; each its own Task + release.
 - [x] Audit-fix wave v0.3-01: all 9 high-severity defects from `docs/audits/v0.2.0-full-audit.md` (version bump, unit conversion, count numbering, strikeout/underline/squiggly rendering, inspector commit/dirty, print errors, Fit Page, PDFium bundling tracked separately as H8) plus the in-scope medium findings — parallel subagent workstreams, one PR
 - [x] **v0.3-02 Phase 1**: hayro-syntax page-size probing (H8) — PR #66 merged
 - [x] **v0.3-02 Phase 2**: hayro rendering pipeline (H8) — PR #67 merged
-- [ ] **v0.3-02 Phase 3**: corpus fidelity tests (≥95% pixel match vs PDFium) — in progress, see PROGRESS.md
+- [x] **v0.3-02 Phase 3**: corpus fidelity tests (≥95% pixel match vs PDFium) — PR #74 merged
 - [x] **v0.3-04 (M4)**: export/print report a failed PDF background instead of a blank page
 - [ ] **v0.3-04 (M5)**: fixed-DPI, page-cropped export/print (pending export-scope decision)
 - [ ] **v0.3-05**: `lopdf` write support (Export PDF…)
