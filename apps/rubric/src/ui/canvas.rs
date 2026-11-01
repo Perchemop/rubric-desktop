@@ -1155,8 +1155,8 @@ pub(crate) fn draw_canvas(
                                 let m = doc.and_then(|d| d.find_markup(id));
                                 let kind_ok = m
                                     .map(|mk| {
-                                matches!(mk.kind, MarkupKind::Text | MarkupKind::Callout)
-                                    .and_then(|d| m.map(|mk| d.is_markup_editable(mk)))
+                                        matches!(mk.kind, MarkupKind::Text | MarkupKind::Callout)
+                                    })
                                     .unwrap_or(false);
                                 let visible = doc
                                     .and_then(|d| m.map(|mk| d.is_markup_visible(mk)))
