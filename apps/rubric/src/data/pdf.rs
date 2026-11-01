@@ -535,8 +535,8 @@ fn page_dimensions(
 /// Convert a MediaBox array element to f64.
 fn array_num(obj: &lopdf::Object) -> Result<f64, DataError> {
     match obj {
-        lopdf::Object::Integer(n) => Ok(*n as f32),
-        lopdf::Object::Real(f) => Ok(*f as f32),
+        lopdf::Object::Integer(n) => Ok(*n as f64),
+        lopdf::Object::Real(f) => Ok(*f as f64),
         _ => Err(DataError::Pdf("MediaBox element is not a number".into())),
     }
 }
@@ -566,7 +566,7 @@ fn pdf_y(y: f32, height: f32) -> f32 {
 }
 
 /// Render one markup to PDF drawing operations.
-fn render_markup(m: &Markup, width: f32, height: f32) -> Vec<lopdf::content::Operation> {
+fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Operation> {
     use lopdf::content::Operation;
 
     let style = &m.style;
