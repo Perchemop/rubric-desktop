@@ -21,7 +21,6 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
 use directories::ProjectDirs;
-#[cfg(not(feature = "hayro"))]
 use pdfium_render::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -34,7 +33,6 @@ use super::DataError;
 /// the library file itself. When set, it is authoritative: a failure to load
 /// from this path is reported instead of silently falling back to the system
 /// library, so misconfiguration is visible.
-#[cfg(not(feature = "hayro"))]
 pub const PDFIUM_PATH_ENV: &str = "RUBRIC_PDFIUM_PATH";
 
 /// Ceiling for the requested page-render width, in pixels.
@@ -76,7 +74,6 @@ pub struct PdfSourceInfo {
 ///
 /// Returns [`DataError::PdfLibrary`] when no library can be loaded, with a
 /// message that names the environment variable to set.
-#[cfg(not(feature = "hayro"))]
 pub fn bind_pdfium() -> Result<Pdfium, DataError> {
     if let Some(configured) = std::env::var_os(PDFIUM_PATH_ENV) {
         let configured = PathBuf::from(configured);
@@ -339,6 +336,65 @@ mod hayro_pages {
     }
 }
 
+/// Render one PDF page to a cached PNG using the PDFium engine.
+///
+/// Returns the path to the cached PNG file. The page is rasterised to
+/// `target_width_px` pixels wide with the aspect ratio preserved. Widths above
+/// [`MAX_RENDER_WIDTH_PX`] are clamped. The PNG is written atomically to
+/// `cache_path`.
+pub fn render_page_pdfium(
+    pdf_path: &Path,
+    page_index: usize,
+    target_width_px: u32,
+    cache_path: &Path,
+) -> Result<PathBuf, DataError> {
+    let pdfium = bind_pdfium()?;
+    let document = load_document(&pdfium, pdf_path)?;
+    let pages = document.pages();
+    let page_count = pages.len();
+
+    if page_index >= page_count as usize {
+        return Err(DataError::Pdf(format!(
+            "page index {page_index} is out of range for {} ({} page(s))",
+            pdf_path.display(),
+            page_count
+        )));
+    }
+
+    let page = pages.get(page_index as PdfPageIndex).map_err(|error| {
+        DataError::Pdf(format!(
+            "could not load page {page_index} of {}: {error}",
+            pdf_path.display()
+        ))
+    })?;
+
+    let target_width_px = i32::try_from(target_width_px).unwrap_or(i32::MAX);
+    let bitmap = page
+        .render_with_config(&PdfRenderConfig::new().set_target_width(target_width_px))
+        .map_err(|error| {
+            DataError::Pdf(format!(
+                "could not render page {page_index} of {}: {error}",
+                pdf_path.display()
+            ))
+        })?;
+
+    let image = bitmap.as_image().map_err(|error| {
+        DataError::Pdf(format!(
+            "could not convert page {page_index} of {} to an image: {error}",
+            pdf_path.display()
+        ))
+    })?;
+
+    if let Some(parent) = cache_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    save_png_atomically(cache_path, |path| {
+        image.save_with_format(path, image::ImageFormat::Png)
+    })?;
+
+    Ok(cache_path.to_path_buf())
+}
+
 /// Render one PDF page to a cached PNG and return the cache file path.
 ///
 /// The page is rasterised to `target_width_px` pixels wide, with the aspect
@@ -377,58 +433,28 @@ pub fn render_page_to_cache(
     // When the hayro feature is enabled, render with the pure-Rust engine.
     #[cfg(feature = "hayro")]
     {
-        hayro_pages::render_page_hayro(pdf_path, page_index, target_width_px, &cache_path)
+        return hayro_pages::render_page_hayro(pdf_path, page_index, target_width_px, &cache_path);
     }
 
-    // PDFium fallback (when hayro feature is not enabled)
+    // PDFium fallback (when hayro feature is not enabled).
     #[cfg(not(feature = "hayro"))]
     {
-        let pdfium = bind_pdfium()?;
-        let document = load_document(&pdfium, pdf_path)?;
-        let pages = document.pages();
-        let page_count = pages.len();
-
-        if page_index >= page_count as usize {
-            return Err(DataError::Pdf(format!(
-                "page index {page_index} is out of range for {} ({} page(s))",
-                pdf_path.display(),
-                page_count
-            )));
-        }
-
-        let page = pages.get(page_index as PdfPageIndex).map_err(|error| {
-            DataError::Pdf(format!(
-                "could not load page {page_index} of {}: {error}",
-                pdf_path.display()
-            ))
-        })?;
-
-        let target_width_px = i32::try_from(target_width_px).unwrap_or(i32::MAX);
-        let bitmap = page
-            .render_with_config(&PdfRenderConfig::new().set_target_width(target_width_px))
-            .map_err(|error| {
-                DataError::Pdf(format!(
-                    "could not render page {page_index} of {}: {error}",
-                    pdf_path.display()
-                ))
-            })?;
-
-        let image = bitmap.as_image().map_err(|error| {
-            DataError::Pdf(format!(
-                "could not convert page {page_index} of {} to an image: {error}",
-                pdf_path.display()
-            ))
-        })?;
-
-        if let Some(parent) = cache_path.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        save_png_atomically(&cache_path, |path| {
-            image.save_with_format(path, image::ImageFormat::Png)
-        })?;
-
-        Ok(cache_path)
+        return render_page_pdfium(pdf_path, page_index, target_width_px, &cache_path);
     }
+}
+
+/// Render one PDF page to a cached PNG using the hayro engine.
+///
+/// Only available when the `hayro` feature is enabled. Returns the path to the
+/// cached PNG file.
+#[cfg(feature = "hayro")]
+pub fn render_page_hayro_direct(
+    pdf_path: &Path,
+    page_index: usize,
+    target_width_px: u32,
+    cache_path: &Path,
+) -> Result<PathBuf, DataError> {
+    hayro_pages::render_page_hayro(pdf_path, page_index, target_width_px, cache_path)
 }
 
 /// Directory holding rendered page PNGs, or `None` when no base directory can
@@ -468,7 +494,6 @@ fn load_document<'a>(pdfium: &'a Pdfium, path: &Path) -> Result<PdfDocument<'a>,
 /// produces unreadable multi-line status text. Password and security failures
 /// are mapped to an explicit encrypted-PDF message; everything else falls back
 /// to a compact single-line `Debug` format so status lines stay readable.
-#[cfg(not(feature = "hayro"))]
 fn pdfium_open_error(error: &PdfiumError, path: &Path) -> String {
     if let PdfiumError::PdfiumLibraryInternalError(internal) = error {
         if matches!(
