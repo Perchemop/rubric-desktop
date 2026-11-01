@@ -529,7 +529,7 @@ fn page_dimensions(
     }
     let width = array_num(&arr[2])? - array_num(&arr[0])?;
     let height = array_num(&arr[3])? - array_num(&arr[1])?;
-    Ok((width as f32, height))
+    Ok((width as f32, height as f32))
 }
 
 /// Convert a MediaBox array element to f64.
