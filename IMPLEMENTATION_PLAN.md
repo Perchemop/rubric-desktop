@@ -126,6 +126,13 @@
   Export PDF… menu with native rfd dialog; honest status messages
 - Task brief: `docs/tasks/v0.3-05-lopdf-write-support.md`
 
+### v0.4-01 — multi-select (gap #2)
+- [x] Shift+click toggles markups in/out of selection (canvas click handler)
+- [x] Marquee drag on empty canvas selects all intersecting markups
+- [x] Select All already available via Edit menu
+- Task brief: `docs/tasks/v0.4-01-multi-select.md`
+
+
 ### v1.0-0 — installer verification
 - [ ] Multi-platform installer verification (Linux ✅, macOS, Windows)
 - [ ] §2.5 legal checklist clean for a public release

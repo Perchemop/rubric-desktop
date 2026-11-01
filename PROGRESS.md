@@ -48,11 +48,9 @@ infrastructure implemented.
   all green
 
 ### Next
-- v0.3-04 M5 (fixed-DPI, page-cropped export/print) — pending export-scope
-  decision
+- v0.4-02 batch status (gap #3): inspector/Markups List multi-select status changes — next
+- v0.3-04 M5 (fixed-DPI, page-cropped export/print) — pending export-scope decision
 - v1.0-0: multi-platform installer verification (macOS, Windows hands-on)
-- v0.4 cycle: discovery from the ranked gap list (flatten-to-PDF,
-  multi-select, batch status first)
 
 ## 2026-11-01 — full-app audit + v0.3-08 remediation wave
 **Status**: merged to main, CI green (PR #72, commit `f56a4b4`). All 3 blockers

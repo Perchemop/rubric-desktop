@@ -74,6 +74,7 @@ Small, low-risk completions; each its own Task + release.
 - [x] **v0.3-04 (M4)**: export/print report a failed PDF background instead of a blank page
 - [ ] **v0.3-04 (M5)**: fixed-DPI, page-cropped export/print (pending export-scope decision)
 - [x] **v0.3-05**: `lopdf` write support (Export PDF…) — PRs #79-84 merged
+- [x] **v0.4-01**: multi-select (gap #2) — Shift+click toggle + marquee drag — PR #86 merged
 - [x] Process: `docs/capability-inventory.md` (guide II.27.3) — capability rows with source URLs, acceptance criteria and evidence (gap G3 in `docs/guide-compliance.md`) — 2026-10-30
 - [ ] Process: extract a `Host`/plain-`Ui` seam from `RubricApp` so `egui_kittest` can render real widgets to PNG as CI visual evidence (guide II.27.12, gap G4)
 - [ ] Empty / error states for every panel; no dead controls
