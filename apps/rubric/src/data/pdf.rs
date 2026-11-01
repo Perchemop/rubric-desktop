@@ -479,9 +479,8 @@ pub fn render_cache_dir() -> Option<PathBuf> {
 
 /// Load a PDF from disk, mapping PDFium's failure into a data error.
 ///
-/// Only available when the `hayro` feature is not enabled. When hayro is enabled,
-/// PDF loading is done directly in the hayro render module.
-#[cfg(not(feature = "hayro"))]
+/// PDF loading via PDFium. Used by [`render_page_pdfium`] and by
+/// [`read_pdf_info`] when the `hayro` feature is not enabled.
 fn load_document<'a>(pdfium: &'a Pdfium, path: &Path) -> Result<PdfDocument<'a>, DataError> {
     pdfium
         .load_pdf_from_file(path, None)
