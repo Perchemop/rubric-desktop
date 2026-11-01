@@ -501,6 +501,31 @@ impl RubricApp {
                 }
                 self.ui.pan = Vec2::ZERO;
             }
+            EditorAction::BatchStatus(status) => self.apply_batch_status(status),
+        }
+    }
+
+    /// Set the review status of every selected editable markup to `status`.
+    fn apply_batch_status(&mut self, status: ReviewStatus) {
+        let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
+        if ids.is_empty() {
+            self.ui.status = "Select at least one markup to change status".to_string();
+            return;
+        }
+        let changed = self
+            .active_doc_mut()
+            .map(|doc| doc.apply_status_to(&ids, status))
+            .unwrap_or(0);
+        if changed == 0 {
+            self.ui.status = "No editable markups selected".to_string();
+        } else {
+            self.push_snapshot("batch status");
+            self.ui.status = format!(
+                "Status set to {} for {} markup{}",
+                status.label(),
+                changed,
+                if changed == 1 { "" } else { "s" }
+            );
         }
     }
 
@@ -1831,6 +1856,7 @@ impl App for RubricApp {
                 &mut self.page_textures,
                 &mut self.failed_page_textures,
                 &mut self.bg_error,
+                false, // is_export: show chrome in live editor
             );
         });
         if need_snapshot {
