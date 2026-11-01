@@ -467,8 +467,9 @@ pub fn export_pdf_to(source_pdf: &Path, output_path: &Path) -> Result<(), DataEr
     let mut doc = lopdf::Document::load(source_pdf)
         .map_err(|e| DataError::Pdf(format!("could not open PDF {}: {e}", source_pdf.display())))?;
 
-    doc.save(output_path)
-        .map_err(|e| DataError::Pdf(format!("could not save PDF {}: {e}", output_path.display())))?;
+    doc.save(output_path).map_err(|e| {
+        DataError::Pdf(format!("could not save PDF {}: {e}", output_path.display()))
+    })?;
 
     Ok(())
 }
