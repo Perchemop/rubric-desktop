@@ -487,14 +487,14 @@ pub fn export_pdf_to(
 
     // Register a base-14 Helvetica font object once, for text markups.
     let font_dict: lopdf::Dictionary = [
-        ("Type".into(), lopdf::Object::Name(b"/Font".to_vec())),
-        ("Subtype".into(), lopdf::Object::Name(b"/Type1".to_vec())),
+        (b"Type".to_vec(), lopdf::Object::Name(b"/Font".to_vec())),
+        (b"Subtype".to_vec(), lopdf::Object::Name(b"/Type1".to_vec())),
         (
-            "BaseFont".into(),
+            b"BaseFont".to_vec(),
             lopdf::Object::Name(b"/Helvetica".to_vec()),
         ),
         (
-            "Encoding".into(),
+            b"Encoding".to_vec(),
             lopdf::Object::Name(b"/WinAnsiEncoding".to_vec()),
         ),
     ]
