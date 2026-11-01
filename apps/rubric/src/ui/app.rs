@@ -1061,8 +1061,12 @@ impl RubricApp {
                         if ui.button("Clear Recent").clicked() {
                             let mut recent = load_recent();
                             recent.clear();
-                            let _ = save_recent(&recent);
-                            self.ui.status = "Recent list cleared".to_string();
+                            // Report the real outcome: don't claim success when
+                            // the recents file could not be rewritten (audit M2).
+                            self.ui.status = match save_recent(&recent) {
+                                Ok(()) => "Recent list cleared".to_string(),
+                                Err(e) => format!("Could not clear the recent list: {e}"),
+                            };
                             ui.close();
                         }
                     }

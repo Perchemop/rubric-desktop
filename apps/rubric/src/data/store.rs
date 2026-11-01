@@ -73,13 +73,39 @@ fn ensure_dir(p: &Path) -> Result<(), DataError> {
 }
 
 /// Save a project as JSON to `path`.
+///
+/// The write is atomic: the JSON is serialised first, written to a sibling
+/// temporary file, and then renamed over the target. A crash or an error
+/// mid-write therefore never leaves a truncated `.rubric.json` in place of the
+/// previous good one (audit M3).
 pub fn save_project<P: AsRef<Path>>(project: &Project, path: P) -> Result<PathBuf, DataError> {
     let p = path.as_ref().to_path_buf();
     ensure_dir(&p)?;
-    let mut f = File::create(&p)?;
     let json = serde_json::to_string_pretty(project)?;
-    f.write_all(json.as_bytes())?;
+
+    let tmp = temp_sibling(&p);
+    {
+        let mut f = File::create(&tmp)?;
+        f.write_all(json.as_bytes())?;
+        f.sync_all()?;
+    }
+    if let Err(e) = fs::rename(&tmp, &p) {
+        // Never leave the temporary file behind on a failed rename.
+        let _ = fs::remove_file(&tmp);
+        return Err(DataError::Io(e));
+    }
     Ok(p)
+}
+
+/// A unique sibling path used by [`save_project`]'s atomic rename. It lives in
+/// the target's directory so the rename stays on one filesystem (and is thus
+/// atomic).
+fn temp_sibling(path: &Path) -> PathBuf {
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "project".to_string());
+    path.with_file_name(format!(".{name}.{}.tmp", uuid::Uuid::new_v4()))
 }
 
 /// Load a project from JSON at `path`.
@@ -204,6 +230,37 @@ mod tests {
             tag,
             std::thread::current().id()
         ))
+    }
+
+    /// Audit M3: `save_project` writes atomically — it must leave no temporary
+    /// file behind and must still replace an existing project cleanly.
+    #[test]
+    fn save_project_is_atomic_and_leaves_no_temp_file() {
+        let dir = std::env::temp_dir().join(format!(
+            "rubric_atomic_save_{}_{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        let path = dir.join("proj.rubric.json");
+
+        let saved = save_project(&Project::new("Atomic"), &path).expect("save");
+        assert_eq!(saved, path);
+        assert_eq!(load_project(&path).expect("load").name, "Atomic");
+
+        let leftovers: Vec<String> = fs::read_dir(&dir)
+            .expect("read dir")
+            .filter_map(Result::ok)
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .filter(|n| n.ends_with(".tmp"))
+            .collect();
+        assert!(leftovers.is_empty(), "temp files left behind: {leftovers:?}");
+
+        // Overwriting an existing project still succeeds (rename replaces).
+        save_project(&Project::new("Atomic v2"), &path).expect("overwrite");
+        assert_eq!(load_project(&path).expect("reload").name, "Atomic v2");
+
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

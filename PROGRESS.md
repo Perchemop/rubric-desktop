@@ -1,5 +1,18 @@
 # PROGRESS.md
 
+## 2026-11-01 — v0.3-06 (M2, M3): persistence medium fixes
+**Status**: implemented + tested; awaiting CI on PR (branch `v0.3-06-persistence-mediums`).
+
+### Completed
+- **M3** (`apps/rubric/src/data/store.rs`): `save_project` is now atomic —
+  serialise first, write a sibling temp file, `sync_all`, rename over the
+  target; a failed rename removes the temp file. Test
+  `save_project_is_atomic_and_leaves_no_temp_file` covers round-trip,
+  no-leftover and overwrite.
+- **M2** (`apps/rubric/src/ui/app.rs`): File ▸ Clear Recent reports the real
+  outcome instead of claiming success when `save_recent` fails.
+- Task brief: `docs/tasks/v0.3-06-persistence-mediums.md`.
+
 ## 2026-11-01 — v0.3-04 (M4): honest export/print error on a failed PDF background
 **Status**: implemented + tested; awaiting CI on PR (branch `v0.3-04-export-m4`).
 
