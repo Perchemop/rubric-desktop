@@ -110,7 +110,7 @@
 - [x] Task brief created: docs/tasks/v0.3-02-hayro-engine.md (H8 follow-up, `hayro`+`lopdf` adoption)
 - [x] **Phase 1 (WS A)**: hayro-syntax page-size probing implemented with feature flag, tests, and CI-ready
 - [x] **Phase 2 (WS B)**: hayro rendering pipeline – PDF pages rendered to PNG via hayro render function (PR #67)
-- [ ] **Phase 3 (WS C)**: corpus fidelity tests – validate >95% pixel match vs PDFium baseline
+- [ ] **Phase 3 (WS C)**: corpus fidelity tests – validate >95% pixel match vs PDFium baseline (in progress — see PROGRESS.md)
 - [x] **Phase 4 (WS D)**: docs/process updates (task briefs, roadmap, traceability, attribution, progress)
 - [ ] Engine slice: adopt `hayro` (+ `lopdf`) for full PDF rendering/export
 
