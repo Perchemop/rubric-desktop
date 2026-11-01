@@ -130,6 +130,9 @@ pub(crate) struct UiState {
     /// markup. Cleared when the drag starts and when it ends; drives the
     /// "move markups" snapshot so a zero-delta drag pushes nothing.
     pub(crate) move_changed: bool,
+    /// Marquee drag start position in screen space (set when a marquee drag
+    /// begins on empty canvas space). UI-only; never serialized.
+    pub(crate) marquee_start: Option<Pos2>,
     /// In-canvas text editor state (Text/Callout markups only). UI-only, no
     /// serde: it never leaves the session.
     pub(crate) text_edit: Option<TextEditState>,
@@ -210,6 +213,7 @@ impl Default for UiState {
             scale_paper_inches: 1.0,
             scale_real_units: 10.0,
             grid: Grid::default(),
+            marquee_start: None,
             show_markups_list: true,
             quit_confirm: false,
             can_undo: false,
