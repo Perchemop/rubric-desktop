@@ -742,10 +742,7 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             ops.push(Operation::new("BT", vec![])); // begin text
             ops.push(Operation::new(
                 "Tf",
-                vec![
-                    Object::Name(b"/F1".to_vec()),
-                    Object::Real(style.font_size),
-                ],
+                vec![Object::Name(b"/F1".to_vec()), Object::Real(style.font_size)],
             ));
             ops.push(Operation::new(
                 "Td",
