@@ -505,10 +505,9 @@ pub fn export_pdf_to(
         }
 
         // Ensure the page has a Resources dictionary mapping /F1 to the font.
-        let has_text = page_markups.iter().any(|m| matches!(
-            m.geometry,
-            MarkupGeometry::Text { .. }
-        ));
+        let has_text = page_markups
+            .iter()
+            .any(|m| matches!(m.geometry, MarkupGeometry::Text { .. }));
         if has_text {
             add_font_resource_to_page(&mut doc, page_id, font_id)?;
         }
@@ -538,9 +537,9 @@ fn add_font_resource_to_page(
     // Clone existing Resources (if any) before mutating the page dict,
     // because doc.add_object borrows doc mutably.
     let existing_resources: Option<lopdf::Dictionary> = {
-        let dict = doc.get_dictionary(page_id).map_err(|e| {
-            DataError::Pdf(format!("could not get page dict: {e}"))
-        })?;
+        let dict = doc
+            .get_dictionary(page_id)
+            .map_err(|e| DataError::Pdf(format!("could not get page dict: {e}")))?;
         match dict.get(b"Resources") {
             Some(Object::Dictionary(d)) => Some(d.clone()),
             Some(Object::Reference(id)) => doc
@@ -564,9 +563,9 @@ fn add_font_resource_to_page(
 
     // Set or replace the Resources entry on the page.
     let resources_id = doc.add_object(Object::Dictionary(resources_dict));
-    let dict = doc.get_dictionary_mut(page_id).map_err(|e| {
-        DataError::Pdf(format!("could not get page dict: {e}"))
-    })?;
+    let dict = doc
+        .get_dictionary_mut(page_id)
+        .map_err(|e| DataError::Pdf(format!("could not get page dict: {e}")))?;
     dict.set("Resources", Object::Reference(resources_id));
 
     Ok(())
@@ -743,10 +742,7 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
                     Object::Real(pdf_y(at.y, height) - style.font_size),
                 ],
             ));
-            ops.push(Operation::new(
-                "Tj",
-                vec![Object::string_literal(text)],
-            ));
+            ops.push(Operation::new("Tj", vec![Object::string_literal(text)]));
             ops.push(Operation::new("ET", vec![])); // end text
         }
     }
