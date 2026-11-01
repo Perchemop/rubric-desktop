@@ -474,10 +474,7 @@ pub(crate) fn draw_inspector(
                                     5.0,
                                     domain_to_color32(s.color()),
                                 );
-                                if ui
-                                    .selectable_label(false, s.label())
-                                    .clicked()
-                                {
+                                if ui.selectable_label(false, s.label()).clicked() {
                                     for id in &selected {
                                         let doc = project.active_mut();
                                         if let Some(doc) = doc {
