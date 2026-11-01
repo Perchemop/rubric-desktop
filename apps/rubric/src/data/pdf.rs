@@ -755,6 +755,21 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
             ));
             ops.push(Operation::new("ET", vec![])); // end text
         }
+        MarkupGeometry::Callout { rect, .. } | MarkupGeometry::Angle { .. } | MarkupGeometry::Count { .. } => {
+            // Not yet rendered into the PDF overlay; draw a placeholder rect so
+            // the export still produces valid output. Follow-up slice adds full
+            // support for these geometry types.
+            ops.push(Operation::new(
+                "re",
+                vec![
+                    Object::Real(50.0_f32),
+                    Object::Real(50.0_f32),
+                    Object::Real(60.0_f32),
+                    Object::Real(40.0_f32),
+                ],
+            ));
+            ops.push(Operation::new("S", vec![]));
+        }
     }
 
     ops.push(Operation::new("Q", vec![])); // restore
