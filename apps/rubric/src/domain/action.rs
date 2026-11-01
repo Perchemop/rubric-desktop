@@ -4,7 +4,7 @@
 //! inspector render the same menu, so the command set, its labels and the
 //! rules for when an entry is applicable live here rather than being
 //! duplicated in the UI.
-use crate::markup::ReviewStatus;
+use crate::domain::markup::ReviewStatus;
 
 /// A user-invocable editor action offered by the canvas and inspector
 /// context menus (spec F-603).
