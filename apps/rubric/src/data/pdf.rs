@@ -137,7 +137,6 @@ pub fn bind_pdfium() -> Result<Pdfium, DataError> {
 /// In that case [`Pdfium::default`] takes its already-initialised branch and
 /// hands out another handle to the same global bindings (it cannot panic on
 /// that path because no library load is attempted).
-#[cfg(not(feature = "hayro"))]
 fn pdfium_from_bindings(
     bindings: Result<Box<dyn PdfiumLibraryBindings>, PdfiumError>,
 ) -> Result<Pdfium, PdfiumError> {
