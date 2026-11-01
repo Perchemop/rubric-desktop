@@ -1547,8 +1547,8 @@ mod tests {
     /// with %PDF-1.4 and contains the rendered overlay content streams.
     #[test]
     fn export_pdf_to_writes_valid_pdf() {
-        use crate::domain::markup::MarkupKind;
         use crate::domain::geom::{Pt, Rect};
+        use crate::domain::markup::MarkupKind;
 
         let source_pdf = write_minimal_pdf("export_source", 612.0, 792.0);
         let output_path = temp_pdf_path("export_output");
