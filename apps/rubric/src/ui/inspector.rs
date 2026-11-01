@@ -456,6 +456,45 @@ pub(crate) fn draw_inspector(
 
         if multi {
             ui.label(format!("{} selected", selected.len()));
+            
+            // Batch status change for multi-select (v0.4-02).
+            ui.horizontal(|ui| {
+                ui.label("Batch Status");
+                ComboBox::from_id_salt("batch_status")
+                    .selected_text("Change status…")
+                    .show_ui(ui, |ui| {
+                        for s in ReviewStatus::ALL.iter() {
+                            ui.horizontal(|ui| {
+                                let (rect, _) = ui.allocate_exact_size(
+                                    egui::vec2(12.0, 12.0),
+                                    egui::Sense::hover(),
+                                );
+                                ui.painter().circle_filled(
+                                    rect.center(),
+                                    5.0,
+                                    domain_to_color32(s.color()),
+                                );
+                                if ui
+                                    .selectable_label(false, s.label())
+                                    .clicked()
+                                {
+                                    // Apply to all selected markups
+                                    for id in &selected {
+                                        if let Some(markup) = project.active_mut().and_then(|d| d.find_markup_mut(*id)) {
+                                            if project.active().map(|d| d.is_markup_editable(markup)).unwrap_or(false) {
+                                                markup.status = *s;
+                                                markup.touch();
+                                            }
+                                        }
+                                    }
+                                    project.active_mut().map(|d| d.touch());
+                                    ui_state.status = format!("Batch status → {} for {} markup(s)", s.label(), selected.len());
+                                    committed = true;
+                                }
+                            });
+                        }
+                    });
+            });
         }
 
         let mut edited = false;

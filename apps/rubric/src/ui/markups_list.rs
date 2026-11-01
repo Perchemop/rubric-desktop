@@ -11,9 +11,14 @@ use uuid::Uuid;
 
 use crate::domain::{
     MarkupGroupKey, MarkupKind, MarkupList, MarkupListFilter, MarkupListSort, Project,
-    ReviewStatus, NONE_LABEL,
+    ReviewStatus, NONE_LABEL, style::Color,
 };
 use crate::ui::app::{MarkupLayerFilter, UiState};
+
+fn status_color(status: ReviewStatus) -> egui::Color32 {
+    let c = status.color();
+    egui::Color32::from_rgba_unmultiplied(c.r, c.g, c.b, c.a)
+}
 
 /// A request from the list to the app: select `id` and show its page.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -277,6 +282,47 @@ pub(crate) fn draw_markups_list(
             all.len()
         ));
     });
+
+    // Batch status for multi-select (v0.4-02).
+    let selected_count = state.selected.len();
+    if selected_count > 1 {
+        ui.horizontal(|ui| {
+            ui.label(format!("{} selected:", selected_count));
+            ComboBox::from_id_salt("batch_status_list")
+                .selected_text("Change status…")
+                .show_ui(ui, |ui| {
+                    for s in ReviewStatus::ALL.iter() {
+                        ui.horizontal(|ui| {
+                            let (rect, _) = ui.allocate_exact_size(
+                                egui::vec2(12.0, 12.0),
+                                egui::Sense::hover(),
+                            );
+                            ui.painter().circle_filled(
+                                rect.center(),
+                                5.0,
+                                status_color(*s),
+                            );
+                            if ui
+                                .selectable_label(false, s.label())
+                                .clicked()
+                            {
+                                for id in &state.selected {
+                                    if let Some(markup) = project.active_mut().and_then(|d| d.find_markup_mut(*id)) {
+                                        if project.active().map(|d| d.is_markup_editable(markup)).unwrap_or(false) {
+                                            markup.status = *s;
+                                            markup.touch();
+                                        }
+                                    }
+                                }
+                                project.active_mut().map(|d| d.touch());
+                                state.status = format!("Batch status → {} for {} markup(s)", s.label(), selected_count);
+                            }
+                        });
+                    }
+                });
+        });
+        ui.separator();
+    }
 
     if filtered.is_empty() {
         if all.is_empty() {
