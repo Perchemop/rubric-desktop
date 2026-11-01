@@ -1531,13 +1531,13 @@ pub(crate) fn draw_canvas(
         let rect = egui::Rect::from_two_pos(start, end);
         painter.rect_stroke(
             rect,
-            egui::CornerRadius::same(0.0),
+            egui::CornerRadius::same(0),
             egui::Stroke::new(1.0, egui::Color32::from_black_alpha(120)),
             egui::StrokeKind::Middle,
         );
         painter.rect_filled(
             rect,
-            egui::CornerRadius::same(0.0),
+            egui::CornerRadius::same(0),
             egui::Color32::from_black_alpha(30),
         );
     }
