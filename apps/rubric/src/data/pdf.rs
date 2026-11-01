@@ -559,9 +559,7 @@ fn add_font_resource_to_page(
                 )));
             }
             _ => {
-                return Err(DataError::Pdf(format!(
-                    "unexpected Resources type"
-                )));
+                return Err(DataError::Pdf(format!("unexpected Resources type")));
             }
         }
     };
