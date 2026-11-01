@@ -1,7 +1,7 @@
 //! The main egui application: layout, state, and high-level orchestration.
 
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -1130,6 +1130,27 @@ impl RubricApp {
                         .save_file()
                     {
                         let _ = self.export_page_image(path);
+                    }
+                    ui.close();
+                }
+                if ui.button("Export PDF...").clicked() {
+                    let source_pdf = self
+                        .history
+                        .current()
+                        .source_pdf
+                        .clone()
+                        .unwrap_or_default();
+                    if let Some(path) = rfd::FileDialog::new()
+                        .set_file_name("rubric-export.pdf")
+                        .add_filter("PDF document", &["pdf"])
+                        .save_file()
+                    {
+                        if !source_pdf.is_empty() {
+                            let _ = crate::data::pdf::export_pdf_to(
+                                Path::new(&source_pdf),
+                                &path,
+                            );
+                        }
                     }
                     ui.close();
                 }
