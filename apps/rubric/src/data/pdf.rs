@@ -634,7 +634,7 @@ fn array_num(obj: &lopdf::Object) -> Result<f64, DataError> {
 /// Page bounds in domain coordinates: x in [0, width], y in [0, height] (y-down from top-left).
 /// Returns true if any part of the markup falls within the page rectangle.
 fn markup_intersects_page(m: &Markup, width: f32, height: f32) -> bool {
-    use crate::domain::markup::{MarkupGeometry, DRect};
+    use crate::domain::markup::{DRect, MarkupGeometry};
     
     // Page rectangle in domain coordinates (y-down from top-left)
     let page_rect = DRect::new(0.0, 0.0, width, height);
@@ -680,7 +680,11 @@ fn point_in_bounds(p: &crate::domain::geom::Pt, width: f32, height: f32) -> bool
 }
 
 /// Check if a line segment intersects a rectangle.
-fn segment_intersects_rect(a: &crate::domain::geom::Pt, b: &crate::domain::geom::Pt, rect: DRect) -> bool {
+fn segment_intersects_rect(
+    a: &crate::domain::geom::Pt,
+    b: &crate::domain::geom::Pt,
+    rect: DRect,
+) -> bool {
     // Cohen-Sutherland line clipping algorithm - simplified check
     // If both endpoints are on the same outside edge, no intersection
     let (x1, y1) = (a.x, a.y);
@@ -689,10 +693,18 @@ fn segment_intersects_rect(a: &crate::domain::geom::Pt, b: &crate::domain::geom:
     let (rx2, ry2) = (rect.x + rect.w, rect.y + rect.h);
     
     // Trivial reject: both points left, right, above, or below
-    if x1 < rx1 && x2 < rx1 { return false; }
-    if x1 > rx2 && x2 > rx2 { return false; }
-    if y1 < ry1 && y2 < ry1 { return false; }
-    if y1 > ry2 && y2 > ry2 { return false; }
+    if x1 < rx1 && x2 < rx1 {
+        return false;
+    }
+    if x1 > rx2 && x2 > rx2 {
+        return false;
+    }
+    if y1 < ry1 && y2 < ry1 {
+        return false;
+    }
+    if y1 > ry2 && y2 > ry2 {
+        return false;
+    }
     
     true // Potential intersection
 }

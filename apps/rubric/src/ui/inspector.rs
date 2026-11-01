@@ -456,7 +456,7 @@ pub(crate) fn draw_inspector(
 
         if multi {
             ui.label(format!("{} selected", selected.len()));
-            
+
             // Batch status change for multi-select (v0.4-02).
             ui.horizontal(|ui| {
                 ui.label("Batch Status");
@@ -474,10 +474,7 @@ pub(crate) fn draw_inspector(
                                     5.0,
                                     domain_to_color32(s.color()),
                                 );
-                                if ui
-                                    .selectable_label(false, s.label())
-                                    .clicked()
-                                {
+                                if ui.selectable_label(false, s.label()).clicked() {
                                     // Apply to all selected markups
                                     for id in &selected {
                                         if let Some(markup) = project.active_mut().and_then(|d| d.find_markup_mut(*id)) {
