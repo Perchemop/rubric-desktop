@@ -1,5 +1,25 @@
 # PROGRESS.md
 
+## 2026-11-01 — v0.3-04 (M4): honest export/print error on a failed PDF background
+**Status**: implemented + tested; awaiting CI on PR (branch `v0.3-04-export-m4`).
+
+### Completed
+- **M4 fix** (`apps/rubric/src/data/render.rs`): extracted
+  `load_page_background()`, which propagates a failure to produce the PDF page
+  background (missing PDF, engine error, undecodable PNG). `render_page_to_png_bytes`
+  now returns that error, so Export Page Image / Print report the problem
+  instead of silently writing/printing a blank white page.
+- New unit test `export_background_failure_is_reported` (missing-PDF → `DataError::Pdf`).
+- **Docs**: tracked the v0.3-04/05 and v1.0-0 task briefs (previously excluded by
+  the local `.git/info/exclude`, so the CHANGELOG references did not resolve);
+  corrected the v1.0-0 brief name; ROADMAP marks PR #67 merged and lists the
+  remaining slices; IMPLEMENTATION_PLAN Phase 8 gained v0.3-04/05 and v1.0-0 sections.
+
+### Notes
+- **M5** (fixed-DPI, page-cropped export) is deferred: the audit flagged it as
+  under-specified (open question Q), so the DPI and out-of-page-markup policy
+  need an explicit decision before implementation. Recorded in the task brief.
+
 ## 2026-10-31 — v0.3-01 audit-fix wave (parallel workstreams)
 **Status**: merged to main (PR #62, commit `28b3249`).
 Fixes the 9 high-severity defects (H8 PDFium bundling deferred to the v0.3

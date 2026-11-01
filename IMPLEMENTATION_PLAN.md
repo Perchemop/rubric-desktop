@@ -114,5 +114,21 @@
 - [x] **Phase 4 (WS D)**: docs/process updates (task briefs, roadmap, traceability, attribution, progress)
 - [ ] Engine slice: adopt `hayro` (+ `lopdf`) for full PDF rendering/export
 
+### v0.3-04 — PDF export/print fixes (M4/M5)
+- [x] M4: export/print report a failed PDF page background instead of a blank page (+ test)
+- [ ] M5: fixed-DPI, page-cropped export/print (pending the export-scope decision)
+- Task brief: `docs/tasks/v0.3-04-pdf-export-fix.md`
+
+### v0.3-05 — lopdf write support
+- [ ] Add `lopdf` (pinned) for PDF write/export
+- [ ] File ▸ Export PDF… (markups over the original page)
+- Task brief: `docs/tasks/v0.3-05-lopdf-write-support.md`
+
+### v1.0-0 — installer verification
+- [ ] Multi-platform installer verification (Linux ✅, macOS, Windows)
+- [ ] §2.5 legal checklist clean for a public release
+- [ ] README/ROADMAP claims re-audited
+- Task brief: `docs/tasks/v1.0-0-installer-verification.md`
+
 ## Slice strategy
 Build vertically: domain + tests → minimal UI → drawing + selection → save/load → measurements → review → polish. Keep each slice small, compiling, tested.
