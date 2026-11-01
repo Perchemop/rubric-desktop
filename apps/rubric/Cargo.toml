@@ -47,6 +47,9 @@ hayro = { version = "=0.8.0", optional = true }
 crash-report = { path = "../../crates/crash-report", version = "0.3.0" }
 update-check = { path = "../../crates/update-check", version = "0.3.0" }
 
+[dev-dependencies]
+image = { version = "0.25", default-features = false, features = ["png"] }
+
 [features]
 default = []
 # Feature for pure-Rust PDF engine (v0.3-02 migration). When enabled,
