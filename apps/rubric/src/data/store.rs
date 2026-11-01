@@ -286,7 +286,7 @@ mod tests {
         fs::create_dir_all(&dir).expect("create test dir");
 
         let target = dir.join("occupied.rubric.json");
-        fs::create_dir(target.join("inner")).expect("occupy target with a directory");
+        fs::create_dir_all(target.join("inner")).expect("occupy target with a directory");
 
         assert!(
             save_project(&Project::new("Blocked"), &target).is_err(),
