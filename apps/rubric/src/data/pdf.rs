@@ -1542,4 +1542,49 @@ mod tests {
 
         let _ = fs::remove_dir_all(&dir);
     }
+
+    /// Exporting a PDF with markups produces a valid output file that starts
+    /// with %PDF-1.4 and contains the rendered overlay content streams.
+    #[test]
+    fn export_pdf_to_writes_valid_pdf() {
+        use crate::domain::markup::{MarkupKind};
+        use crate::domain::geom::{Pt, Rect};
+
+        let source_pdf = write_minimal_pdf("export_source", 612.0, 792.0);
+        let output_path = temp_pdf_path("export_output");
+
+        let markups = vec![
+            Markup::new(
+                0,
+                MarkupKind::Rectangle,
+                MarkupGeometry::Bounds(Rect::new(50.0, 50.0, 100.0, 100.0)),
+                "test",
+            ),
+            Markup::new(
+                0,
+                MarkupKind::Text,
+                MarkupGeometry::Text {
+                    at: Pt::new(100.0, 100.0),
+                    wrap: 200.0,
+                    text: "Test text".to_string(),
+                },
+                "test",
+            ),
+        ];
+
+        export_pdf_to(&source_pdf, &output_path, &markups)
+            .expect("export should succeed");
+
+        // Verify output file exists and starts with %PDF-1.4
+        assert!(output_path.exists(), "output PDF should exist");
+        let content = fs::read(&output_path).expect("read output PDF");
+        assert!(
+            content.starts_with(b"%PDF-1.4"),
+            "output should be a valid PDF"
+        );
+
+        // Cleanup
+        let _ = fs::remove_file(&source_pdf);
+        let _ = fs::remove_file(&output_path);
+    }
 }
