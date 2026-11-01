@@ -32,7 +32,13 @@ struct Dims {
 
 /// Build a minimal one-page PDF with the given media box, optional rotation,
 /// font resources and content stream.
-fn build_pdf(width: f32, height: f32, rotate: Option<i32>, resources: &str, content: &str) -> Vec<u8> {
+fn build_pdf(
+    width: f32,
+    height: f32,
+    rotate: Option<i32>,
+    resources: &str,
+    content: &str,
+) -> Vec<u8> {
     let mut objects: Vec<String> = Vec::new();
 
     // Object 1: Catalog
@@ -52,7 +58,9 @@ fn build_pdf(width: f32, height: f32, rotate: Option<i32>, resources: &str, cont
 
     // Object 4: Content stream
     let content_len = content.len();
-    objects.push(format!("<< /Length {content_len} >> stream\n{content}\nendstream"));
+    objects.push(format!(
+        "<< /Length {content_len} >> stream\n{content}\nendstream"
+    ));
 
     write_pdf_bytes(&objects)
 }
@@ -68,7 +76,9 @@ fn build_text_pdf(width: f32, height: f32, content: &str) -> Vec<u8> {
     ));
     objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_string());
     let content_len = content.len();
-    objects.push(format!("<< /Length {content_len} >> stream\n{content}\nendstream"));
+    objects.push(format!(
+        "<< /Length {content_len} >> stream\n{content}\nendstream"
+    ));
     write_pdf_bytes(&objects)
 }
 
@@ -124,10 +134,7 @@ fn corpus_pdfs() -> Vec<(String, Vec<u8>)> {
             build_text_pdf(612.0, 792.0, multi_line_text_content()),
         ),
         // 2. images.pdf — embedded image placeholder
-        (
-            "images".to_string(),
-            build_pdf(612.0, 792.0, None, "", ""),
-        ),
+        ("images".to_string(), build_pdf(612.0, 792.0, None, "", "")),
         // 3. vector.pdf — geometric shapes and lines
         (
             "vector".to_string(),
@@ -139,10 +146,7 @@ fn corpus_pdfs() -> Vec<(String, Vec<u8>)> {
             build_pdf(612.0, 792.0, Some(90), "", ""),
         ),
         // 5. form.pdf — form fields placeholder
-        (
-            "form".to_string(),
-            build_pdf(612.0, 792.0, None, "", ""),
-        ),
+        ("form".to_string(), build_pdf(612.0, 792.0, None, "", "")),
         // 6. complex.pdf — mixed content
         (
             "complex".to_string(),
@@ -159,15 +163,9 @@ fn corpus_pdfs() -> Vec<(String, Vec<u8>)> {
             build_text_pdf(595.28, 841.89, simple_text_content()),
         ),
         // 9. annotations.pdf — annotations placeholder
-        (
-            "annotations".to_string(),
-            build_pdf(612.0, 792.0, None, "", ""),
-        ),
+        ("annotations".to_string(), build_pdf(612.0, 792.0, None, "", "")),
         // 10. scan.pdf — scanned page (image-only) placeholder
-        (
-            "scan".to_string(),
-            build_pdf(612.0, 792.0, None, "", ""),
-        ),
+        ("scan".to_string(), build_pdf(612.0, 792.0, None, "", "")),
     ]
 }
 
