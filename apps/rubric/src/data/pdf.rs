@@ -16,10 +16,13 @@
 //! otherwise PDFium is the default renderer.
 
 use std::collections::hash_map::DefaultHasher;
+use std::collections::BTreeMap;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
+use crate::domain::markup::{Markup, MarkupGeometry};
+use crate::domain::style::{Color, FillMode};
 use directories::ProjectDirs;
 use pdfium_render::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -480,23 +483,226 @@ pub fn export_pdf_to(source_pdf: &Path, output_path: &Path) -> Result<(), DataEr
     Ok(())
 }
 
-/// Build a minimal overlay content stream: a red rectangle proof-of-concept
-/// drawn in the top-left of the page. This demonstrates the lopdf content
-/// pipeline; real markup rendering replaces this body.
-fn overlay_content_stream() -> lopdf::content::Content {
+/// Export a PDF with markups layered over the original page backgrounds.
+///
+/// Opens `source_pdf` with lopdf, appends an overlay content stream to each
+/// page that renders the project's markups, and writes the result to
+/// `output_path`. The original PDF content is preserved underneath the overlay.
+///
+/// `markups` is the full list of project markups; only those whose `page`
+/// falls within the exported PDF are rendered.
+///
+/// Only available when lopdf is a dependency (v0.3-05).
+pub fn export_pdf_to(
+    source_pdf: &Path,
+    output_path: &Path,
+    markups: &[Markup],
+) -> Result<(), DataError> {
+    let mut doc = lopdf::Document::load(source_pdf)
+        .map_err(|e| DataError::Pdf(format!("could not open PDF {}: {e}", source_pdf.display())))?;
+
+    // Group markups by page index (domain pages are 0-based, PDF page numbers
+    // from get_pages() are 1-based).
+    let mut markups_by_page: BTreeMap<usize, Vec<&Markup>> = BTreeMap::new();
+    for m in markups {
+        markups_by_page.entry(m.page).or_default().push(m);
+    }
+
+    for (page_num, page_id) in doc.get_pages() {
+        let page_index = (page_num - 1) as usize;
+        let page_markups = markups_by_page.get(&page_index).cloned().unwrap_or_default();
+        if page_markups.is_empty() {
+            continue;
+        }
+
+        let (width, height) = page_dimensions(&doc, page_id)?;
+        let content = render_page_overlay(&page_markups, width, height);
+        doc.add_to_page_content(page_id, content)
+            .map_err(|e| DataError::Pdf(format!("could not add overlay to page {page_num}: {e}")))?;
+    }
+
+    doc.save(output_path)
+        .map_err(|e| DataError::Pdf(format!("could not save PDF {}: {e}", output_path.display())))?;
+
+    Ok(())
+}
+
+/// Read a page's MediaBox and return its (width, height) in PDF points.
+fn page_dimensions(doc: &lopdf::Document, page_id: lopdf::ObjectId) -> Result<(f32, f32), DataError> {
+    let dict = doc
+        .get_dictionary(page_id)
+        .map_err(|e| DataError::Pdf(format!("could not read page dictionary: {e}")))?;
+    let media_box = dict
+        .get(b"MediaBox")
+        .map_err(|e| DataError::Pdf(format!("page has no MediaBox: {e}")))?;
+    let arr = media_box
+        .as_array()
+        .map_err(|e| DataError::Pdf(format!("MediaBox is not an array: {e}")))?;
+    // MediaBox = [llx, lly, urx, ury]
+    if arr.len() < 4 {
+        return Err(DataError::Pdf("MediaBox has fewer than 4 elements".into()));
+    }
+    let width = array_num(&arr[2])? - array_num(&arr[0])?;
+    let height = array_num(&arr[3])? - array_num(&arr[1])?;
+    Ok((width as f32, height as f32))
+}
+
+/// Convert a MediaBox array element to f64.
+fn array_num(obj: &lopdf::Object) -> Result<f64, DataError> {
+    match obj {
+        lopdf::Object::Integer(n) => Ok(*n as f64),
+        lopdf::Object::Real(f) => Ok(*f),
+        _ => Err(DataError::Pdf("MediaBox element is not a number".into())),
+    }
+}
+
+/// Render all markups on one page into a single PDF content stream.
+///
+/// Domain coordinates use y-down from the top-left; PDF content coordinates
+/// use y-up from the bottom-left. All y values are flipped via
+/// `pdf_y = page_height - domain_y`.
+fn render_page_overlay(markups: &[&Markup], width: f32, height: f32) -> lopdf::content::Content {
     use lopdf::content::Operation;
 
-    // PDF content coordinates: y=0 at bottom. The rectangle is drawn in the
-    // top-left of an 8.5x11in page (612x792pt) as a proof of concept.
-    let ops = vec![
-        Operation::new("q", vec![]),                  // save graphics state
-        Operation::new("1 0 0 RG", vec![]),           // red stroke
-        Operation::new("2 w", vec![]),                // line width 2
-        Operation::new("50 700 100 50 re S", vec![]), // rect + stroke
-        Operation::new("Q", vec![]),                  // restore graphics state
-    ];
+    let mut ops: Vec<Operation> = vec![Operation::new("q", vec![])]; // save graphics state
+
+    for m in markups {
+        ops.extend(render_markup(m, width, height));
+    }
+
+    ops.push(Operation::new("Q", vec![])); // restore graphics state
 
     lopdf::content::Content { operations: ops }
+}
+
+/// Convert a domain y (down from top) to a PDF y (up from bottom).
+fn pdf_y(y: f32, height: f32) -> f32 {
+    height - y
+}
+
+/// Render one markup to PDF drawing operations.
+fn render_markup(m: &Markup, width: f32, height: f32) -> Vec<lopdf::content::Operation> {
+    use lopdf::content::Operation;
+
+    let style = &m.style;
+    let c = style.stroke;
+    let (r, g, b) = (c.r as f64 / 255.0, c.g as f64 / 255.0, c.b as f64 / 255.0);
+
+    let mut ops: Vec<Operation> = vec![
+        Operation::new("q", vec![]), // save
+        Operation::new("RG", vec![Object::Real(r), Object::Real(g), Object::Real(b)]),
+        Operation::new("rg", vec![Object::Real(r), Object::Real(g), Object::Real(b)]),
+        Operation::new("w", vec![Object::Real(style.width as f64)]),
+    ];
+
+    match &m.geometry {
+        MarkupGeometry::Bounds(rct) => {
+            let x0 = rct.x;
+            let y0 = pdf_y(rct.y, height) - rct.h; // bottom-left in PDF
+            ops.push(Operation::new(
+                "re",
+                vec![
+                    Object::Real(x0 as f64),
+                    Object::Real(y0 as f64),
+                    Object::Real(rct.w as f64),
+                    Object::Real(rct.h as f64),
+                ],
+            ));
+            match style.fill_mode {
+                FillMode::None => ops.push(Operation::new("S", vec![])), // stroke only
+                FillMode::Solid | FillMode::Highlight => ops.push(Operation::new("f", vec![])),
+            }
+        }
+        MarkupGeometry::Segment { a, b } => {
+            ops.push(Operation::new(
+                "m",
+                vec![
+                    Object::Real(a.x as f64),
+                    Object::Real(pdf_y(a.y, height) as f64),
+                ],
+            ));
+            ops.push(Operation::new(
+                "l",
+                vec![
+                    Object::Real(b.x as f64),
+                    Object::Real(pdf_y(b.y, height) as f64),
+                ],
+            ));
+            ops.push(Operation::new("S", vec![]));
+        }
+        MarkupGeometry::Path { points, closed } => {
+            if let Some(first) = points.first() {
+                ops.push(Operation::new(
+                    "m",
+                    vec![
+                        Object::Real(first.x as f64),
+                        Object::Real(pdf_y(first.y, height) as f64),
+                    ],
+                ));
+                for p in points.iter().skip(1) {
+                    ops.push(Operation::new(
+                        "l",
+                        vec![
+                            Object::Real(p.x as f64),
+                            Object::Real(pdf_y(p.y, height) as f64),
+                        ],
+                    ));
+                }
+                if *closed {
+                    ops.push(Operation::new("h", vec![])); // close path
+                }
+            }
+            match style.fill_mode {
+                FillMode::None => ops.push(Operation::new("S", vec![])),
+                FillMode::Solid | FillMode::Highlight => ops.push(Operation::new("f", vec![])),
+            }
+        }
+        MarkupGeometry::Ink { strokes } => {
+            for stroke in strokes {
+                if let Some(first) = stroke.first() {
+                    ops.push(Operation::new(
+                        "m",
+                        vec![
+                            Object::Real(first.x as f64),
+                            Object::Real(pdf_y(first.y, height) as f64),
+                        ],
+                    ));
+                    for p in stroke.iter().skip(1) {
+                        ops.push(Operation::new(
+                            "l",
+                            vec![
+                                Object::Real(p.x as f64),
+                                Object::Real(pdf_y(p.y, height) as f64),
+                            ],
+                        ));
+                    }
+                    ops.push(Operation::new("S", vec![]));
+                }
+            }
+        }
+        MarkupGeometry::Text { .. }
+        | MarkupGeometry::Callout { .. }
+        | MarkupGeometry::Angle { .. }
+        | MarkupGeometry::Count { .. } => {
+            // Text-bearing and complex geometries are not yet rendered into
+            // the PDF overlay; they draw a placeholder rect so the export
+            // still produces valid output. A follow-up slice adds full
+            // support for text and these geometry types.
+            ops.push(Operation::new(
+                "re",
+                vec![
+                    Object::Real(50.0),
+                    Object::Real(50.0),
+                    Object::Real(60.0),
+                    Object::Real(40.0),
+                ],
+            ));
+            ops.push(Operation::new("S", vec![]));
+        }
+    }
+
+    ops.push(Operation::new("Q", vec![])); // restore
+    ops
 }
 
 /// Directory holding rendered page PNGs, or `None` when no base directory can
