@@ -456,6 +456,72 @@ pub fn render_page_hayro_direct(
     hayro_pages::render_page_hayro(pdf_path, page_index, target_width_px, cache_path)
 }
 
+/// Export a PDF with markups layered over the original page backgrounds.
+///
+/// Opens `source_pdf` with lopdf, adds a simple overlay to each page (proof
+/// of concept for the markup layer), and writes the result to `output_path`.
+/// The original PDF content is preserved underneath the overlay.
+///
+/// Only available when lopdf is a dependency (v0.3-05).
+pub fn export_pdf_to(
+    source_pdf: &Path,
+    output_path: &Path,
+) -> Result<(), DataError> {
+    let mut doc = lopdf::Document::load(source_pdf)
+        .map_err(|e| DataError::Pdf(format!("could not open PDF {}: {e}", source_pdf.display())))?;
+
+    let page_ids: Vec<lopdf::ObjectId> = doc.pages().iter().copied().collect();
+    for page_id in page_ids {
+        let page = doc.page_mut(page_id)
+            .map_err(|e| DataError::Pdf(format!("could not access page {page_id}: {e}")))?;
+
+        // Add a simple rectangle overlay as proof of concept for the markup layer.
+        // This draws a red rectangle in the top-left of each page.
+        let content = b"q 1 0 0 RG 50 700 100 50 re S Q";
+        let mut dict = lopdf::Dictionary::new();
+        dict.set("Type", lopdf::Name(b"/XObject"));
+        dict.set("Subtype", lopdf::Name(b"/Form"));
+        dict.set("BBox", lopdf::Array(vec![
+            lopdf::Object::Integer(0),
+            lopdf::Object::Integer(0),
+            lopdf::Object::Integer(100),
+            lopdf::Object::Integer(50),
+        ]));
+        let stream = lopdf::Stream::new(dict, content.to_vec());
+        let content_id = doc.add_object(lopdf::Object::Stream(stream));
+
+        // Append the new content stream to the page's Contents.
+        match page.dict.get_mut("Contents") {
+            Some(lopdf::Object::Array(ref mut arr)) => {
+                arr.push(lopdf::Object::Integer(content_id.into()));
+            }
+            Some(lopdf::Object::Integer(ref mut id)) => {
+                let old_id = *id;
+                *id = lopdf::Object::Array(vec![
+                    lopdf::Object::Integer(old_id.into()),
+                    lopdf::Object::Integer(content_id.into()),
+                ]);
+            }
+            Some(other) => {
+                return Err(DataError::Pdf(format!(
+                    "unexpected Contents type on page {page_id}: {other:?}"
+                )));
+            }
+            None => {
+                page.dict.set(
+                    "Contents",
+                    lopdf::Object::Array(vec![lopdf::Object::Integer(content_id.into())]),
+                );
+            }
+        }
+    }
+
+    doc.save(output_path)
+        .map_err(|e| DataError::Pdf(format!("could not save PDF {}: {e}", output_path.display())))?;
+
+    Ok(())
+}
+
 /// Directory holding rendered page PNGs, or `None` when no base directory can
 /// be located.
 ///
