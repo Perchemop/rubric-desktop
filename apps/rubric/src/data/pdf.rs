@@ -485,6 +485,15 @@ pub fn export_pdf_to(
         markups_by_page.entry(m.page).or_default().push(m);
     }
 
+    // Register a base-14 Helvetica font object once, for text markups.
+    let font_dict = lopdf::Dictionary::from_iter([
+        ("Type".into(), lopdf::Object::Name(b"/Font".to_vec())),
+        ("Subtype".into(), lopdf::Object::Name(b"/Type1".to_vec())),
+        ("BaseFont".into(), lopdf::Object::Name(b"/Helvetica".to_vec())),
+        ("Encoding".into(), lopdf::Object::Name(b"/WinAnsiEncoding".to_vec())),
+    ]);
+    let font_id = doc.add_object(lopdf::Object::Dictionary(font_dict));
+
     for (page_num, page_id) in doc.get_pages() {
         let page_index = (page_num - 1) as usize;
         let page_markups = markups_by_page
@@ -493,6 +502,15 @@ pub fn export_pdf_to(
             .unwrap_or_default();
         if page_markups.is_empty() {
             continue;
+        }
+
+        // Ensure the page has a Resources dictionary mapping /F1 to the font.
+        let has_text = page_markups.iter().any(|m| matches!(
+            m.geometry,
+            MarkupGeometry::Text { .. }
+        ));
+        if has_text {
+            add_font_resource_to_page(&mut doc, page_id, font_id)?;
         }
 
         let (width, height) = page_dimensions(&doc, page_id)?;
@@ -505,6 +523,51 @@ pub fn export_pdf_to(
     doc.save(output_path).map_err(|e| {
         DataError::Pdf(format!("could not save PDF {}: {e}", output_path.display()))
     })?;
+
+    Ok(())
+}
+
+/// Add a /Font resource mapping /F1 to `font_id` on `page_id`.
+fn add_font_resource_to_page(
+    doc: &mut lopdf::Document,
+    page_id: lopdf::ObjectId,
+    font_id: lopdf::ObjectId,
+) -> Result<(), DataError> {
+    use lopdf::Object;
+
+    // Clone existing Resources (if any) before mutating the page dict,
+    // because doc.add_object borrows doc mutably.
+    let existing_resources: Option<lopdf::Dictionary> = {
+        let dict = doc.get_dictionary(page_id).map_err(|e| {
+            DataError::Pdf(format!("could not get page dict: {e}"))
+        })?;
+        match dict.get(b"Resources") {
+            Some(Object::Dictionary(d)) => Some(d.clone()),
+            Some(Object::Reference(id)) => doc
+                .get_dictionary(*id)
+                .map(|d| d.clone())
+                .map_err(|e| DataError::Pdf(format!("could not get resources: {e}")))?,
+            other => {
+                return Err(DataError::Pdf(format!(
+                    "unexpected Resources type: {other:?}"
+                )));
+            }
+        }
+    };
+
+    let mut resources_dict = existing_resources.unwrap_or_default();
+
+    // Set /Font sub-dictionary referencing the shared font_id.
+    let mut font_dict = lopdf::Dictionary::new();
+    font_dict.set("/F1", Object::Reference(font_id));
+    resources_dict.set("Font", Object::Dictionary(font_dict));
+
+    // Set or replace the Resources entry on the page.
+    let resources_id = doc.add_object(Object::Dictionary(resources_dict));
+    let dict = doc.get_dictionary_mut(page_id).map_err(|e| {
+        DataError::Pdf(format!("could not get page dict: {e}"))
+    })?;
+    dict.set("Resources", Object::Reference(resources_id));
 
     Ok(())
 }
@@ -661,24 +724,30 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
                 }
             }
         }
-        MarkupGeometry::Text { .. }
-        | MarkupGeometry::Callout { .. }
-        | MarkupGeometry::Angle { .. }
-        | MarkupGeometry::Count { .. } => {
-            // Text-bearing and complex geometries are not yet rendered into
-            // the PDF overlay; they draw a placeholder rect so the export
-            // still produces valid output. A follow-up slice adds full
-            // support for text and these geometry types.
+        MarkupGeometry::Text { at, wrap: _, text } => {
+            // Draw text as a text object using a base-14 font (Helvetica).
+            // y-flip already applied via pdf_y below; baseline sits at the
+            // anchor y (domain text anchors at top-left).
+            ops.push(Operation::new("BT", vec![])); // begin text
             ops.push(Operation::new(
-                "re",
+                "Tf",
                 vec![
-                    Object::Real(50.0_f32),
-                    Object::Real(50.0_f32),
-                    Object::Real(60.0_f32),
-                    Object::Real(40.0_f32),
+                    Object::Name(b"/F1".to_vec()),
+                    Object::Real(style.font_size as f32),
                 ],
             ));
-            ops.push(Operation::new("S", vec![]));
+            ops.push(Operation::new(
+                "Td",
+                vec![
+                    Object::Real(at.x),
+                    Object::Real(pdf_y(at.y, height) - style.font_size),
+                ],
+            ));
+            ops.push(Operation::new(
+                "Tj",
+                vec![Object::string_literal(text)],
+            ));
+            ops.push(Operation::new("ET", vec![])); // end text
         }
     }
 
