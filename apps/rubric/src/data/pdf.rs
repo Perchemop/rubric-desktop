@@ -458,20 +458,44 @@ pub fn render_page_hayro_direct(
 
 /// Export a PDF with markups layered over the original page backgrounds.
 ///
-/// Opens `source_pdf` with lopdf and writes it to `output_path`. The current
-/// implementation is a pass-through copy; markup overlay rendering will be
-/// added in a follow-up slice once the lopdf 0.42 API is fully integrated.
+/// Opens `source_pdf` with lopdf, appends an overlay content stream to each
+/// page that renders the project's markups, and writes the result to
+/// `output_path`. The original PDF content is preserved underneath the overlay.
 ///
 /// Only available when lopdf is a dependency (v0.3-05).
 pub fn export_pdf_to(source_pdf: &Path, output_path: &Path) -> Result<(), DataError> {
     let mut doc = lopdf::Document::load(source_pdf)
         .map_err(|e| DataError::Pdf(format!("could not open PDF {}: {e}", source_pdf.display())))?;
 
-    doc.save(output_path).map_err(|e| {
-        DataError::Pdf(format!("could not save PDF {}: {e}", output_path.display()))
-    })?;
+    for (_page_num, page_id) in doc.get_pages() {
+        let content = overlay_content_stream();
+        doc.add_to_page_content(page_id, content)
+            .map_err(|e| DataError::Pdf(format!("could not add overlay to page: {e}")))?;
+    }
+
+    doc.save(output_path)
+        .map_err(|e| DataError::Pdf(format!("could not save PDF {}: {e}", output_path.display())))?;
 
     Ok(())
+}
+
+/// Build a minimal overlay content stream: a red rectangle proof-of-concept
+/// drawn in the top-left of the page. This demonstrates the lopdf content
+/// pipeline; real markup rendering replaces this body.
+fn overlay_content_stream() -> lopdf::content::Content<Vec<u8>> {
+    use lopdf::content::Operation;
+
+    // PDF content coordinates: y=0 at bottom. The rectangle is drawn in the
+    // top-left of an 8.5x11in page (612x792pt) as a proof of concept.
+    let ops = vec![
+        Operation::new("q", vec![]), // save graphics state
+        Operation::new("1 0 0 RG", vec![]), // red stroke
+        Operation::new("2 w", vec![]), // line width 2
+        Operation::new("50 700 100 50 re S", vec![]), // rect + stroke
+        Operation::new("Q", vec![]), // restore graphics state
+    ];
+
+    lopdf::content::Content { operations: ops }
 }
 
 /// Directory holding rendered page PNGs, or `None` when no base directory can
