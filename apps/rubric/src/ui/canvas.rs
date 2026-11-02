@@ -7,7 +7,7 @@ use crate::domain::markup::{
     count_markers_on_page, count_total_label, next_count_number, text_line_height,
 };
 use crate::domain::{
-    angle_degrees, ruler_ticks, Grid, Markup, MarkupGeometry, MarkupKind, Project, Pt,
+    angle_degrees, ruler_ticks, Corner, Grid, Markup, MarkupGeometry, MarkupKind, Project, Pt,
     Rect as DRect, ReviewStatus, Tool,
 };
 
@@ -39,6 +39,26 @@ fn screen_rect(r: DRect, origin: Pos2, pan: Vec2, zoom: f32) -> egui::Rect {
     let min = to_screen(Pt::new(r.x, r.y), pan, zoom, origin);
     let max = to_screen(Pt::new(r.right(), r.bottom()), pan, zoom, origin);
     egui::Rect::from_min_max(min, max)
+}
+
+/// Which selection-handle corner, if any, the screen point `pp` is over.
+///
+/// The hit area is slightly larger than the drawn handle so grabbing a corner
+/// does not require pixel precision (v0.4 gap #5: resize grips).
+fn handle_at(b: egui::Rect, pp: Pos2, zoom: f32) -> Option<Corner> {
+    let radius = 8.0_f32.max(4.5 * zoom.max(0.7));
+    let corners = [
+        (Corner::TopLeft, b.left_top()),
+        (Corner::TopRight, b.right_top()),
+        (Corner::BottomLeft, b.left_bottom()),
+        (Corner::BottomRight, b.right_bottom()),
+    ];
+    for (c, p) in corners {
+        if (p - pp).length() <= radius {
+            return Some(c);
+        }
+    }
+    None
 }
 
 /// Draw a small dark measurement badge with white text at `anchor` (screen
@@ -1737,12 +1757,100 @@ pub(crate) fn draw_canvas(
         }
     }
 
-    // If an edit just started, silently drop any in-progress move drag so no
-    // stray snapshot is pushed for this gesture.
+    // If an edit just started, silently drop any in-progress move/resize drag
+    // so no stray snapshot is pushed for this gesture.
     if ui_state.text_edit.is_some() {
         ui_state.move_selection = false;
         ui_state.move_changed = false;
+        ui_state.resize_corner = None;
+        ui_state.resize_changed = false;
     }
+    // Drag to resize the selection from a corner handle (v0.4 gap #5).
+    // A drag starting on a corner handle of a selected, editable markup
+    // resizes it; dragging the body or center handle moves it (below).
+    if !panning && matches!(ui_state.active_tool, Tool::Select) && ui_state.text_edit.is_none() {
+        if response.drag_started() {
+            if let Some(pp) = raw_pos {
+                if let Some(doc) = project.active() {
+                    let mut picked_corner = None;
+                    for id in &ui_state.selected {
+                        let editable = doc
+                            .find_markup(*id)
+                            .map(|m| doc.is_markup_editable(m))
+                            .unwrap_or(false);
+                        if !editable || !ui_state.selected.contains(id) {
+                            continue;
+                        }
+                        let Some(m) = doc.find_markup(*id) else {
+                            continue;
+                        };
+                        if matches!(m.geometry, MarkupGeometry::Bounds(_)) {
+                            let b = screen_rect(m.bounds(), origin, pan, zoom);
+                            let screen_pp = to_screen(pp, pan, zoom, origin);
+                            if let Some(c) = handle_at(b, screen_pp, ui_state.zoom) {
+                                picked_corner = Some(c);
+                                break;
+                            }
+                        }
+                    }
+                    if let Some(corner) = picked_corner {
+                        ui_state.resize_corner = Some(corner);
+                        ui_state.move_selection = false;
+                        ui_state.resize_changed = false;
+                    }
+                }
+            }
+        }
+
+        if let Some(corner) = ui_state.resize_corner {
+            let delta = if response.dragged() {
+                response.drag_delta()
+            } else {
+                Vec2::ZERO
+            };
+            if delta != Vec2::ZERO {
+                let dx = delta.x / ui_state.zoom;
+                let dy = delta.y / ui_state.zoom;
+                let sel: Vec<Uuid> = ui_state.selected.iter().copied().collect();
+                if let Some(doc) = project.active_mut() {
+                    for id in sel {
+                        let editable = doc
+                            .find_markup(id)
+                            .map(|m| doc.is_markup_editable(m))
+                            .unwrap_or(false);
+                        if !editable {
+                            continue;
+                        }
+                        if let Some(m) = doc.find_markup_mut(id) {
+                            if let MarkupGeometry::Bounds(r) = &m.geometry {
+                                let old = match corner {
+                                    Corner::TopLeft => Pt::new(r.x, r.y),
+                                    Corner::TopRight => Pt::new(r.right(), r.y),
+                                    Corner::BottomLeft => Pt::new(r.x, r.bottom()),
+                                    Corner::BottomRight => Pt::new(r.right(), r.bottom()),
+                                };
+                                let new_pt = Pt::new(old.x + dx, old.y + dy);
+                                if m.resize_bounds(corner, new_pt) {
+                                    if m.kind.is_measure() {
+                                        m.recompute_measurement(page.scale);
+                                    }
+                                    ui_state.resize_changed = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // Snapshot once, when the drag ends (never per frame), and only
+            // when the drag actually resized a markup.
+            if response.drag_stopped() {
+                ui_state.resize_corner = None;
+                mutated |= ui_state.resize_changed;
+                ui_state.resize_changed = false;
+            }
+        }
+    }
+
     // Drag to move the selection (when not drawing/panning).
     if !panning && matches!(ui_state.active_tool, Tool::Select) && ui_state.text_edit.is_none() {
         if response.drag_started() {
@@ -1774,7 +1882,7 @@ pub(crate) fn draw_canvas(
                         .active()
                         .and_then(|d| d.find_markup(id).map(|m| d.is_markup_editable(m)))
                         .unwrap_or(false);
-                    ui_state.selected.contains(&id) && editable
+                    ui_state.resize_corner.is_none() && ui_state.selected.contains(&id) && editable
                 })
                 .unwrap_or(false);
             ui_state.move_selection = can_move;

@@ -24,7 +24,8 @@ pub use document::{Document, Layer, LayerError, Page};
 pub use geom::{angle_degrees, path_length, polygon_area, Pt, Rect};
 pub use grid::{nice_step, ruler_ticks, Grid};
 pub use markup::{
-    Comment, Markup, MarkupGeometry, MarkupKind, Measurement, ReviewStatus, StampPreset, ToolGroup,
+    Comment, Corner, Markup, MarkupGeometry, MarkupKind, Measurement, ReviewStatus, StampPreset,
+    ToolGroup,
 };
 pub use markup_list::{MarkupGroupKey, MarkupList, MarkupListFilter, MarkupListSort, MarkupRow};
 pub use project::{

@@ -883,6 +883,57 @@ impl Markup {
     pub fn describe(&self) -> String {
         format!("{:?} on page {} by {}", self.kind, self.page, self.author)
     }
+
+    /// Resize the markup's bounding-box geometry from `corner` towards `pt`.
+    ///
+    /// Only `Bounds` geometry is resized; every other geometry kind returns
+    /// `false` unchanged. The corner opposite `corner` stays fixed and `pt`
+    /// becomes the new position of `corner`. Width/height are clamped to 1 pt
+    /// so the markup can never collapse to zero size. Returns `true` when the
+    /// geometry changed (v0.4 gap #5: resize grips).
+    pub fn resize_bounds(&mut self, corner: Corner, pt: Pt) -> bool {
+        let MarkupGeometry::Bounds(r) = &mut self.geometry else {
+            return false;
+        };
+        let old_right = r.right();
+        let old_bottom = r.bottom();
+        let old_left = r.x;
+        let old_top = r.y;
+        match corner {
+            Corner::TopLeft => {
+                r.x = pt.x.min(old_right - 1.0);
+                r.y = pt.y.min(old_bottom - 1.0);
+                r.w = (old_right - r.x).max(1.0);
+                r.h = (old_bottom - r.y).max(1.0);
+            }
+            Corner::TopRight => {
+                r.w = (pt.x.max(old_left + 1.0) - old_left).max(1.0);
+                r.y = pt.y.min(old_bottom - 1.0);
+                r.h = (old_bottom - r.y).max(1.0);
+            }
+            Corner::BottomLeft => {
+                r.x = pt.x.min(old_right - 1.0);
+                r.w = (old_right - r.x).max(1.0);
+                r.h = (pt.y.max(old_top + 1.0) - old_top).max(1.0);
+            }
+            Corner::BottomRight => {
+                r.w = (pt.x.max(old_left + 1.0) - old_left).max(1.0);
+                r.h = (pt.y.max(old_top + 1.0) - old_top).max(1.0);
+            }
+        }
+        true
+    }
+}
+
+/// A corner of a bounding-box markup that can be dragged to resize it
+/// (v0.4 gap #5: resize grips).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Corner {
+    #[default]
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
 }
 
 impl MarkupStyle {
@@ -1874,5 +1925,86 @@ mod tests {
         assert_eq!(m.comments[0].author, "Ann");
         assert_eq!(m.comments[0].text, "looks good");
         assert!(m.modified >= before);
+    }
+
+    #[test]
+    fn resize_bounds_drags_each_corner() {
+        let mut m = Markup::new(
+            0,
+            MarkupKind::Rectangle,
+            MarkupGeometry::Bounds(Rect::new(10.0, 20.0, 60.0, 40.0)),
+            "t",
+        );
+        let id = m.id;
+
+        // Bottom-right: drag to (90, 70) → grows right and down.
+        assert!(m.resize_bounds(Corner::BottomRight, Pt::new(90.0, 70.0)));
+        assert_eq!(
+            m.geometry.bounds(),
+            Rect::new(10.0, 20.0, 80.0, 50.0),
+            "bottom-right grows w/h"
+        );
+
+        // Top-left: drag to (20, 30) → shrinks from top-left.
+        assert!(m.resize_bounds(Corner::TopLeft, Pt::new(20.0, 30.0)));
+        assert_eq!(
+            m.geometry.bounds(),
+            Rect::new(20.0, 30.0, 70.0, 40.0),
+            "top-left moves left/top up"
+        );
+
+        // Top-right: drag to (100, 25) → grows right, shrinks top; bottom stays at 70.
+        assert!(m.resize_bounds(Corner::TopRight, Pt::new(100.0, 25.0)));
+        assert_eq!(
+            m.geometry.bounds(),
+            Rect::new(20.0, 25.0, 80.0, 45.0),
+            "top-right grows right, top up, bottom fixed"
+        );
+
+        // Bottom-left: drag to (5, 60) → grows left, grows down.
+        assert!(m.resize_bounds(Corner::BottomLeft, Pt::new(5.0, 60.0)));
+        assert_eq!(
+            m.geometry.bounds(),
+            Rect::new(5.0, 25.0, 95.0, 35.0),
+            "bottom-left moves left, bottom down"
+        );
+        assert_eq!(m.id, id, "id unchanged by resize");
+    }
+
+    #[test]
+    fn resize_bounds_clamps_to_one_pt() {
+        let mut m = Markup::new(
+            0,
+            MarkupKind::Rectangle,
+            MarkupGeometry::Bounds(Rect::new(10.0, 10.0, 10.0, 10.0)),
+            "t",
+        );
+        // Drag bottom-right all the way to top-left → clamps at 1x1.
+        m.resize_bounds(Corner::BottomRight, Pt::new(9.0, 9.0));
+        assert_eq!(m.geometry.bounds(), Rect::new(10.0, 10.0, 1.0, 1.0));
+        // Drag top-left all the way to bottom-right → clamps at 1x1.
+        m.resize_bounds(Corner::TopLeft, Pt::new(10.9, 10.9));
+        assert_eq!(m.geometry.bounds(), Rect::new(10.0, 10.0, 1.0, 1.0));
+    }
+
+    #[test]
+    fn resize_bounds_skips_non_bounds_geometry() {
+        let mut m = Markup::new(
+            0,
+            MarkupKind::Line,
+            MarkupGeometry::Segment {
+                a: Pt::new(0.0, 0.0),
+                b: Pt::new(10.0, 10.0),
+            },
+            "t",
+        );
+        assert!(!m.resize_bounds(Corner::BottomRight, Pt::new(50.0, 50.0)));
+        assert_eq!(
+            m.geometry.bounds(),
+            Rect::new(0.0, 0.0, 10.0, 10.0),
+            "segment bounds unchanged"
+        );
+        // Lock is enforced by the caller (canvas checks is_markup_editable),
+        // not by resize_bounds itself.
     }
 }
