@@ -6,6 +6,32 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ### Added
 
+- **v0.4-03**: duplicate selected markups (gap #6, PR #93, commit `8a70739`)
+  - `Document::duplicate_markups(ids, offset)` clones each editable markup with
+    a fresh id and timestamps, translated geometry, recomputed measurements,
+    appended on top of its source; locked and missing ids are skipped
+  - `EditorAction::Duplicate` ("Duplicate", `Ctrl+D`) in the Edit and context
+    menus; selects the clones and pushes one undo snapshot
+
+### Fixed
+
+- **Audit follow-ups**: additional medium fixes from the v0.3 full-app audit
+  - **M18** (PR #90): the canvas renders the PDF page background at a width that
+    tracks the current zoom (oversampled, quantised to coarse steps) so page
+    text stays sharp when zoomed in, instead of a single ~144 dpi raster
+  - **M24** (PR #90): the inspector's layer-name drafts, stroke-colour commit
+    debounce and last-scale-page marker moved out of thread-locals into
+    `UiState`
+  - **WCAG** (PR #90): the Markups List status text uses a darkened
+    `ReviewStatus::text_color` on the light theme (the bright amber swatch was
+    only ~1.9:1 on white); the dark theme keeps the swatch. A domain test
+    asserts WCAG AA against the light panel and stripe
+  - **M5** (PR #91): menu items show their keyboard shortcuts (`Button::
+    shortcut_text`); `Ctrl+A` Select All added and shared by the menu and the
+    keyboard; the hint bar lists Open/Select All/Esc
+  - **Quit** (PR #92): the unsaved-changes dialog gained **Save and Quit**,
+    which only closes after a successful save
+
 - **v0.3-02 Phase 1**: hayro-syntax page-size probing for pure-Rust PDF engine adoption (H8 follow-up)
   - Added optional `hayro-syntax v0.8` dependency with `hayro` feature flag
   - Implemented `probe_pages_hayro()` using hayro-syntax v0.8 API

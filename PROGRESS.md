@@ -1,5 +1,28 @@
 # PROGRESS.md
 
+## 2026-11-02 — audit follow-ups + v0.4-03 duplicate (PRs #90–#93)
+**Status**: merged to main; CI green on each PR.
+
+### Completed
+- **M18** (PR #90): canvas PDF background raster width tracks zoom
+  (oversampled ×1.25, quantised to 256-px steps, clamped to
+  `MAX_RENDER_WIDTH_PX`), replacing the fixed ~144 dpi raster.
+- **M24** (PR #90): inspector thread-locals (layer-name drafts, colour-pending
+  debounce, last-scale-page) moved into `UiState`.
+- **WCAG** (PR #90): Markups List status text uses `ReviewStatus::text_color`
+  on the light theme; domain test asserts AA on the light panel/stripe.
+- **M5** (PR #91): menu items render their shortcuts; `Ctrl+A` Select All
+  shared by menu and keyboard; hint bar expanded.
+- **Quit** (PR #92): unsaved-changes dialog gained **Save and Quit**.
+- **v0.4-03** (PR #93): `Document::duplicate_markups` + `EditorAction::Duplicate`
+  (Ctrl+D), Edit/context menu entries, one snapshot, domain + action tests
+  (`ALL` now 15 entries).
+
+### Next
+- v1.0-0: multi-platform installer verification (macOS, Windows hands-on)
+- Remaining v0.4 gap-list items (resize grips, drag calibration, tool-chest UI,
+  editable Markups List console)
+
 ## 2026-11-02 — v0.3-04 M5 + v0.4-02 (export crop, batch status)
 **Status**: merged to main (PR #88, commit `8bc2601`); CI green on PR #88.
 

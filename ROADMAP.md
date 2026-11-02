@@ -94,6 +94,11 @@ so they do not move the 52-feature readiness table above.
 - [x] **v0.4-02**: batch status (gap #3) — `EditorAction::BatchStatus` +
       `Document::apply_status_to`, plus multi-select status dropdowns in the
       Inspector and the Markups List — PR #88 merged (commit `8bc2601`)
+- [x] **v0.4-03**: duplicate markups (gap #6) — `Document::duplicate_markups` +
+      `EditorAction::Duplicate` (Ctrl+D) — PR #93 merged (commit `8a70739`)
+- [x] Audit follow-ups (PRs #90–#92): M18 zoom-sharp page raster, M24
+      thread-locals into `UiState`, WCAG status text, M5 menu shortcut hints +
+      Ctrl+A, Save-and-Quit
 
 ### v1.0.0 — finished (guide §9)
 
