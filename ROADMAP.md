@@ -72,15 +72,28 @@ Small, low-risk completions; each its own Task + release.
 - [x] **v0.3-02 Phase 2**: hayro rendering pipeline (H8) — PR #67 merged
 - [x] **v0.3-02 Phase 3**: corpus fidelity tests (≥95% pixel match vs PDFium) — PR #74 merged
 - [x] **v0.3-04 (M4)**: export/print report a failed PDF background instead of a blank page
-- [ ] **v0.3-04 (M5)**: fixed-DPI, page-cropped export/print (pending export-scope decision)
+- [x] **v0.3-04 (M5)**: fixed-DPI, page-cropped export/print — owner decision:
+      crop to page bounds at 150 DPI; export render suppresses backdrop, page
+      border, grid and rulers; PDF overlay cropped via `markup_intersects_page`
+      — PR #88 merged (commit `8bc2601`)
 - [x] **v0.3-05**: `lopdf` write support (Export PDF…) — PRs #79-84 merged
-- [x] **v0.4-01**: multi-select (gap #2) — Shift+click toggle + marquee drag — PR #86 merged
 - [x] Process: `docs/capability-inventory.md` (guide II.27.3) — capability rows with source URLs, acceptance criteria and evidence (gap G3 in `docs/guide-compliance.md`) — 2026-10-30
 - [ ] Process: extract a `Host`/plain-`Ui` seam from `RubricApp` so `egui_kittest` can render real widgets to PNG as CI visual evidence (guide II.27.12, gap G4)
 - [ ] Empty / error states for every panel; no dead controls
 - [x] ~~`gitleaks` (or GitHub secret scanning) in CI~~ — done early 2026-10-24:
       push-protected secret scanning at repo level plus an in-CI pattern scan
       (`security.yml`, R-C-009) and CodeQL SAST (R-C-011)
+
+### v0.4.0 — capability-gap follow-ups
+
+Items from the ranked gap list in
+`docs/research/v0.4-capability-gap-analysis.md`; they are not spec feature IDs,
+so they do not move the 52-feature readiness table above.
+
+- [x] **v0.4-01**: multi-select (gap #2) — Shift+click toggle + marquee drag — PR #86 merged
+- [x] **v0.4-02**: batch status (gap #3) — `EditorAction::BatchStatus` +
+      `Document::apply_status_to`, plus multi-select status dropdowns in the
+      Inspector and the Markups List — PR #88 merged (commit `8bc2601`)
 
 ### v1.0.0 — finished (guide §9)
 

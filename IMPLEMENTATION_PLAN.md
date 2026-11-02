@@ -116,7 +116,11 @@
 
 ### v0.3-04 — PDF export/print fixes (M4/M5)
 - [x] M4: export/print report a failed PDF page background instead of a blank page (+ test)
-- [ ] M5: fixed-DPI, page-cropped export/print (pending the export-scope decision)
+- [x] M5: fixed-DPI, page-cropped export/print — owner decision: crop to page
+  bounds at 150 DPI (`EXPORT_DPI`); the export pass draws the page without
+  backdrop, page border, grid or rulers (`draw_canvas(..., is_export = true)`),
+  and `export_pdf_to` crops markups via `markup_intersects_page` (PR #88,
+  commit `8bc2601`)
 - Task brief: `docs/tasks/v0.3-04-pdf-export-fix.md`
 
 ### v0.3-05 — lopdf write support
@@ -132,6 +136,17 @@
 - [x] Select All already available via Edit menu
 - Task brief: `docs/tasks/v0.4-01-multi-select.md`
 
+### v0.4-02 — batch status (gap #3)
+- [x] `EditorAction::BatchStatus(ReviewStatus)` added (`ALL` now 14 entries)
+  and `Document::apply_status_to(ids, status)` applies one status to many
+  markups
+- [x] `RubricApp::apply_batch_status` routes the action through the existing
+  undo-snapshot and dirty-marking path (`ui/app.rs`)
+- [x] Multi-select status dropdowns in the Inspector and the Markups List
+  (`draw_markups_list` now takes `&mut Project`)
+- Evidence: PR #88, commit `8bc2601`; CI green on PR #88
+- Task brief: not created for this slice; scope recorded in `PROGRESS.md`
+  (2026-11-02)
 
 ### v1.0-0 — installer verification
 - [ ] Multi-platform installer verification (Linux ✅, macOS, Windows)

@@ -86,6 +86,18 @@ fn status_color(status: ReviewStatus) -> egui::Color32 {
     egui::Color32::from_rgba_unmultiplied(c.r, c.g, c.b, c.a)
 }
 
+/// Status colour for *text*: the bright swatch on the dark chrome (where it
+/// already reads), and the darkened [`ReviewStatus::text_color`] on the light
+/// chrome, where the swatch fails WCAG AA (the amber is only ≈ 1.9:1 on white).
+fn status_text_color(status: ReviewStatus, dark: bool) -> egui::Color32 {
+    let c = if dark {
+        status.color()
+    } else {
+        status.text_color()
+    };
+    egui::Color32::from_rgba_unmultiplied(c.r, c.g, c.b, c.a)
+}
+
 /// Keep a table cell from stretching the panel on a long value.
 fn truncate(value: &str, max_chars: usize) -> String {
     if value.chars().count() <= max_chars {
@@ -383,6 +395,7 @@ fn render_rows(
     id_salt: &str,
 ) -> Option<MarkupListAction> {
     let mut action = None;
+    let dark = ui.visuals().dark_mode;
     egui::Grid::new(format!("markups-grid-{id_salt}"))
         .num_columns(6)
         .striped(true)
@@ -419,7 +432,8 @@ fn render_rows(
                 clicked |= ui
                     .selectable_label(
                         selected,
-                        RichText::new(row.status.label()).color(status_color(row.status)),
+                        RichText::new(row.status.label())
+                            .color(status_text_color(row.status, dark)),
                     )
                     .on_hover_text(row.status.label())
                     .clicked();
