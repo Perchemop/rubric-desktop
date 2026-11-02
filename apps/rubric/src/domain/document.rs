@@ -395,6 +395,45 @@ impl Document {
         changed
     }
 
+    /// Duplicate every editable markup in `ids`, nudged by `offset` page
+    /// points (v0.4 gap #6: no duplicate/copy-paste existed). Returns the new
+    /// ids in input order; locked or missing ids are skipped.
+    ///
+    /// Each clone gets a fresh id and timestamps and keeps its source's page,
+    /// geometry (translated), style, metadata, review status, comments, lock
+    /// state and layer. Measurements are recomputed for the moved geometry, and
+    /// the clone is appended after its source so it paints on top.
+    pub fn duplicate_markups(&mut self, ids: &[Uuid], offset: (f32, f32)) -> Vec<Uuid> {
+        let mut new_ids = Vec::new();
+        for id in ids {
+            // Check editability under an immutable borrow that ends before the
+            // clone is pushed.
+            let editable = self
+                .find_markup(*id)
+                .is_some_and(|markup| self.is_markup_editable(markup));
+            if !editable {
+                continue;
+            }
+            let Some(mut clone) = self.find_markup(*id).cloned() else {
+                continue;
+            };
+            clone.id = Uuid::new_v4();
+            let now = Utc::now();
+            clone.created = now;
+            clone.modified = now;
+            clone.geometry.translate(offset.0, offset.1);
+            if let Some(page) = self.pages.get(clone.page) {
+                clone.recompute_measurement(page.scale);
+            }
+            new_ids.push(clone.id);
+            self.markups.push(clone);
+        }
+        if !new_ids.is_empty() {
+            self.touch();
+        }
+        new_ids
+    }
+
     /// Apply `status` to every editable markup in `ids` and return the number
     /// changed.
     ///
@@ -803,6 +842,43 @@ mod tests {
         assert_eq!(first.subject, "Keep me");
         assert_eq!(first.status, crate::domain::markup::ReviewStatus::Approved);
         assert_eq!(doc.find_markup(locked_id).unwrap().style, locked_style);
+    }
+
+    #[test]
+    fn duplicate_markups_clones_editable_sources_with_fresh_ids_and_offset() {
+        let mut doc = Document::empty("Doc");
+        let mut src = markup();
+        src.author = "Author".to_string();
+        src.status = ReviewStatus::Approved;
+        let src_id = src.id;
+        let src_style = src.style;
+        let mut locked = markup();
+        locked.locked = true;
+        let locked_id = locked.id;
+        doc.add_markup(src);
+        doc.add_markup(locked);
+
+        let new_ids = doc.duplicate_markups(&[src_id, locked_id, Uuid::new_v4()], (5.0, 7.0));
+
+        // Only the editable source is duplicated; locked and missing ids skip.
+        assert_eq!(new_ids.len(), 1);
+        let dup = doc.find_markup(new_ids[0]).expect("duplicate exists");
+        assert_ne!(dup.id, src_id, "the clone gets a fresh id");
+        assert_eq!(dup.author, "Author");
+        assert_eq!(dup.status, ReviewStatus::Approved);
+        assert_eq!(dup.style, src_style);
+        // Geometry is translated by the offset.
+        let MarkupGeometry::Bounds(r) = dup.geometry else {
+            panic!("expected bounds geometry");
+        };
+        assert_eq!((r.x, r.y), (5.0, 7.0));
+        // The original is untouched.
+        let MarkupGeometry::Bounds(orig) = doc.find_markup(src_id).unwrap().geometry else {
+            panic!("expected bounds geometry");
+        };
+        assert_eq!((orig.x, orig.y), (0.0, 0.0));
+        // The clone paints on top of its source (appended last).
+        assert_eq!(doc.markups.last().map(|m| m.id), Some(new_ids[0]));
     }
 
     #[test]
