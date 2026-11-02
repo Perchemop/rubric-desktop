@@ -209,7 +209,8 @@ impl Default for UiState {
             pan: Vec2::ZERO,
             canvas_size: Vec2::ZERO,
             page_origin: Pos2::new(40.0, 40.0),
-            hint: "Ctrl+S: Save  ·  Ctrl+Z: Undo  ·  Ctrl+Y: Redo  ·  Del: Delete".to_string(),
+            hint: "Ctrl+S Save · Ctrl+O Open · Ctrl+Z Undo · Ctrl+Y Redo · Ctrl+A Select All · Del Delete · Esc Cancel"
+                .to_string(),
             status: "Ready".to_string(),
             draw_cancelled: false,
             last_tool: Tool::Select,
@@ -542,6 +543,30 @@ impl RubricApp {
                 if changed == 1 { "" } else { "s" }
             );
         }
+    }
+
+    /// Select every editable markup on the current page (Edit ▸ Select All,
+    /// Ctrl+A; full-app audit M10). Shared by the menu entry and the keyboard
+    /// shortcut so the two cannot diverge.
+    fn select_all_on_page(&mut self) {
+        let page = self.ui.current_page;
+        let ids: Vec<Uuid> = self
+            .active_doc()
+            .map(|d| {
+                d.markups
+                    .iter()
+                    .filter(|m| m.page == page && d.is_markup_editable(m))
+                    .map(|m| m.id)
+                    .collect()
+            })
+            .unwrap_or_default();
+        self.ui.selected = ids.into_iter().collect();
+        let n = self.ui.selected.len();
+        self.ui.status = if n == 0 {
+            "Nothing to select on this page".to_string()
+        } else {
+            format!("Selected {n} markup{}", if n == 1 { "" } else { "s" })
+        };
     }
 
     /// The selected id when exactly one markup is selected.
@@ -1111,7 +1136,7 @@ impl RubricApp {
                     );
                     ui.close();
                 }
-                if ui.button("Open Project...").clicked() {
+                if menu_shortcut_button(ui, "Open Project...", "Ctrl+O") {
                     if let Some(path) = rfd::FileDialog::new()
                         .add_filter("Rubric project", &["rubric.json"])
                         .pick_file()
@@ -1247,7 +1272,7 @@ impl RubricApp {
                         }
                     }
                 });
-                if ui.button("Save Project").clicked() {
+                if menu_shortcut_button(ui, "Save Project", "Ctrl+S") {
                     self.save_project_action();
                     ui.close();
                 }
@@ -1299,14 +1324,20 @@ impl RubricApp {
             });
             ui.menu_button("Edit", |ui| {
                 if ui
-                    .add_enabled(self.history.can_undo(), egui::Button::new("Undo"))
+                    .add_enabled(
+                        self.history.can_undo(),
+                        egui::Button::new("Undo").shortcut_text("Ctrl+Z"),
+                    )
                     .clicked()
                 {
                     self.apply_editor_action(EditorAction::Undo);
                     ui.close();
                 }
                 if ui
-                    .add_enabled(self.history.can_redo(), egui::Button::new("Redo"))
+                    .add_enabled(
+                        self.history.can_redo(),
+                        egui::Button::new("Redo").shortcut_text("Ctrl+Y"),
+                    )
                     .clicked()
                 {
                     self.apply_editor_action(EditorAction::Redo);
@@ -1316,25 +1347,8 @@ impl RubricApp {
                 // Select All (full-app audit M10): select every editable,
                 // visible markup on the current page — the delete and
                 // apply-style paths already operate on the whole selection.
-                if ui.button("Select All").clicked() {
-                    let doc = self.active_doc();
-                    let page = self.ui.current_page;
-                    let ids: Vec<_> = doc
-                        .map(|d| {
-                            d.markups
-                                .iter()
-                                .filter(|m| m.page == page && d.is_markup_editable(m))
-                                .map(|m| m.id)
-                                .collect()
-                        })
-                        .unwrap_or_default();
-                    self.ui.selected = ids.into_iter().collect();
-                    let n = self.ui.selected.len();
-                    self.ui.status = if n == 0 {
-                        "Nothing to select on this page".to_string()
-                    } else {
-                        format!("Selected {n} markup{}", if n == 1 { "" } else { "s" })
-                    };
+                if menu_shortcut_button(ui, "Select All", "Ctrl+A") {
+                    self.select_all_on_page();
                     ui.close();
                 }
                 ui.separator();
@@ -1353,10 +1367,10 @@ impl RubricApp {
                 ui.separator();
                 // Page navigation in the menu (full-app audit M10): the arrows
                 // and PageUp/PageDown were the only paths before.
-                if ui.button("Previous Page").clicked() {
+                if menu_shortcut_button(ui, "Previous Page", "PageUp") {
                     self.jump_to_page(self.ui.current_page.saturating_sub(1));
                 }
-                if ui.button("Next Page").clicked() {
+                if menu_shortcut_button(ui, "Next Page", "PageDown") {
                     let count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
                     if self.ui.current_page + 1 < count {
                         self.jump_to_page(self.ui.current_page + 1);
@@ -1596,6 +1610,13 @@ fn open_url(url: &str) -> Result<(), String> {
     }
 }
 
+/// A menu button that renders its keyboard shortcut on the right (full-app
+/// audit M5). Returns true when clicked.
+fn menu_shortcut_button(ui: &mut Ui, label: &str, shortcut: &str) -> bool {
+    ui.add(egui::Button::new(label).shortcut_text(shortcut))
+        .clicked()
+}
+
 /// Map an egui [`Key`] to the char used by [`Tool::shortcut_key`] /
 /// [`Tool::from_shortcut_key`], or `None` when the key is not a tool shortcut.
 ///
@@ -1699,6 +1720,15 @@ impl App for RubricApp {
                 // save_project_to sets an accurate "Saved" / "Save failed: …"
                 // status; no override here.
                 self.save_project_action();
+            }
+            if i.modifiers.command && i.key_pressed(egui::Key::A) && !wants_kb {
+                // Select All on the current page (full-app audit M5/M10); the
+                // same path as Edit ▸ Select All.
+                if self.ui.text_edit.is_some() {
+                    self.ui.status = "Finish or cancel text edit first".to_string();
+                } else {
+                    self.select_all_on_page();
+                }
             }
             if i.key_pressed(egui::Key::PageUp) && !wants_kb {
                 // Never switch pages mid-edit: the edit context would be lost

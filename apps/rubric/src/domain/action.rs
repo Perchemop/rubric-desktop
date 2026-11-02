@@ -65,6 +65,18 @@ impl EditorAction {
         }
     }
 
+    /// The keyboard shortcut shown next to the menu label, when one exists
+    /// (full-app audit M5). Only shortcuts the app actually handles are
+    /// returned, so the hint never lies; `None` leaves the entry bare.
+    pub fn shortcut_hint(self) -> Option<&'static str> {
+        match self {
+            EditorAction::Undo => Some("Ctrl+Z"),
+            EditorAction::Redo => Some("Ctrl+Y"),
+            EditorAction::DeleteSelection => Some("Del"),
+            _ => None,
+        }
+    }
+
     /// Whether the action does anything given the current selection and
     /// whether a style has been copied.
     ///
@@ -119,6 +131,22 @@ mod tests {
                 "{a:?} should accept a multi-selection"
             );
         }
+    }
+
+    #[test]
+    fn shortcut_hints_only_exist_for_bound_shortcuts() {
+        // Hints must match shortcuts the app actually handles (full-app audit
+        // M5); anything else stays unlabelled so the menu never lies.
+        assert_eq!(EditorAction::Undo.shortcut_hint(), Some("Ctrl+Z"));
+        assert_eq!(EditorAction::Redo.shortcut_hint(), Some("Ctrl+Y"));
+        assert_eq!(EditorAction::DeleteSelection.shortcut_hint(), Some("Del"));
+        assert_eq!(EditorAction::ClearSelection.shortcut_hint(), None);
+        assert_eq!(EditorAction::CopyProperties.shortcut_hint(), None);
+        assert_eq!(EditorAction::FitPage.shortcut_hint(), None);
+        assert_eq!(
+            EditorAction::BatchStatus(ReviewStatus::Open).shortcut_hint(),
+            None
+        );
     }
 
     #[test]
