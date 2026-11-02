@@ -160,6 +160,43 @@
   and action tests
 - Evidence: PR #93, commit `8a70739`; CI green on PR #93
 
+### v0.4-04 … v0.4-08 — remaining ranked capability gaps
+- [x] **v0.4-04 — flatten-to-PDF (gap #1)**: `data/export.rs`
+      `export_page_to_pdf(source, page_index, out, markups)` renders one page
+      with its markups overlaid (lopdf `delete_pages` + `prune_objects` +
+      `renumber_objects` to keep only the requested page);
+      `export_all_pages_to_pdf` delegates to the existing `export_pdf_to`.
+      File menu items "Export Page to PDF…" / "Export All Pages to PDF…" with
+      native `rfd` dialogs, gated on having a source PDF. 8 unit tests.
+- [x] **v0.4-05 — drag calibration (gap #4)**: `Tool::Calibrate` (shortcut `k`,
+      not a markup; `Tool::ALL` now 25 variants); `calibrate_scale()` in
+      `domain/units.rs` delegates to `Scale::from_ratio` (7 tests); two-click
+      canvas interaction with a live length badge; `CalibrationDialog` window
+      pre-filled with the measured length; one snapshot on Apply.
+- [x] **v0.4-06 — resize grips (gap #5, first slice)**: `Corner` enum +
+      `Markup::resize_bounds()` in `domain/markup.rs` (clamps to 1×1 pt; skips
+      non-Bounds geometry; 4 tests); canvas corner-handle hit-testing
+      (`handle_at`) with drag-to-resize; move and resize mutually exclusive; one
+      snapshot on drag end. Segment endpoints/vertices remain follow-ups per the
+      gap list.
+- [x] **v0.4-07 — tool chest (gap #7)**: `StylePreset::from_style()` +
+      `StylePresetLibrary::save_named()` (case-insensitive dedupe) in
+      `domain/style_preset.rs` (3 new tests); new `ui/tool_chest.rs` "My Tools"
+      left panel (preset CRUD, apply-to-selection, apply-at-creation hook in
+      `finish_markup` via `UiState::pending_style_preset`, stamps excluded);
+      View ▸ Show Tool Chest toggle.
+- [x] **v0.4-08 — editable Markups List console (gap #8)**: inline per-row
+      status ComboBox (dimmed when locked) applying `apply_status_to` with one
+      snapshot per change; measurement totals footer over the **filtered** view
+      (per-kind subtotals, area squared, count markers); "Export CSV…" with an
+      `rfd` save dialog (Page, Kind, Author, Subject, Status, Measurement,
+      Comments columns). `draw_markups_list` returns
+      `(Option<MarkupListAction>, bool)` for snapshot signalling.
+- Evidence: PR #96, commits `39f7cc9`…`74ede47`; CI green on PR #96. With these
+  slices all eight ranked gaps in
+  `docs/research/v0.4-capability-gap-analysis.md` are closed (gap #5 partially:
+  Bounds resize shipped, segment/vertex editing is a follow-up).
+
 ### Audit follow-ups (M18, M24, WCAG, M5, Quit)
 - [x] M18: canvas background raster width tracks zoom (PR #90)
 - [x] M24: inspector thread-locals moved into `UiState` (PR #90)

@@ -13,7 +13,50 @@ All notable changes to this project will be documented here. Format: semantic-is
   - `EditorAction::Duplicate` ("Duplicate", `Ctrl+D`) in the Edit and context
     menus; selects the clones and pushes one undo snapshot
 
+- **v0.4-04**: flatten markups to PDF (gap #1, PR #96)
+  - `data/export.rs` `export_page_to_pdf(source, page_index, out, markups)`
+    renders a single page with its markups overlaid, using lopdf
+    `delete_pages` + `prune_objects` + `renumber_objects` to keep only the
+    requested page; `export_all_pages_to_pdf` delegates to `export_pdf_to`
+  - File ▸ **Export Page to PDF…** and **Export All Pages to PDF…** with native
+    `rfd` dialogs, gated on having a source PDF
+  - 8 unit tests
+
+- **v0.4-05**: drag calibration (gap #4, PR #96)
+  - `Tool::Calibrate` (shortcut `k`; not a markup; `Tool::ALL` now 25 variants)
+    with a two-click canvas interaction and a live length badge
+  - `calibrate_scale()` in `domain/units.rs` delegates to `Scale::from_ratio`
+    (7 tests)
+  - `CalibrationDialog` window pre-filled with the measured length; applying
+    pushes one undo snapshot
+
+- **v0.4-06**: resize grips (gap #5, first slice, PR #96)
+  - `Corner` enum + `Markup::resize_bounds()` in `domain/markup.rs`, clamping to
+    a 1×1 pt minimum and skipping non-Bounds geometry (4 tests)
+  - Canvas corner-handle hit-testing (`handle_at`) with drag-to-resize; moving
+    and resizing are mutually exclusive; one snapshot on drag end
+
+- **v0.4-07**: tool chest (gap #7, PR #96)
+  - `StylePreset::from_style()` and `StylePresetLibrary::save_named()`
+    (case-insensitive dedupe) in `domain/style_preset.rs` (3 new tests)
+  - New **My Tools** left panel (`ui/tool_chest.rs`): preset create/rename/
+    delete, apply-to-selection, and an apply-at-creation hook in `finish_markup`
+    via `UiState::pending_style_preset` (stamps excluded)
+  - View ▸ **Show Tool Chest** toggle
+
+- **v0.4-08**: editable Markups List console (gap #8, PR #96)
+  - Inline per-row status ComboBox (dimmed when the row is locked) applying
+    `apply_status_to`, with one undo snapshot per change
+  - Measurement totals footer over the **filtered** view: per-kind subtotals,
+    area squared, count markers
+  - **Export CSV…** with an `rfd` save dialog (Page, Kind, Author, Subject,
+    Status, Measurement, Comments columns); `draw_markups_list` returns
+    `(Option<MarkupListAction>, bool)` so the caller can signal a snapshot
+
 ### Fixed
+
+- **Build** (PR #96): `Cargo.lock` bumped the yanked `async-executor` 1.14.0 to
+  1.14.1 so dependency resolution no longer pulls a withdrawn crate.
 
 - **Audit follow-ups**: additional medium fixes from the v0.3 full-app audit
   - **M18** (PR #90): the canvas renders the PDF page background at a width that
