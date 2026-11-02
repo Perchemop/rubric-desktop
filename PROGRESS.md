@@ -1,5 +1,45 @@
 # PROGRESS.md
 
+## 2026-11-03 — v0.4-04…v0.4-08 (flatten, calibration, resize grips, tool chest, editable list)
+**Status**: merged to main (PR #96, commit `74ede47`); CI green on PR #96.
+
+### Completed
+- **v0.4-04 — flatten-to-PDF (gap #1).** `data/export.rs`
+  `export_page_to_pdf(source, page_index, out, markups)` renders one page with
+  its markups overlaid; lopdf `delete_pages` + `prune_objects` +
+  `renumber_objects` keep only the requested page. `export_all_pages_to_pdf`
+  delegates to the existing `export_pdf_to`. File ▸ "Export Page to PDF…" and
+  "Export All Pages to PDF…" with native `rfd` dialogs, gated on a source PDF.
+  8 unit tests.
+- **v0.4-05 — drag calibration (gap #4).** `Tool::Calibrate` (shortcut `k`,
+  not a markup; `Tool::ALL` now 25 variants) with a two-click canvas
+  interaction and live length badge; `calibrate_scale()` in `domain/units.rs`
+  delegates to `Scale::from_ratio` (7 tests); `CalibrationDialog` pre-fills the
+  measured length and Apply pushes one snapshot.
+- **v0.4-06 — resize grips (gap #5, first slice).** `Corner` enum +
+  `Markup::resize_bounds()` in `domain/markup.rs` (1×1 pt clamp, non-Bounds
+  geometry skipped; 4 tests); canvas corner-handle hit-testing (`handle_at`)
+  with drag-to-resize; move and resize mutually exclusive; one snapshot on drag
+  end. Segment endpoints/vertices remain follow-ups.
+- **v0.4-07 — tool chest (gap #7).** `StylePreset::from_style()` +
+  `StylePresetLibrary::save_named()` (case-insensitive dedupe, 3 new tests);
+  new `ui/tool_chest.rs` "My Tools" left panel with preset CRUD,
+  apply-to-selection, and an apply-at-creation hook in `finish_markup` via
+  `UiState::pending_style_preset` (stamps excluded); View ▸ Show Tool Chest.
+- **v0.4-08 — editable Markups List console (gap #8).** Inline per-row status
+  ComboBox (dimmed when locked) applying `apply_status_to` with one snapshot per
+  change; measurement totals footer over the filtered view (per-kind subtotals,
+  area squared, count markers); "Export CSV…" with an `rfd` save dialog (Page,
+  Kind, Author, Subject, Status, Measurement, Comments);
+  `draw_markups_list` returns `(Option<MarkupListAction>, bool)`.
+- **Build**: `Cargo.lock` bumped the yanked `async-executor` 1.14.0 → 1.14.1.
+- All eight ranked gaps in `docs/research/v0.4-capability-gap-analysis.md` are
+  now closed (gap #5 partly — Bounds resize shipped).
+
+### Next
+- v1.0-0: multi-platform installer verification (macOS, Windows hands-on)
+- Resize-grip follow-ups: segment endpoints and path vertices
+
 ## 2026-11-02 — audit follow-ups + v0.4-03 duplicate (PRs #90–#93)
 **Status**: merged to main; CI green on each PR.
 
