@@ -1,8 +1,5 @@
 //! Inspector: properties, comments, measurement display and settings.
 
-use std::cell::RefCell;
-use std::collections::HashMap;
-
 use uuid::Uuid;
 
 use eframe::egui::{self, ComboBox, Ui};
@@ -26,13 +23,6 @@ fn domain_to_color32(c: Color) -> egui::Color32 {
 /// Whether two scales describe the same mapping, within float tolerance.
 fn same_scale(a: Scale, b: Scale) -> bool {
     a.unit == b.unit && (a.units_per_point - b.units_per_point).abs() < 1e-9
-}
-
-// UI-only session state that cannot live in UiState (which we may not extend).
-thread_local! {
-    static LAYER_NAMES: RefCell<HashMap<Uuid, String>> = RefCell::new(HashMap::new());
-    static COLOUR_PENDING: RefCell<Option<egui::Color32>> = const { RefCell::new(None) };
-    static LAST_SCALE_PAGE: RefCell<Option<usize>> = const { RefCell::new(None) };
 }
 
 pub(crate) fn draw_inspector(
@@ -133,19 +123,21 @@ pub(crate) fn draw_inspector(
                 }
                 // Editable layer name (rename): edit a local buffer, commit on
                 // lost focus (Enter included), never more than one snapshot.
-                let mut name = LAYER_NAMES
-                    .with(|m| m.borrow().get(&id).cloned())
+                let mut name = ui_state
+                    .layer_name_drafts
+                    .get(&id)
+                    .cloned()
                     .unwrap_or_else(|| layer.name.clone());
                 let name_resp = ui
                     .add(egui::TextEdit::singleline(&mut name).desired_width(120.0))
                     .on_hover_text("Layer name");
                 if name_resp.changed() {
-                    LAYER_NAMES.with(|m| m.borrow_mut().insert(id, name.clone()));
+                    ui_state.layer_name_drafts.insert(id, name.clone());
                 }
                 if name_resp.lost_focus() {
                     if let Some(doc) = project.active_mut() {
                         if doc.rename_layer(id, &name) {
-                            LAYER_NAMES.with(|m| m.borrow_mut().remove(&id));
+                            ui_state.layer_name_drafts.remove(&id);
                             committed = true;
                             ui_state.status = format!("Layer renamed to '{}'", name.trim());
                         } else {
@@ -224,16 +216,9 @@ pub(crate) fn draw_inspector(
         let mut scale = before;
 
         // Re-sync custom-ratio inputs when the page changes.
-        let page_changed = LAST_SCALE_PAGE.with(|c| {
-            let mut last = c.borrow_mut();
-            if *last != Some(page_idx) {
-                *last = Some(page_idx);
-                true
-            } else {
-                false
-            }
-        });
+        let page_changed = ui_state.last_scale_page != Some(page_idx);
         if page_changed {
+            ui_state.last_scale_page = Some(page_idx);
             ui_state.scale_real_units = before.units_per_point * 72.0;
             ui_state.scale_paper_inches = 1.0;
         }
@@ -631,14 +616,13 @@ pub(crate) fn draw_inspector(
                         m.style.stroke = c;
                         m.style.fill = c;
                         edited = true;
-                        COLOUR_PENDING.with(|p| *p.borrow_mut() = Some(sc));
+                        ui_state.colour_pending = Some(sc);
                     }
                     // Commit when the value stops changing (popup closed / no
                     // change this frame), exactly one snapshot.
-                    let pending_commit =
-                        COLOUR_PENDING.with(|p| p.borrow().is_some() && !colour_changed);
+                    let pending_commit = ui_state.colour_pending.is_some() && !colour_changed;
                     if pending_commit {
-                        COLOUR_PENDING.with(|p| *p.borrow_mut() = None);
+                        ui_state.colour_pending = None;
                         committed = true;
                     }
 

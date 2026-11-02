@@ -29,8 +29,20 @@ All notable changes to this project will be documented here. Format: semantic-is
 - **v0.3-04**: PDF export/print fixes (M4/M5)
   - Created `docs/tasks/v0.3-04-pdf-export-fix.md` task brief
   - Fix error handling for failed PDF background rendering
-  - Implement fixed-DPI (300 DPI) export instead of view-relative
+  - Fixed-DPI (150 DPI) export instead of view-relative
   - Page-cropped output for export/print
+  - Shipped (M5) in PR #88, commit `8bc2601`: the export render pass suppresses
+    the backdrop, page border, grid and rulers, and the PDF overlay crops
+    markups to the page bounds
+
+- **v0.4-02**: batch status for multi-select (gap #3, PR #88, commit `8bc2601`)
+  - `EditorAction::BatchStatus(ReviewStatus)` (`ALL` now 14 entries) and
+    `Document::apply_status_to(ids, status)`
+  - Status dropdowns in the Inspector and the Markups List when several markups
+    are selected; the batch is one undo snapshot (`push_snapshot("batch status")`)
+    and reports how many markups changed
+  - Locked or non-editable selections are skipped, with an honest status message
+    when nothing changes
 
 - **v0.3-05**: lopdf write support
   - Created `docs/tasks/v0.3-05-lopdf-write-support.md` task brief

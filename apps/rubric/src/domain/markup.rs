@@ -430,6 +430,21 @@ impl ReviewStatus {
             ReviewStatus::Rejected => palette::RED,
         }
     }
+
+    /// A darkened variant of [`ReviewStatus::color`] that is safe to draw as
+    /// *text* on the light chrome: every variant clears WCAG AA normal text
+    /// (≥ 4.5:1) against the light panel and its faint stripe. The bright
+    /// legend hues do not (the amber swatch is only ≈ 1.9:1 on white), so the
+    /// Markups List status column uses this instead of the swatch colour
+    /// (full-app audit, Markups List status text).
+    pub fn text_color(self) -> Color {
+        match self {
+            ReviewStatus::Open => Color::rgb(90, 95, 110),
+            ReviewStatus::InReview => Color::rgb(150, 95, 0),
+            ReviewStatus::Approved => Color::rgb(20, 110, 60),
+            ReviewStatus::Rejected => Color::rgb(170, 30, 25),
+        }
+    }
 }
 
 /// Built-in stamp presets (spec F-111).
@@ -1577,6 +1592,27 @@ mod tests {
         assert_eq!(ReviewStatus::InReview.color(), palette::AMBER);
         assert_eq!(ReviewStatus::Approved.color(), palette::GREEN);
         assert_eq!(ReviewStatus::Rejected.color(), palette::RED);
+    }
+
+    #[test]
+    fn review_status_text_colors_meet_wcag_aa_on_light_chrome() {
+        use crate::domain::a11y::{meets, WcagLevel};
+        use crate::domain::style::Color;
+
+        // The light panel and its faint (striped) stripe from `ui/theme.rs`.
+        let light_panel = Color::rgb(250, 250, 252);
+        let light_faint = Color::rgb(240, 242, 247);
+        for status in ReviewStatus::ALL {
+            let fg = status.text_color();
+            assert!(
+                meets(WcagLevel::AaNormal, fg, light_panel),
+                "{status:?} text colour fails AA on the light panel"
+            );
+            assert!(
+                meets(WcagLevel::AaNormal, fg, light_faint),
+                "{status:?} text colour fails AA on the light stripe"
+            );
+        }
     }
 
     #[test]

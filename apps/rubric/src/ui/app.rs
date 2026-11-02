@@ -184,6 +184,18 @@ pub(crate) struct UiState {
     pub(crate) markup_layer: MarkupLayerFilter,
     pub(crate) markup_sort: MarkupListSort,
     pub(crate) markup_group: Option<MarkupGroupKey>,
+    /// Layer-name edit drafts, keyed by layer id, so a rename in progress
+    /// survives the per-frame inspector rebuild. Was a thread-local; moved here
+    /// in the full-app audit M24 follow-up so the draft belongs to the session
+    /// state rather than a process-global cell.
+    pub(crate) layer_name_drafts: HashMap<uuid::Uuid, String>,
+    /// Stroke colour chosen in the picker popup but not yet committed. The
+    /// popup's button never reliably loses focus, so the actual commit is
+    /// debounced by one frame; was a thread-local (full-app audit M24).
+    pub(crate) colour_pending: Option<egui::Color32>,
+    /// The page whose scale last re-synced the custom-ratio inputs. Used to
+    /// detect a page change; was a thread-local (full-app audit M24).
+    pub(crate) last_scale_page: Option<usize>,
 }
 
 impl Default for UiState {
@@ -229,6 +241,9 @@ impl Default for UiState {
             markup_layer: MarkupLayerFilter::All,
             markup_sort: MarkupListSort::default(),
             markup_group: None,
+            layer_name_drafts: HashMap::new(),
+            colour_pending: None,
+            last_scale_page: None,
         }
     }
 }

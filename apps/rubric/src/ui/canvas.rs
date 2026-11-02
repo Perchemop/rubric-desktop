@@ -614,7 +614,15 @@ pub(crate) fn draw_canvas(
     // one-time. No background threads this slice (pdfium is not thread-safe).
     let mut painted_texture = false;
     if let Some(pdf_path) = source_pdf {
-        let target_width = ((page.width * 2.0).round() as u32).max(64);
+        // Track the page's on-screen device width so text stays sharp at high
+        // zoom. Oversample slightly and quantise to coarse 256-px steps so
+        // tiny zoom changes do not trigger re-rasterisation, while keeping the
+        // number of cached widths small.
+        let min_width = ((page.width * 2.0).round() as u32).max(64);
+        let desired = (page_rect.width() * 1.25).round() as u32;
+        let clamped = desired.clamp(min_width, crate::data::pdf::MAX_RENDER_WIDTH_PX);
+        let target_width = ((clamped + 255) / 256 * 256)
+            .min(crate::data::pdf::MAX_RENDER_WIDTH_PX);
         // Identity of one render attempt. A failed attempt is poisoned for the
         // project session so it is never retried: without this, a broken page
         // would re-rasterise (and re-report its error) on every repaint frame.

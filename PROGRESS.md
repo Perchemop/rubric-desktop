@@ -1,5 +1,30 @@
 # PROGRESS.md
 
+## 2026-11-02 — v0.3-04 M5 + v0.4-02 (export crop, batch status)
+**Status**: merged to main (PR #88, commit `8bc2601`); CI green on PR #88.
+
+### Completed
+- **v0.3-04 M5 — fixed-DPI, page-cropped export/print.** Owner decision: crop
+  to page bounds at 150 DPI. `ui/canvas.rs` `draw_canvas` gained an
+  `is_export: bool`; when true it suppresses the backdrop, page border, grid
+  and rulers. `data/render.rs` `render_page_to_png_bytes` passes
+  `is_export = true` (the existing `EXPORT_DPI = 150.0` zoom). `data/pdf.rs`
+  `export_pdf_to` crops markups to page bounds via the `markup_intersects_page`
+  helper.
+- **v0.4-02 — batch status (gap #3).** `EditorAction::BatchStatus(ReviewStatus)`
+  added (`ALL` now 14 entries); `Document::apply_status_to(ids, status)` skips
+  missing and locked markups and returns the number changed;
+  `RubricApp::apply_batch_status` pushes one `"batch status"` snapshot and
+  reports the count. Multi-select status dropdowns added to the Inspector and
+  the Markups List (`draw_markups_list` now takes `&mut Project`).
+- Docs: `IMPLEMENTATION_PLAN.md`, `ROADMAP.md`, `CHANGELOG.md` and this entry
+  updated; no source changes in the docs pass.
+
+### Next
+- v1.0-0: multi-platform installer verification (macOS, Windows hands-on)
+- Remaining items from the v0.4 gap list in
+  `docs/research/v0.4-capability-gap-analysis.md`
+
 ## 2026-11-01 — v0.3-02 Phase 3: corpus fidelity tests
 **Status**: merged to main, CI green (PR #74, commit `c340315`). Pixel-by-pixel
 comparison of hayro (pure-Rust) vs PDFium rendering for a representative corpus
