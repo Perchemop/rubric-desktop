@@ -7,8 +7,8 @@ use crate::domain::markup::{
     count_markers_on_page, count_total_label, next_count_number, text_line_height,
 };
 use crate::domain::{
-    angle_degrees, ruler_ticks, Corner, Grid, Markup, MarkupGeometry, MarkupKind, Project, Pt,
-    Rect as DRect, ReviewStatus, Tool,
+    angle_degrees, format_value, ruler_ticks, Corner, Grid, Markup, MarkupGeometry, MarkupKind,
+    MeasureKind, Project, Pt, Rect as DRect, ReviewStatus, Tool,
 };
 
 use super::theme::to_color32;
@@ -121,9 +121,24 @@ fn finish_markup(m: Markup, ui_state: &super::app::UiState) -> Markup {
         let mut m = m.with_stamp(preset);
         m.style = m.style.with_stroke(preset.color());
         m
+    } else if let Some(preset) = &ui_state.pending_style_preset {
+        // Tool Chest apply-at-creation (v0.4 gap #7): style only. Author /
+        // subject already come from project settings / the kind label; there is
+        // no review verdict to overwrite at creation time.
+        m.with_style(preset.style)
     } else {
         m
     }
+}
+
+/// Shortest reference segment (page points) accepted for drag calibration
+/// (v0.4 gap #4). A shorter gesture carries no meaningful ratio and is
+/// cancelled instead of opening the calibration dialog.
+const MIN_CALIBRATION_POINTS: f32 = 1.0;
+
+/// Whether a measured reference segment is long enough to calibrate from.
+fn calibration_segment_ok(points: f32) -> bool {
+    points.is_finite() && points >= MIN_CALIBRATION_POINTS
 }
 
 /// Anchor point in page space for a measurement label.
@@ -1034,6 +1049,15 @@ pub(crate) fn draw_canvas(
         ui_state.draw_cancelled = true;
     }
 
+    // Calibration rubber-band (v0.4 gap #4): while the Calibrate tool is mid
+    // gesture the segment end follows the cursor, so the preview below stays
+    // attached to it between the two clicks.
+    if let Some(pp) = page_pos {
+        if let super::app::DrawState::Calibrate { end, .. } = &mut *draw_state {
+            *end = pp;
+        }
+    }
+
     // Preview for in-progress draw.
     let preview_color = Color32::from_rgb(30, 144, 255);
     match &*draw_state {
@@ -1107,6 +1131,29 @@ pub(crate) fn draw_canvas(
             } else if let Some(cursor) = page_pos {
                 let sc = to_screen(cursor, ui_state.pan, ui_state.zoom, origin);
                 painter.line_segment([sa, sc], stroke);
+            }
+        }
+        super::app::DrawState::Calibrate {
+            start: Some(start),
+            end,
+        } => {
+            // Reference segment under construction: line from the anchored
+            // start to the cursor, plus a live length badge in the page's
+            // display unit so the user can aim at the known feature before
+            // committing the second click.
+            let stroke = egui::Stroke::new(1.5, preview_color);
+            let sa = to_screen(*start, ui_state.pan, ui_state.zoom, origin);
+            let sb = to_screen(*end, ui_state.pan, ui_state.zoom, origin);
+            painter.line_segment([sa, sb], stroke);
+            painter.circle_filled(sa, 3.0, preview_color);
+            let len = start.distance(*end);
+            if len > 0.0 {
+                let measured = page.scale.points_to_units(f64::from(len));
+                draw_measure_badge(
+                    &painter,
+                    sb + Vec2::new(8.0, 8.0),
+                    format_value(MeasureKind::Length, page.scale.unit, measured),
+                );
             }
         }
         _ => {}
@@ -1434,6 +1481,51 @@ pub(crate) fn draw_canvas(
                         ui_state.status = "Note added — add a comment".to_string();
                     }
                 }
+            } else if ui_state.active_tool == Tool::Calibrate {
+                // Drag calibration (v0.4 gap #4): click 1 anchors the known
+                // distance, click 2 commits the reference segment and opens
+                // the calibration dialog. Never creates a markup.
+                if ui_state.calibration.is_some() {
+                    // The dialog owns the flow; ignore canvas clicks behind it.
+                } else {
+                    let anchored = match &*draw_state {
+                        super::app::DrawState::Calibrate {
+                            start: Some(start), ..
+                        } => Some(*start),
+                        _ => None,
+                    };
+                    if let Some(start) = anchored {
+                        // Second click: commit the reference segment and open
+                        // the dialog, pre-filled with the segment's length
+                        // under the page's *current* scale.
+                        let len = start.distance(pp);
+                        if !calibration_segment_ok(len) {
+                            // A zero-length reference calibrates nothing:
+                            // cancel without a snapshot.
+                            *draw_state = super::app::DrawState::Idle;
+                            ui_state.status =
+                                "Calibration cancelled — segment too short".to_string();
+                        } else {
+                            let measured = page.scale.points_to_units(f64::from(len));
+                            ui_state.calibration = Some(super::app::CalibrationDialog {
+                                page: ui_state.current_page,
+                                segment_points: f64::from(len),
+                                real_units: measured.max(f64::EPSILON),
+                                unit: page.scale.unit,
+                            });
+                            *draw_state = super::app::DrawState::Idle;
+                            ui_state.status = "Calibrating — enter the real distance".to_string();
+                        }
+                    } else {
+                        // First click anchors the known-distance segment.
+                        *draw_state = super::app::DrawState::Calibrate {
+                            start: Some(pp),
+                            end: pp,
+                        };
+                        ui_state.status =
+                            "Calibrate: click the second point of the known distance".to_string();
+                    }
+                }
             }
         }
     }
@@ -1497,6 +1589,12 @@ pub(crate) fn draw_canvas(
                     }
                 }
                 *draw_state = super::app::DrawState::Idle;
+            }
+            super::app::DrawState::Calibrate { .. } => {
+                // Right-click abandons the reference segment (no snapshot);
+                // the context menu stays closed while a draft is in progress.
+                *draw_state = super::app::DrawState::Idle;
+                ui_state.status = "Calibration cancelled".to_string();
             }
             _ => {}
         }
@@ -1588,7 +1686,7 @@ pub(crate) fn draw_canvas(
         )
     });
     if !panning
-        && !matches!(ui_state.active_tool, Tool::Select)
+        && !matches!(ui_state.active_tool, Tool::Select | Tool::Calibrate)
         && !multi_tool
         && ui_state.text_edit.is_none()
     {
@@ -1973,5 +2071,16 @@ mod tests {
             Pt::new(0.0, 0.0),
             Pt::new(10.0, 0.0)
         ]]));
+    }
+
+    #[test]
+    fn calibration_segment_ok_refuses_degenerate_references() {
+        assert!(calibration_segment_ok(1.0), "the minimum is accepted");
+        assert!(calibration_segment_ok(720.0));
+        assert!(!calibration_segment_ok(0.0), "a point calibrates nothing");
+        assert!(!calibration_segment_ok(0.5), "sub-point drag is refused");
+        assert!(!calibration_segment_ok(-10.0));
+        assert!(!calibration_segment_ok(f32::NAN));
+        assert!(!calibration_segment_ok(f32::INFINITY));
     }
 }

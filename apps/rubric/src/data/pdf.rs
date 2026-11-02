@@ -486,6 +486,30 @@ pub fn export_pdf_to(
     }
 
     // Register a base-14 Helvetica font object once, for text markups.
+    let font_id = add_base_font_object(&mut doc);
+
+    for (page_num, page_id) in doc.get_pages() {
+        let page_index = (page_num - 1) as usize;
+        let page_markups = markups_by_page
+            .get(&page_index)
+            .cloned()
+            .unwrap_or_default();
+        overlay_page_with_markups(&mut doc, page_id, font_id, page_num, &page_markups)?;
+    }
+
+    doc.save(output_path).map_err(|e| {
+        DataError::Pdf(format!("could not save PDF {}: {e}", output_path.display()))
+    })?;
+
+    Ok(())
+}
+
+/// Add the base-14 Helvetica font object used for overlay text.
+///
+/// Returns the object id that a page's resources should map `/F1` to (see
+/// [`add_font_resource_to_page`]). One font object per document is enough:
+/// every overlay text operation references it by name.
+pub(crate) fn add_base_font_object(doc: &mut lopdf::Document) -> lopdf::ObjectId {
     let font_dict: lopdf::Dictionary = [
         (b"Type".to_vec(), lopdf::Object::Name(b"/Font".to_vec())),
         (b"Subtype".to_vec(), lopdf::Object::Name(b"/Type1".to_vec())),
@@ -500,46 +524,54 @@ pub fn export_pdf_to(
     ]
     .into_iter()
     .collect();
-    let font_id = doc.add_object(lopdf::Object::Dictionary(font_dict));
+    doc.add_object(lopdf::Object::Dictionary(font_dict))
+}
 
-    for (page_num, page_id) in doc.get_pages() {
-        let page_index = (page_num - 1) as usize;
-        let mut page_markups = markups_by_page
-            .get(&page_index)
-            .cloned()
-            .unwrap_or_default();
-        if page_markups.is_empty() {
-            continue;
-        }
-
-        let (width, height) = page_dimensions(&doc, page_id)?;
-
-        // M5: crop markups to page bounds at fixed DPI.
-        page_markups.retain(|m| markup_intersects_page(m, width, height));
-
-        if page_markups.is_empty() {
-            continue;
-        }
-
-        // Ensure the page has a Resources dictionary mapping /F1 to the font.
-        let has_text = page_markups
-            .iter()
-            .any(|m| matches!(m.geometry, MarkupGeometry::Text { .. }));
-        if has_text {
-            add_font_resource_to_page(&mut doc, page_id, font_id)?;
-        }
-
-        let content = render_page_overlay(&page_markups, width, height);
-        doc.add_to_page_content(page_id, content).map_err(|e| {
-            DataError::Pdf(format!("could not add overlay to page {page_num}: {e}"))
-        })?;
+/// Append an overlay content stream rendering `markups` onto one page.
+///
+/// The shared building block behind [`export_pdf_to`] (every page) and
+/// [`super::export::export_page_to_pdf`] (a single page). Markups that fall
+/// entirely outside the page MediaBox are skipped, and `/F1` is mapped to
+/// `font_id` in the page resources only when a text markup must be drawn.
+///
+/// Returns `true` when an overlay was appended; a page with no on-page
+/// markups is left unchanged.
+pub(crate) fn overlay_page_with_markups(
+    doc: &mut lopdf::Document,
+    page_id: lopdf::ObjectId,
+    font_id: lopdf::ObjectId,
+    page_number: u32,
+    markups: &[&Markup],
+) -> Result<bool, DataError> {
+    if markups.is_empty() {
+        return Ok(false);
     }
 
-    doc.save(output_path).map_err(|e| {
-        DataError::Pdf(format!("could not save PDF {}: {e}", output_path.display()))
-    })?;
+    let (width, height) = page_dimensions(doc, page_id)?;
 
-    Ok(())
+    // M5: crop markups to page bounds at fixed DPI.
+    let page_markups: Vec<&Markup> = markups
+        .iter()
+        .copied()
+        .filter(|m| markup_intersects_page(m, width, height))
+        .collect();
+    if page_markups.is_empty() {
+        return Ok(false);
+    }
+
+    // Ensure the page has a Resources dictionary mapping /F1 to the font.
+    let has_text = page_markups
+        .iter()
+        .any(|m| matches!(m.geometry, MarkupGeometry::Text { .. }));
+    if has_text {
+        add_font_resource_to_page(doc, page_id, font_id)?;
+    }
+
+    let content = render_page_overlay(&page_markups, width, height);
+    doc.add_to_page_content(page_id, content)
+        .map_err(|e| DataError::Pdf(format!("could not add overlay to page {page_number}: {e}")))?;
+
+    Ok(true)
 }
 
 /// Add a /Font resource mapping /F1 to `font_id` on `page_id`.
@@ -592,7 +624,7 @@ fn add_font_resource_to_page(
 }
 
 /// Read a page's MediaBox and return its (width, height) in PDF points.
-fn page_dimensions(
+pub(crate) fn page_dimensions(
     doc: &lopdf::Document,
     page_id: lopdf::ObjectId,
 ) -> Result<(f32, f32), DataError> {

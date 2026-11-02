@@ -158,6 +158,29 @@ impl Scale {
     }
 }
 
+/// Build a page scale by calibrating against a drawn reference segment of
+/// known real-world length (v0.4 gap #4: drag calibration).
+///
+/// `segment_points` is the length the user drew on the page, in PDF points;
+/// `real_units` is the real-world distance that segment represents, expressed
+/// in `unit`. The returned [`Scale`] is what the UI writes into
+/// `Page.scale`, after which every measurement on the page recomputes from
+/// its stored raw points (see [`crate::domain::Markup::recompute_measurement`]).
+///
+/// Degenerate inputs are refused rather than divided through:
+///
+/// * a non-finite segment length or real distance yields [`Scale::PAPER`]
+///   (1 pt = 1 pt), the same honest fallback an uncalibrated page carries;
+/// * a zero-length segment mirrors [`Scale::from_ratio`] and degrades to one
+///   unit per point in the requested unit — the UI refuses such segments
+///   before the calibration dialog opens, so this is a safety net only.
+pub fn calibrate_scale(segment_points: f32, real_units: f64, unit: MeasureUnit) -> Scale {
+    if !segment_points.is_finite() || !real_units.is_finite() {
+        return Scale::PAPER;
+    }
+    Scale::from_ratio(unit, real_units, f64::from(segment_points))
+}
+
 fn short_anchor() -> &'static str {
     "in"
 }
@@ -452,5 +475,96 @@ mod tests {
                 format_value_precise(kind, MeasureUnit::Foot, value, DEFAULT_PRECISION)
             );
         }
+    }
+
+    #[test]
+    fn calibrate_scale_maps_a_known_distance() {
+        // A 72 pt segment known to be one foot: 1 in = 1 ft.
+        let s = calibrate_scale(72.0, 1.0, MeasureUnit::Foot);
+        assert_eq!(s.unit, MeasureUnit::Foot);
+        assert!((s.units_per_point - 1.0 / 72.0).abs() < 1e-9);
+        // A 720 pt wall now reads 10 ft.
+        assert!((s.points_to_units(720.0) - 10.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn calibrate_scale_works_in_metric_units() {
+        // A 100 pt segment known to be exactly two metres.
+        let s = calibrate_scale(100.0, 2.0, MeasureUnit::Meter);
+        assert!((s.points_to_units(100.0) - 2.0).abs() < 1e-9);
+        assert!((s.units_to_points(2.0) - 100.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn calibrate_scale_refuses_non_finite_inputs() {
+        // A non-finite reference carries no ratio: fall back to the paper
+        // scale instead of producing a NaN or infinite units_per_point.
+        assert_eq!(
+            calibrate_scale(f32::NAN, 10.0, MeasureUnit::Foot),
+            Scale::PAPER
+        );
+        assert_eq!(
+            calibrate_scale(72.0, f64::NAN, MeasureUnit::Foot),
+            Scale::PAPER
+        );
+        assert_eq!(
+            calibrate_scale(f32::INFINITY, 1.0, MeasureUnit::Foot),
+            Scale::PAPER
+        );
+    }
+
+    #[test]
+    fn calibrate_scale_zero_length_falls_back_to_one_unit_per_point() {
+        // Mirrors `Scale::from_ratio`: a zero-length reference would divide by
+        // zero, so it degrades to 1 unit/pt in the requested unit. The UI
+        // refuses such segments before the dialog opens; this is the net.
+        let s = calibrate_scale(0.0, 10.0, MeasureUnit::Foot);
+        assert_eq!(s.unit, MeasureUnit::Foot);
+        assert!((s.units_per_point - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn calibrate_scale_ignores_signs() {
+        // Distances are magnitudes; a reversed drag direction must not
+        // produce a negative scale.
+        let s = calibrate_scale(-72.0, -1.0, MeasureUnit::Foot);
+        assert!((s.units_per_point - 1.0 / 72.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn calibrate_scale_result_serde_roundtrip() {
+        let s = calibrate_scale(72.0, 1.0, MeasureUnit::Foot);
+        let json = serde_json::to_string(&s).expect("serialize");
+        let back: Scale = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, s);
+    }
+
+    #[test]
+    fn calibrated_scale_recomputes_existing_measurements() {
+        // The full calibration write path: a markup measured under the old
+        // scale reads a different value once the page is recalibrated, while
+        // its stored raw points stay the source of truth.
+        use crate::domain::{Markup, MarkupGeometry, MarkupKind, Pt};
+        let mut m = Markup::new(
+            0,
+            MarkupKind::MeasureLength,
+            MarkupGeometry::Segment {
+                a: Pt::new(0.0, 0.0),
+                b: Pt::new(720.0, 0.0),
+            },
+            "t",
+        );
+        m.recompute_measurement(Scale::PAPER);
+        let before = m.measurement.expect("measured under paper scale");
+        assert!((before.value - 720.0).abs() < 1e-9);
+
+        m.recompute_measurement(calibrate_scale(72.0, 1.0, MeasureUnit::Foot));
+        let after = m.measurement.expect("measured after calibration");
+        assert!(
+            (after.value - 10.0).abs() < 1e-6,
+            "720 pt on a 72 pt = 1 ft page must read 10 ft, got {}",
+            after.value
+        );
+        assert!((after.value_points - before.value_points).abs() < 1e-9);
     }
 }

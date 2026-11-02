@@ -395,13 +395,18 @@ pub enum Tool {
     MeasureDiameter,
     MeasureRadius,
     MeasureCount,
+    // Page setup
+    /// Two-click drag calibration of the page scale (v0.4 gap #4). Captures a
+    /// reference segment of known real-world distance and rewrites
+    /// `Page.scale`; it never creates a markup.
+    Calibrate,
 }
 
 impl Tool {
     /// Every tool variant, in enum declaration order.
     ///
     /// Useful for tests, keyboard-shortcut legends and UI palette grids.
-    pub const ALL: [Tool; 24] = [
+    pub const ALL: [Tool; 25] = [
         Tool::Select,
         Tool::Highlight,
         Tool::Strikeout,
@@ -426,14 +431,16 @@ impl Tool {
         Tool::MeasureDiameter,
         Tool::MeasureRadius,
         Tool::MeasureCount,
+        Tool::Calibrate,
     ];
 
     /// Canonical single-key shortcut for this tool, as a lowercase [`char`].
     ///
     /// Markup and shape tools use letters; measurement tools use digits `1`
-    /// through `7`. These are *unmodified* keys, so the UI must ignore them
-    /// while a text field has focus and must not fire them when Ctrl/Alt/Super
-    /// is held. Returns `None` for tools that have no assigned key yet.
+    /// through `7`, and calibration uses `k`. These are *unmodified* keys, so
+    /// the UI must ignore them while a text field has focus and must not fire
+    /// them when Ctrl/Alt/Super is held. Returns `None` for tools that have
+    /// no assigned key yet.
     pub fn shortcut_key(self) -> Option<char> {
         Some(match self {
             Tool::Select => 'v',
@@ -460,6 +467,7 @@ impl Tool {
             Tool::MeasureDiameter => '5',
             Tool::MeasureRadius => '6',
             Tool::MeasureCount => '7',
+            Tool::Calibrate => 'k',
         })
     }
 
@@ -506,6 +514,8 @@ impl Tool {
     pub fn to_kind(self) -> Option<MarkupKind> {
         Some(match self {
             Tool::Select => return None,
+            // Calibration is not a markup: it rewrites the page scale.
+            Tool::Calibrate => return None,
             Tool::Highlight => MarkupKind::Highlight,
             Tool::Strikeout => MarkupKind::Strikeout,
             Tool::Underline => MarkupKind::Underline,
@@ -533,7 +543,7 @@ impl Tool {
     }
 
     pub fn is_draw_tool(self) -> bool {
-        self != Tool::Select
+        !matches!(self, Tool::Select | Tool::Calibrate)
     }
 
     pub fn is_measure_tool(self) -> bool {
@@ -547,6 +557,31 @@ impl Tool {
                 | Tool::MeasureRadius
                 | Tool::MeasureCount
         )
+    }
+
+    /// Canonical UI label for this tool (`"Select"`, `"Calibrate"`,
+    /// `"Length"`, ...).
+    ///
+    /// Markup tools reuse their [`MarkupKind::label`]; the two tools that
+    /// create no markup name themselves.
+    pub fn label(self) -> &'static str {
+        match self {
+            Tool::Select => "Select",
+            Tool::Calibrate => "Calibrate",
+            other => other.to_kind().map(MarkupKind::label).unwrap_or("Tool"),
+        }
+    }
+
+    /// One-line human-readable description of what the tool does, used for
+    /// hover text and the hint bar.
+    pub fn describe(self) -> String {
+        match self {
+            Tool::Select => "Select, move and resize markups".to_string(),
+            Tool::Calibrate => {
+                "Calibrate page scale: click two points of a known distance".to_string()
+            }
+            other => format!("Draw {}", other.label()),
+        }
     }
 }
 
@@ -861,8 +896,8 @@ mod tests {
     }
 
     #[test]
-    fn tool_all_contains_all_24_variants_exactly_once() {
-        assert_eq!(Tool::ALL.len(), 24);
+    fn tool_all_contains_all_25_variants_exactly_once() {
+        assert_eq!(Tool::ALL.len(), 25);
         for (i, tool) in Tool::ALL.iter().enumerate() {
             for other in Tool::ALL.iter().skip(i + 1) {
                 assert_ne!(tool, other, "duplicate variant in Tool::ALL: {tool:?}");
@@ -899,6 +934,7 @@ mod tests {
                 Tool::MeasureDiameter,
                 Tool::MeasureRadius,
                 Tool::MeasureCount,
+                Tool::Calibrate,
             ]
         );
     }
@@ -993,6 +1029,7 @@ mod tests {
             (Tool::MeasureDiameter, '5'),
             (Tool::MeasureRadius, '6'),
             (Tool::MeasureCount, '7'),
+            (Tool::Calibrate, 'k'),
         ];
         assert_eq!(expected.len(), Tool::ALL.len());
         for (tool, key) in expected {
@@ -1012,6 +1049,39 @@ mod tests {
             serde_json::to_string(&Tool::MeasureDiameter).expect("serialize"),
             "\"measure_diameter\""
         );
+    }
+
+    #[test]
+    fn calibrate_tool_is_not_a_markup_and_not_a_measure_tool() {
+        let tool = Tool::Calibrate;
+        assert_eq!(tool.to_kind(), None, "calibration never creates a markup");
+        assert!(!tool.is_measure_tool());
+        assert!(!tool.is_draw_tool(), "calibration draws no markup");
+    }
+
+    #[test]
+    fn calibrate_tool_labels_itself() {
+        assert_eq!(Tool::Calibrate.label(), "Calibrate");
+        // Every tool exposes a usable label and a non-empty description.
+        for tool in Tool::ALL {
+            assert!(!tool.label().is_empty(), "{tool:?} has an empty label");
+            assert!(!tool.describe().is_empty(), "{tool:?} has no description");
+        }
+    }
+
+    #[test]
+    fn calibrate_tool_describes_the_page_scale_gesture() {
+        let text = Tool::Calibrate.describe().to_lowercase();
+        assert!(text.contains("calibrat"), "unexpected describe(): {text}");
+        assert!(text.contains("scale"), "unexpected describe(): {text}");
+    }
+
+    #[test]
+    fn calibrate_tool_serde_representation_is_snake_case() {
+        let json = serde_json::to_string(&Tool::Calibrate).expect("serialize");
+        assert_eq!(json, "\"calibrate\"");
+        let back: Tool = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, Tool::Calibrate);
     }
 
     #[test]

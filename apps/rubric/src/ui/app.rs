@@ -12,12 +12,14 @@ use crate::data::{
     autosave, autosave_due, load_prefs, load_project, load_recent, normalise_project_filename,
     print_image, render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
+use crate::domain::units::calibrate_scale;
 use crate::domain::{
     auto_save_interval_label, view, AppPrefs, Corner, Document, EditorAction, Grid, History,
-    MarkupGroupKey, MarkupKind, MarkupListSort, MarkupStyle, Project, Pt, Report, ReportGroupKey,
-    ReviewStatus, StampPreset, Theme, Tool, AUTO_SAVE_INTERVALS,
+    Markup, MarkupGroupKey, MarkupKind, MarkupListSort, MarkupStyle, MeasureUnit, Project, Pt,
+    Report, ReportGroupKey, ReviewStatus, StampPreset, StylePreset, StylePresetLibrary, Theme,
+    Tool, AUTO_SAVE_INTERVALS,
 };
-use crate::ui::{canvas, inspector, markups_list, menu, pages, theme, toolbar};
+use crate::ui::{canvas, inspector, markups_list, menu, pages, theme, tool_chest, toolbar};
 use uuid::Uuid;
 
 #[allow(dead_code)]
@@ -56,6 +58,10 @@ pub(crate) enum DrawState {
     },
     /// Placing a count marker.
     Count { kind: MarkupKind },
+    /// Two-click page-scale calibration (v0.4 gap #4): `start` is set by the
+    /// first click, `end` tracks the cursor until the second click commits
+    /// the reference segment and opens the calibration dialog.
+    Calibrate { start: Option<Pt>, end: Pt },
 }
 
 #[allow(dead_code)]
@@ -85,6 +91,25 @@ pub(crate) struct TextEditState {
     pub(crate) original: String,
     pub(crate) text: String,
     pub(crate) focus_requested: bool,
+}
+
+/// Session-only state for the calibration dialog (v0.4 gap #4): the drawn
+/// reference segment plus the user-editable real-world distance it represents.
+/// Exists only between the second click and Apply/Cancel; never serialized.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct CalibrationDialog {
+    /// Page the reference segment was drawn on; its scale is rewritten on
+    /// Apply (kept so a page switch with the dialog open stays honest).
+    pub(crate) page: usize,
+    /// Length of the drawn reference segment, in PDF points.
+    pub(crate) segment_points: f64,
+    /// Real-world distance of the segment. Pre-filled with what the page's
+    /// *current* scale says the segment measures, so confirming unchanged
+    /// leaves the scale as it is.
+    pub(crate) real_units: f64,
+    /// Display unit for [`CalibrationDialog::real_units`]; pre-filled from the
+    /// page's current scale.
+    pub(crate) unit: MeasureUnit,
 }
 
 #[allow(dead_code)]
@@ -161,6 +186,9 @@ pub(crate) struct UiState {
     pub(crate) grid: Grid,
     /// Whether the Markups List panel is visible (View menu toggle).
     pub(crate) show_markups_list: bool,
+    /// Whether the Tool Chest panel is visible (View menu toggle, v0.4 gap
+    /// #7). On by default so saved tools are discoverable.
+    pub(crate) show_tool_chest: bool,
     /// Pending quit confirmation when the project has unsaved changes.
     pub(crate) quit_confirm: bool,
     /// Per-frame history enablement snapshot, refreshed at the start of the
@@ -204,6 +232,23 @@ pub(crate) struct UiState {
     /// when the drag starts and when it ends; drives the "resize markups"
     /// snapshot so a zero-delta drag pushes nothing.
     pub(crate) resize_changed: bool,
+    /// Open calibration dialog, if any (v0.4 gap #4). Set by the canvas when
+    /// the user finishes the two-click reference segment; drawn as a window by
+    /// the app shell. UI-only, never serialized.
+    pub(crate) calibration: Option<CalibrationDialog>,
+    /// Armed Tool Chest preset (v0.4 gap #7). While this is `Some`,
+    /// `canvas::finish_markup` styles every non-stamp markup created from now
+    /// on with the preset's look (`Markup::with_style`, style only: at
+    /// creation there is no review verdict to overwrite and author/subject
+    /// already come from the project settings / kind label). Toggled from the
+    /// Tool Chest panel; cleared on project switch. UI-only, never serialized.
+    pub(crate) pending_style_preset: Option<StylePreset>,
+    /// Tool Chest "save as tool" name draft, so the text survives the
+    /// per-frame panel rebuild. UI-only.
+    pub(crate) tool_chest_save_name: String,
+    /// Open Tool Chest rename draft: the preset id plus the editable name, so
+    /// the editor survives the per-frame panel rebuild. UI-only.
+    pub(crate) tool_chest_rename: Option<(uuid::Uuid, String)>,
 }
 
 impl Default for UiState {
@@ -236,6 +281,7 @@ impl Default for UiState {
             grid: Grid::default(),
             marquee_start: None,
             show_markups_list: true,
+            show_tool_chest: true,
             quit_confirm: false,
             can_undo: false,
             can_redo: false,
@@ -255,6 +301,10 @@ impl Default for UiState {
             last_scale_page: None,
             resize_corner: None,
             resize_changed: false,
+            calibration: None,
+            pending_style_preset: None,
+            tool_chest_save_name: String::new(),
+            tool_chest_rename: None,
         }
     }
 }
@@ -306,6 +356,12 @@ pub struct RubricApp {
     update: Arc<Mutex<UpdateCheck>>,
     /// Repository used for issue URLs and release checks.
     repo: String,
+    /// Tool Chest preset library (v0.4 gap #7). App-level session state: it
+    /// survives project switches (a tool chest belongs to the reviewer, not
+    /// the project) and is not written into `.rubric.json` or prefs yet —
+    /// `StylePreset`/`StylePresetLibrary` are serde-ready if persistence is
+    /// added later. Not part of the undo history.
+    tool_chest_library: StylePresetLibrary,
 }
 
 /// Update-check progress shared between the worker thread and the UI.
@@ -385,6 +441,7 @@ impl RubricApp {
             }),
             update: Arc::new(Mutex::new(UpdateCheck::default())),
             repo: "Perchemop/rubric-desktop".to_string(),
+            tool_chest_library: StylePresetLibrary::new(),
         }
     }
 
@@ -863,6 +920,107 @@ impl RubricApp {
         }
     }
 
+    /// Close the calibration dialog without changing any scale. No snapshot:
+    /// nothing was committed.
+    fn cancel_calibration(&mut self) {
+        if self.ui.calibration.take().is_some() {
+            self.ui.status = "Calibration cancelled".to_string();
+            self.draw = DrawState::Idle;
+        }
+    }
+
+    /// Apply a confirmed calibration (v0.4 gap #4): write the new scale to the
+    /// calibrated page through the same write path the Scale inspector uses
+    /// (page scale + recompute that page's measurements from their stored raw
+    /// points), then push exactly one undo snapshot.
+    fn apply_calibration(&mut self, dialog: CalibrationDialog) {
+        if !dialog.real_units.is_finite() || dialog.real_units <= 0.0 {
+            // Rejected: keep the dialog open so the typed value can be fixed.
+            self.ui.calibration = Some(dialog);
+            self.ui.status = "Scale value must be positive".to_string();
+            return;
+        }
+        self.ui.calibration = None;
+        let new_scale =
+            calibrate_scale(dialog.segment_points as f32, dialog.real_units, dialog.unit);
+        if let Some(doc) = self.history.current_mut().active_mut() {
+            if let Some(page) = doc.pages.get_mut(dialog.page) {
+                page.scale = new_scale;
+            }
+            let scale = doc
+                .pages
+                .get(dialog.page)
+                .map(|p| p.scale)
+                .unwrap_or(new_scale);
+            for m in doc.markups.iter_mut().filter(|m| m.page == dialog.page) {
+                m.recompute_measurement(scale);
+            }
+            doc.touch();
+        }
+        self.ui.status = format!("Scale calibrated → {}", new_scale.describe());
+        self.push_snapshot_quiet();
+        self.draw = DrawState::Idle;
+    }
+
+    /// Calibration dialog (v0.4 gap #4): confirm the real-world distance of
+    /// the drawn reference segment. Pre-filled with the segment's length under
+    /// the page's current scale, so confirming unchanged is a no-op; changing
+    /// the value (or unit) recalibrates the page.
+    fn draw_calibration_dialog(&mut self, ctx: &egui::Context) {
+        let Some(state) = self.ui.calibration.as_mut() else {
+            return;
+        };
+        let mut open = true;
+        let mut cancelled = false;
+        let mut apply = false;
+        egui::Window::new("Calibrate Page Scale")
+            .open(&mut open)
+            .resizable(false)
+            .show(ctx, |ui| {
+                ui.label(format!(
+                    "Drawn segment: {:.1} pt on page {}",
+                    state.segment_points,
+                    state.page + 1
+                ));
+                ui.separator();
+                ui.label("How long is this distance in the real world?");
+                ui.horizontal(|ui| {
+                    let _ = ui.add(
+                        egui::DragValue::new(&mut state.real_units)
+                            .speed(0.1)
+                            .range(0.001..=1_000_000.0),
+                    );
+                    egui::ComboBox::from_label("Unit")
+                        .selected_text(state.unit.name())
+                        .show_ui(ui, |ui| {
+                            for unit in MeasureUnit::ALL {
+                                ui.selectable_value(&mut state.unit, unit, unit.name());
+                            }
+                        });
+                });
+                ui.small(
+                    "Measurements on this page are re-read from the new scale. \
+                     Ctrl+Z restores the previous one.",
+                );
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    if ui.button("Apply").clicked() {
+                        apply = true;
+                    }
+                    if ui.button("Cancel").clicked() {
+                        cancelled = true;
+                    }
+                });
+            });
+        if !open || cancelled {
+            self.cancel_calibration();
+        } else if apply {
+            if let Some(dialog) = self.ui.calibration {
+                self.apply_calibration(dialog);
+            }
+        }
+    }
+
     fn push_snapshot(&mut self, reason: &str) {
         let proj = self.history.current().clone();
         self.history.push(proj);
@@ -1017,6 +1175,91 @@ impl RubricApp {
             Err(e) => {
                 self.ui.status = format!("Print failed: {e}");
                 Err(e)
+            }
+        }
+    }
+
+    /// Flatten the currently displayed page — with its visible markups — into
+    /// a new single-page PDF (File ▸ Export Page to PDF...).
+    ///
+    /// Paint order matches the canvas, so the flattened page shows exactly
+    /// what the user sees; hidden markups are intentionally left out. The
+    /// save dialog runs first, and cancelling it is not an error: the status
+    /// line stays untouched.
+    fn export_current_page_to_pdf(&mut self) {
+        let Some(doc) = self.active_doc() else {
+            self.ui.status = "Export failed: no document is open".to_string();
+            return;
+        };
+        let page = self.ui.current_page;
+        let markups: Vec<Markup> = doc
+            .markups_in_paint_order(page)
+            .into_iter()
+            .cloned()
+            .collect();
+        let source_pdf = self
+            .history
+            .current()
+            .source_pdf
+            .clone()
+            .unwrap_or_default();
+        if source_pdf.is_empty() {
+            self.ui.status = "Export failed: import a PDF before flattening a page".to_string();
+            return;
+        }
+        let default_name = format!("rubric-page-{}.pdf", page + 1);
+        let Some(path) = rfd::FileDialog::new()
+            .set_file_name(&default_name)
+            .add_filter("PDF document", &["pdf"])
+            .save_file()
+        else {
+            return;
+        };
+        match crate::data::export::export_page_to_pdf(Path::new(&source_pdf), page, &path, &markups)
+        {
+            Ok(()) => {
+                self.ui.status = format!("Flattened page {} to PDF: {}", page + 1, path.display());
+            }
+            Err(e) => {
+                self.ui.status = format!("Export failed: {e}");
+            }
+        }
+    }
+
+    /// Flatten every page of the source PDF — with its markups — into a new
+    /// PDF (File ▸ Export All Pages to PDF...).
+    fn export_all_pages_to_pdf_action(&mut self) {
+        let source_pdf = self
+            .history
+            .current()
+            .source_pdf
+            .clone()
+            .unwrap_or_default();
+        if source_pdf.is_empty() {
+            self.ui.status = "Export failed: import a PDF before flattening pages".to_string();
+            return;
+        }
+        let Some(doc) = self.active_doc() else {
+            self.ui.status = "Export failed: no document is open".to_string();
+            return;
+        };
+        let Some(path) = rfd::FileDialog::new()
+            .set_file_name("rubric-flattened.pdf")
+            .add_filter("PDF document", &["pdf"])
+            .save_file()
+        else {
+            return;
+        };
+        match crate::data::export::export_all_pages_to_pdf(
+            Path::new(&source_pdf),
+            &path,
+            &doc.markups,
+        ) {
+            Ok(()) => {
+                self.ui.status = format!("Flattened all pages to PDF: {}", path.display());
+            }
+            Err(e) => {
+                self.ui.status = format!("Export failed: {e}");
             }
         }
     }
@@ -1272,6 +1515,33 @@ impl RubricApp {
                     }
                     ui.close();
                 }
+                // Flatten-to-PDF (gap #1): a path from markups back into a
+                // PDF. Both items need the imported source PDF — without one
+                // there is no page content to flatten the markups onto — so
+                // they are disabled until a PDF is imported.
+                let has_source_pdf = self
+                    .history
+                    .current()
+                    .source_pdf
+                    .as_deref()
+                    .is_some_and(|p| !p.is_empty());
+                let export_page_pdf = ui
+                    .add_enabled(has_source_pdf, egui::Button::new("Export Page to PDF..."))
+                    .on_disabled_hover_text("Import a PDF before flattening a page");
+                if export_page_pdf.clicked() {
+                    self.export_current_page_to_pdf();
+                    ui.close();
+                }
+                let export_all_pdf = ui
+                    .add_enabled(
+                        has_source_pdf,
+                        egui::Button::new("Export All Pages to PDF..."),
+                    )
+                    .on_disabled_hover_text("Import a PDF before flattening pages");
+                if export_all_pdf.clicked() {
+                    self.export_all_pages_to_pdf_action();
+                    ui.close();
+                }
                 if ui.button("Print...").clicked() {
                     let _ = self.print_page();
                     ui.close();
@@ -1402,6 +1672,13 @@ impl RubricApp {
                 if ui.button("Fit Page").clicked() {
                     self.apply_editor_action(EditorAction::FitPage);
                 }
+                // Drag calibration (v0.4 gap #4): selecting the tool starts a
+                // two-click reference segment on the canvas; the dialog that
+                // follows writes the page scale.
+                if ui.button("Calibrate Page Scale…").clicked() {
+                    self.select_tool(Tool::Calibrate);
+                    ui.close();
+                }
                 ui.separator();
                 // Page navigation in the menu (full-app audit M10): the arrows
                 // and PageUp/PageDown were the only paths before.
@@ -1498,6 +1775,16 @@ impl RubricApp {
                     }
                 });
                 ui.separator();
+                if ui
+                    .checkbox(&mut self.ui.show_tool_chest, "Show Tool Chest")
+                    .changed()
+                {
+                    self.ui.status = if self.ui.show_tool_chest {
+                        "Tool Chest shown".to_string()
+                    } else {
+                        "Tool Chest hidden".to_string()
+                    };
+                }
                 if ui
                     .checkbox(&mut self.ui.show_markups_list, "Show Markups List")
                     .changed()
@@ -1610,7 +1897,7 @@ impl RubricApp {
             .shortcut_key()
             .map(|k| k.to_ascii_uppercase())
             .unwrap_or('-');
-        self.ui.status = format!("{} ({key})", menu::tool_label(tool));
+        self.ui.status = format!("{} ({key})", tool.label());
     }
 }
 
@@ -1680,6 +1967,7 @@ fn key_to_shortcut_char(key: egui::Key) -> Option<char> {
         egui::Key::L => Some('l'),
         egui::Key::A => Some('a'),
         egui::Key::I => Some('i'),
+        egui::Key::K => Some('k'),
         egui::Key::Num1 => Some('1'),
         egui::Key::Num2 => Some('2'),
         egui::Key::Num3 => Some('3'),
@@ -1800,6 +2088,10 @@ impl App for RubricApp {
             if i.key_pressed(egui::Key::Escape) {
                 if self.report_export.is_some() {
                     self.report_export = None;
+                } else if self.ui.calibration.is_some() {
+                    // Close the calibration dialog without touching the scale
+                    // (v0.4 gap #4): no snapshot, nothing changed.
+                    self.cancel_calibration();
                 } else if self.ui.text_edit.is_some() {
                     // Discard the in-progress text edit, no snapshot.
                     self.ui.text_edit = None;
@@ -1898,6 +2190,27 @@ impl App for RubricApp {
             .default_size(200.0)
             .min_size(180.0)
             .show(ui, |ui| self.left_panel(ui));
+        // Tool Chest (v0.4 gap #7): the "My Tools" panel over the app-level
+        // preset library. Armed presets travel via
+        // `ui.pending_style_preset`, which `canvas::finish_markup` consumes
+        // at creation time; only apply-to-selection mutates the project and
+        // asks for a snapshot.
+        let mut chest_mutated = false;
+        if self.ui.show_tool_chest {
+            let library = &mut self.tool_chest_library;
+            let project = self.history.current_mut();
+            let ui_state = &mut self.ui;
+            egui::Panel::left("tool_chest")
+                .default_size(210.0)
+                .min_size(170.0)
+                .resizable(true)
+                .show(ui, |ui| {
+                    chest_mutated = tool_chest::draw_tool_chest(ui, library, project, ui_state);
+                });
+        }
+        if chest_mutated {
+            self.push_snapshot("tool chest apply");
+        }
         let mut inspector_mutated = false;
         let inspector_response = egui::Panel::right("inspector")
             .default_size(280.0)
@@ -1913,6 +2226,7 @@ impl App for RubricApp {
         egui::Panel::bottom("status").show(ui, |ui| self.bottom_bar(ui));
 
         let mut list_action = None;
+        let mut status_changed = false;
         if self.ui.show_markups_list {
             let project = self.history.current_mut();
             let ui_state = &mut self.ui;
@@ -1922,8 +2236,13 @@ impl App for RubricApp {
                 .max_size(420.0)
                 .resizable(true)
                 .show(ui, |ui| {
-                    list_action = markups_list::draw_markups_list(ui, project, ui_state);
+                    let (action, sc) = markups_list::draw_markups_list(ui, project, ui_state);
+                    list_action = action;
+                    status_changed = sc;
                 });
+        }
+        if status_changed {
+            self.push_snapshot_quiet();
         }
         if let Some(action) = list_action {
             self.ui.selected.clear();
@@ -1976,6 +2295,10 @@ impl App for RubricApp {
         // Bug report dialog (guide §7.1): preview + editable notes; nothing is
         // sent until the user explicitly chooses to.
         self.draw_bug_report(ui.ctx());
+
+        // Calibration dialog (v0.4 gap #4): confirm the real distance of the
+        // drawn reference segment and rewrite the page scale.
+        self.draw_calibration_dialog(ui.ctx());
 
         // About window (full-app audit M4): version, licence and links instead
         // of a transient status line.

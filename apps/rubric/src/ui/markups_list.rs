@@ -9,6 +9,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use eframe::egui::{self, ComboBox, RichText, Ui};
 use uuid::Uuid;
 
+use crate::domain::units::{MeasureKind, MeasureUnit, Scale};
 use crate::domain::{
     MarkupGroupKey, MarkupKind, MarkupList, MarkupListFilter, MarkupListSort, Project,
     ReviewStatus, NONE_LABEL,
@@ -114,12 +115,14 @@ pub(crate) fn draw_markups_list(
     ui: &mut Ui,
     project: &mut Project,
     state: &mut UiState,
-) -> Option<MarkupListAction> {
+) -> (Option<MarkupListAction>, bool) {
+    let mut status_changed = false;
+
     let Some(doc) = project.active() else {
         ui.heading("Markups List");
         ui.separator();
         ui.label("No active document.");
-        return None;
+        return (None, false);
     };
 
     let layer_names: HashMap<Uuid, String> =
@@ -288,6 +291,11 @@ pub(crate) fn draw_markups_list(
             filtered.len(),
             all.len()
         ));
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ui.button("Export CSV…").clicked() {
+                export_csv(project, &filtered, state);
+            }
+        });
     });
 
     // Batch status for multi-select (v0.4-02).
@@ -324,6 +332,7 @@ pub(crate) fn draw_markups_list(
                                 if let Some(doc) = project.active_mut() {
                                     doc.touch();
                                 }
+                                status_changed = true;
                                 state.status = format!(
                                     "Batch status → {} for {} markup(s)",
                                     s.label(),
@@ -343,23 +352,38 @@ pub(crate) fn draw_markups_list(
         } else {
             ui.label("No markups match the current filters.");
         }
-        return None;
+        return (None, status_changed);
     }
 
-    egui::ScrollArea::vertical()
+    let list_action = egui::ScrollArea::vertical()
         .auto_shrink([false, false])
         .show(ui, |ui| {
-            render_list(ui, &filtered, state, &layer_name, &default_layer_name)
+            render_list(
+                ui,
+                &filtered,
+                project,
+                state,
+                &layer_name,
+                &default_layer_name,
+                &mut status_changed,
+            )
         })
-        .inner
+        .inner;
+
+    // Measurement totals footer over the FILTERED view.
+    render_totals_footer(ui, project, &filtered);
+
+    (list_action, status_changed)
 }
 
 fn render_list(
     ui: &mut Ui,
     list: &MarkupList,
-    state: &UiState,
+    project: &mut Project,
+    state: &mut UiState,
     layer_name: &dyn Fn(Uuid) -> String,
     default_layer_name: &str,
+    status_changed: &mut bool,
 ) -> Option<MarkupListAction> {
     match state.markup_group {
         Some(key) => {
@@ -376,7 +400,7 @@ fn render_list(
                     .id_salt(format!("markup-group-{label}"))
                     .default_open(true)
                     .show(ui, |ui| {
-                        action = render_rows(ui, &group, state, &label);
+                        action = render_rows(ui, &group, project, state, &label, status_changed);
                     });
                 if action.is_some() {
                     return action;
@@ -384,15 +408,17 @@ fn render_list(
             }
             None
         }
-        None => render_rows(ui, list, state, "all"),
+        None => render_rows(ui, list, project, state, "all", status_changed),
     }
 }
 
 fn render_rows(
     ui: &mut Ui,
     list: &MarkupList,
-    state: &UiState,
+    project: &mut Project,
+    state: &mut UiState,
     id_salt: &str,
+    status_changed: &mut bool,
 ) -> Option<MarkupListAction> {
     let mut action = None;
     let dark = ui.visuals().dark_mode;
@@ -429,14 +455,55 @@ fn render_rows(
                     .selectable_label(selected, truncate(row.summary.as_str(), 40))
                     .on_hover_text(row.summary.as_str())
                     .clicked();
-                clicked |= ui
-                    .selectable_label(
-                        selected,
+
+                // Inline status editor. Locked (or otherwise non-editable)
+                // markups show a dimmed, read-only label.
+                let editable = project
+                    .active()
+                    .and_then(|d| d.find_markup(row.id))
+                    .map(|m| {
+                        project
+                            .active()
+                            .map(|d| d.is_markup_editable(m))
+                            .unwrap_or(false)
+                    })
+                    .unwrap_or(false);
+                if editable {
+                    let mut new_status = row.status;
+                    ComboBox::from_id_salt(format!("markup-row-status-{}", row.id))
+                        .selected_text(row.status.label())
+                        .show_ui(ui, |ui| {
+                            for s in ReviewStatus::ALL.iter() {
+                                ui.horizontal(|ui| {
+                                    let (rect, _) = ui.allocate_exact_size(
+                                        egui::vec2(12.0, 12.0),
+                                        egui::Sense::hover(),
+                                    );
+                                    ui.painter().circle_filled(
+                                        rect.center(),
+                                        5.0,
+                                        status_color(*s),
+                                    );
+                                    if ui.selectable_label(row.status == *s, s.label()).clicked() {
+                                        new_status = *s;
+                                    }
+                                });
+                            }
+                        });
+                    if new_status != row.status {
+                        if let Some(doc) = project.active_mut() {
+                            doc.apply_status_to(&[row.id], new_status);
+                        }
+                        *status_changed = true;
+                        state.status = format!("Status → {} for 1 markup", new_status.label());
+                    }
+                } else {
+                    ui.label(
                         RichText::new(row.status.label())
-                            .color(status_text_color(row.status, dark)),
-                    )
-                    .on_hover_text(row.status.label())
-                    .clicked();
+                            .color(status_text_color(row.status, dark))
+                            .weak(),
+                    );
+                }
                 ui.end_row();
 
                 if clicked {
@@ -448,6 +515,130 @@ fn render_rows(
             }
         });
     action
+}
+
+fn render_totals_footer(ui: &mut Ui, project: &Project, filtered: &MarkupList) {
+    ui.separator();
+    let Some(doc) = project.active() else {
+        return;
+    };
+    let mut by_kind: BTreeMap<&'static str, (MeasureKind, f64, MeasureUnit)> = BTreeMap::new();
+    let mut total_measurements = 0usize;
+    let mut count_markers = 0usize;
+    for row in filtered.rows() {
+        let Some(markup) = doc.markups.iter().find(|m| m.id == row.id) else {
+            continue;
+        };
+        let Some(meas) = &markup.measurement else {
+            continue;
+        };
+        total_measurements += 1;
+        if markup.kind == MarkupKind::MeasureCount {
+            count_markers += 1;
+        }
+        let scale = doc
+            .pages
+            .get(row.page)
+            .map(|p| p.scale)
+            .unwrap_or(Scale::PAPER);
+        let converted = match meas.kind {
+            MeasureKind::Angle | MeasureKind::Count => meas.value_points,
+            MeasureKind::Area => meas.value_points * scale.units_per_point * scale.units_per_point,
+            _ => scale.points_to_units(meas.value_points),
+        };
+        let entry = by_kind
+            .entry(meas.kind.label())
+            .or_insert((meas.kind, 0.0, scale.unit));
+        entry.1 += converted;
+    }
+    ui.horizontal_wrapped(|ui| {
+        for (kind, sum, unit) in by_kind.values() {
+            let label = match kind {
+                MeasureKind::Length => "Total length".to_string(),
+                MeasureKind::Area => "Total area".to_string(),
+                MeasureKind::Count => format!("Count: {} markers", *sum as usize),
+                _ => format!("Total {}", kind.label()),
+            };
+            if matches!(kind, MeasureKind::Count) {
+                ui.label(label.to_string());
+            } else {
+                let text = crate::domain::units::format_value_precise(
+                    *kind,
+                    *unit,
+                    *sum,
+                    project.settings.precision,
+                );
+                ui.label(format!("{label}: {text}"));
+            }
+        }
+        if count_markers > 0 && !by_kind.contains_key(MeasureKind::Count.label()) {
+            ui.label(format!("Count: {} markers", count_markers));
+        }
+        ui.label(format!("Measurements: {}", total_measurements));
+    });
+}
+
+fn export_csv(project: &Project, filtered: &MarkupList, state: &mut UiState) {
+    let Some(path) = rfd::FileDialog::new()
+        .add_filter("CSV", &["csv"])
+        .set_file_name("markups.csv")
+        .save_file()
+    else {
+        return;
+    };
+    let Some(doc) = project.active() else {
+        state.status = "No active document.".to_string();
+        return;
+    };
+    let mut out = String::new();
+    out.push_str("Page,Kind,Author,Subject,Status,Measurement,Comments\n");
+    for row in filtered.rows() {
+        let markup = doc.markups.iter().find(|m| m.id == row.id);
+        let measurement = markup
+            .and_then(|m| m.measurement.as_ref())
+            .map(|me| {
+                let scale = doc
+                    .pages
+                    .get(row.page)
+                    .map(|p| p.scale)
+                    .unwrap_or(Scale::PAPER);
+                me.label_with(scale.unit, project.settings.precision)
+            })
+            .unwrap_or_default();
+        let comments = markup
+            .map(|m| {
+                m.comments
+                    .iter()
+                    .map(|c| c.text.clone())
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            })
+            .unwrap_or_default();
+        let fields = [
+            (row.page + 1).to_string(),
+            row.kind.label().to_string(),
+            row.author.clone(),
+            row.subject.clone(),
+            row.status.label().to_string(),
+            measurement,
+            comments,
+        ];
+        let line: Vec<String> = fields.iter().map(csv_escape).collect();
+        out.push_str(&line.join(","));
+        out.push('\n');
+    }
+    match std::fs::write(&path, out) {
+        Ok(_) => state.status = format!("Exported {} row(s) to {}", filtered.len(), path.display()),
+        Err(e) => state.status = format!("CSV export failed: {e}"),
+    }
+}
+
+fn csv_escape(value: &String) -> String {
+    if value.contains(',') || value.contains('"') || value.contains('\n') {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
+    }
 }
 
 #[cfg(test)]
