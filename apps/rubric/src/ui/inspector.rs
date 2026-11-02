@@ -478,8 +478,10 @@ pub(crate) fn draw_inspector(
                                     for id in &selected {
                                         let doc = project.active_mut();
                                         if let Some(doc) = doc {
-                                            if let Some(markup) = doc.find_markup_mut(*id) {
-                                                if doc.is_markup_editable(markup) {
+                                            // Check editability first (immutable borrow)
+                                            let editable = doc.find_markup(*id).map(|m| doc.is_markup_editable(m)).unwrap_or(false);
+                                            if editable {
+                                                if let Some(markup) = doc.find_markup_mut(*id) {
                                                     markup.status = *s;
                                                     markup.touch();
                                                 }

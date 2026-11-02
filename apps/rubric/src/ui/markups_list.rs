@@ -10,8 +10,8 @@ use eframe::egui::{self, ComboBox, RichText, Ui};
 use uuid::Uuid;
 
 use crate::domain::{
-    style::Color, MarkupGroupKey, MarkupKind, MarkupList, MarkupListFilter, MarkupListSort,
-    Project, ReviewStatus, NONE_LABEL,
+    MarkupGroupKey, MarkupKind, MarkupList, MarkupListFilter, MarkupListSort, Project,
+    ReviewStatus, NONE_LABEL,
 };
 use crate::ui::app::{MarkupLayerFilter, UiState};
 
@@ -105,7 +105,7 @@ fn truncate(value: &str, max_chars: usize) -> String {
 /// clicked; the app owns selection/page changes and their snapshot policy.
 pub(crate) fn draw_markups_list(
     ui: &mut Ui,
-    project: &Project,
+    project: &mut Project,
     state: &mut UiState,
 ) -> Option<MarkupListAction> {
     let Some(doc) = project.active() else {
@@ -301,8 +301,10 @@ pub(crate) fn draw_markups_list(
                                 for id in &state.selected {
                                     let doc = project.active_mut();
                                     if let Some(doc) = doc {
-                                        if let Some(markup) = doc.find_markup_mut(*id) {
-                                            if doc.is_markup_editable(markup) {
+                                        // Check editability first (immutable borrow)
+                                        let editable = doc.find_markup(*id).map(|m| doc.is_markup_editable(m)).unwrap_or(false);
+                                        if editable {
+                                            if let Some(markup) = doc.find_markup_mut(*id) {
                                                 markup.status = *s;
                                                 markup.touch();
                                             }

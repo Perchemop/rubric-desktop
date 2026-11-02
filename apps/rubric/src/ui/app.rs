@@ -1823,7 +1823,7 @@ impl App for RubricApp {
 
         let mut list_action = None;
         if self.ui.show_markups_list {
-            let project = self.history.current();
+            let project = self.history.current_mut();
             let ui_state = &mut self.ui;
             egui::Panel::bottom("markups_list")
                 .default_size(190.0)
