@@ -94,11 +94,30 @@ mod tests {
 
     #[test]
     fn all_contains_every_variant_exactly_once() {
-        assert_eq!(EditorAction::ALL.len(), 13);
+        assert_eq!(EditorAction::ALL.len(), 14);
         for (i, a) in EditorAction::ALL.iter().enumerate() {
             for b in EditorAction::ALL.iter().skip(i + 1) {
                 assert_ne!(a, b, "duplicate action in ALL: {a:?}");
             }
+        }
+    }
+
+    #[test]
+    fn batch_status_requires_a_selection() {
+        for status in ReviewStatus::ALL {
+            let a = EditorAction::BatchStatus(status);
+            assert!(
+                !a.is_enabled(0, false),
+                "{a:?} should be disabled with no selection"
+            );
+            assert!(
+                a.is_enabled(1, false),
+                "{a:?} should be enabled with a selection"
+            );
+            assert!(
+                a.is_enabled(5, true),
+                "{a:?} should accept a multi-selection"
+            );
         }
     }
 
