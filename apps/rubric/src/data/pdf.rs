@@ -675,7 +675,6 @@ fn markup_intersects_page(m: &Markup, width: f32, height: f32) -> bool {
                 || rect.y >= height)
                 || point_in_bounds(tail, width, height)
         }
-
     }
 }
 

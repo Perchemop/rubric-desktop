@@ -302,7 +302,10 @@ pub(crate) fn draw_markups_list(
                                     let doc = project.active_mut();
                                     if let Some(doc) = doc {
                                         // Check editability first (immutable borrow)
-                                        let editable = doc.find_markup(*id).map(|m| doc.is_markup_editable(m)).unwrap_or(false);
+                                        let editable = doc
+                                            .find_markup(*id)
+                                            .map(|m| doc.is_markup_editable(m))
+                                            .unwrap_or(false);
                                         if editable {
                                             if let Some(markup) = doc.find_markup_mut(*id) {
                                                 markup.status = *s;
