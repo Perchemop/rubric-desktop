@@ -485,12 +485,6 @@ pub fn export_pdf_to(
         markups_by_page.entry(m.page).or_default().push(m);
     }
 
-    // Filter markups to page bounds (M5: crop to page bounds at fixed DPI).
-    // For each page, keep only markups whose geometry intersects the page rectangle.
-    for markups in markups_by_page.values_mut() {
-        markups.retain(|m| markup_intersects_page(m));
-    }
-
     // Register a base-14 Helvetica font object once, for text markups.
     let font_dict: lopdf::Dictionary = [
         (b"Type".to_vec(), lopdf::Object::Name(b"/Font".to_vec())),
@@ -634,7 +628,8 @@ fn array_num(obj: &lopdf::Object) -> Result<f64, DataError> {
 /// Page bounds in domain coordinates: x in [0, width], y in [0, height] (y-down from top-left).
 /// Returns true if any part of the markup falls within the page rectangle.
 fn markup_intersects_page(m: &Markup, width: f32, height: f32) -> bool {
-    use crate::domain::markup::{DRect, MarkupGeometry};
+    use crate::domain::geom::DRect;
+    use crate::domain::markup::MarkupGeometry;
 
     // Page rectangle in domain coordinates (y-down from top-left)
     let page_rect = DRect::new(0.0, 0.0, width, height);
@@ -680,11 +675,7 @@ fn markup_intersects_page(m: &Markup, width: f32, height: f32) -> bool {
                 || rect.y >= height)
                 || point_in_bounds(tail, width, height)
         }
-        MarkupGeometry::MeasureCount { .. } => {
-            // Count markers are points
-            // We'd need the actual point, but MeasureCount geometry is complex
-            true // Keep for safety
-        }
+
     }
 }
 

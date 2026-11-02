@@ -6,7 +6,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 use super::geom::Rect;
-use super::markup::Markup;
+use super::markup::{Markup, ReviewStatus};
 use super::style::MarkupStyle;
 use super::units::Scale;
 
