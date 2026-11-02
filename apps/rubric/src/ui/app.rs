@@ -13,7 +13,7 @@ use crate::data::{
     print_image, render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
 use crate::domain::{
-    auto_save_interval_label, view, AppPrefs, Document, EditorAction, Grid, History,
+    auto_save_interval_label, view, AppPrefs, Corner, Document, EditorAction, Grid, History,
     MarkupGroupKey, MarkupKind, MarkupListSort, MarkupStyle, Project, Pt, Report, ReportGroupKey,
     ReviewStatus, StampPreset, Theme, Tool, AUTO_SAVE_INTERVALS,
 };
@@ -196,6 +196,14 @@ pub(crate) struct UiState {
     /// The page whose scale last re-synced the custom-ratio inputs. Used to
     /// detect a page change; was a thread-local (full-app audit M24).
     pub(crate) last_scale_page: Option<usize>,
+    /// The selection-handle corner being dragged to resize the selected
+    /// markup(s). Set on drag-start over a corner handle, cleared on drag end;
+    /// UI-only, never serialized (v0.4 gap #5: resize grips).
+    pub(crate) resize_corner: Option<Corner>,
+    /// True while a corner-handle drag has actually resized a markup. Cleared
+    /// when the drag starts and when it ends; drives the "resize markups"
+    /// snapshot so a zero-delta drag pushes nothing.
+    pub(crate) resize_changed: bool,
 }
 
 impl Default for UiState {
@@ -245,6 +253,8 @@ impl Default for UiState {
             layer_name_drafts: HashMap::new(),
             colour_pending: None,
             last_scale_page: None,
+            resize_corner: None,
+            resize_changed: false,
         }
     }
 }
