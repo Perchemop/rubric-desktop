@@ -628,89 +628,11 @@ fn array_num(obj: &lopdf::Object) -> Result<f64, DataError> {
 /// Page bounds in domain coordinates: x in [0, width], y in [0, height] (y-down from top-left).
 /// Returns true if any part of the markup falls within the page rectangle.
 fn markup_intersects_page(m: &Markup, width: f32, height: f32) -> bool {
-    use crate::domain::geom::DRect;
-    use crate::domain::markup::MarkupGeometry;
-
-    // Page rectangle in domain coordinates (y-down from top-left)
-    let page_rect = DRect::new(0.0, 0.0, width, height);
-
-    match &m.geometry {
-        MarkupGeometry::Bounds(rct) => {
-            // Check if rectangle intersects page bounds
-            !(rct.x + rct.w <= 0.0 || rct.x >= width || rct.y + rct.h <= 0.0 || rct.y >= height)
-        }
-        MarkupGeometry::Segment { a, b } => {
-            // Check if either endpoint is in bounds, or segment crosses bounds
-            point_in_bounds(a, width, height)
-                || point_in_bounds(b, width, height)
-                || segment_intersects_rect(a, b, page_rect)
-        }
-        MarkupGeometry::Path { points, closed: _ } => {
-            // Check if any point is in bounds
-            points.iter().any(|p| point_in_bounds(p, width, height))
-        }
-        MarkupGeometry::Ink { strokes } => {
-            // Check if any stroke point is in bounds
-            strokes
-                .iter()
-                .any(|stroke| stroke.iter().any(|p| point_in_bounds(p, width, height)))
-        }
-        MarkupGeometry::Text {
-            at,
-            wrap: _,
-            text: _,
-        } => {
-            // Text anchor point - check if in bounds with some margin for text extent
-            point_in_bounds(at, width, height)
-        }
-        MarkupGeometry::Callout {
-            rect,
-            tail,
-            text: _,
-        } => {
-            // Check callout box or tail
-            !(rect.x + rect.w <= 0.0
-                || rect.x >= width
-                || rect.y + rect.h <= 0.0
-                || rect.y >= height)
-                || point_in_bounds(tail, width, height)
-        }
-    }
-}
-
-/// Check if a point is within page bounds (with small epsilon for edge cases).
-fn point_in_bounds(p: &crate::domain::geom::Pt, width: f32, height: f32) -> bool {
-    p.x >= -0.5 && p.x <= width + 0.5 && p.y >= -0.5 && p.y <= height + 0.5
-}
-
-/// Check if a line segment intersects a rectangle.
-fn segment_intersects_rect(
-    a: &crate::domain::geom::Pt,
-    b: &crate::domain::geom::Pt,
-    rect: DRect,
-) -> bool {
-    // Cohen-Sutherland line clipping algorithm - simplified check
-    // If both endpoints are on the same outside edge, no intersection
-    let (x1, y1) = (a.x, a.y);
-    let (x2, y2) = (b.x, b.y);
-    let (rx1, ry1) = (rect.x, rect.y);
-    let (rx2, ry2) = (rect.x + rect.w, rect.y + rect.h);
-
-    // Trivial reject: both points left, right, above, or below
-    if x1 < rx1 && x2 < rx1 {
-        return false;
-    }
-    if x1 > rx2 && x2 > rx2 {
-        return false;
-    }
-    if y1 < ry1 && y2 < ry1 {
-        return false;
-    }
-    if y1 > ry2 && y2 > ry2 {
-        return false;
-    }
-
-    true // Potential intersection
+    // Page rectangle in domain coordinates (y-down from top-left).
+    let b = m.geometry.bounds();
+    // Keep the markup when its bounding box overlaps the page rectangle.
+    // Markups entirely outside the page (left/right/above/below) are dropped.
+    !(b.x + b.w <= 0.0 || b.x >= width || b.y + b.h <= 0.0 || b.y >= height)
 }
 
 /// Render all markups on one page into a single PDF content stream.
