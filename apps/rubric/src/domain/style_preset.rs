@@ -50,6 +50,31 @@ impl StylePreset {
         }
     }
 
+    /// Capture a preset from a tool's default style rather than an existing
+    /// markup (the Tool Chest's "Save current tool as…", v0.4 gap #7).
+    ///
+    /// Nothing has been drawn or reviewed yet, so `subject` is empty and
+    /// `status` is [`ReviewStatus::Open`]; `locked` is always `false` because
+    /// lock state is not style (see [`Self::from_markup`]).
+    pub fn from_style(
+        name: impl Into<String>,
+        kind: MarkupKind,
+        style: MarkupStyle,
+        author: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            name: name.into(),
+            kind,
+            style,
+            author: author.into(),
+            subject: String::new(),
+            status: ReviewStatus::Open,
+            locked: false,
+            created: Utc::now(),
+        }
+    }
+
     /// Apply this preset to `markup`.
     ///
     /// - Replaces the visual [`MarkupStyle`].
@@ -122,6 +147,24 @@ impl StylePresetLibrary {
         }
     }
 
+    /// Save a preset under a name, replacing an existing preset with the same
+    /// name (case-insensitive) in place.
+    ///
+    /// The replacement keeps the *stored* preset's id, so re-saving "My Tool"
+    /// updates that one entry instead of creating a near-duplicate; the entry
+    /// still moves to the back (MRU order) and the [`MAX_PRESETS`] cap still
+    /// applies. Returns the id of the stored preset.
+    pub fn save_named(&mut self, preset: StylePreset) -> Uuid {
+        let existing_id = self.find_by_name(&preset.name).map(|p| p.id);
+        let mut stored = preset;
+        if let Some(id) = existing_id {
+            stored.id = id;
+        }
+        let id = stored.id;
+        self.add(stored);
+        id
+    }
+
     /// Remove a preset by id.
     pub fn remove(&mut self, id: Uuid) -> bool {
         let len_before = self.presets.len();
@@ -161,7 +204,7 @@ mod tests {
     use super::*;
     use crate::domain::geom::{Pt, Rect};
     use crate::domain::markup::{Markup, MarkupGeometry, MarkupKind};
-    use crate::domain::style::{palette, FillMode, MarkupStyle};
+    use crate::domain::style::{palette, MarkupStyle};
 
     fn sample_markup() -> Markup {
         let mut m = Markup::new(
@@ -259,6 +302,88 @@ mod tests {
         assert!(lib.rename(preset.id, "Renamed"));
         assert_eq!(lib.find(preset.id).unwrap().name, "Renamed");
         assert!(!lib.rename(Uuid::new_v4(), "X"));
+    }
+
+    #[test]
+    fn from_style_capture_defaults() {
+        let style = MarkupStyle::default()
+            .with_stroke(palette::BLUE)
+            .with_width(3.0);
+        let preset = StylePreset::from_style("Blue Line", MarkupKind::Line, style, "Eve");
+        assert_eq!(preset.name, "Blue Line");
+        assert_eq!(preset.kind, MarkupKind::Line);
+        assert_eq!(preset.style, style);
+        assert_eq!(preset.author, "Eve");
+        assert!(preset.subject.is_empty(), "nothing has been reviewed yet");
+        assert_eq!(preset.status, ReviewStatus::Open);
+        assert!(!preset.locked, "lock state is not style");
+
+        // Applying a tool-captured preset to a fresh markup sets only the
+        // look: the fresh markup keeps its Open status and kind label subject.
+        let mut target = Markup::new(
+            0,
+            MarkupKind::Line,
+            MarkupGeometry::Segment {
+                a: Pt::new(0.0, 0.0),
+                b: Pt::new(9.0, 9.0),
+            },
+            "Eve",
+        );
+        let status_before = target.status;
+        let subject_before = target.subject.clone();
+        preset.apply_to(&mut target);
+        assert_eq!(target.style, style);
+        assert_eq!(target.status, status_before);
+        assert_eq!(target.subject, subject_before);
+    }
+
+    #[test]
+    fn library_save_named_dedupes_case_insensitive() {
+        let mut lib = StylePresetLibrary::new();
+        let first = StylePreset::from_style(
+            "My Tool",
+            MarkupKind::Rectangle,
+            MarkupStyle::default(),
+            "A",
+        );
+        let id = lib.save_named(first);
+        assert_eq!(lib.len(), 1);
+
+        // Re-saving a differently-cased name replaces the single entry and
+        // keeps its id; the stored preset adopts the new style and name.
+        let second = StylePreset::from_style(
+            "MY TOOL",
+            MarkupKind::Rectangle,
+            MarkupStyle::default().with_stroke(palette::BLUE),
+            "A",
+        );
+        let id2 = lib.save_named(second);
+        assert_eq!(lib.len(), 1, "same name must not create a second entry");
+        assert_eq!(id2, id, "the stored id is kept so callers can re-find it");
+        assert_eq!(lib.find(id).unwrap().name, "MY TOOL");
+        assert_eq!(lib.find(id).unwrap().style.stroke, palette::BLUE);
+
+        // A different name is a new entry.
+        let third =
+            StylePreset::from_style("Other", MarkupKind::Ellipse, MarkupStyle::default(), "A");
+        let id3 = lib.save_named(third);
+        assert_ne!(id3, id);
+        assert_eq!(lib.len(), 2);
+    }
+
+    #[test]
+    fn style_preset_library_serialize_roundtrip() {
+        let mut lib = StylePresetLibrary::new();
+        lib.save_named(StylePreset::from_style(
+            "Saved",
+            MarkupKind::Arrow,
+            MarkupStyle::default().with_stroke(palette::TEAL),
+            "Ann",
+        ));
+        lib.add(StylePreset::from_markup(&sample_markup(), "From Markup"));
+        let json = serde_json::to_string(&lib).unwrap();
+        let back: StylePresetLibrary = serde_json::from_str(&json).unwrap();
+        assert_eq!(lib, back);
     }
 
     #[test]

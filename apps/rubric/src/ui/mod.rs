@@ -8,6 +8,7 @@ pub mod markups_list;
 pub mod menu;
 pub mod pages;
 pub mod theme;
+pub mod tool_chest;
 pub mod toolbar;
 
 pub use app::RubricApp;
