@@ -32,10 +32,13 @@ fn action_button(ui: &mut Ui, ui_state: &mut UiState, action: EditorAction) {
     if action == EditorAction::DeleteSelection && !ui_state.can_delete {
         enabled = false;
     }
-    if ui
-        .add_enabled(enabled, egui::Button::new(action.label()))
-        .clicked()
-    {
+    // Show the keyboard shortcut on the right when the action has one
+    // (full-app audit M5).
+    let mut button = egui::Button::new(action.label());
+    if let Some(shortcut) = action.shortcut_hint() {
+        button = button.shortcut_text(shortcut);
+    }
+    if ui.add_enabled(enabled, button).clicked() {
         ui_state.pending_action = Some(action);
         ui.close();
     }
