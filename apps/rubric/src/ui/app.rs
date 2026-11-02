@@ -1973,6 +1973,18 @@ impl App for RubricApp {
                 .show(ui.ctx(), |ui| {
                     ui.label("The project has unsaved changes.");
                     ui.horizontal(|ui| {
+                        // Save first, then quit — but only when the save really
+                        // landed. A cancelled Save As or a failed write leaves
+                        // the project dirty, so the dialog stays open instead of
+                        // quitting on top of unsaved work.
+                        if ui.button("Save and Quit").clicked() {
+                            self.save_project_action();
+                            if !self.ui.dirty {
+                                self.ui.quit_confirm = false;
+                                self.force_close = true;
+                                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                            }
+                        }
                         if ui.button("Quit Anyway").clicked() {
                             self.ui.quit_confirm = false;
                             // Tell the close veto this close was confirmed
