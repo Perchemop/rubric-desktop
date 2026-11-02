@@ -148,6 +148,25 @@
 - Task brief: not created for this slice; scope recorded in `PROGRESS.md`
   (2026-11-02)
 
+### v0.4-03 — duplicate markups (gap #6)
+- [x] `Document::duplicate_markups(ids, offset)` clones editable markups with
+  fresh ids, translated geometry, recomputed measurements, appended on top;
+  locked/missing ids skipped
+- [x] `EditorAction::Duplicate` ("Duplicate", `Ctrl+D`) in the Edit and context
+  menus (`ALL` now 15 entries), gated on a non-empty selection
+- [x] `RubricApp::duplicate_selected` selects the clones and pushes one
+  `"duplicate markups"` snapshot
+- [x] Domain test `duplicate_markups_clones_editable_sources_with_fresh_ids_and_offset`
+  and action tests
+- Evidence: PR #93, commit `8a70739`; CI green on PR #93
+
+### Audit follow-ups (M18, M24, WCAG, M5, Quit)
+- [x] M18: canvas background raster width tracks zoom (PR #90)
+- [x] M24: inspector thread-locals moved into `UiState` (PR #90)
+- [x] WCAG: Markups List status text uses a text-safe colour on light (PR #90)
+- [x] M5: menu shortcut hints + Ctrl+A Select All + hint bar (PR #91)
+- [x] Unsaved-changes dialog: Save and Quit (PR #92)
+
 ### v1.0-0 — installer verification
 - [ ] Multi-platform installer verification (Linux ✅, macOS, Windows)
 - [ ] §2.5 legal checklist clean for a public release
