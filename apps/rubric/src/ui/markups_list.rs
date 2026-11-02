@@ -15,11 +15,6 @@ use crate::domain::{
 };
 use crate::ui::app::{MarkupLayerFilter, UiState};
 
-fn status_color(status: ReviewStatus) -> egui::Color32 {
-    let c = status.color();
-    egui::Color32::from_rgba_unmultiplied(c.r, c.g, c.b, c.a)
-}
-
 /// A request from the list to the app: select `id` and show its page.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct MarkupListAction {
@@ -129,8 +124,8 @@ pub(crate) fn draw_markups_list(
     let subjects = unique_sorted(all.rows().iter().map(|r| r.subject.as_str()));
     let default_layer_name = doc
         .default_layer()
-        .map(|l| l.name.as_str())
-        .unwrap_or("Default");
+        .map(|l| l.name.clone())
+        .unwrap_or_else(|| "Default".to_string());
 
     ui.horizontal(|ui| {
         ui.heading("Markups List");
@@ -342,7 +337,7 @@ pub(crate) fn draw_markups_list(
     egui::ScrollArea::vertical()
         .auto_shrink([false, false])
         .show(ui, |ui| {
-            render_list(ui, &filtered, state, &layer_name, default_layer_name)
+            render_list(ui, &filtered, state, &layer_name, &default_layer_name)
         })
         .inner
 }
