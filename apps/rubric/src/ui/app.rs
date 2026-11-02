@@ -453,6 +453,27 @@ impl RubricApp {
         }
     }
 
+    /// Duplicate the selected markups, nudged slightly, and select the clones
+    /// (Edit ▸ Duplicate, Ctrl+D; v0.4 gap #6).
+    fn duplicate_selected(&mut self) {
+        let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
+        if ids.is_empty() {
+            return;
+        }
+        let new_ids = self
+            .active_doc_mut()
+            .map(|doc| doc.duplicate_markups(&ids, (12.0, 12.0)))
+            .unwrap_or_default();
+        if new_ids.is_empty() {
+            self.ui.status = "Selection is locked".to_string();
+        } else {
+            self.ui.selected = new_ids.iter().copied().collect();
+            self.push_snapshot("duplicate markups");
+            let n = new_ids.len();
+            self.ui.status = format!("Duplicated {n} markup{}", if n == 1 { "" } else { "s" });
+        }
+    }
+
     /// Perform a context-menu [`EditorAction`] (spec F-603). Shared by the
     /// canvas and inspector context menus and by the Edit/View menu bar so a
     /// command has exactly one implementation.
@@ -482,6 +503,13 @@ impl RubricApp {
                     self.ui.status = "Finish or cancel text edit first".to_string();
                 } else {
                     self.delete_selected();
+                }
+            }
+            EditorAction::Duplicate => {
+                if self.ui.text_edit.is_some() {
+                    self.ui.status = "Finish or cancel text edit first".to_string();
+                } else {
+                    self.duplicate_selected();
                 }
             }
             EditorAction::ClearSelection => {
@@ -1728,6 +1756,14 @@ impl App for RubricApp {
                     self.ui.status = "Finish or cancel text edit first".to_string();
                 } else {
                     self.select_all_on_page();
+                }
+            }
+            if i.modifiers.command && i.key_pressed(egui::Key::D) && !wants_kb {
+                // Duplicate the selection (v0.4 gap #6); same path as the menu.
+                if self.ui.text_edit.is_some() {
+                    self.ui.status = "Finish or cancel text edit first".to_string();
+                } else {
+                    self.duplicate_selected();
                 }
             }
             if i.key_pressed(egui::Key::PageUp) && !wants_kb {

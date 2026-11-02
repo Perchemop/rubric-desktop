@@ -47,7 +47,11 @@ fn action_button(ui: &mut Ui, ui_state: &mut UiState, action: EditorAction) {
 /// Selection-dependent editing commands shared by the context menu and the
 /// Edit menu (F-113–F-115).
 pub(crate) fn draw_selection_commands(ui: &mut Ui, ui_state: &mut UiState) {
-    for action in [EditorAction::DeleteSelection, EditorAction::ClearSelection] {
+    for action in [
+        EditorAction::DeleteSelection,
+        EditorAction::Duplicate,
+        EditorAction::ClearSelection,
+    ] {
         action_button(ui, ui_state, action);
     }
 

@@ -13,6 +13,8 @@ pub enum EditorAction {
     Undo,
     Redo,
     DeleteSelection,
+    /// Clone the selected markups, nudged slightly, on the same page.
+    Duplicate,
     ClearSelection,
     CopyProperties,
     PasteProperties,
@@ -28,10 +30,11 @@ pub enum EditorAction {
 
 impl EditorAction {
     /// Every action, in menu order.
-    pub const ALL: [EditorAction; 14] = [
+    pub const ALL: [EditorAction; 15] = [
         EditorAction::Undo,
         EditorAction::Redo,
         EditorAction::DeleteSelection,
+        EditorAction::Duplicate,
         EditorAction::ClearSelection,
         EditorAction::CopyProperties,
         EditorAction::PasteProperties,
@@ -51,6 +54,7 @@ impl EditorAction {
             EditorAction::Undo => "Undo",
             EditorAction::Redo => "Redo",
             EditorAction::DeleteSelection => "Delete Selected",
+            EditorAction::Duplicate => "Duplicate",
             EditorAction::ClearSelection => "Clear Selection",
             EditorAction::CopyProperties => "Copy Properties",
             EditorAction::PasteProperties => "Paste Properties",
@@ -73,6 +77,7 @@ impl EditorAction {
             EditorAction::Undo => Some("Ctrl+Z"),
             EditorAction::Redo => Some("Ctrl+Y"),
             EditorAction::DeleteSelection => Some("Del"),
+            EditorAction::Duplicate => Some("Ctrl+D"),
             _ => None,
         }
     }
@@ -86,7 +91,9 @@ impl EditorAction {
     /// simply do nothing on an empty history, and zoom always applies.
     pub fn is_enabled(self, selection_count: usize, has_style_clipboard: bool) -> bool {
         match self {
-            EditorAction::DeleteSelection | EditorAction::ClearSelection => selection_count > 0,
+            EditorAction::DeleteSelection
+            | EditorAction::Duplicate
+            | EditorAction::ClearSelection => selection_count > 0,
             EditorAction::CopyProperties
             | EditorAction::BringForward
             | EditorAction::SendBackward
@@ -106,7 +113,7 @@ mod tests {
 
     #[test]
     fn all_contains_every_variant_exactly_once() {
-        assert_eq!(EditorAction::ALL.len(), 14);
+        assert_eq!(EditorAction::ALL.len(), 15);
         for (i, a) in EditorAction::ALL.iter().enumerate() {
             for b in EditorAction::ALL.iter().skip(i + 1) {
                 assert_ne!(a, b, "duplicate action in ALL: {a:?}");
@@ -140,6 +147,7 @@ mod tests {
         assert_eq!(EditorAction::Undo.shortcut_hint(), Some("Ctrl+Z"));
         assert_eq!(EditorAction::Redo.shortcut_hint(), Some("Ctrl+Y"));
         assert_eq!(EditorAction::DeleteSelection.shortcut_hint(), Some("Del"));
+        assert_eq!(EditorAction::Duplicate.shortcut_hint(), Some("Ctrl+D"));
         assert_eq!(EditorAction::ClearSelection.shortcut_hint(), None);
         assert_eq!(EditorAction::CopyProperties.shortcut_hint(), None);
         assert_eq!(EditorAction::FitPage.shortcut_hint(), None);
@@ -161,7 +169,11 @@ mod tests {
 
     #[test]
     fn selection_actions_require_a_selection() {
-        for a in [EditorAction::DeleteSelection, EditorAction::ClearSelection] {
+        for a in [
+            EditorAction::DeleteSelection,
+            EditorAction::Duplicate,
+            EditorAction::ClearSelection,
+        ] {
             assert!(
                 !a.is_enabled(0, false),
                 "{a:?} should be disabled with no selection"
