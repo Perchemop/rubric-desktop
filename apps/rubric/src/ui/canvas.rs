@@ -61,6 +61,16 @@ fn handle_at(b: egui::Rect, pp: Pos2, zoom: f32) -> Option<Corner> {
     None
 }
 
+/// Which draggable endpoint/vertex of `m`, if any, the screen point `pp` is
+/// over (v0.4 gap #5 follow-up). Checked before the bounding-box corner
+/// handles so a coincident endpoint wins.
+fn point_handle_at(m: &Markup, pp: Pos2, origin: Pos2, pan: Vec2, zoom: f32) -> Option<usize> {
+    let radius = 8.0_f32.max(4.5 * zoom.max(0.7));
+    m.draggable_points()
+        .iter()
+        .position(|p| (to_screen(*p, pan, zoom, origin) - pp).length() <= radius)
+}
+
 /// Draw a small dark measurement badge with white text at `anchor` (screen
 /// space). Used for measurement labels and the running count total.
 fn draw_measure_badge(painter: &Painter, anchor: Pos2, label: String) {
@@ -520,15 +530,28 @@ fn draw_markup(
 }
 
 /// Draw selection handles for a selected markup.
+///
+/// Geometries with draggable points (segments, paths, angles) show one handle
+/// per endpoint/vertex — dragging it reshapes the markup directly (v0.4 gap #5
+/// follow-up). Everything else keeps the bounding-box corner handles plus a
+/// centre grab dot; only `Bounds` geometry actually resizes from a corner.
 fn draw_selection(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup) {
     let b = screen_rect(m.bounds(), origin, pan, zoom);
     let stroke = egui::Stroke::new(1.0, Color32::from_rgb(30, 144, 255));
-    let handle = |p: Pos2| painter.circle(p, 4.5 * zoom.max(0.7), Color32::WHITE, stroke);
-    handle(b.left_top());
-    handle(b.right_top());
-    handle(b.left_bottom());
-    handle(b.right_bottom());
-    handle(b.center());
+    let points = m.draggable_points();
+    if points.is_empty() {
+        let handle = |p: Pos2| painter.circle(p, 4.5 * zoom.max(0.7), Color32::WHITE, stroke);
+        handle(b.left_top());
+        handle(b.right_top());
+        handle(b.left_bottom());
+        handle(b.right_bottom());
+        handle(b.center());
+    } else {
+        for p in points {
+            let sp = to_screen(p, pan, zoom, origin);
+            painter.circle(sp, 4.0 * zoom.max(0.7), Color32::WHITE, stroke);
+        }
+    }
     painter.rect_stroke(
         b,
         egui::CornerRadius::same(4),
@@ -1861,6 +1884,7 @@ pub(crate) fn draw_canvas(
         ui_state.move_selection = false;
         ui_state.move_changed = false;
         ui_state.resize_corner = None;
+        ui_state.resize_point = None;
         ui_state.resize_changed = false;
     }
     // Drag to resize the selection from a corner handle (v0.4 gap #5).
@@ -1870,6 +1894,8 @@ pub(crate) fn draw_canvas(
         if response.drag_started() {
             if let Some(pp) = raw_pos {
                 if let Some(doc) = project.active() {
+                    let screen_pp = to_screen(pp, pan, zoom, origin);
+                    let mut picked_point = None;
                     let mut picked_corner = None;
                     for id in &ui_state.selected {
                         let editable = doc
@@ -1882,17 +1908,23 @@ pub(crate) fn draw_canvas(
                         let Some(m) = doc.find_markup(*id) else {
                             continue;
                         };
+                        // Point handles first: an endpoint/vertex grab is more
+                        // specific than a bounding-box corner grab.
+                        if let Some(idx) = point_handle_at(m, screen_pp, origin, pan, zoom) {
+                            picked_point = Some(idx);
+                            break;
+                        }
                         if matches!(m.geometry, MarkupGeometry::Bounds(_)) {
                             let b = screen_rect(m.bounds(), origin, pan, zoom);
-                            let screen_pp = to_screen(pp, pan, zoom, origin);
                             if let Some(c) = handle_at(b, screen_pp, ui_state.zoom) {
                                 picked_corner = Some(c);
                                 break;
                             }
                         }
                     }
-                    if let Some(corner) = picked_corner {
-                        ui_state.resize_corner = Some(corner);
+                    if picked_point.is_some() || picked_corner.is_some() {
+                        ui_state.resize_point = picked_point;
+                        ui_state.resize_corner = picked_corner;
                         ui_state.move_selection = false;
                         ui_state.resize_changed = false;
                     }
@@ -1946,6 +1978,50 @@ pub(crate) fn draw_canvas(
                 mutated |= ui_state.resize_changed;
                 ui_state.resize_changed = false;
             }
+        } else if let Some(index) = ui_state.resize_point {
+            // Drag to reshape the markup from a draggable endpoint/vertex
+            // (v0.4 gap #5 follow-up). The same index applies to every
+            // selected markup, mirroring how a corner drag reshapes each.
+            let delta = if response.dragged() {
+                response.drag_delta()
+            } else {
+                Vec2::ZERO
+            };
+            if delta != Vec2::ZERO {
+                let dx = delta.x / ui_state.zoom;
+                let dy = delta.y / ui_state.zoom;
+                let sel: Vec<Uuid> = ui_state.selected.iter().copied().collect();
+                if let Some(doc) = project.active_mut() {
+                    for id in sel {
+                        let editable = doc
+                            .find_markup(id)
+                            .map(|m| doc.is_markup_editable(m))
+                            .unwrap_or(false);
+                        if !editable {
+                            continue;
+                        }
+                        if let Some(m) = doc.find_markup_mut(id) {
+                            let Some(old) = m.draggable_points().get(index).copied() else {
+                                continue;
+                            };
+                            let new_pt = Pt::new(old.x + dx, old.y + dy);
+                            if m.move_point(index, new_pt) {
+                                if m.kind.is_measure() {
+                                    m.recompute_measurement(page.scale);
+                                }
+                                ui_state.resize_changed = true;
+                            }
+                        }
+                    }
+                }
+            }
+            // Snapshot once, when the drag ends (never per frame), and only
+            // when the drag actually reshaped a markup.
+            if response.drag_stopped() {
+                ui_state.resize_point = None;
+                mutated |= ui_state.resize_changed;
+                ui_state.resize_changed = false;
+            }
         }
     }
 
@@ -1980,7 +2056,10 @@ pub(crate) fn draw_canvas(
                         .active()
                         .and_then(|d| d.find_markup(id).map(|m| d.is_markup_editable(m)))
                         .unwrap_or(false);
-                    ui_state.resize_corner.is_none() && ui_state.selected.contains(&id) && editable
+                    ui_state.resize_corner.is_none()
+                        && ui_state.resize_point.is_none()
+                        && ui_state.selected.contains(&id)
+                        && editable
                 })
                 .unwrap_or(false);
             ui_state.move_selection = can_move;
@@ -2082,5 +2161,32 @@ mod tests {
         assert!(!calibration_segment_ok(-10.0));
         assert!(!calibration_segment_ok(f32::NAN));
         assert!(!calibration_segment_ok(f32::INFINITY));
+    }
+
+    #[test]
+    fn point_handle_at_finds_endpoints_but_not_the_middle() {
+        let m = Markup::new(
+            0,
+            MarkupKind::Line,
+            MarkupGeometry::Segment {
+                a: Pt::new(0.0, 0.0),
+                b: Pt::new(100.0, 100.0),
+            },
+            "t",
+        );
+        // Identity transform: page points land on the same screen coords.
+        assert_eq!(
+            point_handle_at(&m, Pos2::new(0.0, 0.0), Pos2::ZERO, Vec2::ZERO, 1.0),
+            Some(0)
+        );
+        assert_eq!(
+            point_handle_at(&m, Pos2::new(100.0, 100.0), Pos2::ZERO, Vec2::ZERO, 1.0),
+            Some(1)
+        );
+        assert_eq!(
+            point_handle_at(&m, Pos2::new(50.0, 50.0), Pos2::ZERO, Vec2::ZERO, 1.0),
+            None,
+            "the middle of the segment carries no point handle"
+        );
     }
 }

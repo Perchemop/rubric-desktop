@@ -228,9 +228,14 @@ pub(crate) struct UiState {
     /// markup(s). Set on drag-start over a corner handle, cleared on drag end;
     /// UI-only, never serialized (v0.4 gap #5: resize grips).
     pub(crate) resize_corner: Option<Corner>,
-    /// True while a corner-handle drag has actually resized a markup. Cleared
-    /// when the drag starts and when it ends; drives the "resize markups"
-    /// snapshot so a zero-delta drag pushes nothing.
+    /// Index of the draggable endpoint/vertex being dragged to reshape the
+    /// selected markup (see `Markup::draggable_points`). Set on drag-start
+    /// over a point handle, cleared on drag end; UI-only, never serialized
+    /// (v0.4 gap #5 follow-up: endpoint/vertex editing).
+    pub(crate) resize_point: Option<usize>,
+    /// True while a reshape drag (corner handle or point handle) has actually
+    /// changed a markup. Cleared when the drag starts and when it ends; drives
+    /// the "resize markups" snapshot so a zero-delta drag pushes nothing.
     pub(crate) resize_changed: bool,
     /// Open calibration dialog, if any (v0.4 gap #4). Set by the canvas when
     /// the user finishes the two-click reference segment; drawn as a window by
@@ -300,6 +305,7 @@ impl Default for UiState {
             colour_pending: None,
             last_scale_page: None,
             resize_corner: None,
+            resize_point: None,
             resize_changed: false,
             calibration: None,
             pending_style_preset: None,
