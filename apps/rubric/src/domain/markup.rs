@@ -923,6 +923,61 @@ impl Markup {
         }
         true
     }
+
+    /// Structural, user-draggable points of this geometry, in a stable index
+    /// order for [`Markup::move_point`] (v0.4 gap #5 follow-up: endpoint and
+    /// vertex editing).
+    ///
+    /// Segments expose their two endpoints, paths every vertex, angles all
+    /// three points. Kinds without meaningful per-point reshaping — bounding
+    /// box shapes use [`Markup::resize_bounds`], and ink/text/callout/count
+    /// keep their whole-markup move — return an empty vector.
+    pub fn draggable_points(&self) -> Vec<Pt> {
+        match &self.geometry {
+            MarkupGeometry::Segment { a, b } => vec![*a, *b],
+            MarkupGeometry::Path { points, .. } => points.clone(),
+            MarkupGeometry::Angle { a, vertex, b } => vec![*a, *vertex, *b],
+            _ => Vec::new(),
+        }
+    }
+
+    /// Move the draggable point at `index` (see [`Markup::draggable_points`])
+    /// to `pt`. Returns `true` when the geometry changed; out-of-range indices
+    /// and no-op moves return `false`.
+    ///
+    /// Lock is enforced by the caller (the canvas checks
+    /// `is_markup_editable`), matching [`Markup::resize_bounds`]. Measurements
+    /// are *not* recomputed here — the caller recomputes for measure kinds
+    /// after a successful move.
+    pub fn move_point(&mut self, index: usize, pt: Pt) -> bool {
+        match &mut self.geometry {
+            MarkupGeometry::Segment { a, b } => match index {
+                0 => Self::set_if_changed(a, pt),
+                1 => Self::set_if_changed(b, pt),
+                _ => false,
+            },
+            MarkupGeometry::Path { points, .. } => points
+                .get_mut(index)
+                .is_some_and(|p| Self::set_if_changed(p, pt)),
+            MarkupGeometry::Angle { a, vertex, b } => match index {
+                0 => Self::set_if_changed(a, pt),
+                1 => Self::set_if_changed(vertex, pt),
+                2 => Self::set_if_changed(b, pt),
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    /// Assign `pt` to `slot`, reporting whether the value changed.
+    fn set_if_changed(slot: &mut Pt, pt: Pt) -> bool {
+        if *slot == pt {
+            false
+        } else {
+            *slot = pt;
+            true
+        }
+    }
 }
 
 /// A corner of a bounding-box markup that can be dragged to resize it
@@ -2006,5 +2061,120 @@ mod tests {
         );
         // Lock is enforced by the caller (canvas checks is_markup_editable),
         // not by resize_bounds itself.
+    }
+
+    #[test]
+    fn draggable_points_cover_segments_paths_and_angles_only() {
+        let segment = Markup::new(
+            0,
+            MarkupKind::Line,
+            MarkupGeometry::Segment {
+                a: Pt::new(0.0, 0.0),
+                b: Pt::new(10.0, 20.0),
+            },
+            "t",
+        );
+        assert_eq!(
+            segment.draggable_points(),
+            vec![Pt::new(0.0, 0.0), Pt::new(10.0, 20.0)]
+        );
+
+        let path = Markup::new(
+            0,
+            MarkupKind::Polygon,
+            MarkupGeometry::Path {
+                points: vec![Pt::new(1.0, 1.0), Pt::new(2.0, 2.0), Pt::new(3.0, 3.0)],
+                closed: true,
+            },
+            "t",
+        );
+        assert_eq!(path.draggable_points().len(), 3);
+
+        let angle = Markup::new(
+            0,
+            MarkupKind::MeasureAngle,
+            MarkupGeometry::Angle {
+                a: Pt::new(0.0, 0.0),
+                vertex: Pt::new(5.0, 5.0),
+                b: Pt::new(10.0, 0.0),
+            },
+            "t",
+        );
+        assert_eq!(angle.draggable_points().len(), 3);
+
+        // Bounds shapes resize from corners instead; everything else keeps
+        // its whole-markup move.
+        let bounds = Markup::new(
+            0,
+            MarkupKind::Rectangle,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0)),
+            "t",
+        );
+        assert!(bounds.draggable_points().is_empty());
+        let ink = Markup::new(
+            0,
+            MarkupKind::Ink,
+            MarkupGeometry::Ink {
+                strokes: vec![vec![Pt::new(0.0, 0.0), Pt::new(1.0, 1.0)]],
+            },
+            "t",
+        );
+        assert!(ink.draggable_points().is_empty());
+    }
+
+    #[test]
+    fn move_point_moves_segment_endpoints() {
+        let mut m = Markup::new(
+            0,
+            MarkupKind::MeasureLength,
+            MarkupGeometry::Segment {
+                a: Pt::new(0.0, 0.0),
+                b: Pt::new(72.0, 0.0),
+            },
+            "t",
+        );
+        assert!(m.move_point(1, Pt::new(144.0, 0.0)));
+        assert_eq!(m.draggable_points()[1], Pt::new(144.0, 0.0));
+        assert!(!m.move_point(1, Pt::new(144.0, 0.0)), "no-op returns false");
+        assert!(!m.move_point(2, Pt::new(0.0, 0.0)), "out-of-range index");
+    }
+
+    #[test]
+    fn move_point_moves_a_path_vertex() {
+        let mut m = Markup::new(
+            0,
+            MarkupKind::Polygon,
+            MarkupGeometry::Path {
+                points: vec![Pt::new(0.0, 0.0), Pt::new(10.0, 0.0), Pt::new(5.0, 10.0)],
+                closed: true,
+            },
+            "t",
+        );
+        assert!(m.move_point(2, Pt::new(5.0, 20.0)));
+        assert_eq!(m.draggable_points()[2], Pt::new(5.0, 20.0));
+        assert!(!m.move_point(3, Pt::new(0.0, 0.0)), "out-of-range index");
+    }
+
+    #[test]
+    fn move_point_moves_an_angle_point_and_recompute_updates_the_value() {
+        let mut m = Markup::new(
+            0,
+            MarkupKind::MeasureAngle,
+            MarkupGeometry::Angle {
+                a: Pt::new(-10.0, 0.0),
+                vertex: Pt::new(0.0, 0.0),
+                b: Pt::new(10.0, 0.0),
+            },
+            "t",
+        );
+        m.recompute_measurement(Scale::PAPER);
+        let before = m.measurement.as_ref().map(|me| me.value_points);
+        assert!(m.move_point(2, Pt::new(10.0, 10.0)));
+        m.recompute_measurement(Scale::PAPER);
+        let after = m.measurement.as_ref().map(|me| me.value_points);
+        assert_ne!(
+            before, after,
+            "moving an angle leg must change the measured angle"
+        );
     }
 }
