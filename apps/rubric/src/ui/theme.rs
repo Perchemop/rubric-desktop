@@ -81,6 +81,23 @@ pub fn apply_theme(ctx: &egui::Context, theme: Theme) {
     };
     visuals.widgets.open.bg_fill = visuals.widgets.active.bg_fill;
 
+    // Button hierarchy: primary (accent-filled), secondary (muted fill),
+    // tertiary (text-like). These colours are applied via the widget visuals
+    // so they respect the current theme (light/dark).
+    visuals.widgets.inactive.bg_fill = match theme {
+        Theme::Light => Color32::from_rgb(245, 245, 248),
+        Theme::Dark => Color32::from_rgb(38, 43, 72),
+    };
+    visuals.widgets.hovered.bg_fill = match theme {
+        Theme::Light => Color32::from_rgb(228, 231, 240),
+        Theme::Dark => Color32::from_rgb(46, 52, 86),
+    };
+    visuals.widgets.active.bg_fill = match theme {
+        Theme::Light => Color32::from_rgb(214, 219, 232),
+        Theme::Dark => Color32::from_rgb(58, 65, 104),
+    };
+    visuals.widgets.open.bg_fill = visuals.widgets.active.bg_fill;
+
     // egui 0.36 keeps one style per theme: select the theme and install the
     // palette in that theme's style slot.
     let egui_theme = match theme {
