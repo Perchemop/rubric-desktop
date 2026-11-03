@@ -427,6 +427,8 @@ impl RubricApp {
             current_path: None,
             pending_replace: None,
             show_about: false,
+            show_keyboard_shortcuts: false,
+    show_keyboard_shortcuts: false,
             update_dismissed: false,
             force_close: false,
             title_dirty: true,
@@ -1820,6 +1822,11 @@ impl RubricApp {
                     ));
                     ui.close();
                 }
+                ui.separator();
+                if ui.button("Keyboard Shortcuts…").clicked() {
+                    self.show_keyboard_shortcuts = !self.show_keyboard_shortcuts;
+                    ui.close();
+                }
             });
         });
     }
@@ -2339,6 +2346,46 @@ impl App for RubricApp {
                 self.show_about = false;
             }
             self.ui.status = "Rubric — free, cross-platform PDF markup & measurement".to_string();
+        }
+
+        // Keyboard shortcuts dialog (proposal 10): lists all discoverable
+        // shortcuts grouped by category, for reference while working.
+        if self.show_keyboard_shortcuts {
+            let mut open = true;
+            egui::Window::new("Keyboard Shortcuts")
+                .open(&mut open)
+                .resizable(false)
+                .fixed_size(egui::vec2(600.0, 500.0))
+                .show(ui.ctx(), |ui| {
+                    ui.heading("Rubric Keyboard Shortcuts");
+                    ui.separator();
+                    ui.label("File:");
+                    ui.label("Ctrl+N — New Project        Ctrl+O — Open Project        Ctrl+S — Save Project        Ctrl+Shift+S — Save Project As…");
+                    ui.label("Ctrl+I — Import PDF        Ctrl+P — Print        Ctrl+W / Cmd+Q — Quit");
+                    ui.separator();
+                    ui.label("Edit:");
+                    ui.label("Ctrl+Z — Undo        Ctrl+Y — Redo        Ctrl+A — Select All        Del / Backspace — Delete");
+                    ui.separator();
+                    ui.label("View:");
+                    ui.label("Zoom In / Out / Fit Page        PageUp / PageDown        Grid / Snap to Grid        Full Screen (Esc)");
+                    ui.label("Auto-save on/off        Theme cycling");
+                    ui.separator();
+                    ui.label("Tools:");
+                    ui.label("Select / Highlight / Rectangle / Ellipse / Line / Arrow / Pen / Text Box");
+                    ui.label("Calibrate Page Scale (two-click reference segment)");
+                    ui.label("Measurement tools: Length / Diameter / Radius / Perimeter / Area / Angle");
+                    ui.separator();
+                    ui.label("Markup actions:");
+                    ui.label("Ctrl+D — Duplicate        Ctrl+C / Ctrl+V — Copy / Paste Properties");
+                    ui.label("Bring Forward / Send Backward / Bring To Front / Send To Back");
+                    ui.separator();
+                    ui.label("General:");
+                    ui.label("Esc — Close dialog / Cancel operation");
+                    ui.label("Ctrl+Shift+S — Save Project As…");
+                });
+            if !open {
+                self.show_keyboard_shortcuts = false;
+            }
         }
 
         if self.ui.quit_confirm {
