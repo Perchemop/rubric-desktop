@@ -330,6 +330,8 @@ pub struct RubricApp {
     pending_replace: Option<PendingReplace>,
     /// Help ▸ About window visibility (full-app audit M4).
     show_about: bool,
+    /// Shows the keyboard shortcuts dialog (proposal 10).
+    show_keyboard_shortcuts: bool,
     /// Set when the user closed the update-check window, so it stays closed
     /// until a new check is requested (full-app audit M8).
     update_dismissed: bool,
@@ -425,7 +427,6 @@ impl RubricApp {
             last_page_pos: None,
             comment_text: String::new(),
             current_path: None,
-            pending_replace: None,
             show_about: false,
             show_keyboard_shortcuts: false,
             update_dismissed: false,
