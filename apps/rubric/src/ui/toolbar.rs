@@ -3,14 +3,34 @@
 use eframe::egui::{Align, Layout, Ui};
 
 use crate::domain::{MarkupKind, Tool, ToolGroup, ToolSet};
+use crate::ui::icon_button::{
+    draw_arrow_icon, draw_ellipse_icon, draw_highlight_icon, draw_length_icon, draw_line_icon,
+    draw_rectangle_icon, draw_select_icon, draw_text_icon, icon_button,
+};
+
+/// Map a tool to its icon drawing function.
+fn tool_icon(tool: Tool) -> fn(&eframe::egui::Painter, eframe::egui::Rect) {
+    match tool {
+        Tool::Select => draw_select_icon,
+        Tool::Highlight => draw_highlight_icon,
+        Tool::Rectangle => draw_rectangle_icon,
+        Tool::Ellipse => draw_ellipse_icon,
+        Tool::Line => draw_line_icon,
+        Tool::Arrow => draw_arrow_icon,
+        Tool::Text => draw_text_icon,
+        Tool::MeasureLength => draw_length_icon,
+        _ => draw_select_icon,
+    }
+}
 
 fn tool_button(ui: &mut Ui, active: &mut Tool, tool: Tool, label: &str) -> bool {
     let is_active = *active == tool;
-    let mut btn = ui.selectable_label(is_active, label);
+    let icon = tool_icon(tool);
+    let mut response = icon_button(ui, icon, label, is_active);
     if let Some(key) = tool.shortcut_key() {
-        btn = btn.on_hover_text(format!("{} ({})", label, key.to_ascii_uppercase()));
+        response = response.on_hover_text(format!("{} ({})", label, key.to_ascii_uppercase()));
     }
-    if btn.clicked() {
+    if response.clicked() {
         *active = tool;
         true
     } else {
@@ -94,7 +114,7 @@ pub(crate) fn draw_tool_groups(
             for t in &paths {
                 let k = t.to_kind().unwrap_or(MarkupKind::Line);
                 if tool_button(ui, active, *t, k.label()) {
-                    *hint = format!("Using {}", k.label());
+                    *hint = format!("Measurement: {}", k.label());
                 }
             }
         });

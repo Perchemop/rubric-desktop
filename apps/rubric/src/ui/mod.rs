@@ -2,6 +2,7 @@
 
 pub mod app;
 pub mod canvas;
+pub mod icon_button;
 pub mod icons;
 pub mod inspector;
 pub mod markups_list;
