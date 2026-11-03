@@ -552,6 +552,11 @@ pub(crate) fn draw_inspector(
         egui::CollapsingHeader::new("Properties")
             .default_open(true)
             .show(ui, |ui| {
+                if ui_state.inspector_mode != InspectorMode::Properties {
+                    ui.small("Click the Properties tab to edit stroke, width, layer, status.");
+                    return;
+                }
+
                 ui.label(format!("ID: {}", m.id));
                 ui.label(format!("Kind: {}", m.kind.label()));
                 ui.label(format!("Page: {}", m.page));
