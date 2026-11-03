@@ -421,6 +421,7 @@ impl RubricApp {
         theme::apply_theme(&cc.egui_ctx, prefs.theme);
         let project = Project::new("Untitled Rubric Project");
         Self {
+            pending_replace: None,
             history: History::new(project),
             ui: UiState::default(),
             draw: DrawState::Idle,
