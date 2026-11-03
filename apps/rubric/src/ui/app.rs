@@ -625,6 +625,32 @@ impl RubricApp {
         }
     }
 
+    /// Set the canvas zoom level, clamped to valid bounds, and update status.
+    fn set_zoom_level(&mut self, zoom: f32) {
+        self.ui.zoom = zoom.clamp(view::MIN_ZOOM, view::MAX_ZOOM);
+        self.ui.status = format!("Zoom {:.0}%", self.ui.zoom * 100.0);
+    }
+
+    /// Fit the current page to the canvas viewport (View ▸ Fit Page).
+    fn fit_page(&mut self) {
+        let (page_w, page_h) = self
+            .active_doc()
+            .and_then(|doc| doc.pages.get(self.ui.current_page))
+            .map(|p| (p.width.max(1.0), p.height.max(1.0)))
+            .unwrap_or((595.0, 842.0));
+        let avail = self.ui.canvas_size;
+        if avail.x > 0.0 && avail.y > 0.0 {
+            let margin = 40.0_f32;
+            let zx = (avail.x - margin) / page_w;
+            let zy = (avail.y - margin) / page_h;
+            self.ui.zoom = zx.min(zy).clamp(view::MIN_ZOOM, view::MAX_ZOOM);
+        } else {
+            self.ui.zoom = 1.0;
+        }
+        self.ui.pan = Vec2::ZERO;
+        self.ui.status = "Fit page".to_string();
+    }
+
     /// Set the review status of every selected editable markup to `status`.
     fn apply_batch_status(&mut self, status: ReviewStatus) {
         let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
@@ -1436,7 +1462,7 @@ impl RubricApp {
                     }
                     ui.close();
                 }
-                if ui.button("Import PDF...").clicked() {
+                if menu_shortcut_button(ui, "Import PDF…", "Ctrl+I") {
                     if let Some(path) = rfd::FileDialog::new()
                         .add_filter("PDF document", &["pdf"])
                         .pick_file()
@@ -1673,14 +1699,17 @@ impl RubricApp {
                 menu::draw_selection_commands(ui, &mut self.ui);
             });
             ui.menu_button("View", |ui| {
-                if ui.button("Zoom In").clicked() {
-                    self.apply_editor_action(EditorAction::ZoomIn);
+                if menu_shortcut_button(ui, "Zoom In", "Ctrl++") {
+                    self.set_zoom_level(self.ui.zoom * 1.25);
+                    ui.close();
                 }
-                if ui.button("Zoom Out").clicked() {
-                    self.apply_editor_action(EditorAction::ZoomOut);
+                if menu_shortcut_button(ui, "Zoom Out", "Ctrl+-") {
+                    self.set_zoom_level(self.ui.zoom * 0.8);
+                    ui.close();
                 }
-                if ui.button("Fit Page").clicked() {
-                    self.apply_editor_action(EditorAction::FitPage);
+                if menu_shortcut_button(ui, "Fit Page", "Ctrl+0") {
+                    self.fit_page();
+                    ui.close();
                 }
                 // Drag calibration (v0.4 gap #4): selecting the tool starts a
                 // two-click reference segment on the canvas; the dialog that
@@ -2061,6 +2090,53 @@ impl App for RubricApp {
                 // save_project_to sets an accurate "Saved" / "Save failed: …"
                 // status; no override here.
                 self.save_project_action();
+            }
+            if i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::S) {
+                self.save_project_as_action();
+            }
+            if i.modifiers.command && i.key_pressed(egui::Key::I) {
+                if let Some(path) = rfd::FileDialog::new()
+                    .add_filter("PDF document", &["pdf"])
+                    .pick_file()
+                {
+                    match crate::data::pdf::read_pdf_info(&path) {
+                        Ok(info) if info.page_sizes.is_empty() => {
+                            self.ui.status = "Import failed: the PDF has no pages".to_string();
+                        }
+                        Ok(info) => {
+                            let stem = path
+                                .file_stem()
+                                .map(|n| n.to_string_lossy().to_string())
+                                .unwrap_or_else(|| "Imported PDF".to_string());
+                            let count = info.page_sizes.len();
+                            let project = Project::from_pdf(
+                                stem,
+                                path.to_string_lossy().to_string(),
+                                &info.page_sizes,
+                            );
+                            self.install_project(
+                                project,
+                                None,
+                                format!("Imported {count} page(s)"),
+                            );
+                        }
+                        Err(e) => {
+                            self.ui.status = format!("Import failed: {e}");
+                        }
+                    }
+                }
+            }
+            if i.modifiers.command && i.key_pressed(egui::Key::P) {
+                let _ = self.print_page();
+            }
+            if i.modifiers.command && i.key_pressed(egui::Key::Plus) {
+                self.set_zoom_level(self.ui.zoom * 1.25);
+            }
+            if i.modifiers.command && i.key_pressed(egui::Key::Minus) {
+                self.set_zoom_level(self.ui.zoom * 0.8);
+            }
+            if i.modifiers.command && i.key_pressed(egui::Key::Num0) {
+                self.fit_page();
             }
             if i.modifiers.command && i.key_pressed(egui::Key::A) && !wants_kb {
                 // Select All on the current page (full-app audit M5/M10); the
