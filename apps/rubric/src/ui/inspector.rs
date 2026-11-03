@@ -703,26 +703,30 @@ pub(crate) fn draw_inspector(
                 }
 
                 if m.kind.is_measure() {
-                    let scale = project
-                        .active()
-                        .and_then(|d| d.pages.get(m.page).copied())
-                        .map(|p| p.scale)
-                        .unwrap_or(Scale::PAPER);
-                    if let Some(meas) = m.measurement {
-                        ui.separator();
-                        ui.label("Measurement");
-                        ui.small(format!(
-                            "Value: {}",
-                            meas.label_with(scale.unit, project.settings.precision)
-                        ));
-                        ui.small(format!("Points: {:.2} pt", meas.value_points));
-                        ui.small(format!(
-                            "Scale: {:.6} {}/pt",
-                            scale.units_per_point,
-                            scale.unit.suffix()
-                        ));
+                    if ui_state.inspector_mode != InspectorMode::Measurements {
+                        ui.small("Click the Measure tab to view the measurement readout.");
                     } else {
-                        ui.small("Measurement not computed");
+                        let scale = project
+                            .active()
+                            .and_then(|d| d.pages.get(m.page).copied())
+                            .map(|p| p.scale)
+                            .unwrap_or(Scale::PAPER);
+                        if let Some(meas) = m.measurement {
+                            ui.separator();
+                            ui.label("Measurement");
+                            ui.small(format!(
+                                "Value: {}",
+                                meas.label_with(scale.unit, project.settings.precision)
+                            ));
+                            ui.small(format!("Points: {:.2} pt", meas.value_points));
+                            ui.small(format!(
+                                "Scale: {:.6} {}/pt",
+                                scale.units_per_point,
+                                scale.unit.suffix()
+                            ));
+                        } else {
+                            ui.small("Measurement not computed");
+                        }
                     }
                 }
             });
