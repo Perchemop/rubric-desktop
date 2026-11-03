@@ -5,7 +5,7 @@
 //! themselves live in the domain (`src/domain/style.rs`); this module only
 //! dresses the application shell.
 
-use egui::{Color32, CornerRadius, FontFamily, FontId, Stroke};
+use egui::{Color32, CornerRadius, FontFamily, FontId, Shadow, Stroke};
 
 use crate::domain::style::Color;
 use crate::domain::Theme;
@@ -59,6 +59,40 @@ const LIGHT_TEXT: Color32 = Color32::from_rgb(32, 34, 48);
 /// Body text on the dark chrome (audited, spec F-605).
 const DARK_TEXT: Color32 = Color32::from_rgb(232, 234, 242);
 
+/// Elevation shadow tokens (P1-6). Three levels for chrome depth:
+///
+///   - ELEVATION_1: subtle lift for buttons, chips, small popovers
+///   - ELEVATION_2: panel surfaces (inspector, tool chest, markups list)
+///   - ELEVATION_3: modal dialogs and floating windows
+///
+/// Shadows use a soft indigo blur on dark themes, a muted grey blur on light.
+const ELEVATION_1: Shadow = Shadow {
+    offset: [0, 1],
+    blur: 4,
+    spread: 0,
+    color: Color32::from_rgba_premultiplied(0, 0, 0, 60),
+};
+const ELEVATION_2: Shadow = Shadow {
+    offset: [0, 2],
+    blur: 8,
+    spread: 0,
+    color: Color32::from_rgba_premultiplied(0, 0, 0, 80),
+};
+
+/// Elevation shadow tokens for the dark theme (deeper contrast on indigo).
+const ELEVATION_1_DARK: Shadow = Shadow {
+    offset: [0, 1],
+    blur: 6,
+    spread: 0,
+    color: Color32::from_rgba_premultiplied(0, 0, 0, 120),
+};
+const ELEVATION_2_DARK: Shadow = Shadow {
+    offset: [0, 3],
+    blur: 12,
+    spread: 0,
+    color: Color32::from_rgba_premultiplied(0, 0, 0, 140),
+};
+
 /// Apply the given theme to an egui context.
 ///
 /// Dark mode keeps the document page itself light (paper stays paper); the
@@ -104,6 +138,16 @@ pub fn apply_theme(ctx: &egui::Context, theme: Theme) {
     visuals.widgets.hovered.corner_radius = CornerRadius::same(4u8);
     visuals.widgets.active.corner_radius = CornerRadius::same(4u8);
     visuals.widgets.open.corner_radius = CornerRadius::same(4u8);
+
+    // Elevation shadows for chrome depth (P1-6).
+    visuals.window_shadow = match theme {
+        Theme::Light => ELEVATION_2,
+        Theme::Dark => ELEVATION_2_DARK,
+    };
+    visuals.popup_shadow = match theme {
+        Theme::Light => ELEVATION_1,
+        Theme::Dark => ELEVATION_1_DARK,
+    };
 
     // egui 0.36 keeps one style per theme: select the theme and install the
     // palette in that theme's style slot.
