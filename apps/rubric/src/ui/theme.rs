@@ -5,10 +5,28 @@
 //! themselves live in the domain (`src/domain/style.rs`); this module only
 //! dresses the application shell.
 
-use egui::{Color32, CornerRadius, Stroke};
+use egui::{Color32, CornerRadius, FontFamily, FontId, Stroke};
 
 use crate::domain::style::Color;
 use crate::domain::Theme;
+
+/// Type scale tokens (pixels), applied uniformly across light/dark themes.
+pub const TEXT_SIZE_TITLE: f32 = 20.0;
+pub const TEXT_SIZE_HEADING: f32 = 16.0;
+pub const TEXT_SIZE_SUBHEADING: f32 = 14.0;
+pub const TEXT_SIZE_BODY: f32 = 13.0;
+pub const TEXT_SIZE_BODY_SMALL: f32 = 12.0;
+pub const TEXT_SIZE_SECONDARY: f32 = 11.0;
+
+/// Monospace token used for numeric readouts (cursor coordinates, scale, units).
+pub const TEXT_MONOSPACE: FontId = FontId::new(TEXT_SIZE_BODY, FontFamily::Monospace);
+
+/// Spacing grid (pixels).
+pub const SPACING_4: f32 = 4.0;
+pub const SPACING_8: f32 = 8.0;
+pub const SPACING_12: f32 = 12.0;
+pub const SPACING_16: f32 = 16.0;
+pub const SPACING_24: f32 = 24.0;
 
 pub fn to_color32(c: Color) -> Color32 {
     Color32::from_rgba_unmultiplied(c.r, c.g, c.b, c.a)
@@ -95,6 +113,30 @@ pub fn apply_theme(ctx: &egui::Context, theme: Theme) {
     };
     ctx.set_theme(egui_theme);
     ctx.set_visuals_of(egui_theme, visuals);
+
+    // Type scale tokens applied to both themes (proposal 11: typography pass).
+    let mut style = (*ctx.style_of(egui_theme)).clone();
+    style.text_styles = [
+        (
+            egui::TextStyle::Small,
+            FontId::new(TEXT_SIZE_SECONDARY, FontFamily::Proportional),
+        ),
+        (
+            egui::TextStyle::Body,
+            FontId::new(TEXT_SIZE_BODY, FontFamily::Proportional),
+        ),
+        (egui::TextStyle::Monospace, TEXT_MONOSPACE),
+        (
+            egui::TextStyle::Button,
+            FontId::new(TEXT_SIZE_BODY, FontFamily::Proportional),
+        ),
+        (
+            egui::TextStyle::Heading,
+            FontId::new(TEXT_SIZE_HEADING, FontFamily::Proportional),
+        ),
+    ]
+    .into();
+    ctx.set_style_of(egui_theme, style);
 }
 
 /// A small, ergonomic icon/label helper.
@@ -124,6 +166,47 @@ mod tests {
         apply_theme(&ctx, Theme::Light);
         assert_eq!(ctx.theme(), egui::Theme::Light);
         assert!(!ctx.style_of(egui::Theme::Light).visuals.dark_mode);
+    }
+
+    /// Spec F-607: the typography token pass must set all standard text styles
+    /// with the correct font sizes for both themes.
+    #[test]
+    fn typography_tokens_applied_to_both_themes() {
+        let ctx = egui::Context::default();
+
+        apply_theme(&ctx, Theme::Light);
+        let light_styles = ctx.style_of(egui::Theme::Light).text_styles.clone();
+        assert_eq!(
+            light_styles.get(&egui::TextStyle::Body).unwrap().size,
+            TEXT_SIZE_BODY
+        );
+        assert_eq!(
+            light_styles.get(&egui::TextStyle::Small).unwrap().size,
+            TEXT_SIZE_SECONDARY
+        );
+        assert_eq!(
+            light_styles.get(&egui::TextStyle::Button).unwrap().size,
+            TEXT_SIZE_BODY
+        );
+        assert_eq!(
+            light_styles.get(&egui::TextStyle::Heading).unwrap().size,
+            TEXT_SIZE_HEADING
+        );
+
+        apply_theme(&ctx, Theme::Dark);
+        let dark_styles = ctx.style_of(egui::Theme::Dark).text_styles.clone();
+        assert_eq!(
+            dark_styles.get(&egui::TextStyle::Body).unwrap().size,
+            TEXT_SIZE_BODY
+        );
+        assert_eq!(
+            dark_styles.get(&egui::TextStyle::Monospace).unwrap().size,
+            TEXT_SIZE_BODY
+        );
+        assert_eq!(
+            dark_styles.get(&egui::TextStyle::Heading).unwrap().size,
+            TEXT_SIZE_HEADING
+        );
     }
 
     /// Spec F-605: the shipped chrome palettes must clear WCAG AA for body
