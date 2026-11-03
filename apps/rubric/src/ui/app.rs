@@ -428,7 +428,6 @@ impl RubricApp {
             pending_replace: None,
             show_about: false,
             show_keyboard_shortcuts: false,
-    show_keyboard_shortcuts: false,
             update_dismissed: false,
             force_close: false,
             title_dirty: true,
