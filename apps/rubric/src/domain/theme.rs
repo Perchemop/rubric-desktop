@@ -36,12 +36,48 @@ impl Theme {
 }
 
 /// Application-level preferences stored outside project files.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppPrefs {
     /// Selected colour theme. Missing values fall back to
     /// [`Theme::Light`] so older preference files keep loading.
     #[serde(default)]
     pub theme: Theme,
+    /// Show the Markups List panel. Missing values fall back to `true`.
+    #[serde(default = "default_true")]
+    pub show_markups_list: bool,
+    /// Show the Tool Chest panel. Missing values fall back to `true`.
+    #[serde(default = "default_true")]
+    pub show_tool_chest: bool,
+    /// Show the Pages panel. Missing values fall back to `true`.
+    #[serde(default = "default_true")]
+    pub show_pages: bool,
+    /// Canvas zoom level. Missing values fall back to `1.0`.
+    #[serde(default = "default_one")]
+    pub zoom: f32,
+    /// Current page index. Missing values fall back to `0`.
+    #[serde(default)]
+    pub current_page: usize,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_one() -> f32 {
+    1.0
+}
+
+impl Default for AppPrefs {
+    fn default() -> Self {
+        Self {
+            theme: Theme::Light,
+            show_markups_list: true,
+            show_tool_chest: true,
+            show_pages: true,
+            zoom: 1.0,
+            current_page: 0,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -81,7 +117,14 @@ mod tests {
 
     #[test]
     fn prefs_roundtrip() {
-        let prefs = AppPrefs { theme: Theme::Dark };
+        let prefs = AppPrefs {
+            theme: Theme::Dark,
+            show_markups_list: true,
+            show_tool_chest: true,
+            show_pages: true,
+            zoom: 1.5,
+            current_page: 2,
+        };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, prefs);

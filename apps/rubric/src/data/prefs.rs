@@ -104,7 +104,14 @@ mod tests {
     #[test]
     fn prefs_roundtrip_through_disk() {
         let path = temp_prefs_path("roundtrip");
-        let prefs = AppPrefs { theme: Theme::Dark };
+        let prefs = AppPrefs {
+            theme: Theme::Dark,
+            show_markups_list: true,
+            show_tool_chest: true,
+            show_pages: true,
+            zoom: 1.5,
+            current_page: 2,
+        };
         save_prefs_to(&path, &prefs).expect("save");
         assert_eq!(load_prefs_from(&path), prefs);
         let raw = std::fs::read_to_string(&path).expect("read");

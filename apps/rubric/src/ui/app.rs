@@ -186,6 +186,8 @@ pub(crate) struct UiState {
     pub(crate) grid: Grid,
     /// Whether the Markups List panel is visible (View menu toggle).
     pub(crate) show_markups_list: bool,
+    /// Whether the Pages panel is visible (View menu toggle).
+    pub(crate) show_pages: bool,
     /// Whether the Tool Chest panel is visible (View menu toggle, v0.4 gap
     /// #7). On by default so saved tools are discoverable.
     pub(crate) show_tool_chest: bool,
@@ -286,6 +288,7 @@ impl Default for UiState {
             grid: Grid::default(),
             marquee_start: None,
             show_markups_list: true,
+            show_pages: true,
             show_tool_chest: true,
             quit_confirm: false,
             can_undo: false,
@@ -423,7 +426,13 @@ impl RubricApp {
         Self {
             pending_replace: None,
             history: History::new(project),
-            ui: UiState::default(),
+            ui: UiState {
+                show_markups_list: prefs.show_markups_list,
+                show_tool_chest: prefs.show_tool_chest,
+                zoom: prefs.zoom,
+                current_page: prefs.current_page,
+                ..UiState::default()
+            },
             draw: DrawState::Idle,
             last_page_pos: None,
             comment_text: String::new(),
@@ -629,6 +638,7 @@ impl RubricApp {
     fn set_zoom_level(&mut self, zoom: f32) {
         self.ui.zoom = zoom.clamp(view::MIN_ZOOM, view::MAX_ZOOM);
         self.ui.status = format!("Zoom {:.0}%", self.ui.zoom * 100.0);
+        self.save_app_prefs();
     }
 
     /// Fit the current page to the canvas viewport (View ▸ Fit Page).
@@ -649,6 +659,7 @@ impl RubricApp {
         }
         self.ui.pan = Vec2::ZERO;
         self.ui.status = "Fit page".to_string();
+        self.save_app_prefs();
     }
 
     /// Set the review status of every selected editable markup to `status`.
@@ -1135,10 +1146,32 @@ impl RubricApp {
     fn set_theme(&mut self, ctx: &egui::Context, theme: Theme) {
         self.theme = theme;
         theme::apply_theme(ctx, theme);
-        let prefs = AppPrefs { theme };
+        let prefs = AppPrefs {
+            theme,
+            show_markups_list: self.ui.show_markups_list,
+            show_tool_chest: self.ui.show_tool_chest,
+            show_pages: self.ui.show_pages,
+            zoom: self.ui.zoom,
+            current_page: self.ui.current_page,
+        };
         match save_prefs(&prefs) {
             Ok(()) => self.ui.status = format!("Theme: {}", theme.label()),
             Err(e) => self.ui.status = format!("Theme changed, but saving failed: {e}"),
+        }
+    }
+
+    /// Persist all app-level preferences (panel visibility, zoom, page).
+    fn save_app_prefs(&mut self) {
+        let prefs = AppPrefs {
+            theme: self.theme,
+            show_markups_list: self.ui.show_markups_list,
+            show_tool_chest: self.ui.show_tool_chest,
+            show_pages: self.ui.show_pages,
+            zoom: self.ui.zoom,
+            current_page: self.ui.current_page,
+        };
+        if let Err(e) = save_prefs(&prefs) {
+            self.ui.status = format!("Workspace saved, but preferences write failed: {e}");
         }
     }
 
@@ -1319,6 +1352,7 @@ impl RubricApp {
         }
         self.ui.current_page = index;
         self.draw = DrawState::Idle;
+        self.save_app_prefs();
         true
     }
 
@@ -1823,6 +1857,7 @@ impl RubricApp {
                     } else {
                         "Tool Chest hidden".to_string()
                     };
+                    self.save_app_prefs();
                 }
                 if ui
                     .checkbox(&mut self.ui.show_markups_list, "Show Markups List")
@@ -1833,6 +1868,15 @@ impl RubricApp {
                     } else {
                         "Markups List hidden".to_string()
                     };
+                    self.save_app_prefs();
+                }
+                if ui.checkbox(&mut self.ui.show_pages, "Show Pages").changed() {
+                    self.ui.status = if self.ui.show_pages {
+                        "Pages panel shown".to_string()
+                    } else {
+                        "Pages panel hidden".to_string()
+                    };
+                    self.save_app_prefs();
                 }
             });
             ui.menu_button("Help", |ui| {
@@ -2279,10 +2323,10 @@ impl App for RubricApp {
         }
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(ui));
         egui::Panel::top("toolbar").show(ui, |ui| self.top_bar(ui));
-        // Pages sidebar (spec F-404). Only shown when the document has pages, so
-        // an empty project does not carry a dead strip.
+        // Pages sidebar (spec F-404). Only shown when the document has pages
+        // and the panel is enabled in the View menu.
         let page_count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
-        if page_count > 0 {
+        if page_count > 0 && self.ui.show_pages {
             let source_pdf = self.history.current().source_pdf.clone();
             egui::Panel::left("pages")
                 .default_size(168.0)
