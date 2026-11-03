@@ -772,43 +772,46 @@ pub(crate) fn draw_inspector(
         }
     }
 
-    // Project / Document editors and tool stamp-preset picker: always reachable.
-    ui.collapsing("Project", |ui| {
-        let mut name = project.name.clone();
-        let resp = ui.text_edit_singleline(&mut name);
-        if resp.changed() {
-            project.rename(name);
-            if resp.lost_focus() {
-                committed = true;
-            }
-        }
-        ui.label("Author");
-        let mut author = project.settings.author.clone();
-        let resp_a = ui.text_edit_singleline(&mut author);
-        if resp_a.changed() {
-            project.settings.author = author;
-            ui_state.status = "Author updated".to_string();
-            if resp_a.lost_focus() {
-                committed = true;
-            }
-        }
-    });
-
-    ui.collapsing("Document", |ui| {
-        if let Some(doc) = project.active_mut() {
-            let mut title = doc.title.clone();
-            let resp = ui.text_edit_singleline(&mut title);
+    // Project / Document editors and tool stamp-preset picker: shown under
+    // Settings tab, or when nothing is selected.
+    if ui_state.inspector_mode == InspectorMode::Settings || selected.is_empty() {
+        ui.collapsing("Project", |ui| {
+            let mut name = project.name.clone();
+            let resp = ui.text_edit_singleline(&mut name);
             if resp.changed() {
-                doc.title = title;
-                doc.touch();
+                project.rename(name);
                 if resp.lost_focus() {
                     committed = true;
                 }
             }
-            ui.label(format!("Pages: {}", doc.page_count()));
-            ui.label(format!("Markups: {}", doc.markups.len()));
-        }
-    });
+            ui.label("Author");
+            let mut author = project.settings.author.clone();
+            let resp_a = ui.text_edit_singleline(&mut author);
+            if resp_a.changed() {
+                project.settings.author = author;
+                ui_state.status = "Author updated".to_string();
+                if resp_a.lost_focus() {
+                    committed = true;
+                }
+            }
+        });
+
+        ui.collapsing("Document", |ui| {
+            if let Some(doc) = project.active_mut() {
+                let mut title = doc.title.clone();
+                let resp = ui.text_edit_singleline(&mut title);
+                if resp.changed() {
+                    doc.title = title;
+                    doc.touch();
+                    if resp.lost_focus() {
+                        committed = true;
+                    }
+                }
+                ui.label(format!("Pages: {}", doc.page_count()));
+                ui.label(format!("Markups: {}", doc.markups.len()));
+            }
+        });
+    }
 
     // Compact stamp-preset selector for the active Stamp tool (UI state only).
     if ui_state.active_tool.to_kind() == Some(MarkupKind::Stamp) {
