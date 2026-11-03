@@ -1864,6 +1864,30 @@ impl RubricApp {
     fn top_bar(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             toolbar::draw_toolbar(ui, &mut self.ui.active_tool, &mut self.ui.status);
+
+            // Active-tool chip (P0-4): a persistent pill showing what tool is
+            // currently active, with its shortcut key. Always visible so the
+            // user never has to hunt through the left panel to know the mode.
+            ui.separator();
+            egui::Frame::new()
+                .fill(ui.visuals().selection.bg_fill)
+                .stroke(ui.visuals().selection.stroke)
+                .show(ui, |ui| {
+                    let tool_name = self
+                        .ui
+                        .active_tool
+                        .to_kind()
+                        .map(|k| k.label())
+                        .unwrap_or("Select");
+                    let shortcut = self
+                        .ui
+                        .active_tool
+                        .shortcut_key()
+                        .map(|k| format!(" ({})", k.to_ascii_uppercase()))
+                        .unwrap_or_default();
+                    ui.label(format!("{}{}", tool_name, shortcut));
+                });
+
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.label(self.ui.status.clone());
                 ui.label(format!("{:.0}%", self.ui.zoom * 100.0));
