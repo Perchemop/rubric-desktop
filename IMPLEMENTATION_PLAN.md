@@ -192,10 +192,25 @@
       `rfd` save dialog (Page, Kind, Author, Subject, Status, Measurement,
       Comments columns). `draw_markups_list` returns
       `(Option<MarkupListAction>, bool)` for snapshot signalling.
-- Evidence: PR #96, commits `39f7cc9`…`74ede47`; CI green on PR #96. With these
-  slices all eight ranked gaps in
-  `docs/research/v0.4-capability-gap-analysis.md` are closed (gap #5 partially:
-  Bounds resize shipped, segment/vertex editing is a follow-up).
+- [x] **v0.4-06 follow-up — segment endpoint and vertex editing (gap #5,
+      complete)**: `Markup::draggable_points()` in `domain/markup.rs` returns
+      stable-index structural points (segment endpoints, every path vertex, all
+      three angle points; empty for bounds/ink/text/callout/count) and
+      `Markup::move_point(index, pt)` moves one point, returning `false` when
+      the index is out of range (lock enforcement and measurement recomputation
+      stay with the caller). Canvas point handles replace the bounding-box
+      corner handles for those kinds in `draw_selection`; `point_handle_at`
+      hit-testing runs before the bounds-corner check; the `resize_point` drag
+      reshapes every selected markup at the same index (mirroring corner-drag
+      semantics), recomputes measurements for measure kinds and pushes one
+      snapshot on drag end; move, corner and point drags are mutually exclusive
+      (`UiState::resize_point`). Tests cover `draggable_points` per geometry
+      kind, `move_point` for segment/path/angle (including an angle-measurement
+      recompute) and `point_handle_at` hit-testing.
+- Evidence: PR #96, commits `39f7cc9`…`74ede47`, and PR #98, commit `cac048b`;
+  CI green on PR #96 and PR #98. With these slices all eight ranked gaps in
+  `docs/research/v0.4-capability-gap-analysis.md` are closed (gap #5 fully:
+  Bounds resize plus segment-endpoint and path-vertex editing).
 
 ### Audit follow-ups (M18, M24, WCAG, M5, Quit)
 - [x] M18: canvas background raster width tracks zoom (PR #90)
