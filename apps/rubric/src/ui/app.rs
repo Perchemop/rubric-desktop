@@ -134,7 +134,7 @@ pub(crate) struct UiState {
     pub(crate) selected: HashSet<uuid::Uuid>,
     pub(crate) active_tool: Tool,
     pub(crate) active_stamp: StampPreset,
-    inspector_mode: InspectorMode,
+    pub(crate) inspector_mode: InspectorMode,
     pub(crate) zoom: f32,
     pub(crate) pan: Vec2,
     /// Last known canvas viewport size (points), captured each frame in the
