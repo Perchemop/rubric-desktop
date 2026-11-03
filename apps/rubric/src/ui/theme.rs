@@ -99,12 +99,10 @@ pub fn apply_theme(ctx: &egui::Context, theme: Theme) {
     visuals.widgets.open.bg_fill = visuals.widgets.active.bg_fill;
 
     // Consistent widget interaction: 4 px corner rounding for all interactive
-    // widgets, and a 2 px accent focus stroke for keyboard discoverability
-    // (shape-only, never colour-alone, WCAG AA-safe).
-    visuals.widgets.hovered.corner_radius = CornerRadius::same(4.0);
-    visuals.widgets.active.corner_radius = CornerRadius::same(4.0);
-    visuals.widgets.open.corner_radius = CornerRadius::same(4.0);
-    visuals.widgets.focus_stroke = Stroke::new(2.0, ACCENT);
+    // widgets.
+    visuals.widgets.hovered.corner_radius = CornerRadius::same(4u8);
+    visuals.widgets.active.corner_radius = CornerRadius::same(4u8);
+    visuals.widgets.open.corner_radius = CornerRadius::same(4u8);
 
     // Button hierarchy: primary (accent-filled), secondary (muted fill),
     // tertiary (text-like). These colours are applied via the widget visuals
