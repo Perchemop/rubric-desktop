@@ -227,3 +227,38 @@
 
 ## Slice strategy
 Build vertically: domain + tests → minimal UI → drawing + selection → save/load → measurements → review → polish. Keep each slice small, compiling, tested.
+
+---
+
+### v0.5 — Design polish & systemisation (design & GUI audit, docs/audits/design-gui-2026-11.md, PR #101)
+
+P0 — High impact (audit backlog items 1–5):
+- [ ] **P0-1**: Icon font/SVG set for tools, layers, Tool Chest, page nav (replace emoji/text glyphs)
+- [ ] **P0-2**: Bundle UI font + tabular monospace for measurement readouts (e.g. JetBrains Mono OFL)
+- [ ] **P0-3**: Persist workspace layout — panel visibility, widths, zoom, page in prefs
+- [ ] **P0-4**: Active-tool chip (always visible); keyboard shortcuts dialog already shipped (PR #100)
+- [ ] **P0-5**: Empty states for primary panels (no document, no markups, empty Tool Chest, empty filtered list)
+
+P1 — Quality (audit backlog items 6–11):
+- [ ] **P1-6**: Elevation + spacing + radius tokens (corner_radius partially done; elevation 0–3 pending)
+- [ ] **P1-7**: Segmented Inspector tabs (Selection / Properties / Comments / Scale / Layers)
+- [ ] **P1-8**: Virtualised Markups List + async thumbnails
+- [ ] **P1-9**: Single tool metadata source drives all UIs (tool palette, chest, context menu)
+- [ ] **P1-10**: Persist Tool Chest library in prefs (session-only today)
+- [ ] **P1-11**: Host/Ui seam + egui_kittest visual/a11y evidence G4 (guide II.27.12)
+
+P2 — Later (audit backlog items 12–16):
+- [ ] **P2-12**: Text-anchored highlight/strikeout (text markups are geometry bands today)
+- [ ] **P2-13**: Focus / reading mode (workspace concentration)
+- [ ] **P2-14**: Dual-unit rulers
+- [ ] **P2-15**: UI scale + high-contrast preference (a11y A3)
+- [ ] **P2-16**: Optional minimap
+
+Audit follow-ups to track separately:
+- [ ] **A1**: Automated AccessKit/snapshots for visual evidence (G4, guide II.27.12) — documented deferral
+- [ ] **A2**: Focus ring audit
+- [ ] **A3**: UI scale / high-contrast preference (duplicate of P2-15)
+- [ ] **A4**: Text labels when narrow panels use icons only
+
+## Slice strategy
+Build vertically: domain + tests → minimal UI → drawing + selection → save/load → measurements → review → polish. Keep each slice small, compiling, tested.

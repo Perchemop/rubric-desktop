@@ -121,6 +121,36 @@ so they do not move the 52-feature readiness table above.
 - [ ] §2.5 legal checklist clean for a public release
 - [ ] README/ROADMAP claims re-audited (no over-claiming)
 
+### v0.5 — Design polish & systemisation (design & GUI audit, PR #101)
+
+**Audit backlog P0 — High impact:**
+- [ ] Icon font/SVG set for tools, layers, Tool Chest, page nav (replace emoji/text glyphs)
+- [ ] Bundle UI font + tabular monospace for measurement readouts (partial: typography tokens done, fonts pending)
+- [ ] Persist workspace layout — panel visibility, widths, zoom, page in prefs
+- [ ] Active-tool chip (always visible); keyboard shortcuts dialog shipped (PR #100)
+- [ ] Empty states for primary panels (no document, no markups, empty Tool Chest, empty filtered list)
+
+**Audit backlog P1 — Quality:**
+- [ ] Elevation + spacing + radius tokens (corner_radius done; elevation 0–3 pending)
+- [ ] Segmented Inspector tabs (Selection / Properties / Comments / Scale / Layers)
+- [ ] Virtualised Markups List + async thumbnails
+- [ ] Single tool metadata source drives all UIs
+- [ ] Persist Tool Chest library in prefs (session-only today)
+- [ ] Host/Ui seam + egui_kittest visual/a11y evidence G4 (guide II.27.12)
+
+**Audit backlog P2 — Later:**
+- [ ] Text-anchored highlight/strikeout
+- [ ] Focus / reading mode
+- [ ] Dual-unit rulers
+- [ ] UI scale + high-contrast preference (a11y A3)
+- [ ] Optional minimap
+
+**Audit follow-ups:**
+- [ ] Automated AccessKit/snapshots for visual evidence (G4 — documented deferral)
+- [ ] Focus ring audit
+- [ ] UI scale / high-contrast preference (see P2)
+- [ ] Text labels when narrow panels use icons only
+
 ### Community, security and operating hygiene — done 2026-10-24 (guide Part II)
 
 Not product features: tracked as R-C-001…R-C-012 in

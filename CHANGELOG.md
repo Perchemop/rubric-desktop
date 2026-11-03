@@ -6,6 +6,30 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ### Added
 
+- **Design & GUI audit** (`docs/audits/design-gui-2026-11.md`, PR #101): post-v0.4 design system, layout, interaction, a11y surface, and polish review. Priority backlog recorded as P0 (icon font/SVG, bundled UI + tabular mono fonts, workspace persistence, active-tool chip, empty states), P1 (elevation tokens, segmented Inspector, virtualised Markups List, single tool metadata source, Tool Chest persistence, G4 Host/Ui seam) and P2 (text-anchored markup, focus/reading mode, dual-unit rulers, UI scale/high-contrast, minimap) items in IMPLEMENTATION_PLAN.md and ROADMAP.md.
+
+- **Menu accelerator completeness** (proposal 10 part 2, PR #103):
+  - File ▸ **Import PDF…** gains `Ctrl+I` shortcut hint; `Ctrl+Shift+S` Save As, `Ctrl+P` Print added as keyboard shortcuts
+  - View ▸ **Zoom In / Out / Fit Page** gain `Ctrl++` / `Ctrl+-` / `Ctrl+0` shortcuts with menu hints
+  - New `set_zoom_level()` and `fit_page()` helper functions; zoom clamped to `view::MIN_ZOOM`/`MAX_ZOOM`
+
+- **Typography & spacing token pass** (proposal 11, PR #102):
+  - Type scale constants (11/12/13/14/16/20 px for secondary/body/body/button/heading/title) and spacing grid constants (4/8/12/16/24 px)
+  - Type scale applied to all standard egui text styles in both light and dark themes
+  - Monospace token (`TEXT_MONOSPACE`) for numeric readouts
+  - Headless test `typography_tokens_applied_to_both_themes` asserts all text styles per theme
+
+- **Theme focus & rounding** (proposal 12, PR #100):
+  - `corner_radius = 4u8` on hovered/active/open widget visuals for consistent interaction
+  - Button hierarchy bg_fill tokens (inactive/hovered/active) for primary/secondary/tertiary distinction
+  - `focus_stroke` unavailable in egui 0.36; shape-only focus via corner_radius used instead
+
+- **Keyboard shortcuts dialog** (proposal 10, PR #100):
+  - Help ▸ **Keyboard Shortcuts…** dialog listing shortcuts grouped by category (File, Edit, View, Tools, General)
+
+- **Calibration dialog rename** (proposal 9, PR #100):
+  - File ▸ **Calibrate Page Scale…** dialog button renamed from "Apply" to "Calibrate" for clarity; `.default_width(560)`
+
 - **v0.4-03**: duplicate selected markups (gap #6, PR #93, commit `8a70739`)
   - `Document::duplicate_markups(ids, offset)` clones each editable markup with
     a fresh id and timestamps, translated geometry, recomputed measurements,

@@ -1,5 +1,15 @@
 # PROGRESS.md
 
+## 2026-11-04 — UI/UX polish slices (design & GUI audit PR #101, proposals 9–12)
+**Status**: merged to main; CI green on PRs #100, #102, #103.
+
+### Completed
+- **Theme corner rounding & focus** (proposal 12): `corner_radius = 4u8` on hovered/active/open widget visuals; button hierarchy bg_fill tokens (inactive/hovered/active) for primary/secondary/tertiary distinction. egui 0.36 does not expose `focus_stroke`, so shape-only focus via corner_radius is used instead.
+- **Typography & spacing token pass** (proposal 11): type scale constants (11/12/13/14/16/20 px) and spacing grid constants (4/8/12/16/24 px) added to `theme.rs`; type scale applied to all standard egui text styles in both themes; monospace token (`TEXT_MONOSPACE`) for numeric readouts; headless test `typography_tokens_applied_to_both_themes` asserts per-theme sizes.
+- **Keyboard shortcuts dialog** (proposal 10): Help ▸ **Keyboard Shortcuts…** dialog lists shortcuts grouped by category (File, Edit, View, Tools, General).
+- **Calibration dialog rename + width** (proposal 9): dialog button renamed from "Apply" to "Calibrate"; `.default_width(560)`.
+- **Menu accelerator completeness** (proposal 10 part 2): File ▸ Import PDF… gains `Ctrl+I` hint; `Ctrl+Shift+S` Save As, `Ctrl+P` Print keyboard shortcuts; View ▸ Zoom In/Out/Fit Page gain `Ctrl++`/`Ctrl+-`/`Ctrl+0` hints; `set_zoom_level()` and `fit_page()` helper functions added; keyboard shortcuts wired in `logic()`.
+
 ## 2026-11-03 — gap #5 follow-up (segment endpoints + vertices)
 **Status**: merged to main (PR #98, commit `cac048b`); CI green on PR #98.
 
