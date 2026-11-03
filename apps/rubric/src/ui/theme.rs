@@ -81,13 +81,6 @@ pub fn apply_theme(ctx: &egui::Context, theme: Theme) {
     };
     visuals.widgets.open.bg_fill = visuals.widgets.active.bg_fill;
 
-    // Consistent widget interaction: 4 px rounding and a 2 px accent focus
-    // stroke for keyboard discoverability (shape-only, never colour-alone).
-    visuals.widgets.hovered.rounding = egui::Rounding::same(4.0);
-    visuals.widgets.active.rounding = egui::Rounding::same(4.0);
-    visuals.widgets.open.rounding = egui::Rounding::same(4.0);
-    visuals.widgets.focus_stroke = Stroke::new(2.0, ACCENT);
-
     // egui 0.36 keeps one style per theme: select the theme and install the
     // palette in that theme's style slot.
     let egui_theme = match theme {
