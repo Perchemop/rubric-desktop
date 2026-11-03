@@ -982,6 +982,7 @@ impl RubricApp {
         egui::Window::new("Calibrate Page Scale")
             .open(&mut open)
             .resizable(false)
+            .default_width(560.0)
             .show(ctx, |ui| {
                 ui.label(format!(
                     "Drawn segment: {:.1} pt on page {}",
@@ -1010,7 +1011,7 @@ impl RubricApp {
                 );
                 ui.add_space(6.0);
                 ui.horizontal(|ui| {
-                    if ui.button("Apply").clicked() {
+                    if ui.button("Calibrate").clicked() {
                         apply = true;
                     }
                     if ui.button("Cancel").clicked() {
