@@ -9,7 +9,7 @@ use crate::domain::{
     units::{MeasureUnit, MAX_PRECISION},
     LayerError, MarkupKind, Project, ReviewStatus, Scale, StampPreset,
 };
-use crate::ui::app::UiState;
+use crate::ui::app::{InspectorMode, UiState};
 
 fn color32_to_domain(c: egui::Color32) -> Color {
     let [r, g, b, a] = c.to_array();
@@ -34,6 +34,61 @@ pub(crate) fn draw_inspector(
     let mut committed = false;
 
     ui.heading("Inspector");
+    ui.separator();
+
+    // Segmented inspector tabs (P1-7): switch which panel section is primary.
+    ui.horizontal(|ui| {
+        if ui
+            .selectable_label(
+                ui_state.inspector_mode == InspectorMode::Selection,
+                "Selection",
+            )
+            .on_hover_text("Markup properties")
+            .clicked()
+        {
+            ui_state.inspector_mode = InspectorMode::Selection;
+        }
+        if ui
+            .selectable_label(
+                ui_state.inspector_mode == InspectorMode::Properties,
+                "Properties",
+            )
+            .on_hover_text("Stroke, width, layer")
+            .clicked()
+        {
+            ui_state.inspector_mode = InspectorMode::Properties;
+        }
+        if ui
+            .selectable_label(
+                ui_state.inspector_mode == InspectorMode::Comments,
+                "Comments",
+            )
+            .on_hover_text("Threaded comments")
+            .clicked()
+        {
+            ui_state.inspector_mode = InspectorMode::Comments;
+        }
+        if ui
+            .selectable_label(
+                ui_state.inspector_mode == InspectorMode::Measurements,
+                "Measure",
+            )
+            .on_hover_text("Measurement readout")
+            .clicked()
+        {
+            ui_state.inspector_mode = InspectorMode::Measurements;
+        }
+        if ui
+            .selectable_label(
+                ui_state.inspector_mode == InspectorMode::Settings,
+                "Settings",
+            )
+            .on_hover_text("Project & document settings")
+            .clicked()
+        {
+            ui_state.inspector_mode = InspectorMode::Settings;
+        }
+    });
     ui.separator();
 
     // Status legend (spec F-305): one row per status with swatch + label + count.
