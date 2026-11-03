@@ -36,6 +36,19 @@ All notable changes to this project will be documented here. Format: semantic-is
   - Canvas corner-handle hit-testing (`handle_at`) with drag-to-resize; moving
     and resizing are mutually exclusive; one snapshot on drag end
 
+- **v0.4-06 follow-up**: segment-endpoint and path-vertex editing (gap #5
+  complete, PR #98, commit `cac048b`)
+  - `Markup::draggable_points()` exposes stable-index structural points (segment
+    endpoints, every path vertex, all three angle points); empty for bounds,
+    ink, text, callout and count markups
+  - `Markup::move_point(index, pt)` moves one point and returns `false` when the
+    index is out of range; locking and measurement recomputation stay with the
+    caller
+  - Point handles replace the bounding-box corner handles for those kinds;
+    `point_handle_at` hit-testing runs before the corner check, and a drag
+    reshapes every selected markup at the same index with one snapshot on drag
+    end
+
 - **v0.4-07**: tool chest (gap #7, PR #96)
   - `StylePreset::from_style()` and `StylePresetLibrary::save_named()`
     (case-insensitive dedupe) in `domain/style_preset.rs` (3 new tests)

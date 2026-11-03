@@ -1,5 +1,25 @@
 # PROGRESS.md
 
+## 2026-11-03 — gap #5 follow-up (segment endpoints + vertices)
+**Status**: merged to main (PR #98, commit `cac048b`); CI green on PR #98.
+
+### Completed
+- **Segment-endpoint and path-vertex editing (gap #5, complete).**
+  `Markup::draggable_points()` returns stable-index structural points —
+  segment endpoints, every path vertex, all three angle points; empty for
+  bounds/ink/text/callout/count — and `Markup::move_point(index, pt)` moves one
+  point (out-of-range returns `false`; lock enforcement and measurement
+  recomputation stay with the caller).
+- Canvas point handles replace the bounding-box corner handles for those kinds
+  in `draw_selection`; `point_handle_at` hit-testing runs before the
+  bounds-corner check. The `resize_point` drag reshapes every selected markup
+  at the same index (mirroring corner-drag semantics), recomputes measurements
+  for measure kinds and pushes one snapshot on drag end; move, corner and point
+  drags are mutually exclusive (`UiState::resize_point`).
+- Tests: `draggable_points` coverage per geometry kind, `move_point` for
+  segment/path/angle (including an angle-measurement recompute assertion) and
+  `point_handle_at` hit-testing.
+
 ## 2026-11-03 — v0.4-04…v0.4-08 (flatten, calibration, resize grips, tool chest, editable list)
 **Status**: merged to main (PR #96, commit `74ede47`); CI green on PR #96.
 

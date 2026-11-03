@@ -100,15 +100,16 @@ so they do not move the 52-feature readiness table above.
       (lopdf page pruning) + `export_all_pages_to_pdf`, File menu entries — PR #96 merged
 - [x] **v0.4-05**: drag calibration (gap #4) — `Tool::Calibrate` two-click
       capture, `calibrate_scale()` in `domain/units.rs`, `CalibrationDialog` — PR #96 merged
-- [x] **v0.4-06**: resize grips (gap #5, first slice) — `Corner` +
-      `Markup::resize_bounds()` domain clamp, canvas corner-handle drag
-      (segment endpoints/vertices remain follow-ups) — PR #96 merged
+- [x] **v0.4-06**: resize grips (gap #5) — `Corner` +
+      `Markup::resize_bounds()` domain clamp, canvas corner-handle drag, plus
+      segment-endpoint/path-vertex point handles and `Markup::move_point()` —
+      PR #96 and PR #98 merged (follow-up commit `cac048b`)
 - [x] **v0.4-07**: tool chest (gap #7) — `StylePreset::from_style()` +
       `save_named()`, "My Tools" panel (`ui/tool_chest.rs`), apply-at-creation — PR #96 merged
 - [x] **v0.4-08**: editable Markups List console (gap #8) — inline status
       combo, filtered-view measurement totals, CSV export — PR #96 merged
 - Gaps 1–8 of `docs/research/v0.4-capability-gap-analysis.md` are all closed
-      (gap #5 partly: Bounds resize shipped; segment/vertex editing follow-up)
+      (gap #5 fully: bounds resize, segment endpoints and path vertices — PR #98)
 - [x] Audit follow-ups (PRs #90–#92): M18 zoom-sharp page raster, M24
       thread-locals into `UiState`, WCAG status text, M5 menu shortcut hints +
       Ctrl+A, Save-and-Quit
