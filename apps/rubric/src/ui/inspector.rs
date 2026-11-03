@@ -723,7 +723,9 @@ pub(crate) fn draw_inspector(
             });
 
         ui.collapsing("Comments", |ui| {
-            if m.comments.is_empty() {
+            if ui_state.inspector_mode != InspectorMode::Comments {
+                ui.small("Click the Comments tab to view and add threaded comments.");
+            } else if m.comments.is_empty() {
                 ui.small("No comments yet.");
             } else {
                 for c in &m.comments {
