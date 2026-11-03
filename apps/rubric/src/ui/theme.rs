@@ -5,7 +5,7 @@
 //! themselves live in the domain (`src/domain/style.rs`); this module only
 //! dresses the application shell.
 
-use egui::{Color32, Stroke};
+use egui::{Color32, CornerRadius, Stroke};
 
 use crate::domain::style::Color;
 use crate::domain::Theme;
@@ -80,6 +80,31 @@ pub fn apply_theme(ctx: &egui::Context, theme: Theme) {
         Theme::Dark => Color32::from_rgb(58, 65, 104),
     };
     visuals.widgets.open.bg_fill = visuals.widgets.active.bg_fill;
+
+    // Button hierarchy: primary (accent-filled), secondary (muted fill),
+    // tertiary (text-like). These colours are applied via the widget visuals
+    // so they respect the current theme (light/dark).
+    visuals.widgets.inactive.bg_fill = match theme {
+        Theme::Light => Color32::from_rgb(245, 245, 248),
+        Theme::Dark => Color32::from_rgb(38, 43, 72),
+    };
+    visuals.widgets.hovered.bg_fill = match theme {
+        Theme::Light => Color32::from_rgb(228, 231, 240),
+        Theme::Dark => Color32::from_rgb(46, 52, 86),
+    };
+    visuals.widgets.active.bg_fill = match theme {
+        Theme::Light => Color32::from_rgb(214, 219, 232),
+        Theme::Dark => Color32::from_rgb(58, 65, 104),
+    };
+    visuals.widgets.open.bg_fill = visuals.widgets.active.bg_fill;
+
+    // Consistent widget interaction: 4 px corner rounding for all interactive
+    // widgets, and a 2 px accent focus stroke for keyboard discoverability
+    // (shape-only, never colour-alone, WCAG AA-safe).
+    visuals.widgets.hovered.corner_radius = CornerRadius::same(4.0);
+    visuals.widgets.active.corner_radius = CornerRadius::same(4.0);
+    visuals.widgets.open.corner_radius = CornerRadius::same(4.0);
+    visuals.widgets.focus_stroke = Stroke::new(2.0, ACCENT);
 
     // Button hierarchy: primary (accent-filled), secondary (muted fill),
     // tertiary (text-like). These colours are applied via the widget visuals
