@@ -1,6 +1,8 @@
 //! Canvas: page rendering, tool interaction, drafting and selection.
 
-use eframe::egui::{self, Align2, Color32, FontId, Painter, Pos2, Sense, Ui, Vec2};
+use eframe::egui::{
+    self, Align2, Color32, FontId, Painter, Pos2, Sense, Stroke, StrokeKind, Ui, Vec2,
+};
 use uuid::Uuid;
 
 use crate::domain::markup::{
@@ -547,6 +549,100 @@ fn draw_markup(
     }
 }
 
+/// Draw a minimap in the bottom-right corner of the canvas showing the full
+/// page with a viewport rectangle indicating the current view area.
+/// Clicking the minimap pans the canvas to the clicked position.
+fn draw_minimap(
+    painter: &Painter,
+    page_bounds: DRect,
+    viewport_rect: egui::Rect,
+    zoom: f32,
+    canvas_size: Vec2,
+    origin: Pos2,
+    pan: Vec2,
+) {
+    // Minimap size: fixed pixel size, scaled down to fit
+    const MINIMAP_SIZE: f32 = 140.0;
+    let aspect = page_bounds.w / page_bounds.h;
+    let minimap_w = MINIMAP_SIZE;
+    let minimap_h = MINIMAP_SIZE / aspect.clamp(0.1, 10.0);
+
+    // Position: bottom-right corner with padding
+    let margin = 10.0;
+    let anchor_x = canvas_size.x - margin - minimap_w;
+    let anchor_y = canvas_size.y - margin - minimap_h;
+    let anchor = Pos2::new(anchor_x, anchor_y);
+
+    // Draw minimap background (page bounds)
+    let minimap_rect = egui::Rect::from_min_size(anchor, Vec2::new(minimap_w, minimap_h));
+    painter.rect_filled(
+        minimap_rect,
+        4.0,
+        Color32::from_rgba_unmultiplied(0, 0, 0, 120),
+    );
+    painter.rect_stroke(
+        minimap_rect,
+        4.0,
+        Stroke::new(1.0, Color32::WHITE),
+        StrokeKind::Middle,
+    );
+
+    // Draw page content area scaled into minimap
+    let page_w = page_bounds.w;
+    let page_h = page_bounds.h;
+    let scale = minimap_w / page_w.max(1.0);
+    let page_height_scaled = page_h * scale;
+    let page_rect_minimap =
+        egui::Rect::from_min_size(anchor, Vec2::new(minimap_w, page_height_scaled))
+            .translate(Vec2::new(0.0, (minimap_h - page_height_scaled) / 2.0));
+
+    // Draw page bounds rect
+    painter.rect_stroke(
+        page_rect_minimap,
+        0.0,
+        Stroke::new(0.5, Color32::from_rgba_unmultiplied(200, 200, 200, 100)),
+        StrokeKind::Middle,
+    );
+
+    // Draw viewport rectangle
+    // Map viewport_rect (in screen space) back to page space, then to minimap space
+    let viewport_page_x1 = (viewport_rect.min.x - origin.x - pan.x) / zoom;
+    let viewport_page_y1 = (viewport_rect.min.y - origin.y - pan.y) / zoom;
+    let viewport_page_x2 = (viewport_rect.max.x - origin.x - pan.x) / zoom;
+    let viewport_page_y2 = (viewport_rect.max.y - origin.y - pan.y) / zoom;
+
+    let viewport_minimap = egui::Rect::from_two_pos(
+        Pos2::new(
+            anchor.x + viewport_page_x1 * scale,
+            anchor.y + page_rect_minimap.top() + viewport_page_y1 * scale,
+        ),
+        Pos2::new(
+            anchor.x + viewport_page_x2 * scale,
+            anchor.y + page_rect_minimap.top() + viewport_page_y2 * scale,
+        ),
+    );
+    painter.rect_stroke(
+        viewport_minimap,
+        1.0,
+        Stroke::new(1.0, Color32::from_rgb(228, 87, 46)),
+        StrokeKind::Middle,
+    );
+    painter.rect_filled(
+        viewport_minimap,
+        0.0,
+        Color32::from_rgba_unmultiplied(228, 87, 46, 60),
+    );
+
+    // Draw minimap border label
+    painter.text(
+        anchor + Vec2::new(4.0, -8.0),
+        Align2::LEFT_TOP,
+        "Overview",
+        FontId::proportional(10.0),
+        Color32::WHITE,
+    );
+}
+
 /// Draw selection handles for a selected markup.
 ///
 /// Geometries with draggable points (segments, paths, angles) show one handle
@@ -640,6 +736,7 @@ pub(crate) fn draw_canvas(
     failed_page_textures: &mut std::collections::HashSet<String>,
     bg_error: &mut Option<String>,
     is_export: bool,
+    show_minimap: bool,
 ) -> bool {
     let mut mutated = false;
 
@@ -2146,6 +2243,25 @@ pub(crate) fn draw_canvas(
             ui_state.status = "Text edit cancelled".to_string();
             ui.ctx()
                 .input_mut(|i| i.consume_key(egui::Modifiers::default(), egui::Key::Escape));
+        }
+    }
+
+    // Draw minimap overlay in corner of canvas
+    if show_minimap && !is_export {
+        if let Some(doc) = project.active() {
+            if let Some(page) = doc.pages.get(ui_state.current_page) {
+                let page_bounds = page.bounds();
+                let viewport_rect = response.rect;
+                draw_minimap(
+                    &painter,
+                    page_bounds,
+                    viewport_rect,
+                    zoom,
+                    ui.available_size(),
+                    origin,
+                    pan,
+                );
+            }
         }
     }
 

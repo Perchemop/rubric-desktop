@@ -115,6 +115,7 @@ mod tests {
             tool_chest_library: StylePresetLibrary::new(),
             ui_scale: 1.0,
             focus_mode: true,
+            show_minimap: false,
         };
         save_prefs_to(&path, &prefs).expect("save");
         assert_eq!(load_prefs_from(&path), prefs);

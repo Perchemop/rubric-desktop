@@ -327,7 +327,8 @@ pub(crate) fn render_page_to_png_bytes(
                 page_textures,
                 failed_page_textures,
                 bg_error,
-                true, // is_export: suppress chrome (grid, rulers, backdrop)
+                true,  // is_export: suppress chrome (grid, rulers, backdrop)
+                false, // show_minimap: minimap not used in export
             );
         });
     });

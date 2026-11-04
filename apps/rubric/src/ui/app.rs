@@ -194,6 +194,9 @@ pub(crate) struct UiState {
     /// Focus/reading mode: hides all side panels so only the canvas is
     /// visible, for distraction-free review (proposal P2-13).
     pub(crate) focus_mode: bool,
+    /// Show a small minimap in the corner of the canvas showing page overview
+    /// with viewport rectangle (proposal P2-16).
+    pub(crate) show_minimap: bool,
     /// Pending quit confirmation when the project has unsaved changes.
     pub(crate) quit_confirm: bool,
     /// Per-frame history enablement snapshot, refreshed at the start of the
@@ -294,6 +297,7 @@ impl Default for UiState {
             show_pages: true,
             show_tool_chest: true,
             focus_mode: false,
+            show_minimap: false,
             quit_confirm: false,
             can_undo: false,
             can_redo: false,
@@ -1164,6 +1168,7 @@ impl RubricApp {
             tool_chest_library: self.tool_chest_library.clone(),
             ui_scale: self.ui_scale,
             focus_mode: self.ui.focus_mode,
+            show_minimap: self.ui.show_minimap,
         };
         match save_prefs(&prefs) {
             Ok(()) => self.ui.status = format!("Theme: {}", theme.label()),
@@ -1183,6 +1188,7 @@ impl RubricApp {
             tool_chest_library: self.tool_chest_library.clone(),
             ui_scale: self.ui_scale,
             focus_mode: self.ui.focus_mode,
+            show_minimap: self.ui.show_minimap,
         };
         if let Err(e) = save_prefs(&prefs) {
             self.ui.status = format!("Workspace saved, but preferences write failed: {e}");
@@ -1900,6 +1906,17 @@ impl RubricApp {
                     };
                     self.save_app_prefs();
                 }
+                if ui
+                    .checkbox(&mut self.ui.show_minimap, "Show Minimap")
+                    .changed()
+                {
+                    self.ui.status = if self.ui.show_minimap {
+                        "Minimap shown".to_string()
+                    } else {
+                        "Minimap hidden".to_string()
+                    };
+                    self.save_app_prefs();
+                }
             });
             ui.menu_button("Help", |ui| {
                 if ui.button("About Rubric").clicked() {
@@ -2437,6 +2454,7 @@ impl App for RubricApp {
         }
 
         let prior_status = self.ui.status.clone();
+        let show_minimap = self.ui.show_minimap;
         let mut need_snapshot = false;
         egui::CentralPanel::default().show(ui, |ui| {
             self.ui.canvas_size = ui.available_size();
@@ -2450,6 +2468,7 @@ impl App for RubricApp {
                 &mut self.failed_page_textures,
                 &mut self.bg_error,
                 false, // is_export: show chrome in live editor
+                show_minimap,
             );
         });
         if need_snapshot {
