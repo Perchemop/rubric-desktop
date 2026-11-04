@@ -55,6 +55,12 @@ only when implemented *and* CI-verified.
 | 30 | Grid, snap-to-grid, rulers | Bluebeam measurement aids | F-405, F-406 | Optional grid with snapping; labelled ruler ticks that follow pan/zoom | Code `domain/grid.rs`, `ui/canvas.rs`; test `ruler_ticks` ladder; CI v0.1.0 |
 | 31 | Page thumbnails sidebar | Adobe page organisation | F-404 | One cell per page; PDF-backed preview reuses the page cache; click to jump | Code `domain/thumbs.rs`, `ui/pages.rs`; test `thumb_layout`; CI v0.1.0 |
 
+## Planned (future slices — not yet implemented, so not "Done")
+
+| # | Capability | Source (why it is useful) | Feature IDs | Acceptance criteria | Status |
+|---|---|---|---|---|---|
+| 32 | Bates numbering (sequential page stamping) | Adobe "Add Bates numbering to PDFs" <https://helpx.adobe.com/acrobat/using/add-bates-numbering-to-pdfs.html>; `docs/research/bates-numbering.md` | F-801–F-805 | Configure prefix/suffix/start/padding with a live next-value preview; choose placement and page range; ghost-preview on canvas; bake the sequence into export and print output in page order, leaving the source PDF untouched | Planned — queued after the remaining v0.5 slices (see `IMPLEMENTATION_PLAN.md` v0.6) |
+
 ## Deliberately out of scope
 
 | Capability | Reason | Record |

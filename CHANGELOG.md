@@ -249,6 +249,14 @@ All notable changes to this project will be documented here. Format: semantic-is
   validity; data tests for atomic render-cache writes and the render-width
   clamp.
 
+### Planned
+
+- **Bates numbering** (future slice **v0.6**, spec F-801–F-805): sequential page
+  stamping for legal/document-review workflows, implemented as a non-destructive
+  overlay (source PDF untouched). Queued after the remaining v0.5 slices.
+  Capability-level research recorded in `docs/research/bates-numbering.md`;
+  capability inventory row 32; requirement R-S-018.
+
 ## [0.3-01] - 2026-10-31
 
 ### Fixed

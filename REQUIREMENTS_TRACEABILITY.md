@@ -69,6 +69,7 @@ Each row maps a spec area to its feature IDs and the planned modules.
 | R-S-015 | Export (rendered image) and print | F-505 | src/data/export.rs (new), src/data/render.rs (new), src/data/print.rs (new), src/ui/app.rs | DONE |
 | R-S-016 | UX polish: shortcuts, dark theme, context menus, undo/redo, accessibility | F-601–F-605 | src/ui/app.rs, src/ui/theme.rs, src/domain/project.rs, src/domain/theme.rs, src/data/prefs.rs, src/domain/a11y.rs | DONE — accessibility (F-605) landed 2026-10-30 (`shipped_palettes_meet_wcag_contrast`) |
 | R-S-017 | Packaging: Linux AppImage, macOS DMG, Windows MSI, CI release artifacts | F-701–F-704 | .github/workflows/release.yml, .github/workflows/package.yml, packaging/wix/, docs/pdfium.md | DONE |
+| R-S-018 | Bates numbering: configurable prefix/suffix/start/padding, placement, page range, canvas overlay preview, stamped export & print (non-destructive overlay) | F-801–F-805 | src/domain/bates.rs (new), src/data/render.rs, src/data/print.rs, src/ui/canvas.rs, src/ui/inspector.rs | PLANNED — v0.6 future slice (`docs/research/bates-numbering.md`; queued after remaining v0.5 slices) |
 
 ## Feature requirements
 
@@ -90,7 +91,8 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 | F-5xx | Persistence/I/O (spec) | .rubric.json store, PDF import, export/print | DONE | docs/spec/README.md F-501–F-507; R-S-013–R-S-015; native dialogs + recent files landed 2026-10-20; PDF import landed 2026-10-21; report export landed 2026-10-21; image export + print landed 2026-10-21; autosave + schema version landed 2026-10-26 |
 | F-6xx | UI/UX polish (spec) | shortcuts, theme, history | DONE | docs/spec/README.md F-601–F-605; R-S-016; F-601 (per-tool keys), F-602 (dark theme), F-603 (context menus) done 2026-10-23; F-605 (accessibility) done 2026-10-30 |
 | F-7xx | Packaging (spec) | CI release build, installers | DONE | docs/spec/README.md F-701–F-704; R-S-017; release.yml + package.yml done 2026-10-23 (installers unsigned — see docs/assumptions-and-questions Q-PACK-1) |
-| F-8xx | Community/security/ops readiness (operating guide Part II — not product-spec scope; tracked as R-C-*) | — | DONE (initial wave) | see "Community, security and operating-hygiene requirements" below |
+| F-8xx | Bates numbering (spec) | Sequential page stamping overlay | PLANNED | docs/spec/README.md F-801–F-805; R-S-018; research `docs/research/bates-numbering.md`; queued for v0.6 after remaining v0.5 slices |
+| R-C-* | Community/security/ops readiness (operating guide Part II — not product-spec scope) | — | DONE (initial wave) | see "Community, security and operating-hygiene requirements" below |
 
 ## v0.2 requirements (reviewer/auditor milestone)
 

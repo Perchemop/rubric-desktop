@@ -1,5 +1,20 @@
 # PROGRESS.md
 
+## 2026-11-04 — Bates numbering recorded as a future slice (v0.6)
+**Status**: planned and recorded (owner request); not yet implemented.
+
+### Recorded
+- **Bates numbering** (spec F-801–F-805, requirement R-S-018) queued as **v0.6**,
+  after the remaining v0.5 audit slices. Implemented as a **non-destructive
+  overlay** (source PDF never modified): a `BatesConfig`/`BatesPlacement` domain
+  value type, a ghosted canvas preview, and stamps baked into the export/print
+  output in page order.
+- Tracking updated: `docs/spec/README.md` (F-8xx group), `docs/research/bates-numbering.md`
+  (capability-level summary + URLs), `docs/capability-inventory.md` (planned row 32),
+  `IMPLEMENTATION_PLAN.md` (v0.6), `ROADMAP.md` (v0.6 milestone),
+  `REQUIREMENTS_TRACEABILITY.md` (R-S-018), `DECISIONS.md` (approach + sequencing),
+  `CHANGELOG.md` (Planned).
+
 ## 2026-11-04 — guide §12.1 suite standards: in-app version, release notes, token ledger
 **Status**: PR #122 merged to main; CI green (`check` + required checks) on commit `5ba25e0`.
 
