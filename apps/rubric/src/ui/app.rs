@@ -459,7 +459,7 @@ impl RubricApp {
             }),
             update: Arc::new(Mutex::new(UpdateCheck::default())),
             repo: "Perchemop/rubric-desktop".to_string(),
-            tool_chest_library: StylePresetLibrary::new(),
+            tool_chest_library: prefs.tool_chest_library.clone(),
         }
     }
 
@@ -1153,6 +1153,7 @@ impl RubricApp {
             show_pages: self.ui.show_pages,
             zoom: self.ui.zoom,
             current_page: self.ui.current_page,
+            tool_chest_library: self.tool_chest_library.clone(),
         };
         match save_prefs(&prefs) {
             Ok(()) => self.ui.status = format!("Theme: {}", theme.label()),
@@ -1169,6 +1170,7 @@ impl RubricApp {
             show_pages: self.ui.show_pages,
             zoom: self.ui.zoom,
             current_page: self.ui.current_page,
+            tool_chest_library: self.tool_chest_library.clone(),
         };
         if let Err(e) = save_prefs(&prefs) {
             self.ui.status = format!("Workspace saved, but preferences write failed: {e}");

@@ -74,6 +74,7 @@ pub fn save_prefs_to<P: AsRef<Path>>(path: P, prefs: &AppPrefs) -> Result<(), Da
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::style_preset::StylePresetLibrary;
     use crate::domain::Theme;
 
     fn temp_prefs_path(tag: &str) -> PathBuf {
@@ -111,6 +112,7 @@ mod tests {
             show_pages: true,
             zoom: 1.5,
             current_page: 2,
+            tool_chest_library: StylePresetLibrary::new(),
         };
         save_prefs_to(&path, &prefs).expect("save");
         assert_eq!(load_prefs_from(&path), prefs);

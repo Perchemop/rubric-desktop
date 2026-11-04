@@ -6,6 +6,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::domain::style_preset::StylePresetLibrary;
+
 /// Colour theme used by the application shell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
@@ -57,6 +59,9 @@ pub struct AppPrefs {
     /// Current page index. Missing values fall back to `0`.
     #[serde(default)]
     pub current_page: usize,
+    /// Tool Chest style preset library, persisted across sessions.
+    #[serde(default)]
+    pub tool_chest_library: StylePresetLibrary,
 }
 
 fn default_true() -> bool {
@@ -76,6 +81,7 @@ impl Default for AppPrefs {
             show_pages: true,
             zoom: 1.0,
             current_page: 0,
+            tool_chest_library: StylePresetLibrary::new(),
         }
     }
 }
@@ -124,6 +130,7 @@ mod tests {
             show_pages: true,
             zoom: 1.5,
             current_page: 2,
+            tool_chest_library: StylePresetLibrary::new(),
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
