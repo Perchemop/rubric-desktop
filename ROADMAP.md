@@ -132,7 +132,7 @@ so they do not move the 52-feature readiness table above.
 
 **Audit backlog P1 — Quality:**
 - [x] Elevation + spacing + radius tokens (corner_radius + elevation 0–3, P1-6)
-- [ ] Segmented Inspector tabs — **tab bar shipped; content gating (P1-7 pieces 2–5) still pending**
+- [x] Segmented Inspector tabs (Selection / Properties / Comments / Measure / Settings) — tab bar + gated section content; Status legend, Layers and Scale stay visible by design
 - [x] Virtualised Markups List (egui `ScrollArea` viewport culling; async thumbnails pending)
 - [x] Single tool metadata source drives all UIs (`ToolMeta`/`TOOL_METADATA`, P1-9)
 - [x] Persist Tool Chest library in prefs (P1-10)

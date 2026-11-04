@@ -14,6 +14,10 @@
   `IMPLEMENTATION_PLAN.md` (v0.6), `ROADMAP.md` (v0.6 milestone),
   `REQUIREMENTS_TRACEABILITY.md` (R-S-018), `DECISIONS.md` (approach + sequencing),
   `CHANGELOG.md` (Planned).
+- Also corrected the P1-7 status in `ROADMAP.md`/`IMPLEMENTATION_PLAN.md`: the
+  inspector tab bar **and** its section gating are already implemented (Properties
+  / Comments / Measure / Settings content is gated; the read-only Status legend,
+  Layers and Scale stay visible by design).
 
 ## 2026-11-04 — guide §12.1 suite standards: in-app version, release notes, token ledger
 **Status**: PR #122 merged to main; CI green (`check` + required checks) on commit `5ba25e0`.
