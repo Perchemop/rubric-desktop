@@ -1,5 +1,23 @@
 # PROGRESS.md
 
+## 2026-11-05 — Bates numbering slice 2: canvas overlay + export/print (F-804, F-805 partial)
+**Status**: implemented; CI pending on the slice PR.
+
+### Completed
+- **F-804**: `draw_bates_overlay` in `ui/canvas.rs` paints the stamp at its
+  configured corner (ghosted on the live canvas, solid when `is_export`),
+  following pan/zoom. Creates no markup; skipped when Bates is disabled or the
+  page is outside the range.
+- **F-805 (partial)**: the exported **page image** and **print** output include
+  the stamp solid, since both reuse `draw_canvas(is_export = true)`.
+- **Domain**: `BatesConfig::anchor_point(page_w, page_h)` (pure) + a unit test.
+- Tracking updated: IMPLEMENTATION_PLAN v0.6, ROADMAP, CHANGELOG,
+  capability-inventory.
+
+### Remaining (Bates v0.6)
+- **F-805 remainder**: draw Bates into the flattened-**PDF** export
+  (`data/pdf.rs`, lopdf content stream).
+
 ## 2026-11-05 — Bates numbering slice 1: config, placement, range (F-801–F-803)
 **Status**: implemented; CI pending on the slice PR.
 

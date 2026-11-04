@@ -9,6 +9,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::geom::Pt;
+
 /// Minimum zero-pad width for the numeric body.
 pub const MIN_BATES_DIGITS: u8 = 1;
 /// Maximum zero-pad width for the numeric body.
@@ -190,6 +192,25 @@ impl BatesConfig {
         self.last_stamped_page(page_count)
             .and_then(|page| self.stamp_for_page(page))
     }
+
+    /// Page-space anchor for the stamp, given the page size: the chosen corner
+    /// inset by [`BatesConfig::margin`]. The caller pairs it with the corner's
+    /// alignment ([`BatesCorner::is_right`] / [`BatesCorner::is_top`]) to place
+    /// the text against that point.
+    pub fn anchor_point(&self, page_width: f32, page_height: f32) -> Pt {
+        let margin = self.margin.max(0.0);
+        let x = if self.corner.is_right() {
+            page_width - margin
+        } else {
+            margin
+        };
+        let y = if self.corner.is_top() {
+            margin
+        } else {
+            page_height - margin
+        };
+        Pt::new(x, y)
+    }
 }
 
 #[cfg(test)]
@@ -343,6 +364,23 @@ mod tests {
         let json = serde_json::to_string(&b).expect("serialize");
         let back: BatesConfig = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, b);
+    }
+
+    #[test]
+    fn anchor_point_uses_corner_and_margin() {
+        let b = BatesConfig {
+            margin: 20.0,
+            corner: BatesCorner::BottomRight,
+            ..BatesConfig::default()
+        };
+        assert_eq!(b.anchor_point(600.0, 800.0), Pt::new(580.0, 780.0));
+
+        let tl = BatesConfig {
+            margin: 20.0,
+            corner: BatesCorner::TopLeft,
+            ..BatesConfig::default()
+        };
+        assert_eq!(tl.anchor_point(600.0, 800.0), Pt::new(20.0, 20.0));
     }
 
     #[test]

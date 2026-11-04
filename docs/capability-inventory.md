@@ -59,7 +59,7 @@ only when implemented *and* CI-verified.
 
 | # | Capability | Source (why it is useful) | Feature IDs | Acceptance criteria | Status |
 |---|---|---|---|---|---|
-| 32 | Bates numbering (sequential page stamping) | Adobe "Add Bates numbering to PDFs" <https://helpx.adobe.com/acrobat/using/add-bates-numbering-to-pdfs.html>; `docs/research/bates-numbering.md` | F-801–F-805 | Configure prefix/suffix/start/padding with a live next-value preview; choose placement and page range; ghost-preview on canvas; bake the sequence into export and print output in page order, leaving the source PDF untouched | Partial — F-801–F-803 (config, placement, range + first/last preview) shipped in `domain/bates.rs` + Inspector; F-804 (canvas overlay) and F-805 (export/print bake) pending (`IMPLEMENTATION_PLAN.md` v0.6) |
+| 32 | Bates numbering (sequential page stamping) | Adobe "Add Bates numbering to PDFs" <https://helpx.adobe.com/acrobat/using/add-bates-numbering-to-pdfs.html>; `docs/research/bates-numbering.md` | F-801–F-805 | Configure prefix/suffix/start/padding with a live next-value preview; choose placement and page range; ghost-preview on canvas; bake the sequence into export and print output in page order, leaving the source PDF untouched | Partial — F-801–F-804 shipped (`domain/bates.rs` + Inspector config; ghosted canvas overlay in `ui/canvas.rs`); F-805 partial (page-image export + print include the stamp; flattened-PDF export pending) |
 
 ## Deliberately out of scope
 
