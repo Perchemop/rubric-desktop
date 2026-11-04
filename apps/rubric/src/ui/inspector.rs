@@ -883,7 +883,11 @@ pub(crate) fn draw_inspector(
                 });
                 ui.horizontal(|ui| {
                     ui.label("Pages to stamp");
-                    ui.small(format!("{} of {}", bates.applied_count(bates_pages), bates_pages));
+                    ui.small(format!(
+                        "{} of {}",
+                        bates.applied_count(bates_pages),
+                        bates_pages
+                    ));
                 });
                 if let Some(first) = bates.stamp_for_page(bates.range.from) {
                     ui.small(format!("First: {first}"));
