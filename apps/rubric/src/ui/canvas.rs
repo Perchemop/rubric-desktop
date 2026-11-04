@@ -317,11 +317,6 @@ fn draw_markup(
         MarkupGeometry::Bounds(r) => {
             let sr = screen_rect(*r, origin, pan, zoom);
             match m.kind {
-                MarkupKind::Highlight => {
-                    let s = egui::Stroke::new((style.width * zoom).max(8.0), stroke_c);
-                    painter.rect_filled(sr, egui::CornerRadius::ZERO, fill_c);
-                    painter.rect_stroke(sr, egui::CornerRadius::ZERO, s, egui::StrokeKind::Inside);
-                }
                 MarkupKind::Rectangle
                 | MarkupKind::Stamp
                 | MarkupKind::Note
@@ -360,36 +355,6 @@ fn draw_markup(
                         painter.add(egui::Shape::ellipse_stroke(center, radius, stroke_eg));
                     }
                 }
-                MarkupKind::Strikeout => {
-                    // A horizontal line through the vertical middle of the box.
-                    let y = sr.center().y;
-                    painter
-                        .line_segment([Pos2::new(sr.min.x, y), Pos2::new(sr.max.x, y)], stroke_eg);
-                }
-                MarkupKind::Underline => {
-                    // A horizontal line just inside the bottom edge.
-                    let y = sr.max.y - stroke_w;
-                    painter
-                        .line_segment([Pos2::new(sr.min.x, y), Pos2::new(sr.max.x, y)], stroke_eg);
-                }
-                MarkupKind::Squiggly => {
-                    // A zig-zag near the baseline (bottom edge).
-                    let y = sr.max.y - stroke_w;
-                    let step = (sr.width() / 16.0).clamp(3.0, 12.0);
-                    let mut pts: Vec<Pos2> = Vec::new();
-                    let mut x = sr.min.x;
-                    let mut up = true;
-                    while x < sr.max.x {
-                        let dy = if up { -step * 0.5 } else { step * 0.5 };
-                        pts.push(Pos2::new(x, y + dy));
-                        x += step;
-                        up = !up;
-                    }
-                    pts.push(Pos2::new(sr.max.x, y));
-                    if pts.len() >= 2 {
-                        painter.add(egui::Shape::line(pts, stroke_eg));
-                    }
-                }
                 _ => {
                     if fill_c.a() > 0 {
                         painter.rect_filled(sr, egui::CornerRadius::ZERO, fill_c);
@@ -401,6 +366,75 @@ fn draw_markup(
                         egui::StrokeKind::Middle,
                     );
                 }
+            }
+        }
+        MarkupGeometry::TextAnchor { at, text, line_height, line_count, text_width } => {
+            // Text-anchored markup: draw line(s) at text baseline positions,
+            // anchored to text rather than a bounding box.
+            let sa = to_screen(*at, pan, zoom, origin);
+            let baseline_y = at.y;
+            let text_width = text_width.max(text.len() as f32 * line_height * 0.6);
+            let stroke = egui::Stroke::new((style.width * zoom).max(1.0), stroke_c);
+            match m.kind {
+                MarkupKind::Highlight => {
+                    let fill = style.fill;
+                    if fill.a() > 0 {
+                        // Draw fill highlight over text line area
+                        let hl_rect = egui::Rect::from_min_size(
+                            sa,
+                            Vec2::new(text_width, line_height),
+                        );
+                        painter.rect_filled(
+                            hl_rect,
+                            egui::CornerRadius::ZERO,
+                            fill_c,
+                        );
+                    }
+                    painter.rect_stroke(
+                        egui::Rect::from_min_size(
+                            sa,
+                            Vec2::new(text_width, line_height),
+                        ),
+                        egui::CornerRadius::ZERO,
+                        stroke_eg,
+                        egui::StrokeKind::Inside,
+                    );
+                }
+                MarkupKind::Strikeout => {
+                    // Line through middle of text line
+                    let y = baseline_y + line_height * 0.5;
+                    painter.line_segment(
+                        [Pos2::new(at.x, y), Pos2::new(at.x + text_width, y)],
+                        stroke_eg,
+                    );
+                }
+                MarkupKind::Underline => {
+                    // Line at bottom of text line
+                    let y = baseline_y + line_height - stroke_w * 0.5;
+                    painter.line_segment(
+                        [Pos2::new(at.x, y), Pos2::new(at.x + text_width, y)],
+                        stroke_eg,
+                    );
+                }
+                MarkupKind::Squiggly => {
+                    // Zig-zag near text baseline
+                    let y = baseline_y + line_height - stroke_w * 0.5;
+                    let step = (text_width / 16.0).clamp(3.0, 12.0);
+                    let mut pts: Vec<Pos2> = Vec::new();
+                    let mut x = at.x;
+                    let mut up = true;
+                    while x < at.x + text_width {
+                        let dy = if up { -step * 0.5 } else { step * 0.5 };
+                        pts.push(Pos2::new(x, y + dy));
+                        x += step;
+                        up = !up;
+                    }
+                    pts.push(Pos2::new(at.x + text_width, y));
+                    if pts.len() >= 2 {
+                        painter.add(egui::Shape::line(pts, stroke_eg));
+                    }
+                }
+                _ => {}
             }
         }
         MarkupGeometry::Segment { a, b } => {
@@ -1576,10 +1610,16 @@ pub(crate) fn draw_canvas(
                         | MarkupKind::Ellipse
                         | MarkupKind::Cloud
                         | MarkupKind::Stamp
-                        | MarkupKind::Note
-                        | MarkupKind::Highlight => {
+                        | MarkupKind::Note => {
                             MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv))
                         }
+                        MarkupKind::Highlight => MarkupGeometry::TextAnchor {
+                                at: Pt::new(pp.x, pp.y),
+                                text: String::new(),
+                                line_height: 12.0 * inv,
+                                line_count: 1,
+                                text_width: 40.0 * inv,
+                            }
                         MarkupKind::MeasureCount => {
                             // Number each new marker after the highest already
                             // on this page, so the running count never repeats
