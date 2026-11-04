@@ -368,33 +368,30 @@ fn draw_markup(
                 }
             }
         }
-        MarkupGeometry::TextAnchor { at, text, line_height, line_count, text_width } => {
+        MarkupGeometry::TextAnchor {
+            at,
+            text,
+            line_height,
+            text_width,
+            ..
+        } => {
             // Text-anchored markup: draw line(s) at text baseline positions,
             // anchored to text rather than a bounding box.
             let sa = to_screen(*at, pan, zoom, origin);
             let baseline_y = at.y;
             let text_width = text_width.max(text.len() as f32 * line_height * 0.6);
-            let stroke = egui::Stroke::new((style.width * zoom).max(1.0), stroke_c);
+            let _stroke = egui::Stroke::new((style.width * zoom).max(1.0), stroke_c);
             match m.kind {
                 MarkupKind::Highlight => {
                     let fill = style.fill;
-                    if fill.a() > 0 {
+                    if fill.a > 0 {
                         // Draw fill highlight over text line area
-                        let hl_rect = egui::Rect::from_min_size(
-                            sa,
-                            Vec2::new(text_width, line_height),
-                        );
-                        painter.rect_filled(
-                            hl_rect,
-                            egui::CornerRadius::ZERO,
-                            fill_c,
-                        );
+                        let hl_rect =
+                            egui::Rect::from_min_size(sa, Vec2::new(text_width, *line_height));
+                        painter.rect_filled(hl_rect, egui::CornerRadius::ZERO, fill_c);
                     }
                     painter.rect_stroke(
-                        egui::Rect::from_min_size(
-                            sa,
-                            Vec2::new(text_width, line_height),
-                        ),
+                        egui::Rect::from_min_size(sa, Vec2::new(text_width, *line_height)),
                         egui::CornerRadius::ZERO,
                         stroke_eg,
                         egui::StrokeKind::Inside,
@@ -1614,12 +1611,12 @@ pub(crate) fn draw_canvas(
                             MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv))
                         }
                         MarkupKind::Highlight => MarkupGeometry::TextAnchor {
-                                at: Pt::new(pp.x, pp.y),
-                                text: String::new(),
-                                line_height: 12.0 * inv,
-                                line_count: 1,
-                                text_width: 40.0 * inv,
-                            }
+                            at: Pt::new(pp.x, pp.y),
+                            text: String::new(),
+                            line_height: 12.0 * inv,
+                            line_count: 1,
+                            text_width: 40.0 * inv,
+                        },
                         MarkupKind::MeasureCount => {
                             // Number each new marker after the highest already
                             // on this page, so the running count never repeats

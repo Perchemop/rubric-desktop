@@ -721,6 +721,30 @@ fn render_markup(m: &Markup, _width: f32, height: f32) -> Vec<lopdf::content::Op
     ];
 
     match &m.geometry {
+        MarkupGeometry::TextAnchor { .. } => {
+            // Text-anchored markups (highlight/strikeout/underline/squiggly) are
+            // drawn as text overlays in the canvas; in the PDF export we fall
+            // back to a simple bounding box for now. Full text-anchored PDF
+            // annotation support would require PDF text extraction and annotation
+            // creation, which is out of scope for the v0.5 polish pass.
+            // Fall back to bounds for now.
+            let rct = m.bounds();
+            let x0 = rct.x;
+            let y0 = pdf_y(rct.y, height) - rct.h;
+            ops.push(Operation::new(
+                "re",
+                vec![
+                    Object::Real(x0),
+                    Object::Real(y0),
+                    Object::Real(rct.w),
+                    Object::Real(rct.h),
+                ],
+            ));
+            match style.fill_mode {
+                FillMode::None => ops.push(Operation::new("S", vec![])),
+                FillMode::Solid | FillMode::Highlight => ops.push(Operation::new("f", vec![])),
+            }
+        }
         MarkupGeometry::Bounds(rct) => {
             let x0 = rct.x;
             let y0 = pdf_y(rct.y, height) - rct.h; // bottom-left in PDF

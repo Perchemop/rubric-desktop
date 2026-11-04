@@ -157,6 +157,22 @@ fn geometry_fingerprint_of(g: &MarkupGeometry) -> String {
         }
         MarkupGeometry::Angle { a, vertex, b } => format!("angle:{}:{}:{}", p(a), p(vertex), p(b)),
         MarkupGeometry::Count { at, number } => format!("count:{}:{}", p(at), number),
+        MarkupGeometry::TextAnchor {
+            at,
+            text,
+            line_height,
+            line_count,
+            text_width,
+        } => {
+            format!(
+                "textanchor:{}:{}:{}:{}:{}",
+                p(at),
+                text,
+                r(*line_height),
+                line_count,
+                r(*text_width)
+            )
+        }
     }
 }
 
