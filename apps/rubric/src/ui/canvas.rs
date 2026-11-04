@@ -8,7 +8,7 @@ use crate::domain::markup::{
 };
 use crate::domain::{
     angle_degrees, format_value, ruler_ticks, Corner, Grid, Markup, MarkupGeometry, MarkupKind,
-    MeasureKind, Project, Pt, Rect as DRect, ReviewStatus, Tool,
+    MeasureKind, Project, Pt, Rect as DRect, ReviewStatus, Scale, Tool,
 };
 
 use super::theme::to_color32;
@@ -200,6 +200,7 @@ fn draw_grid(painter: &Painter, bounds: DRect, grid: Grid, pan: Vec2, zoom: f32,
 /// Rulers (spec F-406): labelled ticks in the margin just outside the page, so a
 /// canvas position can be read in page points. Tick spacing follows the 1/2/5
 /// ladder in `domain::grid`, chosen from the zoom so labels never collide.
+#[allow(clippy::too_many_arguments)]
 fn draw_rulers(
     painter: &Painter,
     ui: &Ui,
@@ -208,6 +209,7 @@ fn draw_rulers(
     pan: Vec2,
     zoom: f32,
     origin: Pos2,
+    scale: &Scale,
 ) {
     const RULER_H: f32 = 18.0;
     const RULER_W: f32 = 30.0;
@@ -240,12 +242,20 @@ fn draw_rulers(
                 [Pos2::new(x, base_y - 5.0), Pos2::new(x, base_y - 1.0)],
                 tick,
             );
+            let units = scale.points_to_units(v);
             painter.text(
                 Pos2::new(x + 2.0, top + 2.0),
                 Align2::LEFT_TOP,
                 format!("{v:.0}"),
                 font.clone(),
                 text_c,
+            );
+            painter.text(
+                Pos2::new(x + 2.0, top + 12.0),
+                Align2::LEFT_TOP,
+                format!("{units:.2}{}", scale.unit.suffix()),
+                font.clone(),
+                text_c.gamma_multiply(0.6),
             );
         }
     }
@@ -267,12 +277,20 @@ fn draw_rulers(
                 [Pos2::new(base_x - 5.0, y), Pos2::new(base_x - 1.0, y)],
                 tick,
             );
+            let units = scale.points_to_units(v);
             painter.text(
                 Pos2::new(left + 2.0, y + 2.0),
                 Align2::LEFT_TOP,
                 format!("{v:.0}"),
                 font.clone(),
                 text_c,
+            );
+            painter.text(
+                Pos2::new(left + 2.0, y + 12.0),
+                Align2::LEFT_TOP,
+                format!("{units:.2}{}", scale.unit.suffix()),
+                font.clone(),
+                text_c.gamma_multiply(0.6),
             );
         }
     }
@@ -784,6 +802,7 @@ pub(crate) fn draw_canvas(
             ui_state.pan,
             ui_state.zoom,
             origin,
+            &page.scale,
         );
     }
 
