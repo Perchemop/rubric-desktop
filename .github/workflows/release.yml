@@ -168,6 +168,28 @@ jobs:
             echo "CHANGELOG_EOF"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Update token usage ledger (guide §12.1)
+        if: ${{ github.ref_type == 'tag' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Parse tokens from CI metadata / workflow environment.
+          # The free models used are zero-cost; we record per-release token counts
+          # as an honest metric (guide §12.1). Fallback to 0 if unavailable.
+          TAG="${GITHUB_REF_NAME#v}"
+          RELEASE_TOKENS="${RELEASE_TOKENS:-0}"
+          # Load current ledger, append new release, write back.
+          python3 -c "
+import json, sys
+from pathlib import Path
+p = Path('docs/tokens.json')
+data = json.loads(p.read_text()) if p.exists() else {'total_tokens_since_start': 0, 'releases': []}
+data['total_tokens_since_start'] += ${RELEASE_TOKENS}
+data['releases'].append({'version': '${TAG}', 'tokens': ${RELEASE_TOKENS}})
+p.write_text(json.dumps(data, indent=2) + '\n')
+print('Updated docs/tokens.json with release', '${TAG}', 'tokens=${RELEASE_TOKENS}')
+          "
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
