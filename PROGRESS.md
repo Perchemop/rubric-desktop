@@ -1,5 +1,29 @@
 # PROGRESS.md
 
+## 2026-11-04 — guide §12.1 suite standards: in-app version, release notes, token ledger
+**Status**: PR #122 merged to main; CI green (`check` + required checks) on commit `5ba25e0`.
+
+### Completed
+- **Version UI** (guide §9): subtle version label in the bottom-right corner of
+  the status bar; clicking it opens the Release Notes popup.
+- **Release-notes popup** (guide §9, §12.1): shows the changelog for the current
+  version and Unreleased, per-release and cumulative token metrics, and
+  Check-for-Updates / View-on-GitHub actions. `CHANGELOG.md` and
+  `docs/tokens.json` are embedded with `include_str!` so the popup works in a
+  packaged binary, not only in a source checkout.
+- **Token ledger** (guide §12.1): `docs/tokens.json`
+  (`total_tokens_since_start` + `releases[]` of `{release_version,
+  release_tokens}`); `scripts/update-token-ledger.py` updates it idempotently;
+  `scripts/token-summary.py` renders the token block now appended to every
+  GitHub Release body.
+- **Release workflow** (guide §12.1): records each tag's token metrics on a
+  short-lived branch and merges via a PR (main is protected); the step is
+  `continue-on-error` so bookkeeping never blocks a release.
+
+### Deferred (recorded in `docs/guide-compliance.md` §12.1)
+- Release signing + in-app checksum-verified auto-update install.
+- README screenshots (applies from v1.0).
+
 ## 2026-11-04 — UI/UX polish slices (design & GUI audit PR #101, proposals 9–12)
 **Status**: merged to main; CI green on PRs #100, #102, #103.
 

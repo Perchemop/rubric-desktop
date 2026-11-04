@@ -7,7 +7,6 @@ use std::time::{Duration, Instant};
 
 use eframe::{App, CreationContext, Frame};
 use egui::{Align, Layout, Pos2, TextureHandle, Ui, Vec2};
-use serde_json;
 
 use crate::data::{
     autosave, autosave_due, load_prefs, load_project, load_recent, normalise_project_filename,
@@ -22,6 +21,15 @@ use crate::domain::{
 };
 use crate::ui::{canvas, inspector, markups_list, menu, pages, theme, tool_chest, toolbar};
 use uuid::Uuid;
+
+/// Changelog embedded at build time for the in-app release-notes popup
+/// (guide §9, §12.1). Baking it in means the popup works in a packaged binary,
+/// where a source-checkout relative path would not resolve.
+const EMBEDDED_CHANGELOG: &str = include_str!("../../../../CHANGELOG.md");
+
+/// CI-managed token ledger embedded at build time (guide §12.1): cumulative
+/// tokens since project start plus per-release token metrics.
+const EMBEDDED_TOKENS: &str = include_str!("../../../../docs/tokens.json");
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
@@ -983,9 +991,11 @@ impl RubricApp {
         }
     }
 
-    /// Release notes popup (guide §9): version history, detailed app usage per
-    /// release, and token usage totals / per-release metrics from docs/tokens.json.
-    #[allow(dead_code)]
+    /// Release-notes popup (guide §9, §12.1): version history, detailed app
+    /// usage per release, and token usage totals / per-release metrics. The
+    /// changelog and the CI-managed token ledger are **embedded at build time**
+    /// ([`EMBEDDED_CHANGELOG`] / [`EMBEDDED_TOKENS`]) so the popup works in a
+    /// packaged binary, not only in a source checkout.
     fn draw_release_notes(&mut self, ctx: &egui::Context) {
         if !self.ui.show_release_notes {
             return;
@@ -995,65 +1005,88 @@ impl RubricApp {
             .open(&mut open)
             .resizable(true)
             .default_width(700.0)
-            .default_height(500.0)
+            .default_height(520.0)
             .show(ctx, |ui| {
                 ui.heading("Rubric Release Notes");
                 ui.separator();
 
-                // Version + token summary
                 let current_version = env!("CARGO_PKG_VERSION");
-                let tokens_json =
-                    std::fs::read_to_string("docs/tokens.json").unwrap_or_else(|_| {
-                        r#"{"total_tokens_since_start":0,"releases":[]}"#.to_string()
-                    });
-                let tokens: serde_json::Value =
-                    serde_json::from_str(&tokens_json).unwrap_or_default();
-                let total = tokens
+                let ledger: serde_json::Value =
+                    serde_json::from_str(EMBEDDED_TOKENS).unwrap_or_default();
+                let total = ledger
                     .get("total_tokens_since_start")
                     .and_then(|v| v.as_u64())
                     .unwrap_or(0);
 
                 ui.horizontal(|ui| {
-                    ui.label(format!("Current version: {}", current_version));
+                    ui.label(format!("Current version: {current_version}"));
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        ui.small(format!("Cumulative tokens: {}", total));
+                        ui.small(format!("Cumulative tokens used: {total}"));
                     });
                 });
                 ui.separator();
 
-                // Changelog content
-                let changelog = std::fs::read_to_string("CHANGELOG.md").unwrap_or_default();
-                // Show the [Unreleased] section and the current version section
-                let mut shown = false;
-                for line in changelog.lines() {
-                    let trimmed = line.trim_start();
-                    if trimmed.starts_with("## [") {
-                        if shown
-                            && !trimmed.contains(&format!("[{}]", current_version))
-                            && !trimmed.contains("[Unreleased]")
-                        {
-                            break; // Stop at the next version section
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    // Per-release token metrics from the ledger (guide §12.1).
+                    if let Some(releases) = ledger.get("releases").and_then(|v| v.as_array()) {
+                        let mut any = false;
+                        for r in releases {
+                            let v = r.get("release_version").and_then(|v| v.as_str());
+                            let t = r.get("release_tokens").and_then(|v| v.as_u64());
+                            if let (Some(v), Some(t)) = (v, t) {
+                                if !any {
+                                    ui.strong("Token usage per release");
+                                    any = true;
+                                }
+                                ui.small(format!("{v}: {t} tokens"));
+                            }
                         }
-                        if trimmed.contains(&format!("[{}]", current_version))
-                            || trimmed.contains("[Unreleased]")
-                        {
-                            shown = true;
+                        if any {
+                            ui.separator();
                         }
                     }
-                    if shown {
+
+                    // Changelog sections for the current version and Unreleased.
+                    let mut shown = false;
+                    for line in EMBEDDED_CHANGELOG.lines() {
+                        let trimmed = line.trim_start();
                         if trimmed.starts_with("## [") {
-                            ui.add_space(8.0);
-                            ui.strong(line.trim_start_matches('#').trim());
-                        } else {
-                            ui.label(line);
+                            if shown
+                                && !trimmed.contains(&format!("[{current_version}]"))
+                                && !trimmed.contains("[Unreleased]")
+                            {
+                                break; // Stop at the next version section
+                            }
+                            if trimmed.contains(&format!("[{current_version}]"))
+                                || trimmed.contains("[Unreleased]")
+                            {
+                                shown = true;
+                            }
+                        }
+                        if shown {
+                            if trimmed.starts_with("## [") {
+                                ui.add_space(8.0);
+                                ui.strong(line.trim_start_matches('#').trim());
+                            } else {
+                                ui.label(line);
+                            }
                         }
                     }
-                }
+                    if !shown {
+                        ui.label("No release notes found for this version.");
+                    }
+                });
 
                 ui.separator();
                 ui.horizontal(|ui| {
                     if ui.button("Check for Updates…").clicked() {
                         self.begin_update_check(ctx);
+                    }
+                    if ui.button("View on GitHub").clicked() {
+                        let _ = open_url(&format!(
+                            "https://github.com/{}/releases",
+                            self.repo
+                        ));
                     }
                     if ui.button("Close").clicked() {
                         self.ui.show_release_notes = false;
@@ -2590,6 +2623,10 @@ impl App for RubricApp {
         // Update-check result (guide §7.2): honest state — running, up to date,
         // available, or could-not-check. Never blocks the UI loop.
         self.draw_update_result(ui.ctx());
+
+        // Release-notes popup (guide §9, §12.1): opened from the subtle
+        // bottom-right version label. Content is embedded at build time.
+        self.draw_release_notes(ui.ctx());
 
         // Bug report dialog (guide §7.1): preview + editable notes; nothing is
         // sent until the user explicitly chooses to.

@@ -124,31 +124,35 @@ so they do not move the 52-feature readiness table above.
 ### v0.5 — Design polish & systemisation (design & GUI audit, PR #101)
 
 **Audit backlog P0 — High impact:**
-- [ ] Icon font/SVG set for tools, layers, Tool Chest, page nav (replace emoji/text glyphs)
-- [ ] Bundle UI font + tabular monospace for measurement readouts (partial: typography tokens done, fonts pending)
-- [ ] Persist workspace layout — panel visibility, widths, zoom, page in prefs
-- [ ] Active-tool chip (always visible); keyboard shortcuts dialog shipped (PR #100)
-- [ ] Empty states for primary panels (no document, no markups, empty Tool Chest, empty filtered list)
+- [x] Icon font/SVG set for tools, layers, Tool Chest, page nav (original egui-painter vector icons, `ui/icon_button.rs`)
+- [ ] Bundle UI font + tabular monospace for measurement readouts (partial: typography tokens + monospace token done; font assets pending)
+- [x] Persist workspace layout — panel visibility, zoom, page in prefs (`AppPrefs`, P0-3)
+- [x] Active-tool chip (always visible) (P0-4); keyboard shortcuts dialog shipped (PR #100)
+- [x] Empty states for primary panels (no document, no markups, empty filtered list) (P0-5)
 
 **Audit backlog P1 — Quality:**
-- [ ] Elevation + spacing + radius tokens (corner_radius done; elevation 0–3 pending)
-- [ ] Segmented Inspector tabs (Selection / Properties / Comments / Scale / Layers)
-- [ ] Virtualised Markups List + async thumbnails
-- [ ] Single tool metadata source drives all UIs
-- [ ] Persist Tool Chest library in prefs (session-only today)
-- [ ] Host/Ui seam + egui_kittest visual/a11y evidence G4 (guide II.27.12)
+- [x] Elevation + spacing + radius tokens (corner_radius + elevation 0–3, P1-6)
+- [ ] Segmented Inspector tabs — **tab bar shipped; content gating (P1-7 pieces 2–5) still pending**
+- [x] Virtualised Markups List (egui `ScrollArea` viewport culling; async thumbnails pending)
+- [x] Single tool metadata source drives all UIs (`ToolMeta`/`TOOL_METADATA`, P1-9)
+- [x] Persist Tool Chest library in prefs (P1-10)
+- [ ] Host/Ui seam + egui_kittest visual/a11y evidence G4 (guide II.27.12) — documented deferral
 
 **Audit backlog P2 — Later:**
-- [ ] Text-anchored highlight/strikeout
-- [ ] Focus / reading mode
-- [ ] Dual-unit rulers
-- [ ] UI scale + high-contrast preference (a11y A3)
-- [ ] Optional minimap
+- [ ] Text-anchored highlight/strikeout (part 1 foundation: `MarkupGeometry::TextAnchor`; full PDF text extraction pending)
+- [x] Focus / reading mode (P2-13)
+- [x] Dual-unit rulers (P2-14)
+- [ ] UI scale + high-contrast preference (UI scale done P2-15; high-contrast pending)
+
+**Guide §12.1 suite standards (audit approved 2026-11-04):**
+- [x] Token ledger `docs/tokens.json` + release-workflow update + release-notes reference (guide §12.1)
+- [x] In-app subtle version + release-notes popup with history/usage/token metrics (guide §9, §12.1)
+- [ ] Signed releases + in-app checksum-verified auto-update install (guide §12.1)
 
 **Audit follow-ups:**
 - [ ] Automated AccessKit/snapshots for visual evidence (G4 — documented deferral)
 - [ ] Focus ring audit
-- [ ] UI scale / high-contrast preference (see P2)
+- [ ] High-contrast preference
 - [ ] Text labels when narrow panels use icons only
 
 ### Community, security and operating hygiene — done 2026-10-24 (guide Part II)
