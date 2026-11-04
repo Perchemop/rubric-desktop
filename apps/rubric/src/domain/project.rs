@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::bates::BatesConfig;
 use super::document::{Document, Page};
 use super::markup::MarkupKind;
 use super::units::{clamp_precision, DEFAULT_PRECISION};
@@ -63,6 +64,10 @@ pub struct Settings {
     /// measurements. Older project files without this field default to 3.
     #[serde(default = "default_precision")]
     pub precision: u8,
+    /// Bates numbering configuration (spec F-801–F-803). Older project files
+    /// without this field default to disabled.
+    #[serde(default)]
+    pub bates: BatesConfig,
 }
 
 /// Maximum number of entries retained in [`RecentList`].
@@ -136,6 +141,7 @@ impl Default for Settings {
             show_grid: false,
             show_measurements: true,
             precision: default_precision(),
+            bates: BatesConfig::default(),
         }
     }
 }
@@ -1343,5 +1349,23 @@ mod tests {
         assert_eq!(history.current(), &fresh);
         assert!(!history.can_undo());
         assert!(!history.can_redo());
+    }
+
+    #[test]
+    fn settings_without_bates_field_defaults_to_disabled() {
+        // A project saved before Bates numbering existed must still load: the
+        // `#[serde(default)]` on `Settings::bates` supplies a disabled config.
+        let json = r#"{
+            "author": "Reviewer",
+            "auto_save": false,
+            "auto_save_interval_secs": 60,
+            "ui_scale": 1.0,
+            "show_grid": false,
+            "show_measurements": true,
+            "precision": 3
+        }"#;
+        let settings: Settings = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(settings.bates, BatesConfig::default());
+        assert!(!settings.bates.enabled);
     }
 }

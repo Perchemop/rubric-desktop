@@ -7,7 +7,8 @@ use eframe::egui::{self, ComboBox, Ui};
 use crate::domain::{
     style::Color,
     units::{MeasureUnit, MAX_PRECISION},
-    LayerError, MarkupKind, Project, ReviewStatus, Scale, StampPreset,
+    BatesCorner, LayerError, MarkupKind, Project, ReviewStatus, Scale, StampPreset,
+    MAX_BATES_DIGITS, MAX_BATES_START, MIN_BATES_DIGITS,
 };
 use crate::ui::app::{InspectorMode, UiState};
 
@@ -809,6 +810,90 @@ pub(crate) fn draw_inspector(
                 }
                 ui.label(format!("Pages: {}", doc.page_count()));
                 ui.label(format!("Markups: {}", doc.markups.len()));
+            }
+        });
+
+        // Bates numbering (spec F-801–F-803): the configuration UI. The stamp
+        // is a non-destructive overlay applied at export/print time; this
+        // section only edits the persisted configuration and previews the
+        // sequence.
+        let bates_pages = project.active().map(|d| d.page_count()).unwrap_or(0);
+        ui.collapsing("Bates numbering", |ui| {
+            let bates = &mut project.settings.bates;
+            let mut changed = ui
+                .checkbox(&mut bates.enabled, "Enable Bates numbering")
+                .changed();
+            ui.add_enabled_ui(bates.enabled, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Prefix");
+                    changed |= ui.text_edit_singleline(&mut bates.prefix).changed();
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Suffix");
+                    changed |= ui.text_edit_singleline(&mut bates.suffix).changed();
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Start");
+                    let mut start = bates.start;
+                    if ui
+                        .add(egui::DragValue::new(&mut start).range(0..=MAX_BATES_START))
+                        .changed()
+                    {
+                        bates.start = start;
+                        changed = true;
+                    }
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Digits");
+                    let mut digits = bates.digits;
+                    if ui
+                        .add(
+                            egui::DragValue::new(&mut digits)
+                                .range(MIN_BATES_DIGITS..=MAX_BATES_DIGITS),
+                        )
+                        .changed()
+                    {
+                        bates.set_digits(digits);
+                        changed = true;
+                    }
+                });
+                ComboBox::from_id_salt("bates_corner")
+                    .selected_text(bates.corner.label())
+                    .show_ui(ui, |ui| {
+                        for corner in BatesCorner::ALL {
+                            if ui
+                                .selectable_value(&mut bates.corner, corner, corner.label())
+                                .changed()
+                            {
+                                changed = true;
+                            }
+                        }
+                    });
+                ui.horizontal(|ui| {
+                    ui.label("Margin (pt)");
+                    changed |= ui
+                        .add(egui::DragValue::new(&mut bates.margin).range(0.0..=200.0))
+                        .changed();
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Font size (pt)");
+                    changed |= ui
+                        .add(egui::DragValue::new(&mut bates.font_size).range(4.0..=72.0))
+                        .changed();
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Pages to stamp");
+                    ui.small(format!("{} of {}", bates.applied_count(bates_pages), bates_pages));
+                });
+                if let Some(first) = bates.stamp_for_page(bates.range.from) {
+                    ui.small(format!("First: {first}"));
+                }
+                if let Some(last) = bates.last_stamp(bates_pages) {
+                    ui.small(format!("Last: {last}"));
+                }
+            });
+            if changed {
+                committed = true;
             }
         });
     }

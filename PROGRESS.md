@@ -1,5 +1,27 @@
 # PROGRESS.md
 
+## 2026-11-05 — Bates numbering slice 1: config, placement, range (F-801–F-803)
+**Status**: implemented; CI pending on the slice PR.
+
+### Completed
+- **Domain** `apps/rubric/src/domain/bates.rs`: `BatesConfig` (prefix, suffix,
+  start, clamped `digits`, corner, margin, font size, range) with
+  `format_number`, `value_for_page`, `stamp_for_page`, `applied_count`,
+  `last_stamp`; `BatesCorner` (`ALL`/`label`) and `BatesRange` (inclusive,
+  open-ended). Eleven headless tests cover padding, clamps, sequence, ranges and
+  serde.
+- **Settings**: `Settings.bates` (`#[serde(default)]`, disabled by default) so a
+  pre-Bates project file still loads; a test asserts the legacy default.
+- **Inspector**: a **Bates numbering** section under the Settings tab — enable
+  toggle, prefix/suffix, start, digits, corner, margin, font size, and a
+  first/last + "N of M pages to stamp" preview. Edits push one undo snapshot.
+- Re-exported from `domain::mod` (`BatesConfig`, `BatesCorner`, `BatesRange`,
+  the bound constants).
+
+### Next (Bates v0.6)
+- **F-804** ghosted canvas overlay preview; **F-805** bake the sequence into the
+  composed export/print output in page order.
+
 ## 2026-11-05 — P2-15 high-contrast mode (a11y A3)
 **Status**: implemented; CI pending on the slice PR.
 
