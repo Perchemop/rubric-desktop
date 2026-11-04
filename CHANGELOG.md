@@ -6,6 +6,14 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ### Added
 
+- **Bates numbering — canvas overlay preview + stamped export/print** (spec
+  F-804/F-805, v0.6): when Bates is enabled, `draw_bates_overlay` paints the
+  stamp at its configured corner — ghosted on the live canvas and solid in the
+  exported page image and print output (both reuse `draw_canvas`). The overlay
+  follows pan/zoom and creates no markup, so the source PDF stays untouched.
+  `BatesConfig::anchor_point` is a pure, unit-tested domain function. The
+  flattened-PDF export path does not yet draw Bates (tracked).
+
 - **Bates numbering — configuration, placement and page range** (spec
   F-801–F-803, first slice of v0.6): a `BatesConfig` value type in the domain
   (`apps/rubric/src/domain/bates.rs`) with prefix/suffix, start number,

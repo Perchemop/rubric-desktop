@@ -165,8 +165,8 @@ capability inventory row 32.
 - [x] Configurable prefix / suffix / start number / digit padding (with first/last stamp preview)
 - [x] Placement (corner, margin) and stamp font size
 - [x] Page range (all / from-to) with an honest "N of M pages" count
-- [ ] Ghosted canvas overlay preview
-- [ ] Stamped export + print in page order (bakes into the composed output only)
+- [x] Ghosted canvas overlay preview (follows pan/zoom; shows when enabled)
+- [~] Stamped export + print (page image + print done; flattened-PDF export pending)
 
 ### Community, security and operating hygiene — done 2026-10-24 (guide Part II)
 

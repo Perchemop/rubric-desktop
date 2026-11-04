@@ -112,11 +112,11 @@ previewed on the canvas; the source PDF is never modified. Research:
 
 | ID | Feature | Priority | Notes |
 |---|---|---|---|
-| F-801 | Bates configuration — prefix, suffix, start number, digit padding (zero-fill width), live next-value preview | later | Planned; a `BatesConfig` value type in the domain, serde-ready |
-| F-802 | Placement — page corner/edge, margin, and font size/colour for the stamp | later | Planned; reuses the existing page-space→screen mapping |
-| F-803 | Page range — apply to all pages or an inclusive from/to range | later | Planned; count is always "pages stamped", never misleading |
-| F-804 | Canvas overlay preview — render the stamp (ghosted) at its placement so the user sees exactly what will be burned in | later | Planned; preview-only, no markup is created |
-| F-805 | Stamped export/print — bake the sequential IDs into the exported image/PDF and the print path, honouring the configured range and padding | later | Planned; respects the non-destructive rule (source PDF untouched) |
+| F-801 | Bates configuration — prefix, suffix, start number, digit padding (zero-fill width), first/last stamp preview | later | Done — `BatesConfig`/`BatesRange` in `domain/bates.rs`; Inspector section |
+| F-802 | Placement — page corner, margin, and font size for the stamp | later | Done — `BatesCorner` + `anchor_point`; Inspector controls |
+| F-803 | Page range — apply to all pages or an inclusive from/to range | later | Done — `BatesRange` (open-ended `to`); honest "N of M pages" count |
+| F-804 | Canvas overlay preview — render the stamp (ghosted) at its placement so the user sees exactly what will be burned in | later | Done — `draw_bates_overlay` in `ui/canvas.rs`; preview only (no markup) |
+| F-805 | Stamped export/print — bake the sequential IDs into the exported output and the print path, honouring the configured range and padding | later | Partial — exported page image + print include the stamp (via `is_export`); flattened-PDF export still pending |
 
 ## Non-goals
 

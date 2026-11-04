@@ -9,8 +9,8 @@ use crate::domain::markup::{
     count_markers_on_page, count_total_label, next_count_number, text_line_height,
 };
 use crate::domain::{
-    angle_degrees, format_value, ruler_ticks, Corner, Grid, Markup, MarkupGeometry, MarkupKind,
-    MeasureKind, Project, Pt, Rect as DRect, ReviewStatus, Scale, Tool,
+    angle_degrees, format_value, ruler_ticks, BatesConfig, Corner, Grid, Markup, MarkupGeometry,
+    MarkupKind, MeasureKind, Page, Project, Pt, Rect as DRect, ReviewStatus, Scale, Tool,
 };
 
 use super::theme::to_color32;
@@ -580,6 +580,49 @@ fn draw_markup(
     }
 }
 
+/// Draw the Bates stamp for one page as a non-destructive overlay
+/// (spec F-804/F-805).
+///
+/// The stamp is ghosted in the live editor so it reads as a preview, and solid
+/// in export/print (both paths reuse `draw_canvas`). Nothing is created in the
+/// project and the source PDF is never modified: this is purely a painted
+/// overlay derived from [`BatesConfig`].
+fn draw_bates_overlay(
+    painter: &Painter,
+    origin: Pos2,
+    pan: Vec2,
+    zoom: f32,
+    page: &Page,
+    bates: &BatesConfig,
+    is_export: bool,
+) {
+    if !bates.enabled {
+        return;
+    }
+    let Some(stamp) = bates.stamp_for_page(page.index) else {
+        return;
+    };
+    let align = match (bates.corner.is_right(), bates.corner.is_top()) {
+        (false, true) => Align2::LEFT_TOP,
+        (true, true) => Align2::RIGHT_TOP,
+        (false, false) => Align2::LEFT_BOTTOM,
+        (true, false) => Align2::RIGHT_BOTTOM,
+    };
+    let anchor = to_screen(
+        bates.anchor_point(page.width, page.height),
+        pan,
+        zoom,
+        origin,
+    );
+    let font = FontId::proportional((bates.font_size.max(4.0) * zoom).max(4.0));
+    let color = if is_export {
+        Color32::from_rgb(20, 20, 20)
+    } else {
+        Color32::from_rgba_unmultiplied(20, 20, 20, 110)
+    };
+    painter.text(anchor, align, stamp, font, color);
+}
+
 /// Draw a minimap in the bottom-right corner of the canvas showing the full
 /// page with a viewport rectangle indicating the current view area.
 /// Clicking the minimap pans the canvas to the clicked position.
@@ -950,6 +993,19 @@ pub(crate) fn draw_canvas(
             project.settings.show_measurements,
         );
     }
+
+    // Bates numbering overlay (spec F-804/F-805): a ghosted preview on the live
+    // canvas, solid in the exported page image / print (both reuse this path
+    // with `is_export = true`).
+    draw_bates_overlay(
+        &painter,
+        origin,
+        pan,
+        zoom,
+        &page,
+        &project.settings.bates,
+        is_export,
+    );
 
     // Render selection. Handles are not drawn for a selected markup whose
     // layer has since been hidden: it cannot be picked or moved any more, and
