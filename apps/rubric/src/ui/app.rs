@@ -1083,10 +1083,7 @@ impl RubricApp {
                         self.begin_update_check(ctx);
                     }
                     if ui.button("View on GitHub").clicked() {
-                        let _ = open_url(&format!(
-                            "https://github.com/{}/releases",
-                            self.repo
-                        ));
+                        let _ = open_url(&format!("https://github.com/{}/releases", self.repo));
                     }
                     if ui.button("Close").clicked() {
                         self.ui.show_release_notes = false;
