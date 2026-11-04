@@ -68,6 +68,9 @@ pub struct AppPrefs {
     /// Focus/reading mode: hides all side panels. Missing values fall back to `false`.
     #[serde(default)]
     pub focus_mode: bool,
+    /// Show minimap overlay in canvas corner (proposal P2-16). Missing values fall back to `false`.
+    #[serde(default)]
+    pub show_minimap: bool,
 }
 
 fn default_true() -> bool {
@@ -90,6 +93,7 @@ impl Default for AppPrefs {
             tool_chest_library: StylePresetLibrary::new(),
             ui_scale: 1.0,
             focus_mode: false,
+            show_minimap: false,
         }
     }
 }
@@ -141,6 +145,7 @@ mod tests {
             tool_chest_library: StylePresetLibrary::new(),
             ui_scale: 1.0,
             focus_mode: true,
+            show_minimap: false,
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
