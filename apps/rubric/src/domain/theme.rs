@@ -62,6 +62,9 @@ pub struct AppPrefs {
     /// Tool Chest style preset library, persisted across sessions.
     #[serde(default)]
     pub tool_chest_library: StylePresetLibrary,
+    /// UI scale multiplier. Missing values fall back to `1.0`.
+    #[serde(default = "default_one")]
+    pub ui_scale: f32,
 }
 
 fn default_true() -> bool {
@@ -82,6 +85,7 @@ impl Default for AppPrefs {
             zoom: 1.0,
             current_page: 0,
             tool_chest_library: StylePresetLibrary::new(),
+            ui_scale: 1.0,
         }
     }
 }
@@ -131,6 +135,7 @@ mod tests {
             zoom: 1.5,
             current_page: 2,
             tool_chest_library: StylePresetLibrary::new(),
+            ui_scale: 1.0,
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");

@@ -113,6 +113,7 @@ mod tests {
             zoom: 1.5,
             current_page: 2,
             tool_chest_library: StylePresetLibrary::new(),
+            ui_scale: 1.0,
         };
         save_prefs_to(&path, &prefs).expect("save");
         assert_eq!(load_prefs_from(&path), prefs);
