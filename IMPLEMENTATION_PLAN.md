@@ -275,16 +275,17 @@ Sequential page stamping for legal / document-review workflows, implemented as a
 human gate still applies before implementation). Spec: `docs/spec/README.md`
 F-8xx. Capability inventory row 32.
 
-- [ ] **F-801**: `BatesConfig` domain value type — prefix, suffix, start number,
-  digit padding, with a pure `next_value()`/`format(n)` and serde round-trip;
-  unit tests cover padding, carry-over across digit widths, and empty
-  prefix/suffix.
-- [ ] **F-802**: Placement + style — page corner/edge, margin, font size and
-  colour; a `BatesPlacement` value type with sensible defaults.
-- [ ] **F-803**: Page range — all pages or an inclusive from/to range; the
-  applied count is reported honestly.
+- [x] **F-801**: `BatesConfig` domain value type — prefix, suffix, start number,
+  digit padding (clamped), `format_number`/`value_for_page`/`stamp_for_page`,
+  serde round-trip; unit tests cover padding, clamp, sequence and range.
+  (`apps/rubric/src/domain/bates.rs`.)
+- [x] **F-802**: Placement + style config — page corner (`BatesCorner`), margin
+  and font size, with sensible defaults; edited in the Inspector.
+- [x] **F-803**: Page range — `BatesRange` (inclusive from/to, open-ended `to`),
+  with an honest "N of M pages to stamp" count and first/last stamp preview.
 - [ ] **F-804**: Canvas overlay preview — ghosted stamp at its placement,
   following pan/zoom; preview only (creates no markup, no undo snapshot).
+  (`BatesCorner::is_right`/`is_top` are ready for this.)
 - [ ] **F-805**: Stamped export + print — bake the sequence into the composed
   page image / export path and the print path in page order; a headless
   round-trip test proves determinism and that the source PDF is unchanged.

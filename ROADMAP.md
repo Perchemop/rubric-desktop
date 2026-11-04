@@ -162,9 +162,9 @@ Queued after the remaining v0.5 audit slices. Sequential page stamping for legal
 modified). Research: `docs/research/bates-numbering.md`; spec F-801–F-805;
 capability inventory row 32.
 
-- [ ] Configurable prefix / suffix / start number / digit padding (live preview)
-- [ ] Placement (corner/edge, margin) and stamp font size/colour
-- [ ] Page range (all / from-to)
+- [x] Configurable prefix / suffix / start number / digit padding (with first/last stamp preview)
+- [x] Placement (corner, margin) and stamp font size
+- [x] Page range (all / from-to) with an honest "N of M pages" count
 - [ ] Ghosted canvas overlay preview
 - [ ] Stamped export + print in page order (bakes into the composed output only)
 

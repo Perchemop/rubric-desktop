@@ -6,6 +6,17 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ### Added
 
+- **Bates numbering — configuration, placement and page range** (spec
+  F-801–F-803, first slice of v0.6): a `BatesConfig` value type in the domain
+  (`apps/rubric/src/domain/bates.rs`) with prefix/suffix, start number,
+  clamped digit padding, corner placement, margin and font size, plus a
+  `BatesRange` (inclusive from/to, open-ended). The Inspector gains a
+  **Bates numbering** section (under Settings) that edits the config and
+  previews the first and last stamp and the honest "N of M pages to stamp"
+  count. Non-destructive by design — the sequence is configured here and will be
+  baked into the composed export/print output (F-804/F-805) without touching the
+  source PDF.
+
 - **High-contrast mode** (a11y A3 / proposal P2-15): a **View ▸ High Contrast**
   toggle switches both light and dark themes to pure black-on-white or
   white-on-black text and solid surfaces with 1 px widget borders and a

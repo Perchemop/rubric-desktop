@@ -2,6 +2,7 @@
 
 pub mod a11y;
 pub mod action;
+pub mod bates;
 pub mod diff;
 pub mod document;
 pub mod geom;
@@ -19,6 +20,10 @@ pub mod view;
 
 pub use a11y::{audit, contrast_ratio, meets, relative_luminance, A11yIssue, AuditPair, WcagLevel};
 pub use action::EditorAction;
+pub use bates::{
+    BatesConfig, BatesCorner, BatesRange, DEFAULT_BATES_DIGITS, MAX_BATES_DIGITS, MAX_BATES_START,
+    MIN_BATES_DIGITS,
+};
 pub use diff::{diff_documents, diff_projects, DiffResult, MarkupChange, MarkupSummaryRow};
 pub use document::{Document, Layer, LayerError, Page};
 pub use geom::{angle_degrees, path_length, polygon_area, Pt, Rect};
