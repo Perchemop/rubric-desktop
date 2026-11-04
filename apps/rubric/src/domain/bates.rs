@@ -249,7 +249,10 @@ mod tests {
         let b = BatesConfig {
             start: 100,
             digits: 4,
-            range: BatesRange { from: 2, to: Some(4) },
+            range: BatesRange {
+                from: 2,
+                to: Some(4),
+            },
             ..BatesConfig::default()
         };
         assert_eq!(b.value_for_page(0), None);
@@ -278,7 +281,10 @@ mod tests {
         assert_eq!(b.applied_count(0), 0);
 
         let reversed = BatesConfig {
-            range: BatesRange { from: 5, to: Some(2) },
+            range: BatesRange {
+                from: 5,
+                to: Some(2),
+            },
             ..BatesConfig::default()
         };
         assert_eq!(reversed.applied_count(10), 0);
@@ -298,7 +304,10 @@ mod tests {
         let b = BatesConfig {
             start: 1,
             digits: 4,
-            range: BatesRange { from: 0, to: Some(3) },
+            range: BatesRange {
+                from: 0,
+                to: Some(3),
+            },
             ..BatesConfig::default()
         };
         assert_eq!(b.last_stamp(10).as_deref(), Some("RUBRIC0004"));
@@ -325,7 +334,10 @@ mod tests {
             start: 500,
             digits: 8,
             corner: BatesCorner::TopLeft,
-            range: BatesRange { from: 1, to: Some(3) },
+            range: BatesRange {
+                from: 1,
+                to: Some(3),
+            },
             ..BatesConfig::default()
         };
         let json = serde_json::to_string(&b).expect("serialize");
@@ -335,7 +347,10 @@ mod tests {
 
     #[test]
     fn range_includes_is_inclusive() {
-        let r = BatesRange { from: 2, to: Some(5) };
+        let r = BatesRange {
+            from: 2,
+            to: Some(5),
+        };
         assert!(!r.includes(1));
         assert!(r.includes(2));
         assert!(r.includes(5));
