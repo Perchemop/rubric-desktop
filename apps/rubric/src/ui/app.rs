@@ -191,6 +191,9 @@ pub(crate) struct UiState {
     /// Whether the Tool Chest panel is visible (View menu toggle, v0.4 gap
     /// #7). On by default so saved tools are discoverable.
     pub(crate) show_tool_chest: bool,
+    /// Focus/reading mode: hides all side panels so only the canvas is
+    /// visible, for distraction-free review (proposal P2-13).
+    pub(crate) focus_mode: bool,
     /// Pending quit confirmation when the project has unsaved changes.
     pub(crate) quit_confirm: bool,
     /// Per-frame history enablement snapshot, refreshed at the start of the
@@ -290,6 +293,7 @@ impl Default for UiState {
             show_markups_list: true,
             show_pages: true,
             show_tool_chest: true,
+            focus_mode: false,
             quit_confirm: false,
             can_undo: false,
             can_redo: false,
@@ -1159,6 +1163,7 @@ impl RubricApp {
             current_page: self.ui.current_page,
             tool_chest_library: self.tool_chest_library.clone(),
             ui_scale: self.ui_scale,
+            focus_mode: self.ui.focus_mode,
         };
         match save_prefs(&prefs) {
             Ok(()) => self.ui.status = format!("Theme: {}", theme.label()),
@@ -1177,6 +1182,7 @@ impl RubricApp {
             current_page: self.ui.current_page,
             tool_chest_library: self.tool_chest_library.clone(),
             ui_scale: self.ui_scale,
+            focus_mode: self.ui.focus_mode,
         };
         if let Err(e) = save_prefs(&prefs) {
             self.ui.status = format!("Workspace saved, but preferences write failed: {e}");
@@ -1867,6 +1873,14 @@ impl RubricApp {
                     };
                     self.save_app_prefs();
                 }
+                if ui.checkbox(&mut self.ui.focus_mode, "Focus Mode").changed() {
+                    self.ui.status = if self.ui.focus_mode {
+                        "Focus mode on — panels hidden".to_string()
+                    } else {
+                        "Focus mode off".to_string()
+                    };
+                    self.save_app_prefs();
+                }
                 if ui
                     .checkbox(&mut self.ui.show_markups_list, "Show Markups List")
                     .changed()
@@ -2334,7 +2348,7 @@ impl App for RubricApp {
         // Pages sidebar (spec F-404). Only shown when the document has pages
         // and the panel is enabled in the View menu.
         let page_count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
-        if page_count > 0 && self.ui.show_pages {
+        if page_count > 0 && self.ui.show_pages && !self.ui.focus_mode {
             let source_pdf = self.history.current().source_pdf.clone();
             egui::Panel::left("pages")
                 .default_size(168.0)
@@ -2363,7 +2377,7 @@ impl App for RubricApp {
         // at creation time; only apply-to-selection mutates the project and
         // asks for a snapshot.
         let mut chest_mutated = false;
-        if self.ui.show_tool_chest {
+        if self.ui.show_tool_chest && !self.ui.focus_mode {
             let library = &mut self.tool_chest_library;
             let project = self.history.current_mut();
             let ui_state = &mut self.ui;
@@ -2379,22 +2393,24 @@ impl App for RubricApp {
             self.push_snapshot("tool chest apply");
         }
         let mut inspector_mutated = false;
-        let inspector_response = egui::Panel::right("inspector")
-            .default_size(280.0)
-            .min_size(240.0)
-            .show(ui, |ui| {
-                inspector_mutated = self.right_panel(ui);
-            })
-            .response;
-        // Inspector context menu (spec F-603): the same menu the canvas offers.
-        let _ = inspector_response.context_menu(|ui| {
-            menu::draw_editor_context_menu(ui, &mut self.ui);
-        });
+        if !self.ui.focus_mode {
+            let inspector_response = egui::Panel::right("inspector")
+                .default_size(280.0)
+                .min_size(240.0)
+                .show(ui, |ui| {
+                    inspector_mutated = self.right_panel(ui);
+                })
+                .response;
+            // Inspector context menu (spec F-603): the same menu the canvas offers.
+            let _ = inspector_response.context_menu(|ui| {
+                menu::draw_editor_context_menu(ui, &mut self.ui);
+            });
+        }
         egui::Panel::bottom("status").show(ui, |ui| self.bottom_bar(ui));
 
         let mut list_action = None;
         let mut status_changed = false;
-        if self.ui.show_markups_list {
+        if self.ui.show_markups_list && !self.ui.focus_mode {
             let project = self.history.current_mut();
             let ui_state = &mut self.ui;
             egui::Panel::bottom("markups_list")

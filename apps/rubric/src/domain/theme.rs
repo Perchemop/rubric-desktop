@@ -65,6 +65,9 @@ pub struct AppPrefs {
     /// UI scale multiplier. Missing values fall back to `1.0`.
     #[serde(default = "default_one")]
     pub ui_scale: f32,
+    /// Focus/reading mode: hides all side panels. Missing values fall back to `false`.
+    #[serde(default)]
+    pub focus_mode: bool,
 }
 
 fn default_true() -> bool {
@@ -86,6 +89,7 @@ impl Default for AppPrefs {
             current_page: 0,
             tool_chest_library: StylePresetLibrary::new(),
             ui_scale: 1.0,
+            focus_mode: false,
         }
     }
 }
@@ -136,6 +140,7 @@ mod tests {
             current_page: 2,
             tool_chest_library: StylePresetLibrary::new(),
             ui_scale: 1.0,
+            focus_mode: true,
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
