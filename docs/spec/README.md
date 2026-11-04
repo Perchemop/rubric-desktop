@@ -8,7 +8,7 @@ This requirement set is **original material authored for Rubric**. It is derived
 
 ## Conventions
 
-- **ID groups**: F-1xx markups/tools · F-2xx measurements/scale · F-3xx review workflow · F-4xx navigation/pages · F-5xx persistence/I/O · F-6xx UI/UX polish · F-7xx packaging.
+- **ID groups**: F-1xx markups/tools · F-2xx measurements/scale · F-3xx review workflow · F-4xx navigation/pages · F-5xx persistence/I/O · F-6xx UI/UX polish · F-7xx packaging · F-8xx Bates numbering (future).
 - **Priority** maps to `IMPLEMENTATION_PLAN.md`: `MVP` = core of Phases 2–3 (first usable release); `Ph 4` / `Ph 5` / `Ph 6` = scheduled in that phase; `later` = after Phase 6 / optional.
 - **Traceability**: `REQUIREMENTS_TRACEABILITY.md` maps each area to R-S-001…R-S-017 and to the planned modules.
 - Notes column records current state at adoption (2026-10-19).
@@ -101,6 +101,22 @@ This requirement set is **original material authored for Rubric**. It is derived
 | F-702 | macOS DMG | Ph 6 | done (package.yml: `Rubric.app` bundle → `.dmg`; unsigned by default — Q-PACK-1) |
 | F-703 | Windows MSI | Ph 6 | done (package.yml: WiX v4, definition kept in-repo at `packaging/wix/Product.wxs`; unsigned by default — Q-PACK-1) |
 | F-704 | CI release artifacts (tagged builds in GitHub Actions) | Ph 6 | done (release.yml builds all three targets and attaches archives to a GitHub release on `v*` tags; workflow_dispatch publishes a pre-release) |
+
+### F-8xx — Bates numbering (future slice; post-v0.5)
+
+Bates numbering stamps a unique, sequential identifier on each page for legal
+and document-review workflows (e.g. `SMITH000001`, `SMITH000002`). Rubric
+implements it as a **non-destructive overlay** applied at export/print time and
+previewed on the canvas; the source PDF is never modified. Research:
+`docs/research/bates-numbering.md` (capability-level summary + URLs).
+
+| ID | Feature | Priority | Notes |
+|---|---|---|---|
+| F-801 | Bates configuration — prefix, suffix, start number, digit padding (zero-fill width), live next-value preview | later | Planned; a `BatesConfig` value type in the domain, serde-ready |
+| F-802 | Placement — page corner/edge, margin, and font size/colour for the stamp | later | Planned; reuses the existing page-space→screen mapping |
+| F-803 | Page range — apply to all pages or an inclusive from/to range | later | Planned; count is always "pages stamped", never misleading |
+| F-804 | Canvas overlay preview — render the stamp (ghosted) at its placement so the user sees exactly what will be burned in | later | Planned; preview-only, no markup is created |
+| F-805 | Stamped export/print — bake the sequential IDs into the exported image/PDF and the print path, honouring the configured range and padding | later | Planned; respects the non-destructive rule (source PDF untouched) |
 
 ## Non-goals
 

@@ -265,5 +265,33 @@ Audit follow-ups to track separately:
 - [ ] **A3**: High-contrast preference (P2-15 remainder)
 - [ ] **A4**: Text labels when narrow panels use icons only
 
+---
+
+### v0.6 — Bates numbering (future slice; queued after the remaining v0.5 slices)
+
+Sequential page stamping for legal / document-review workflows, implemented as a
+**non-destructive overlay** (source PDF untouched). Research note:
+`docs/research/bates-numbering.md` (capability-level summary + URLs, guide §2.3
+human gate still applies before implementation). Spec: `docs/spec/README.md`
+F-8xx. Capability inventory row 32.
+
+- [ ] **F-801**: `BatesConfig` domain value type — prefix, suffix, start number,
+  digit padding, with a pure `next_value()`/`format(n)` and serde round-trip;
+  unit tests cover padding, carry-over across digit widths, and empty
+  prefix/suffix.
+- [ ] **F-802**: Placement + style — page corner/edge, margin, font size and
+  colour; a `BatesPlacement` value type with sensible defaults.
+- [ ] **F-803**: Page range — all pages or an inclusive from/to range; the
+  applied count is reported honestly.
+- [ ] **F-804**: Canvas overlay preview — ghosted stamp at its placement,
+  following pan/zoom; preview only (creates no markup, no undo snapshot).
+- [ ] **F-805**: Stamped export + print — bake the sequence into the composed
+  page image / export path and the print path in page order; a headless
+  round-trip test proves determinism and that the source PDF is unchanged.
+
+Ordering: after the remaining v0.5 audit items (notably **P1-7** inspector
+content gating and the **P2-12** text-anchored markup completion) so the stamp
+UI can reuse the finished inspector/toolbar surfaces.
+
 ## Slice strategy
 Build vertically: domain + tests → minimal UI → drawing + selection → save/load → measurements → review → polish. Keep each slice small, compiling, tested.

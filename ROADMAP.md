@@ -155,6 +155,19 @@ so they do not move the 52-feature readiness table above.
 - [ ] High-contrast preference
 - [ ] Text labels when narrow panels use icons only
 
+### v0.6 — Bates numbering (future slice)
+
+Queued after the remaining v0.5 audit slices. Sequential page stamping for legal
+/ document-review workflows, as a **non-destructive overlay** (source PDF never
+modified). Research: `docs/research/bates-numbering.md`; spec F-801–F-805;
+capability inventory row 32.
+
+- [ ] Configurable prefix / suffix / start number / digit padding (live preview)
+- [ ] Placement (corner/edge, margin) and stamp font size/colour
+- [ ] Page range (all / from-to)
+- [ ] Ghosted canvas overlay preview
+- [ ] Stamped export + print in page order (bakes into the composed output only)
+
 ### Community, security and operating hygiene — done 2026-10-24 (guide Part II)
 
 Not product features: tracked as R-C-001…R-C-012 in

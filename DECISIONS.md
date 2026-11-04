@@ -2,6 +2,27 @@
 
 Record significant architectural/implementation decisions.
 
+## 2026-11-04: Bates numbering — non-destructive overlay, queued as v0.6
+- **Decision**: Add Bates numbering (sequential page stamping) as a future slice
+  (**v0.6**), implemented as a **non-destructive overlay**: a domain
+  `BatesConfig`/`BatesPlacement` value type plus a stamp drawn into the composed
+  export/print output and ghost-previewed on the canvas. The source PDF is never
+  modified. Spec IDs F-801–F-805, requirement R-S-018.
+- **Rationale**: Legal/document-review workflows reference pages by a unique,
+  page-ordered identifier; Rubric already composes the page image for export and
+  print and maps page space to screen on the canvas, so the overlay is a small,
+  well-fitting addition that preserves the sidecar/non-destructive model. Keeping
+  it out of the source PDF matches the existing design rule (markups never touch
+  the imported file).
+- **Sequencing**: Queued **after the remaining v0.5 audit slices** (notably P1-7
+  inspector content gating and the P2-12 text-anchored markup completion) so the
+  stamp configuration UI can reuse the finished inspector/toolbar surfaces.
+  Capability-level research recorded in `docs/research/bates-numbering.md`; the
+  guide §2.3/§8.4 human gate still applies before implementation.
+- **Impact (planned)**: new `apps/rubric/src/domain/bates.rs`, edits to
+  `apps/rubric/src/data/render.rs`, `data/print.rs`, `ui/canvas.rs`,
+  `ui/inspector.rs`; spec/traceability/capability-inventory/roadmap updated now.
+
 ## 2026-10-31: Adopt a pure-Rust PDF engine (hayro + lopdf); PdfCraft not reused
 - **Decision**: Migrate Rubric's PDF engine from the native `pdfium-render`/PDFium
   binding to the pure-Rust **`hayro`** rasteriser (rendering) and add **`lopdf`**
