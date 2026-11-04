@@ -241,7 +241,7 @@ P0 — High impact (audit backlog items 1–5):
 
 P1 — Quality (audit backlog items 6–11):
 - [x] **P1-6**: Elevation + spacing + radius tokens (`ELEVATION_1/2/3` + corner_radius)
-- [ ] **P1-7**: Segmented Inspector tabs — **tab bar shipped (piece 1); section gating (pieces 2–5) still pending**
+- [x] **P1-7**: Segmented Inspector tabs — tab bar + section gating (Properties / Comments / Measure / Settings content is gated; the read-only Status legend, Layers and Scale stay visible by design)
 - [x] **P1-8**: Virtualised Markups List (egui `ScrollArea` viewport culling; async thumbnails pending)
 - [x] **P1-9**: Single tool metadata source drives all UIs (`ToolMeta`/`TOOL_METADATA`, PR #117)
 - [x] **P1-10**: Persist Tool Chest library in prefs (PR #114)
@@ -289,9 +289,10 @@ F-8xx. Capability inventory row 32.
   page image / export path and the print path in page order; a headless
   round-trip test proves determinism and that the source PDF is unchanged.
 
-Ordering: after the remaining v0.5 audit items (notably **P1-7** inspector
-content gating and the **P2-12** text-anchored markup completion) so the stamp
-UI can reuse the finished inspector/toolbar surfaces.
+Ordering: after the remaining v0.5 audit items (notably the **P2-12**
+text-anchored markup completion, which needs a PDF text-extraction path, and the
+**P2-15** high-contrast remainder) so the stamp UI can reuse the finished
+inspector/toolbar surfaces.
 
 ## Slice strategy
 Build vertically: domain + tests → minimal UI → drawing + selection → save/load → measurements → review → polish. Keep each slice small, compiling, tested.
