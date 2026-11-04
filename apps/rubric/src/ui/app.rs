@@ -381,6 +381,8 @@ pub struct RubricApp {
     report_export: Option<ReportExportUi>,
     /// Active colour theme (app-level preference, not project data).
     theme: Theme,
+    /// High-contrast mode (a11y A3 / proposal P2-15), applied over the theme.
+    high_contrast: bool,
     /// UI scale multiplier (app-level preference, not project data).
     ui_scale: f32,
     /// In-progress bug report the user is reviewing before sending (guide §7.1).
@@ -444,7 +446,7 @@ impl BugReportUi {
 impl RubricApp {
     pub fn new(cc: &CreationContext<'_>, parked_crash: Option<crash_report::CrashReport>) -> Self {
         let prefs = load_prefs();
-        theme::apply_theme(&cc.egui_ctx, prefs.theme);
+        theme::apply_theme(&cc.egui_ctx, prefs.theme, prefs.high_contrast);
         cc.egui_ctx.set_pixels_per_point(prefs.ui_scale);
         let project = Project::new("Untitled Rubric Project");
         Self {
@@ -473,6 +475,7 @@ impl RubricApp {
             bg_error: None,
             report_export: None,
             theme: prefs.theme,
+            high_contrast: prefs.high_contrast,
             ui_scale: prefs.ui_scale,
             // A crash report parked by a previous run (audit M3) is surfaced in
             // the review-and-send dialog once; nothing is sent without consent.
@@ -1274,28 +1277,31 @@ impl RubricApp {
     /// repaint the shell with the new palette.
     fn set_theme(&mut self, ctx: &egui::Context, theme: Theme) {
         self.theme = theme;
-        theme::apply_theme(ctx, theme);
-        let prefs = AppPrefs {
-            theme,
-            show_markups_list: self.ui.show_markups_list,
-            show_tool_chest: self.ui.show_tool_chest,
-            show_pages: self.ui.show_pages,
-            zoom: self.ui.zoom,
-            current_page: self.ui.current_page,
-            tool_chest_library: self.tool_chest_library.clone(),
-            ui_scale: self.ui_scale,
-            focus_mode: self.ui.focus_mode,
-            show_minimap: self.ui.show_minimap,
-        };
-        match save_prefs(&prefs) {
+        theme::apply_theme(ctx, theme, self.high_contrast);
+        match save_prefs(&self.build_prefs()) {
             Ok(()) => self.ui.status = format!("Theme: {}", theme.label()),
             Err(e) => self.ui.status = format!("Theme changed, but saving failed: {e}"),
         }
     }
 
-    /// Persist all app-level preferences (panel visibility, zoom, page).
-    fn save_app_prefs(&mut self) {
-        let prefs = AppPrefs {
+    /// Toggle high-contrast mode, re-apply the palette and persist the choice
+    /// (a11y A3 / proposal P2-15).
+    fn set_high_contrast(&mut self, ctx: &egui::Context, enabled: bool) {
+        self.high_contrast = enabled;
+        theme::apply_theme(ctx, self.theme, enabled);
+        self.ui.status = if enabled {
+            "High contrast on".to_string()
+        } else {
+            "High contrast off".to_string()
+        };
+        if let Err(e) = save_prefs(&self.build_prefs()) {
+            self.ui.status = format!("High contrast set, but saving failed: {e}");
+        }
+    }
+
+    /// Build an [`AppPrefs`] snapshot from the current app-level state.
+    fn build_prefs(&self) -> AppPrefs {
+        AppPrefs {
             theme: self.theme,
             show_markups_list: self.ui.show_markups_list,
             show_tool_chest: self.ui.show_tool_chest,
@@ -1306,7 +1312,13 @@ impl RubricApp {
             ui_scale: self.ui_scale,
             focus_mode: self.ui.focus_mode,
             show_minimap: self.ui.show_minimap,
-        };
+            high_contrast: self.high_contrast,
+        }
+    }
+
+    /// Persist all app-level preferences (panel visibility, zoom, page).
+    fn save_app_prefs(&mut self) {
+        let prefs = self.build_prefs();
         if let Err(e) = save_prefs(&prefs) {
             self.ui.status = format!("Workspace saved, but preferences write failed: {e}");
         }
@@ -1984,6 +1996,14 @@ impl RubricApp {
                         }
                     }
                 });
+                let mut high_contrast = self.high_contrast;
+                if ui
+                    .checkbox(&mut high_contrast, "High Contrast")
+                    .on_hover_text("Maximum contrast for low-vision use (WCAG AAA text)")
+                    .changed()
+                {
+                    self.set_high_contrast(ui.ctx(), high_contrast);
+                }
                 ui.separator();
                 if ui
                     .checkbox(&mut self.ui.show_tool_chest, "Show Tool Chest")

@@ -251,7 +251,7 @@ P2 — Later (audit backlog items 12–16):
 - [ ] **P2-12**: Text-anchored highlight/strikeout (part 1 foundation: `MarkupGeometry::TextAnchor` on `Bounds`-free highlight/strikeout/underline/squiggly; full PDF text extraction + anchoring still pending)
 - [x] **P2-13**: Focus / reading mode (PR #118)
 - [x] **P2-14**: Dual-unit rulers (PR #115)
-- [ ] **P2-15**: UI scale + high-contrast preference (UI scale done, PR #116; high-contrast pending)
+- [x] **P2-15**: UI scale + high-contrast preference (UI scale PR #116; high-contrast mode added — View ▸ High Contrast, pure black/white palettes with strong borders, persisted in `AppPrefs.high_contrast`)
 - [x] **P2-16**: Optional minimap (PR #119)
 
 Guide §12.1 suite standards (audit approved 2026-11-04):
@@ -262,7 +262,7 @@ Guide §12.1 suite standards (audit approved 2026-11-04):
 Audit follow-ups to track separately:
 - [ ] **A1**: Automated AccessKit/snapshots for visual evidence (G4, guide II.27.12) — documented deferral
 - [ ] **A2**: Focus ring audit
-- [ ] **A3**: High-contrast preference (P2-15 remainder)
+- [x] **A3**: High-contrast preference — implemented as the P2-15 high-contrast mode
 - [ ] **A4**: Text labels when narrow panels use icons only
 
 ---
@@ -290,8 +290,8 @@ F-8xx. Capability inventory row 32.
   round-trip test proves determinism and that the source PDF is unchanged.
 
 Ordering: after the remaining v0.5 audit items (notably the **P2-12**
-text-anchored markup completion, which needs a PDF text-extraction path, and the
-**P2-15** high-contrast remainder) so the stamp UI can reuse the finished
+text-anchored markup completion, which needs a PDF text-extraction path, and
+the **P0-2** bundled-font remainder) so the stamp UI can reuse the finished
 inspector/toolbar surfaces.
 
 ## Slice strategy

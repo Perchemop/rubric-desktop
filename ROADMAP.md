@@ -142,7 +142,7 @@ so they do not move the 52-feature readiness table above.
 - [ ] Text-anchored highlight/strikeout (part 1 foundation: `MarkupGeometry::TextAnchor`; full PDF text extraction pending)
 - [x] Focus / reading mode (P2-13)
 - [x] Dual-unit rulers (P2-14)
-- [ ] UI scale + high-contrast preference (UI scale done P2-15; high-contrast pending)
+- [x] UI scale + high-contrast preference (UI scale PR #116; high-contrast mode via View ▸ High Contrast)
 
 **Guide §12.1 suite standards (audit approved 2026-11-04):**
 - [x] Token ledger `docs/tokens.json` + release-workflow update + release-notes reference (guide §12.1)
@@ -152,7 +152,7 @@ so they do not move the 52-feature readiness table above.
 **Audit follow-ups:**
 - [ ] Automated AccessKit/snapshots for visual evidence (G4 — documented deferral)
 - [ ] Focus ring audit
-- [ ] High-contrast preference
+- [x] High-contrast preference (P2-15)
 - [ ] Text labels when narrow panels use icons only
 
 ### v0.6 — Bates numbering (future slice)

@@ -6,6 +6,13 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ### Added
 
+- **High-contrast mode** (a11y A3 / proposal P2-15): a **View ▸ High Contrast**
+  toggle switches both light and dark themes to pure black-on-white or
+  white-on-black text and solid surfaces with 1 px widget borders and a
+  high-contrast selection fill, for low-vision use. Persisted in
+  `AppPrefs.high_contrast`; a headless test asserts the high-contrast pairs clear
+  WCAG AAA (text) and AA (links/selection).
+
 - **In-app version & release notes** (guide §9, §12.1): a subtle version label in
   the bottom-right corner of the status bar opens a Release Notes popup with the
   changelog (current version + Unreleased), per-release and cumulative token

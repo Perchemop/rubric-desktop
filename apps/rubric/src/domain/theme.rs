@@ -71,6 +71,11 @@ pub struct AppPrefs {
     /// Show minimap overlay in canvas corner (proposal P2-16). Missing values fall back to `false`.
     #[serde(default)]
     pub show_minimap: bool,
+    /// High-contrast mode (a11y A3 / proposal P2-15): pure black-on-white or
+    /// white-on-black text and surfaces with stronger widget borders, for users
+    /// who need maximum contrast. Missing values fall back to `false`.
+    #[serde(default)]
+    pub high_contrast: bool,
 }
 
 fn default_true() -> bool {
@@ -94,6 +99,7 @@ impl Default for AppPrefs {
             ui_scale: 1.0,
             focus_mode: false,
             show_minimap: false,
+            high_contrast: false,
         }
     }
 }
@@ -146,6 +152,7 @@ mod tests {
             ui_scale: 1.0,
             focus_mode: true,
             show_minimap: false,
+            high_contrast: true,
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");

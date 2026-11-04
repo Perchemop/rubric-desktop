@@ -1,5 +1,25 @@
 # PROGRESS.md
 
+## 2026-11-05 — P2-15 high-contrast mode (a11y A3)
+**Status**: implemented; CI pending on the slice PR.
+
+### Completed
+- **High-contrast mode** (a11y A3 / proposal P2-15): **View ▸ High Contrast**
+  toggle. When enabled, both themes use pure `#000`/`#fff` text on solid
+  white/black surfaces, 1 px widget borders, and a high-contrast selection fill
+  (white-on-navy light, black-on-amber dark). Persisted as
+  `AppPrefs.high_contrast` (app-level, never in `.rubric.json`).
+- `apply_theme(ctx, theme, high_contrast)` gained the flag; `theme.rs` adds the
+  high-contrast palette constants and two headless tests
+  (`high_contrast_palettes_meet_wcag`, `high_contrast_flag_sets_pure_surfaces`).
+- `RubricApp` refactored to a single `build_prefs()` snapshot (used by the theme,
+  high-contrast and workspace-save paths) so `AppPrefs` literals cannot drift.
+
+### Remaining v0.5 (deferred)
+- **P0-2** bundled UI/tabular-mono fonts (no font assets downloaded here).
+- **P2-12** text-anchored markup completion (needs a PDF text-extraction path).
+- **P1-11 / G4** `egui_kittest` visual evidence (documented deferral).
+
 ## 2026-11-04 — Bates numbering recorded as a future slice (v0.6)
 **Status**: planned and recorded (owner request); not yet implemented.
 

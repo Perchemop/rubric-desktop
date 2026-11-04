@@ -93,45 +93,105 @@ const ELEVATION_2_DARK: Shadow = Shadow {
     color: Color32::from_rgba_premultiplied(0, 0, 0, 140),
 };
 
+/// High-contrast text on the light high-contrast surface (pure black).
+const HC_LIGHT_TEXT: Color32 = Color32::from_rgb(0, 0, 0);
+/// High-contrast text on the dark high-contrast surface (pure white).
+const HC_DARK_TEXT: Color32 = Color32::from_rgb(255, 255, 255);
+/// High-contrast link on white (dark blue, clears WCAG AA on white).
+const HC_LIGHT_LINK: Color32 = Color32::from_rgb(0, 0, 180);
+/// High-contrast link on black (pale blue, clears WCAG AA on black).
+const HC_DARK_LINK: Color32 = Color32::from_rgb(130, 190, 255);
+/// High-contrast selection fill on white (dark blue with white selection text).
+const HC_LIGHT_SELECT: Color32 = Color32::from_rgb(0, 0, 180);
+/// High-contrast selection fill on black (amber with black selection text).
+const HC_DARK_SELECT: Color32 = Color32::from_rgb(255, 214, 0);
+
 /// Apply the given theme to an egui context.
 ///
 /// Dark mode keeps the document page itself light (paper stays paper); the
 /// surrounding chrome uses the brand's indigo palette.
-pub fn apply_theme(ctx: &egui::Context, theme: Theme) {
+///
+/// When `high_contrast` is set (a11y A3 / proposal P2-15), both themes switch
+/// to pure black-on-white or white-on-black text and surfaces with stronger
+/// widget borders, trading brand colour for maximum legibility.
+pub fn apply_theme(ctx: &egui::Context, theme: Theme, high_contrast: bool) {
     let mut visuals = match theme {
         Theme::Light => egui::Visuals::light(),
         Theme::Dark => egui::Visuals::dark(),
     };
 
-    match theme {
-        Theme::Light => {
-            visuals.panel_fill = Color32::from_rgb(250, 250, 252);
-            visuals.window_fill = Color32::from_rgb(252, 252, 253);
-            visuals.extreme_bg_color = Color32::from_rgb(235, 238, 244);
-            visuals.faint_bg_color = Color32::from_rgb(240, 242, 247);
-            visuals.override_text_color = Some(LIGHT_TEXT);
+    if high_contrast {
+        match theme {
+            Theme::Light => {
+                visuals.panel_fill = Color32::WHITE;
+                visuals.window_fill = Color32::WHITE;
+                visuals.extreme_bg_color = Color32::WHITE;
+                visuals.faint_bg_color = Color32::from_rgb(240, 240, 240);
+                visuals.override_text_color = Some(HC_LIGHT_TEXT);
+                visuals.hyperlink_color = HC_LIGHT_LINK;
+            }
+            Theme::Dark => {
+                visuals.panel_fill = Color32::BLACK;
+                visuals.window_fill = Color32::BLACK;
+                visuals.extreme_bg_color = Color32::BLACK;
+                visuals.faint_bg_color = Color32::from_rgb(20, 20, 20);
+                visuals.override_text_color = Some(HC_DARK_TEXT);
+                visuals.hyperlink_color = HC_DARK_LINK;
+            }
         }
-        Theme::Dark => {
-            visuals.panel_fill = INK_700;
-            visuals.window_fill = INK_700;
-            visuals.extreme_bg_color = INK_900;
-            visuals.faint_bg_color = Color32::from_rgb(38, 43, 72);
-            visuals.override_text_color = Some(DARK_TEXT);
-            visuals.hyperlink_color = ACCENT_2;
+        // Strong 1 px borders on every widget so edges never rely on subtle
+        // surface tints to be visible.
+        let border = Stroke::new(1.0, visuals.override_text_color.unwrap_or(HC_LIGHT_TEXT));
+        visuals.widgets.noninteractive.bg_stroke = border;
+        visuals.widgets.inactive.bg_stroke = border;
+        visuals.widgets.hovered.bg_stroke = border;
+        visuals.widgets.active.bg_stroke = border;
+        visuals.widgets.open.bg_stroke = border;
+        match theme {
+            Theme::Light => {
+                visuals.selection.bg_fill = HC_LIGHT_SELECT;
+                visuals.selection.stroke = Stroke::new(1.0, Color32::WHITE);
+            }
+            Theme::Dark => {
+                visuals.selection.bg_fill = HC_DARK_SELECT;
+                visuals.selection.stroke = Stroke::new(1.0, Color32::BLACK);
+            }
+        }
+    } else {
+        match theme {
+            Theme::Light => {
+                visuals.panel_fill = Color32::from_rgb(250, 250, 252);
+                visuals.window_fill = Color32::from_rgb(252, 252, 253);
+                visuals.extreme_bg_color = Color32::from_rgb(235, 238, 244);
+                visuals.faint_bg_color = Color32::from_rgb(240, 242, 247);
+                visuals.override_text_color = Some(LIGHT_TEXT);
+            }
+            Theme::Dark => {
+                visuals.panel_fill = INK_700;
+                visuals.window_fill = INK_700;
+                visuals.extreme_bg_color = INK_900;
+                visuals.faint_bg_color = Color32::from_rgb(38, 43, 72);
+                visuals.override_text_color = Some(DARK_TEXT);
+                visuals.hyperlink_color = ACCENT_2;
+            }
         }
     }
 
-    visuals.selection.bg_fill = ACCENT;
-    visuals.selection.stroke = Stroke::new(1.0, ACCENT);
-    visuals.widgets.hovered.bg_fill = match theme {
-        Theme::Light => Color32::from_rgb(228, 231, 240),
-        Theme::Dark => Color32::from_rgb(46, 52, 86),
-    };
-    visuals.widgets.active.bg_fill = match theme {
-        Theme::Light => Color32::from_rgb(214, 219, 232),
-        Theme::Dark => Color32::from_rgb(58, 65, 104),
-    };
-    visuals.widgets.open.bg_fill = visuals.widgets.active.bg_fill;
+    // Brand-accent interaction colours. High-contrast mode sets its own
+    // selection fill/stroke above, so it is left untouched here.
+    if !high_contrast {
+        visuals.selection.bg_fill = ACCENT;
+        visuals.selection.stroke = Stroke::new(1.0, ACCENT);
+        visuals.widgets.hovered.bg_fill = match theme {
+            Theme::Light => Color32::from_rgb(228, 231, 240),
+            Theme::Dark => Color32::from_rgb(46, 52, 86),
+        };
+        visuals.widgets.active.bg_fill = match theme {
+            Theme::Light => Color32::from_rgb(214, 219, 232),
+            Theme::Dark => Color32::from_rgb(58, 65, 104),
+        };
+        visuals.widgets.open.bg_fill = visuals.widgets.active.bg_fill;
+    }
 
     // Consistent widget interaction: 4 px corner rounding for all interactive
     // widgets.
@@ -203,11 +263,11 @@ mod tests {
     #[test]
     fn apply_theme_selects_matching_theme_and_visuals() {
         let ctx = egui::Context::default();
-        apply_theme(&ctx, Theme::Dark);
+        apply_theme(&ctx, Theme::Dark, false);
         assert_eq!(ctx.theme(), egui::Theme::Dark);
         assert!(ctx.style_of(egui::Theme::Dark).visuals.dark_mode);
 
-        apply_theme(&ctx, Theme::Light);
+        apply_theme(&ctx, Theme::Light, false);
         assert_eq!(ctx.theme(), egui::Theme::Light);
         assert!(!ctx.style_of(egui::Theme::Light).visuals.dark_mode);
     }
@@ -218,7 +278,7 @@ mod tests {
     fn typography_tokens_applied_to_both_themes() {
         let ctx = egui::Context::default();
 
-        apply_theme(&ctx, Theme::Light);
+        apply_theme(&ctx, Theme::Light, false);
         let light_styles = ctx.style_of(egui::Theme::Light).text_styles.clone();
         assert_eq!(
             light_styles.get(&egui::TextStyle::Body).unwrap().size,
@@ -237,7 +297,7 @@ mod tests {
             TEXT_SIZE_HEADING
         );
 
-        apply_theme(&ctx, Theme::Dark);
+        apply_theme(&ctx, Theme::Dark, false);
         let dark_styles = ctx.style_of(egui::Theme::Dark).text_styles.clone();
         assert_eq!(
             dark_styles.get(&egui::TextStyle::Body).unwrap().size,
@@ -329,5 +389,77 @@ mod tests {
             .collect::<Vec<_>>()
             .join("\n");
         assert!(issues.is_empty(), "WCAG failures:\n{report}");
+    }
+
+    /// Spec F-605 / proposal P2-15: the high-contrast palettes must clear WCAG
+    /// AAA for text-on-surface (pure black/white) and AA for links and the
+    /// filled selection (white-on-navy and black-on-amber).
+    #[test]
+    fn high_contrast_palettes_meet_wcag() {
+        use crate::domain::a11y::{audit, AuditPair, WcagLevel};
+
+        let pairs = vec![
+            AuditPair::new(
+                "hc light body text on white",
+                from_color32(HC_LIGHT_TEXT),
+                from_color32(Color32::WHITE),
+                WcagLevel::AaaNormal,
+            ),
+            AuditPair::new(
+                "hc dark body text on black",
+                from_color32(HC_DARK_TEXT),
+                from_color32(Color32::BLACK),
+                WcagLevel::AaaNormal,
+            ),
+            AuditPair::new(
+                "hc light link on white",
+                from_color32(HC_LIGHT_LINK),
+                from_color32(Color32::WHITE),
+                WcagLevel::AaNormal,
+            ),
+            AuditPair::new(
+                "hc dark link on black",
+                from_color32(HC_DARK_LINK),
+                from_color32(Color32::BLACK),
+                WcagLevel::AaNormal,
+            ),
+            AuditPair::new(
+                "hc light selection text on fill",
+                from_color32(Color32::WHITE),
+                from_color32(HC_LIGHT_SELECT),
+                WcagLevel::AaLarge,
+            ),
+            AuditPair::new(
+                "hc dark selection text on fill",
+                from_color32(Color32::BLACK),
+                from_color32(HC_DARK_SELECT),
+                WcagLevel::AaLarge,
+            ),
+        ];
+
+        let issues = audit(&pairs);
+        let report = issues
+            .iter()
+            .map(|i| i.describe())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(issues.is_empty(), "WCAG failures:\n{report}");
+    }
+
+    /// Spec F-605 / proposal P2-15: enabling high contrast switches both themes
+    /// to pure black/white text and solid surfaces.
+    #[test]
+    fn high_contrast_flag_sets_pure_surfaces() {
+        let ctx = egui::Context::default();
+
+        apply_theme(&ctx, Theme::Light, true);
+        let light = ctx.style_of(egui::Theme::Light).visuals.clone();
+        assert_eq!(light.panel_fill, Color32::WHITE);
+        assert_eq!(light.override_text_color, Some(HC_LIGHT_TEXT));
+
+        apply_theme(&ctx, Theme::Dark, true);
+        let dark = ctx.style_of(egui::Theme::Dark).visuals.clone();
+        assert_eq!(dark.panel_fill, Color32::BLACK);
+        assert_eq!(dark.override_text_color, Some(HC_DARK_TEXT));
     }
 }

@@ -116,6 +116,7 @@ mod tests {
             ui_scale: 1.0,
             focus_mode: true,
             show_minimap: false,
+            high_contrast: false,
         };
         save_prefs_to(&path, &prefs).expect("save");
         assert_eq!(load_prefs_from(&path), prefs);
