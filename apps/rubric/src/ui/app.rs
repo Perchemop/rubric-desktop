@@ -985,6 +985,7 @@ impl RubricApp {
 
     /// Release notes popup (guide §9): version history, detailed app usage per
     /// release, and token usage totals / per-release metrics from docs/tokens.json.
+    #[allow(dead_code)]
     fn draw_release_notes(&mut self, ctx: &egui::Context) {
         if !self.ui.show_release_notes {
             return;
@@ -1001,10 +1002,16 @@ impl RubricApp {
 
                 // Version + token summary
                 let current_version = env!("CARGO_PKG_VERSION");
-                let tokens_json = std::fs::read_to_string("docs/tokens.json")
-                    .unwrap_or_else(|_| r#"{"total_tokens_since_start":0,"releases":[]}"#.to_string());
-                let tokens: serde_json::Value = serde_json::from_str(&tokens_json).unwrap_or_default();
-                let total = tokens.get("total_tokens_since_start").and_then(|v| v.as_u64()).unwrap_or(0);
+                let tokens_json =
+                    std::fs::read_to_string("docs/tokens.json").unwrap_or_else(|_| {
+                        r#"{"total_tokens_since_start":0,"releases":[]}"#.to_string()
+                    });
+                let tokens: serde_json::Value =
+                    serde_json::from_str(&tokens_json).unwrap_or_default();
+                let total = tokens
+                    .get("total_tokens_since_start")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
 
                 ui.horizontal(|ui| {
                     ui.label(format!("Current version: {}", current_version));
@@ -1021,10 +1028,15 @@ impl RubricApp {
                 for line in changelog.lines() {
                     let trimmed = line.trim_start();
                     if trimmed.starts_with("## [") {
-                        if shown && !trimmed.contains(&format!("[{}]", current_version)) && !trimmed.contains("[Unreleased]") {
+                        if shown
+                            && !trimmed.contains(&format!("[{}]", current_version))
+                            && !trimmed.contains("[Unreleased]")
+                        {
                             break; // Stop at the next version section
                         }
-                        if trimmed.contains(&format!("[{}]", current_version)) || trimmed.contains("[Unreleased]") {
+                        if trimmed.contains(&format!("[{}]", current_version))
+                            || trimmed.contains("[Unreleased]")
+                        {
                             shown = true;
                         }
                     }
@@ -2092,21 +2104,27 @@ impl RubricApp {
     }
 
     fn bottom_bar(&mut self, ui: &mut Ui) {
+        let doc_title = self.active_doc().map(|d| d.title.clone());
+        let page_count = self.active_doc().map(|d| d.page_count());
+
         ui.horizontal(|ui| {
             ui.small(self.ui.hint.clone());
             if let Some(p) = self.last_page_pos {
                 ui.small(format!("Cursor: {:.1},{:.1} pt", p.x, p.y));
             }
-            if let Some(doc) = self.active_doc() {
-                let pages = doc.page_count();
+            if let (Some(pages), Some(title)) = (page_count, doc_title) {
                 let plural = if pages == 1 { "" } else { "s" };
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     // Version label (guide §9): subtle, non-intrusive, clickable for release notes.
-                    if ui.small(format!("v{}", env!("CARGO_PKG_VERSION"))).on_hover_text("Click for release notes").clicked() {
+                    if ui
+                        .small(format!("v{}", env!("CARGO_PKG_VERSION")))
+                        .on_hover_text("Click for release notes")
+                        .clicked()
+                    {
                         self.ui.show_release_notes = true;
                     }
                     ui.small(format!("{pages} page{plural}"));
-                    ui.small(doc.title.clone());
+                    ui.small(title);
                 });
             }
         });

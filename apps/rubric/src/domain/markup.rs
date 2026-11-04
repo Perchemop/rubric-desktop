@@ -246,7 +246,13 @@ pub enum MarkupGeometry {
     /// is the marked-up text, `line_height` is the per-line height in points,
     /// `line_count` is the number of text lines covered, and `text_width` is
     /// the text width in page points.
-    TextAnchor { at: Pt, text: String, line_height: f32, line_count: usize, text_width: f32 },
+    TextAnchor {
+        at: Pt,
+        text: String,
+        line_height: f32,
+        line_count: usize,
+        text_width: f32,
+    },
     /// A three-point angle measurement (vertex is the middle point).
     Angle { a: Pt, vertex: Pt, b: Pt },
     /// A count marker (a numbered dot).
@@ -269,7 +275,12 @@ impl MarkupGeometry {
             MarkupGeometry::Text { at, wrap, text } => {
                 text_box_rect(*at, *wrap, text, MarkupStyle::default().font_size)
             }
-            MarkupGeometry::TextAnchor { at, .. } => Rect::new(at.x - 1.0, at.y - text_line_height(MarkupStyle::default().font_size) / 2.0, 100.0, text_line_height(MarkupStyle::default().font_size)),
+            MarkupGeometry::TextAnchor { at, .. } => Rect::new(
+                at.x - 1.0,
+                at.y - text_line_height(MarkupStyle::default().font_size) / 2.0,
+                100.0,
+                text_line_height(MarkupStyle::default().font_size),
+            ),
             MarkupGeometry::Callout { rect, tail, .. } => {
                 rect.union(&Rect::new(tail.x, tail.y, 0.0, 0.0))
             }
@@ -764,6 +775,9 @@ impl Markup {
                     || distance_to_segment(p, *vertex, *b) <= tolerance.max(3.0)
             }
             MarkupGeometry::Count { at, .. } => p.distance(*at) <= tolerance.max(10.0),
+            MarkupGeometry::TextAnchor { .. } => {
+                self.geometry.bounds().expanded(tolerance).contains(p)
+            }
         }
     }
 
@@ -942,6 +956,7 @@ impl Markup {
             MarkupGeometry::Segment { a, b } => vec![*a, *b],
             MarkupGeometry::Path { points, .. } => points.clone(),
             MarkupGeometry::Angle { a, vertex, b } => vec![*a, *vertex, *b],
+            MarkupGeometry::TextAnchor { at, .. } => vec![*at],
             _ => Vec::new(),
         }
     }
@@ -970,6 +985,7 @@ impl Markup {
                 2 => Self::set_if_changed(b, pt),
                 _ => false,
             },
+            MarkupGeometry::TextAnchor { at, .. } => index == 0 && Self::set_if_changed(at, pt),
             _ => false,
         }
     }
