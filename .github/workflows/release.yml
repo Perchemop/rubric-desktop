@@ -6,9 +6,18 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      # Per-release token count for the guide §12.1 ledger. Honest default 0;
+      # the maintainer supplies the figure when it is known.
+      release_tokens:
+        description: "Tokens consumed by this release (for docs/tokens.json)"
+        required: false
+        default: "0"
 
 permissions:
   contents: write
+  # The token-ledger step opens a PR (main is protected), so it needs this too.
+  pull-requests: write
 
 jobs:
   # Builds the release binary and uploads per-target zips as artefacts.
@@ -157,38 +166,57 @@ jobs:
       - name: Build release notes
         id: notes
         shell: bash
+        env:
+          RELEASE_TOKENS: ${{ inputs.release_tokens || vars.RELEASE_TOKENS || '0' }}
         run: |
           set -euo pipefail
           # Release notes come from CHANGELOG (guide §6.3): the section matching
           # this tag when present, otherwise an honest fallback. The rule lives
-          # in a small in-repo script so it is reviewable and testable.
+          # in a small in-repo script so it is reviewable and testable. The token
+          # block references the ledger (guide §12.1).
           {
             echo "body<<CHANGELOG_EOF"
             python3 scripts/release-notes.py "${GITHUB_REF_NAME#v}" || true
+            echo
+            python3 scripts/token-summary.py "${GITHUB_REF_NAME#v}" "${RELEASE_TOKENS}" || true
             echo "CHANGELOG_EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Update token usage ledger (guide §12.1)
+      # Token metrics (guide §12.1): record the tag's per-release token count in
+      # docs/tokens.json. The count is supplied via the `release_tokens`
+      # dispatch input or the `RELEASE_TOKENS` repository variable; it defaults
+      # to 0 rather than fabricating a number. `main` is a protected branch, so
+      # the ledger update is committed on a short-lived branch and merged via a
+      # PR; bookkeeping never blocks the release itself.
+      - name: Record token metrics for the tag (guide §12.1)
+        id: tokens
         if: ${{ github.ref_type == 'tag' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TOKENS: ${{ inputs.release_tokens || vars.RELEASE_TOKENS || '0' }}
         shell: bash
         run: |
           set -euo pipefail
-          # Parse tokens from CI metadata / workflow environment.
-          # The free models used are zero-cost; we record per-release token counts
-          # as an honest metric (guide §12.1). Fallback to 0 if unavailable.
-          TAG="${GITHUB_REF_NAME#v}"
-          RELEASE_TOKENS="${RELEASE_TOKENS:-0}"
-          # Load current ledger, append new release, write back.
-          python3 -c "
-import json, sys
-from pathlib import Path
-p = Path('docs/tokens.json')
-data = json.loads(p.read_text()) if p.exists() else {'total_tokens_since_start': 0, 'releases': []}
-data['total_tokens_since_start'] += ${RELEASE_TOKENS}
-data['releases'].append({'version': '${TAG}', 'tokens': ${RELEASE_TOKENS}})
-p.write_text(json.dumps(data, indent=2) + '\n')
-print('Updated docs/tokens.json with release', '${TAG}', 'tokens=${RELEASE_TOKENS}')
-          "
+          tag="${GITHUB_REF_NAME#v}"
+          git config user.name "Rubric Dev"
+          git config user.email "dev@example.com"
+          git fetch origin main
+          git checkout -B "chore/token-ledger-${tag}" origin/main
+          python3 scripts/update-token-ledger.py "${tag}" "${RELEASE_TOKENS}"
+          git add docs/tokens.json
+          if git diff --cached --quiet; then
+            echo "ledger already records ${tag}; nothing to commit"
+            exit 0
+          fi
+          git commit -m "chore(release): record token metrics for ${tag}"
+          git push --force origin "HEAD:chore/token-ledger-${tag}"
+          gh pr create \
+            --base main \
+            --head "chore/token-ledger-${tag}" \
+            --title "chore(release): token metrics for ${tag}" \
+            --body "Automated guide §12.1 token-ledger update for ${tag} (${RELEASE_TOKENS} tokens)." \
+            || echo "PR already exists for chore/token-ledger-${tag}"
 
       - name: Publish GitHub release
         env:
