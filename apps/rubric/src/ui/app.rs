@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 
 use eframe::{App, CreationContext, Frame};
 use egui::{Align, Layout, Pos2, TextureHandle, Ui, Vec2};
+use serde_json;
 
 use crate::data::{
     autosave, autosave_due, load_prefs, load_project, load_recent, normalise_project_filename,
@@ -245,6 +246,9 @@ pub(crate) struct UiState {
     /// changed a markup. Cleared when the drag starts and when it ends; drives
     /// the "resize markups" snapshot so a zero-delta drag pushes nothing.
     pub(crate) resize_changed: bool,
+    /// Show the release notes popup (guide §9): version history, app usage per
+    /// release, token usage totals / per-release metrics.
+    pub(crate) show_release_notes: bool,
     /// Open calibration dialog, if any (v0.4 gap #4). Set by the canvas when
     /// the user finishes the two-click reference segment; drawn as a window by
     /// the app shell. UI-only, never serialized.
@@ -318,6 +322,7 @@ impl Default for UiState {
             resize_corner: None,
             resize_point: None,
             resize_changed: false,
+            show_release_notes: false,
             calibration: None,
             pending_style_preset: None,
             tool_chest_save_name: String::new(),
@@ -975,6 +980,76 @@ impl RubricApp {
                 }
             }
             None => {}
+        }
+    }
+
+    /// Release notes popup (guide §9): version history, detailed app usage per
+    /// release, and token usage totals / per-release metrics from docs/tokens.json.
+    fn draw_release_notes(&mut self, ctx: &egui::Context) {
+        if !self.ui.show_release_notes {
+            return;
+        }
+        let mut open = true;
+        egui::Window::new("Release Notes")
+            .open(&mut open)
+            .resizable(true)
+            .default_width(700.0)
+            .default_height(500.0)
+            .show(ctx, |ui| {
+                ui.heading("Rubric Release Notes");
+                ui.separator();
+
+                // Version + token summary
+                let current_version = env!("CARGO_PKG_VERSION");
+                let tokens_json = std::fs::read_to_string("docs/tokens.json")
+                    .unwrap_or_else(|_| r#"{"total_tokens_since_start":0,"releases":[]}"#.to_string());
+                let tokens: serde_json::Value = serde_json::from_str(&tokens_json).unwrap_or_default();
+                let total = tokens.get("total_tokens_since_start").and_then(|v| v.as_u64()).unwrap_or(0);
+
+                ui.horizontal(|ui| {
+                    ui.label(format!("Current version: {}", current_version));
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        ui.small(format!("Cumulative tokens: {}", total));
+                    });
+                });
+                ui.separator();
+
+                // Changelog content
+                let changelog = std::fs::read_to_string("CHANGELOG.md").unwrap_or_default();
+                // Show the [Unreleased] section and the current version section
+                let mut shown = false;
+                for line in changelog.lines() {
+                    let trimmed = line.trim_start();
+                    if trimmed.starts_with("## [") {
+                        if shown && !trimmed.contains(&format!("[{}]", current_version)) && !trimmed.contains("[Unreleased]") {
+                            break; // Stop at the next version section
+                        }
+                        if trimmed.contains(&format!("[{}]", current_version)) || trimmed.contains("[Unreleased]") {
+                            shown = true;
+                        }
+                    }
+                    if shown {
+                        if trimmed.starts_with("## [") {
+                            ui.add_space(8.0);
+                            ui.strong(line.trim_start_matches('#').trim());
+                        } else {
+                            ui.label(line);
+                        }
+                    }
+                }
+
+                ui.separator();
+                ui.horizontal(|ui| {
+                    if ui.button("Check for Updates…").clicked() {
+                        self.begin_update_check(ctx);
+                    }
+                    if ui.button("Close").clicked() {
+                        self.ui.show_release_notes = false;
+                    }
+                });
+            });
+        if !open {
+            self.ui.show_release_notes = false;
         }
     }
 
@@ -2026,6 +2101,10 @@ impl RubricApp {
                 let pages = doc.page_count();
                 let plural = if pages == 1 { "" } else { "s" };
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    // Version label (guide §9): subtle, non-intrusive, clickable for release notes.
+                    if ui.small(format!("v{}", env!("CARGO_PKG_VERSION"))).on_hover_text("Click for release notes").clicked() {
+                        self.ui.show_release_notes = true;
+                    }
                     ui.small(format!("{pages} page{plural}"));
                     ui.small(doc.title.clone());
                 });
