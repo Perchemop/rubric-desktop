@@ -360,6 +360,8 @@ pub struct RubricApp {
     report_export: Option<ReportExportUi>,
     /// Active colour theme (app-level preference, not project data).
     theme: Theme,
+    /// UI scale multiplier (app-level preference, not project data).
+    ui_scale: f32,
     /// In-progress bug report the user is reviewing before sending (guide §7.1).
     report: Option<BugReportUi>,
     /// Shared update-check state, written by the worker thread and read by the
@@ -422,6 +424,7 @@ impl RubricApp {
     pub fn new(cc: &CreationContext<'_>, parked_crash: Option<crash_report::CrashReport>) -> Self {
         let prefs = load_prefs();
         theme::apply_theme(&cc.egui_ctx, prefs.theme);
+        cc.egui_ctx.set_pixels_per_point(prefs.ui_scale);
         let project = Project::new("Untitled Rubric Project");
         Self {
             pending_replace: None,
@@ -449,6 +452,7 @@ impl RubricApp {
             bg_error: None,
             report_export: None,
             theme: prefs.theme,
+            ui_scale: prefs.ui_scale,
             // A crash report parked by a previous run (audit M3) is surfaced in
             // the review-and-send dialog once; nothing is sent without consent.
             report: parked_crash.map(|report| BugReportUi {
@@ -1154,6 +1158,7 @@ impl RubricApp {
             zoom: self.ui.zoom,
             current_page: self.ui.current_page,
             tool_chest_library: self.tool_chest_library.clone(),
+            ui_scale: self.ui_scale,
         };
         match save_prefs(&prefs) {
             Ok(()) => self.ui.status = format!("Theme: {}", theme.label()),
@@ -1171,6 +1176,7 @@ impl RubricApp {
             zoom: self.ui.zoom,
             current_page: self.ui.current_page,
             tool_chest_library: self.tool_chest_library.clone(),
+            ui_scale: self.ui_scale,
         };
         if let Err(e) = save_prefs(&prefs) {
             self.ui.status = format!("Workspace saved, but preferences write failed: {e}");
