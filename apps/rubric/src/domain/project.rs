@@ -442,35 +442,8 @@ impl Tool {
     /// them when Ctrl/Alt/Super is held. Returns `None` for tools that have
     /// no assigned key yet.
     pub fn shortcut_key(self) -> Option<char> {
-        Some(match self {
-            Tool::Select => 'v',
-            Tool::Highlight => 'h',
-            Tool::Strikeout => 's',
-            Tool::Underline => 'u',
-            Tool::Squiggly => 'q',
-            Tool::Text => 't',
-            Tool::Callout => 'c',
-            Tool::Note => 'n',
-            Tool::Stamp => 'm',
-            Tool::Rectangle => 'r',
-            Tool::Ellipse => 'o',
-            Tool::Cloud => 'd',
-            Tool::Polygon => 'p',
-            Tool::Polyline => 'y',
-            Tool::Line => 'l',
-            Tool::Arrow => 'a',
-            Tool::Ink => 'i',
-            Tool::MeasureLength => '1',
-            Tool::MeasurePerimeter => '2',
-            Tool::MeasureArea => '3',
-            Tool::MeasureAngle => '4',
-            Tool::MeasureDiameter => '5',
-            Tool::MeasureRadius => '6',
-            Tool::MeasureCount => '7',
-            Tool::Calibrate => 'k',
-        })
+        tool_meta(self).map(|m| m.shortcut).unwrap_or(None)
     }
-
     /// Resolve a single-key shortcut back to its tool.
     ///
     /// Matching is ASCII case-insensitive (`'V'` and `'v'` both select
@@ -478,37 +451,19 @@ impl Tool {
     /// keys that are not bound to a tool.
     pub fn from_shortcut_key(key: char) -> Option<Tool> {
         let key = key.to_ascii_lowercase();
-        Self::ALL
-            .into_iter()
-            .find(|tool| tool.shortcut_key() == Some(key))
+        TOOL_METADATA
+            .iter()
+            .find(|meta| meta.shortcut == Some(key))
+            .map(|meta| meta.tool)
     }
 
-    pub fn from_kind(k: MarkupKind) -> Self {
-        match k {
-            MarkupKind::Highlight => Tool::Highlight,
-            MarkupKind::Strikeout => Tool::Strikeout,
-            MarkupKind::Underline => Tool::Underline,
-            MarkupKind::Squiggly => Tool::Squiggly,
-            MarkupKind::Text => Tool::Text,
-            MarkupKind::Callout => Tool::Callout,
-            MarkupKind::Note => Tool::Note,
-            MarkupKind::Stamp => Tool::Stamp,
-            MarkupKind::Rectangle => Tool::Rectangle,
-            MarkupKind::Ellipse => Tool::Ellipse,
-            MarkupKind::Cloud => Tool::Cloud,
-            MarkupKind::Polygon => Tool::Polygon,
-            MarkupKind::Polyline => Tool::Polyline,
-            MarkupKind::Line => Tool::Line,
-            MarkupKind::Arrow => Tool::Arrow,
-            MarkupKind::Ink => Tool::Ink,
-            MarkupKind::MeasureLength => Tool::MeasureLength,
-            MarkupKind::MeasurePerimeter => Tool::MeasurePerimeter,
-            MarkupKind::MeasureArea => Tool::MeasureArea,
-            MarkupKind::MeasureAngle => Tool::MeasureAngle,
-            MarkupKind::MeasureDiameter => Tool::MeasureDiameter,
-            MarkupKind::MeasureRadius => Tool::MeasureRadius,
-            MarkupKind::MeasureCount => Tool::MeasureCount,
-        }
+    /// Resolve a kind back to its tool.
+    pub fn from_kind(k: MarkupKind) -> Tool {
+        TOOL_METADATA
+            .iter()
+            .find(|meta| meta.kind == Some(k))
+            .map(|meta| meta.tool)
+            .expect("every MarkupKind has a corresponding tool")
     }
 
     pub fn to_kind(self) -> Option<MarkupKind> {
@@ -583,6 +538,186 @@ impl Tool {
             other => format!("Draw {}", other.label()),
         }
     }
+}
+
+/// Single source of truth for tool metadata (label, shortcut, kind).
+///
+/// Every tool property that needs to be readable from both domain and UI
+/// code is defined here once. `Tool::shortcut_key()`,
+/// `Tool::from_shortcut_key()`, `Tool::from_kind()` and `Tool::label()`
+/// are all derived from this table so they can never diverge.
+///
+/// UI-specific data (icon drawing functions, colors) lives in
+/// `ui/toolbar.rs` and `ui/menu.rs` and references this table by `Tool`.
+#[derive(Debug, Clone, Copy)]
+pub struct ToolMeta {
+    /// The tool variant.
+    pub tool: Tool,
+    /// Human-readable label shown on buttons and in menus.
+    pub label: &'static str,
+    /// Keyboard shortcut (lowercase `char`), or `None` for tools without one.
+    pub shortcut: Option<char>,
+    /// Associated `MarkupKind`, if the tool creates a markup of that kind.
+    pub kind: Option<MarkupKind>,
+}
+
+/// Canonical table of all tool metadata, in `Tool::ALL` order.
+pub const TOOL_METADATA: &[ToolMeta; 25] = &[
+    ToolMeta {
+        tool: Tool::Select,
+        label: "Select",
+        shortcut: Some('v'),
+        kind: None,
+    },
+    ToolMeta {
+        tool: Tool::Highlight,
+        label: "Highlight",
+        shortcut: Some('h'),
+        kind: Some(MarkupKind::Highlight),
+    },
+    ToolMeta {
+        tool: Tool::Strikeout,
+        label: "Strikeout",
+        shortcut: Some('s'),
+        kind: Some(MarkupKind::Strikeout),
+    },
+    ToolMeta {
+        tool: Tool::Underline,
+        label: "Underline",
+        shortcut: Some('u'),
+        kind: Some(MarkupKind::Underline),
+    },
+    ToolMeta {
+        tool: Tool::Squiggly,
+        label: "Squiggly",
+        shortcut: Some('q'),
+        kind: Some(MarkupKind::Squiggly),
+    },
+    ToolMeta {
+        tool: Tool::Text,
+        label: "Text Box",
+        shortcut: Some('t'),
+        kind: Some(MarkupKind::Text),
+    },
+    ToolMeta {
+        tool: Tool::Callout,
+        label: "Callout",
+        shortcut: Some('c'),
+        kind: Some(MarkupKind::Callout),
+    },
+    ToolMeta {
+        tool: Tool::Note,
+        label: "Sticky Note",
+        shortcut: Some('n'),
+        kind: Some(MarkupKind::Note),
+    },
+    ToolMeta {
+        tool: Tool::Stamp,
+        label: "Stamp",
+        shortcut: Some('m'),
+        kind: Some(MarkupKind::Stamp),
+    },
+    ToolMeta {
+        tool: Tool::Rectangle,
+        label: "Rectangle",
+        shortcut: Some('r'),
+        kind: Some(MarkupKind::Rectangle),
+    },
+    ToolMeta {
+        tool: Tool::Ellipse,
+        label: "Ellipse",
+        shortcut: Some('o'),
+        kind: Some(MarkupKind::Ellipse),
+    },
+    ToolMeta {
+        tool: Tool::Cloud,
+        label: "Cloud",
+        shortcut: Some('d'),
+        kind: Some(MarkupKind::Cloud),
+    },
+    ToolMeta {
+        tool: Tool::Polygon,
+        label: "Polygon",
+        shortcut: Some('p'),
+        kind: Some(MarkupKind::Polygon),
+    },
+    ToolMeta {
+        tool: Tool::Polyline,
+        label: "Polyline",
+        shortcut: Some('y'),
+        kind: Some(MarkupKind::Polyline),
+    },
+    ToolMeta {
+        tool: Tool::Line,
+        label: "Line",
+        shortcut: Some('l'),
+        kind: Some(MarkupKind::Line),
+    },
+    ToolMeta {
+        tool: Tool::Arrow,
+        label: "Arrow",
+        shortcut: Some('a'),
+        kind: Some(MarkupKind::Arrow),
+    },
+    ToolMeta {
+        tool: Tool::Ink,
+        label: "Pen",
+        shortcut: Some('i'),
+        kind: Some(MarkupKind::Ink),
+    },
+    ToolMeta {
+        tool: Tool::MeasureLength,
+        label: "Length",
+        shortcut: Some('1'),
+        kind: Some(MarkupKind::MeasureLength),
+    },
+    ToolMeta {
+        tool: Tool::MeasurePerimeter,
+        label: "Perimeter",
+        shortcut: Some('2'),
+        kind: Some(MarkupKind::MeasurePerimeter),
+    },
+    ToolMeta {
+        tool: Tool::MeasureArea,
+        label: "Area",
+        shortcut: Some('3'),
+        kind: Some(MarkupKind::MeasureArea),
+    },
+    ToolMeta {
+        tool: Tool::MeasureAngle,
+        label: "Angle",
+        shortcut: Some('4'),
+        kind: Some(MarkupKind::MeasureAngle),
+    },
+    ToolMeta {
+        tool: Tool::MeasureDiameter,
+        label: "Diameter",
+        shortcut: Some('5'),
+        kind: Some(MarkupKind::MeasureDiameter),
+    },
+    ToolMeta {
+        tool: Tool::MeasureRadius,
+        label: "Radius",
+        shortcut: Some('6'),
+        kind: Some(MarkupKind::MeasureRadius),
+    },
+    ToolMeta {
+        tool: Tool::MeasureCount,
+        label: "Count",
+        shortcut: Some('7'),
+        kind: Some(MarkupKind::MeasureCount),
+    },
+    ToolMeta {
+        tool: Tool::Calibrate,
+        label: "Calibrate",
+        shortcut: Some('k'),
+        kind: None,
+    },
+];
+
+/// Look up metadata for a tool by variant.
+pub(crate) fn tool_meta(tool: Tool) -> Option<&'static ToolMeta> {
+    TOOL_METADATA.iter().find(|meta| meta.tool == tool)
 }
 
 /// Historical snapshot of a project for undo/redo.

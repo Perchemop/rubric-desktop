@@ -11,16 +11,14 @@
 
 use eframe::egui::{self, Ui};
 
-use crate::domain::{markup::ReviewStatus, EditorAction, MarkupKind, Tool};
+use crate::domain::project;
+use crate::domain::{markup::ReviewStatus, EditorAction, Tool};
 use crate::ui::app::UiState;
 
 /// Menu label for a tool. `Select` has no markup kind, so it is named
 /// explicitly; every other tool uses its kind label.
 pub(crate) fn tool_label(tool: Tool) -> &'static str {
-    match tool {
-        Tool::Select => "Select",
-        other => other.to_kind().map(MarkupKind::label).unwrap_or("Tool"),
-    }
+    project::tool_meta(tool).map(|m| m.label).unwrap_or("Tool")
 }
 
 /// Record `action` on `ui_state` when its menu entry is clicked.
