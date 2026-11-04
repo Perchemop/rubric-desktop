@@ -48,7 +48,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | §8.2 Definition of Done | Met | per-slice in `docs/qc/checklist.md`; updated to the owner merge directive |
 | §8.3 PR template + Rust QA | Met | `.github/PULL_REQUEST_TEMPLATE.md` includes §M.3 Rust QA |
 | §8.4 Human gate on research | Met | 2026-10-24 approval; Stirling PDF client-directed approval |
-| §9 Finished-product gates | Deferred (in part) | logic/CI/legal gates met for current scope; the **visual-evidence** gate needs the `egui_kittest` refactor — gap G4 |
+| §9 Finished-product gates | Deferred (in part) | logic/CI/legal gates met for current scope; the **in-app version + release-notes** gate (subtle bottom-right version, click → release-notes popup with history, usage and token metrics) is **Met** (embedded changelog + ledger); the **visual-evidence** gate needs the `egui_kittest` refactor — gap G4 |
 | §10 Original UI + SVG assets | Met | `docs/design/brand.md`, `assets/` original SVG, `ATTRIBUTION.md` |
 | §11 Tracking files | Met (2026-10-30) | all present, including `docs/capability-inventory.md` — gap G3 closed |
 | §12 Repository layout | Met | workspace plus domain/data/ui split |
@@ -76,6 +76,19 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | II.27.12 Visual evidence for egui apps | **Deferred** | the guide lists Rubric's shell shape among those `egui_kittest` cannot drive today; needs the `Host`-seam refactor — gap G4. No fake harness is used |
 | II.28 Naming conventions | Adapted | crate/binary names follow cargo; the release artefacts use `arm64` rather than the guide's `aarch64` — recorded as a `DECISIONS.md` deviation (II.28.3) |
 | II.29 Personal-data/secrets scan gate | Met (added 2026-10-28) | four-part scan done; `scripts/scan-personal-data.sh` + `Personal data scan` required check; release-asset scan wired; the historical leak was purged from **all history** on 2026-10-28 (owner-approved `git filter-repo`, force-push, protection restored) — gap G7 resolved |
+
+## §12.1 Suite-wide standards (guide §12.1, audit approved 2026-11-04)
+
+| Standard | Status | Evidence / deviation |
+| --- | --- | --- |
+| Token-usage ledger `docs/tokens.json` (`total_tokens_since_start`, per-release `release_version`/`release_tokens`) | Met | `docs/tokens.json`; `scripts/update-token-ledger.py` (idempotent); release workflow records each tag's metrics |
+| CI updates the ledger on each tag and commits it | Adapted | `main` is branch-protected, so the release workflow commits the ledger on a short-lived branch and merges it via a PR (a direct push would be rejected). The step is `continue-on-error`, so bookkeeping never blocks a release |
+| Release notes reference ledger values | Met | `scripts/token-summary.py` appends the per-release + cumulative token block to every GitHub Release body |
+| Update-check distributed as a pinned git submodule | Adapted | `crates/update-check` is a workspace path dependency (guide §7.3 layout), not a diverging submodule — recorded deviation, same shared-crate effect |
+| Auto-update security: signed releases + `SHA256SUMS.txt`, in-app verify | Deferred | `SHA256SUMS.txt` is published; release signing and in-app checksum-verified install are not implemented — the app currently links to the release page rather than auto-installing. Tracked as a follow-up |
+| Version UI: subtle bottom-right version; click → release-notes popup (history, usage, token metrics, Update) | Met | `apps/rubric/src/ui/app.rs` status-bar label + `draw_release_notes` (embedded changelog + ledger); a 700×520 popup with version, per-release/cumulative tokens, changelog, and Check-for-Updates / View-on-GitHub |
+| Addendum archived to `addendum.md.archive`; `guide.md` single source of truth | N/A | both meta-files stay local and untracked here (guide §0); no in-repo addendum to archive |
+| README screenshots reviewed at v1.0 and every major release | Deferred | no README screenshots yet; applies from the v1.0 release on |
 
 ## Addendum — addendum.md
 

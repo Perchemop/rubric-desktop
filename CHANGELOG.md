@@ -6,6 +6,22 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ### Added
 
+- **In-app version & release notes** (guide §9, §12.1): a subtle version label in
+  the bottom-right corner of the status bar opens a Release Notes popup with the
+  changelog (current version + Unreleased), per-release and cumulative token
+  metrics, and a Check for Updates / View on GitHub action. The changelog
+  (`CHANGELOG.md`) and the token ledger (`docs/tokens.json`) are embedded at
+  build time (`include_str!`) so the popup works in a packaged binary, not only
+  in a source checkout.
+
+- **Token-usage ledger** (guide §12.1): `docs/tokens.json` records
+  `total_tokens_since_start` plus a `releases` array of
+  `{release_version, release_tokens}` entries. `scripts/update-token-ledger.py`
+  updates it idempotently, and `scripts/token-summary.py` renders the token block
+  that every GitHub Release body now includes. The release workflow records the
+  tag's metrics on a short-lived branch and merges them via a PR (`main` is
+  protected), so bookkeeping never blocks a release.
+
 - **Design & GUI audit** (`docs/audits/design-gui-2026-11.md`, PR #101): post-v0.4 design system, layout, interaction, a11y surface, and polish review. Priority backlog recorded as P0 (icon font/SVG, bundled UI + tabular mono fonts, workspace persistence, active-tool chip, empty states), P1 (elevation tokens, segmented Inspector, virtualised Markups List, single tool metadata source, Tool Chest persistence, G4 Host/Ui seam) and P2 (text-anchored markup, focus/reading mode, dual-unit rulers, UI scale/high-contrast, minimap) items in IMPLEMENTATION_PLAN.md and ROADMAP.md.
 
 - **Menu accelerator completeness** (proposal 10 part 2, PR #103):
