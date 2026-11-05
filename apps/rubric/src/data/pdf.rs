@@ -832,7 +832,7 @@ pub fn page_text_lines(pdf_path: &Path, page_index: usize) -> Result<Vec<TextLin
 
     // Group characters into lines by their top coordinate.
     let mut lines: Vec<TextLine> = Vec::new();
-    let mut line: Option<(Vec<(f32, f32, char)>, f32, f32)> = None; // (chars, top, bottom)
+    let mut line: Option<LineAcc> = None;
 
     for (left, right, top, bottom, unicode) in chars {
         match line.as_mut() {
@@ -861,6 +861,10 @@ pub fn page_text_lines(pdf_path: &Path, page_index: usize) -> Result<Vec<TextLin
 
     Ok(lines)
 }
+
+/// Accumulator for one in-progress text line: `(left, right, char)` triples
+/// plus the line's top and bottom edges in page space (y-down).
+type LineAcc = (Vec<(f32, f32, char)>, f32, f32);
 
 /// Build a [`TextLine`] from collected characters (sorted into reading order).
 ///
