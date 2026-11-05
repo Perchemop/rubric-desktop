@@ -1671,7 +1671,9 @@ pub(crate) fn draw_canvas(
                         MarkupKind::Highlight => {
                             // Snap to text line start point if dragging over text.
                             let anchor = find_text_at_point(
-                                project.source_pdf.as_deref().unwrap_or(Path::new("")),
+                                Path::new(
+                                    project.source_pdf.as_deref().unwrap_or(""),
+                                ),
                                 page.index,
                                 pp.x,
                                 pp.y,
