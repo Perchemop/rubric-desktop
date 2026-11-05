@@ -1,5 +1,26 @@
 # PROGRESS.md
 
+## 2026-11-05 — Bates numbering slice 3: flattened-PDF stamp (F-805 complete)
+**Status**: implemented; CI pending on the slice PR.
+
+### Completed
+- **F-805 (PDF path)**: `overlay_page_with_markups` now takes the Bates config
+  and appends a text overlay (`bates_overlay_ops`) for the page's stamp —
+  including stamp-only pages, which previously short-circuited. The `/F1` font
+  resource is installed whenever a stamp needs it.
+- Right-corner alignment uses a published Helvetica AFM width estimate
+  (`helvetica_width_estimate`); the on-canvas preview keeps exact egui metrics.
+- `export_pdf_to` / `export_page_to_pdf` / `export_all_pages_to_pdf` gained a
+  `&BatesConfig` parameter; `ui/app.rs` passes the project's config at all three
+  call sites (page export, all-pages export, Export PDF…).
+- Headless test `export_all_pages_to_pdf_stamps_bates_on_every_in_range_page`
+  asserts every exported page carries its stamp and the `/F1` resource.
+
+### Result
+Bates numbering (spec F-801–F-805) is **complete**: configuration, placement,
+page range, canvas ghost preview, and stamps baked into flattened PDF, page
+image and print — non-destructive throughout.
+
 ## 2026-11-05 — Bates numbering slice 2: canvas overlay + export/print (F-804, F-805 partial)
 **Status**: implemented; CI pending on the slice PR.
 

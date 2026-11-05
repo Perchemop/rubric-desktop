@@ -54,12 +54,12 @@ only when implemented *and* CI-verified.
 | 29 | Packaging & installers (AppImage, DMG, MSI, CI artifacts) | General desktop software | F-701–F-704 | Release build for Linux/macOS/Windows; native installers; checksums | Code `.github/workflows/release.yml`, `package.yml`, `packaging/wix/`; CI release run `40049997043` |
 | 30 | Grid, snap-to-grid, rulers | Bluebeam measurement aids | F-405, F-406 | Optional grid with snapping; labelled ruler ticks that follow pan/zoom | Code `domain/grid.rs`, `ui/canvas.rs`; test `ruler_ticks` ladder; CI v0.1.0 |
 | 31 | Page thumbnails sidebar | Adobe page organisation | F-404 | One cell per page; PDF-backed preview reuses the page cache; click to jump | Code `domain/thumbs.rs`, `ui/pages.rs`; test `thumb_layout`; CI v0.1.0 |
+| 32 | Bates numbering (sequential page stamping) | Adobe "Add Bates numbering to PDFs" <https://helpx.adobe.com/acrobat/using/add-bates-numbering-to-pdfs.html>; `docs/research/bates-numbering.md` | F-801–F-805 | Configure prefix/suffix/start/padding with a first/last stamp preview; choose placement and page range; ghost-preview on canvas; bake the sequence into export and print output in page order, leaving the source PDF untouched | Code `domain/bates.rs`, `ui/canvas.rs`, `ui/inspector.rs`, `data/pdf.rs`, `data/export.rs`; tests `bates::tests` suite + `export_all_pages_to_pdf_stamps_bates_on_every_in_range_page`; CI on the Bates slice PRs |
 
 ## Planned (future slices — not yet implemented, so not "Done")
 
-| # | Capability | Source (why it is useful) | Feature IDs | Acceptance criteria | Status |
-|---|---|---|---|---|---|
-| 32 | Bates numbering (sequential page stamping) | Adobe "Add Bates numbering to PDFs" <https://helpx.adobe.com/acrobat/using/add-bates-numbering-to-pdfs.html>; `docs/research/bates-numbering.md` | F-801–F-805 | Configure prefix/suffix/start/padding with a live next-value preview; choose placement and page range; ghost-preview on canvas; bake the sequence into export and print output in page order, leaving the source PDF untouched | Partial — F-801–F-804 shipped (`domain/bates.rs` + Inspector config; ghosted canvas overlay in `ui/canvas.rs`); F-805 partial (page-image export + print include the stamp; flattened-PDF export pending) |
+*None currently — the Bates numbering capability (row 32 in the table above)
+has been implemented and moves out of this section.*
 
 ## Deliberately out of scope
 

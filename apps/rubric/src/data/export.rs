@@ -6,6 +6,7 @@
 use std::path::Path;
 
 use crate::data::error::DataError;
+use crate::domain::bates::BatesConfig;
 use crate::domain::markup::Markup;
 use crate::domain::report::Report;
 
@@ -46,6 +47,7 @@ pub fn export_page_to_pdf(
     page_index: usize,
     output_path: &Path,
     markups: &[Markup],
+    bates: &BatesConfig,
 ) -> Result<(), DataError> {
     let mut doc = lopdf::Document::load(source_pdf)
         .map_err(|e| DataError::Pdf(format!("could not open PDF {}: {e}", source_pdf.display())))?;
@@ -73,9 +75,16 @@ pub fn export_page_to_pdf(
     // deletion step below renumbers objects, which would stale any id held
     // across it.
     let page_markups: Vec<&Markup> = markups.iter().filter(|m| m.page == page_index).collect();
-    if !page_markups.is_empty() {
+    if !page_markups.is_empty() || bates.enabled {
         let font_id = super::pdf::add_base_font_object(&mut doc);
-        super::pdf::overlay_page_with_markups(&mut doc, page_id, font_id, page_num, &page_markups)?;
+        super::pdf::overlay_page_with_markups(
+            &mut doc,
+            page_id,
+            font_id,
+            page_num,
+            &page_markups,
+            Some(bates),
+        )?;
     }
 
     // Reduce the loaded document to the requested page: `delete_pages`
@@ -113,8 +122,9 @@ pub fn export_all_pages_to_pdf(
     source_pdf: &Path,
     output_path: &Path,
     markups: &[Markup],
+    bates: &BatesConfig,
 ) -> Result<(), DataError> {
-    crate::data::pdf::export_pdf_to(source_pdf, output_path, markups)
+    crate::data::pdf::export_pdf_to(source_pdf, output_path, markups, bates)
 }
 
 #[cfg(test)]
@@ -124,6 +134,7 @@ mod tests {
 
     use super::*;
     use crate::data::pdf::page_dimensions;
+    use crate::domain::bates::{BatesConfig, BatesCorner};
     use crate::domain::geom::{Pt, Rect};
     use crate::domain::markup::{MarkupGeometry, MarkupKind};
     use crate::domain::project::Project;
@@ -274,7 +285,8 @@ mod tests {
             text_markup(1, "PAGE-ONE-MARKER"),
         ];
 
-        export_page_to_pdf(&source, 0, &output, &markups).expect("export page 0");
+        export_page_to_pdf(&source, 0, &output, &markups, &BatesConfig::default())
+            .expect("export page 0");
 
         // The output re-loads as a valid PDF with exactly one page, and that
         // page is the requested one (the second page's size would be a mixup).
@@ -317,7 +329,8 @@ mod tests {
             text_markup(1, "PAGE-ONE-MARKER"),
         ];
 
-        export_page_to_pdf(&source, 1, &output, &markups).expect("export page 1");
+        export_page_to_pdf(&source, 1, &output, &markups, &BatesConfig::default())
+            .expect("export page 1");
 
         let out = lopdf::Document::load(&output).expect("re-load exported PDF");
         let pages = out.get_pages();
@@ -351,7 +364,8 @@ mod tests {
         // the full list also exercises the per-page filter.
         let markups = vec![text_markup(1, "PAGE-ONE-MARKER")];
 
-        export_page_to_pdf(&source, 0, &output, &markups).expect("export unmarked page 0");
+        export_page_to_pdf(&source, 0, &output, &markups, &BatesConfig::default())
+            .expect("export unmarked page 0");
 
         let out = lopdf::Document::load(&output).expect("re-load exported PDF");
         let pages = out.get_pages();
@@ -380,8 +394,14 @@ mod tests {
         let output = temp_pdf_path("single_out");
         let _ = fs::remove_file(&output);
 
-        export_page_to_pdf(&source, 0, &output, &[text_markup(0, "ONLY-MARKER")])
-            .expect("export the only page");
+        export_page_to_pdf(
+            &source,
+            0,
+            &output,
+            &[text_markup(0, "ONLY-MARKER")],
+            &BatesConfig::default(),
+        )
+        .expect("export the only page");
 
         let out = lopdf::Document::load(&output).expect("re-load exported PDF");
         let pages = out.get_pages();
@@ -412,7 +432,8 @@ mod tests {
             text_markup(1, "PAGE-ONE-MARKER"),
         ];
 
-        export_all_pages_to_pdf(&source, &output, &markups).expect("export all pages");
+        export_all_pages_to_pdf(&source, &output, &markups, &BatesConfig::default())
+            .expect("export all pages");
 
         let out = lopdf::Document::load(&output).expect("re-load exported PDF");
         let pages = out.get_pages();
@@ -436,13 +457,58 @@ mod tests {
     }
 
     #[test]
+    fn export_all_pages_to_pdf_stamps_bates_on_every_in_range_page() {
+        let source = write_test_pdf("bates", &[(612.0, 792.0), (400.0, 300.0)]);
+        let output = temp_pdf_path("bates_out");
+        let _ = fs::remove_file(&output);
+
+        // No markups at all: the only overlay on each page is the Bates stamp.
+        let bates = BatesConfig {
+            enabled: true,
+            prefix: "RUB".to_string(),
+            start: 1,
+            digits: 3,
+            corner: BatesCorner::BottomRight,
+            ..BatesConfig::default()
+        };
+
+        export_all_pages_to_pdf(&source, &output, &[], &bates).expect("export all pages");
+
+        let out = lopdf::Document::load(&output).expect("re-load exported PDF");
+        let pages = out.get_pages();
+        assert_eq!(pages.len(), 2, "all pages must be kept");
+        for (page_num, page_id) in &pages {
+            let expected = format!("RUB{:03}", page_num);
+            let content_bytes = out.get_page_content(*page_id).expect("content");
+            let content = String::from_utf8_lossy(&content_bytes);
+            assert!(
+                content.contains(expected.as_str()),
+                "page {page_num} missing Bates stamp {expected}: {content}"
+            );
+            // A stamp needs the shared font resource on the page.
+            assert!(
+                content.contains("/F1"),
+                "page {page_num} missing font resource: {content}"
+            );
+        }
+
+        let _ = fs::remove_file(&source);
+        let _ = fs::remove_file(&output);
+    }
+
+    #[test]
     fn export_all_pages_to_pdf_skips_pages_without_markups() {
         let source = write_test_pdf("all_partial", &[(612.0, 792.0), (400.0, 300.0)]);
         let output = temp_pdf_path("all_partial_out");
         let _ = fs::remove_file(&output);
 
-        export_all_pages_to_pdf(&source, &output, &[text_markup(0, "PAGE-ZERO-MARKER")])
-            .expect("export all pages");
+        export_all_pages_to_pdf(
+            &source,
+            &output,
+            &[text_markup(0, "PAGE-ZERO-MARKER")],
+            &BatesConfig::default(),
+        )
+        .expect("export all pages");
 
         let out = lopdf::Document::load(&output).expect("re-load exported PDF");
         let pages = out.get_pages();
@@ -467,7 +533,8 @@ mod tests {
         let _ = fs::remove_file(&output);
 
         let error =
-            export_page_to_pdf(&source, 5, &output, &[]).expect_err("page 5 must not export");
+            export_page_to_pdf(&source, 5, &output, &[], &BatesConfig::default())
+                .expect_err("page 5 must not export");
         match &error {
             DataError::Pdf(message) => {
                 assert!(message.contains("out of range"), "message: {message}");
@@ -487,7 +554,8 @@ mod tests {
         let _ = fs::remove_file(&output);
 
         let error =
-            export_page_to_pdf(&missing, 0, &output, &[]).expect_err("missing source must fail");
+            export_page_to_pdf(&missing, 0, &output, &[], &BatesConfig::default())
+                .expect_err("missing source must fail");
         assert!(matches!(error, DataError::Pdf(_)), "got {error:?}");
         assert!(!output.exists(), "a failed export must write no output");
     }

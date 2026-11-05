@@ -116,7 +116,7 @@ previewed on the canvas; the source PDF is never modified. Research:
 | F-802 | Placement — page corner, margin, and font size for the stamp | later | Done — `BatesCorner` + `anchor_point`; Inspector controls |
 | F-803 | Page range — apply to all pages or an inclusive from/to range | later | Done — `BatesRange` (open-ended `to`); honest "N of M pages" count |
 | F-804 | Canvas overlay preview — render the stamp (ghosted) at its placement so the user sees exactly what will be burned in | later | Done — `draw_bates_overlay` in `ui/canvas.rs`; preview only (no markup) |
-| F-805 | Stamped export/print — bake the sequential IDs into the exported output and the print path, honouring the configured range and padding | later | Partial — exported page image + print include the stamp (via `is_export`); flattened-PDF export still pending |
+| F-805 | Stamped export/print — bake the sequential IDs into the exported output and the print path, honouring the configured range and padding | later | Done — flattened PDF (`overlay_page_with_markups`), exported page image and print all carry the stamp; source PDF untouched |
 
 ## Non-goals
 

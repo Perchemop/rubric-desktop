@@ -1425,6 +1425,7 @@ impl RubricApp {
             self.ui.status = "Export failed: import a PDF before flattening a page".to_string();
             return;
         }
+        let bates = self.history.current().settings.bates.clone();
         let default_name = format!("rubric-page-{}.pdf", page + 1);
         let Some(path) = rfd::FileDialog::new()
             .set_file_name(&default_name)
@@ -1433,8 +1434,13 @@ impl RubricApp {
         else {
             return;
         };
-        match crate::data::export::export_page_to_pdf(Path::new(&source_pdf), page, &path, &markups)
-        {
+        match crate::data::export::export_page_to_pdf(
+            Path::new(&source_pdf),
+            page,
+            &path,
+            &markups,
+            &bates,
+        ) {
             Ok(()) => {
                 self.ui.status = format!("Flattened page {} to PDF: {}", page + 1, path.display());
             }
@@ -1468,10 +1474,12 @@ impl RubricApp {
         else {
             return;
         };
+        let bates = self.history.current().settings.bates.clone();
         match crate::data::export::export_all_pages_to_pdf(
             Path::new(&source_pdf),
             &path,
             &doc.markups,
+            &bates,
         ) {
             Ok(()) => {
                 self.ui.status = format!("Flattened all pages to PDF: {}", path.display());
@@ -1716,10 +1724,12 @@ impl RubricApp {
                     {
                         if !source_pdf.is_empty() {
                             if let Some(doc) = self.active_doc() {
+                                let bates = self.history.current().settings.bates.clone();
                                 match crate::data::pdf::export_pdf_to(
                                     Path::new(&source_pdf),
                                     &path,
                                     &doc.markups,
+                                    &bates,
                                 ) {
                                     Ok(()) => {
                                         self.ui.status =

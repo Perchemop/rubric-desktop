@@ -166,7 +166,7 @@ capability inventory row 32.
 - [x] Placement (corner, margin) and stamp font size
 - [x] Page range (all / from-to) with an honest "N of M pages" count
 - [x] Ghosted canvas overlay preview (follows pan/zoom; shows when enabled)
-- [~] Stamped export + print (page image + print done; flattened-PDF export pending)
+- [x] Stamped export + print (flattened PDF, page image and print all carry the stamp)
 
 ### Community, security and operating hygiene — done 2026-10-24 (guide Part II)
 
