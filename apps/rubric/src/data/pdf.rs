@@ -765,15 +765,22 @@ pub struct TextLine {
 
 /// Extract all text lines from a PDF page.
 ///
-/// Uses PDFium's text extraction API to get per-character bounding boxes,
-/// then groups characters into lines by their baseline (top) coordinate.
+/// Uses pdfium-render's public page-text collection to get per-character
+/// bounding boxes, then groups characters into lines by their top coordinate.
+///
+/// PDF character boxes come back in PDF user space (y-up, origin bottom-left);
+/// they are converted to the domain's page space (y-down, origin top-left)
+/// with the page height, so callers can anchor markups directly.
 ///
 /// Returns `Ok(Vec::new())` if the page has no extractable text.
+///
+/// Rotated pages are a known limitation: character boxes are reported in
+/// un-rotated user space, so anchors on `/Rotate`d pages can be offset.
 pub fn page_text_lines(pdf_path: &Path, page_index: usize) -> Result<Vec<TextLine>, DataError> {
     let pdfium = bind_pdfium()?;
     let document = load_document(&pdfium, pdf_path)?;
     let pages = document.pages();
-    let page_count = pages.len();
+    let page_count = usize::try_from(pages.len()).unwrap_or(0);
     if page_index >= page_count {
         return Err(DataError::Pdf(format!(
             "page index {} is out of range for {} ({} page(s))",
@@ -782,121 +789,98 @@ pub fn page_text_lines(pdf_path: &Path, page_index: usize) -> Result<Vec<TextLin
             page_count
         )));
     }
-    let page = pages
-        .get(page_index as PdfPageIndex)
-        .ok_or_else(|| DataError::Pdf(format!("page index {page_index} is out of range")))?;
+    let page = pages.get(page_index as PdfPageIndex).map_err(|error| {
+        DataError::Pdf(format!("page index {page_index} is out of range: {error}"))
+    })?;
+    let text = page.text().map_err(|error| {
+        DataError::Pdf(format!(
+            "could not extract text from {}: {error}",
+            pdf_path.display()
+        ))
+    })?;
 
-    let text_page = unsafe { pdfium.bindings().FPDFText_LoadPage(page) };
-    if text_page.is_null() {
-        return Ok(Vec::new());
-    }
+    // PDF user space is y-up from the bottom-left; domain page space is y-down
+    // from the top-left. Flip y around the page height.
+    let page_height = page.height().value;
 
-    let char_count = unsafe { pdfium.bindings().FPDFText_CountChars(text_page) };
-    if char_count <= 0 {
-        unsafe {
-            pdfium.bindings().FPDFText_ClosePage(text_page);
+    // Collect character bounding boxes (page space, y-down) and characters.
+    let mut chars: Vec<(f32, f32, f32, f32, char)> = Vec::new();
+    for ch in text.chars() {
+        if let (Some(unicode), Ok(rect)) = (ch.unicode_char(), ch.loose_bounds()) {
+            let (left, right) = (rect.left().value, rect.right().value);
+            let (top, bottom) = (rect.top().value, rect.bottom().value);
+            chars.push((left, right, page_height - top, page_height - bottom, unicode));
         }
-        return Ok(Vec::new());
     }
-
-    // Collect character bounding boxes and glyph codes.
-    let mut chars: Vec<(f64, f64, f64, f64, u32)> = Vec::with_capacity(char_count as usize);
-    for i in 0..char_count {
-        let mut left: f64 = 0.0;
-        let mut right: f64 = 0.0;
-        let mut bottom: f64 = 0.0;
-        let mut top: f64 = 0.0;
-        let ok = unsafe {
-            pdfium.bindings().FPDFText_GetCharBox(
-                text_page,
-                i,
-                &mut left,
-                &mut right,
-                &mut bottom,
-                &mut top,
-            )
-        };
-        if !ok {
-            continue;
-        }
-        let unicode = unsafe { pdfium.bindings().FPDFText_GetUnicode(text_page, i) };
-        if unicode == 0 {
-            continue;
-        }
-        chars.push((left, right, bottom, top, unicode as u32));
-    }
-
-    unsafe { pdfium.bindings().FPDFText_ClosePage(text_page) };
 
     if chars.is_empty() {
         return Ok(Vec::new());
     }
 
-    // Sort by top (y), then by left (x).
+    // Sort by top (y-down), then by left (x).
     chars.sort_by(|a, b| {
-        a.3.partial_cmp(&b.3)
+        a.2.partial_cmp(&b.2)
             .unwrap_or(std::cmp::Ordering::Equal)
             .then(a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
     });
 
     // Group characters into lines by their top coordinate.
     let mut lines: Vec<TextLine> = Vec::new();
-    let mut line_chars: Vec<(f64, u32)> = Vec::new();
-    let mut line_top: f64 = 0.0;
-    let mut line_bottom: f64 = 0.0;
+    let mut line: Option<(Vec<(f32, f32, char)>, f32, f32)> = None; // (chars, top, bottom)
 
-    for (left, right, bottom, top, unicode) in chars {
-        if let Some((ref mut chars_vec, ref mut lt, ref mut lb)) = line_chars.as_mut() {
-            // Check if this character is on the same line (within 4 points).
-            if (top - *lt).abs() < 4.0 {
-                chars_vec.push((left, unicode));
-                if bottom > *lb {
-                    *lb = bottom;
+    for (left, right, top, bottom, unicode) in chars {
+        match line.as_mut() {
+            Some((line_chars, line_top, line_bottom)) => {
+                // Same line when the tops agree (within 4 points).
+                if (top - *line_top).abs() < 4.0 {
+                    line_chars.push((left, right, unicode));
+                    if bottom > *line_bottom {
+                        *line_bottom = bottom;
+                    }
+                } else {
+                    // Flush the current line and start a new one.
+                    let flushed = std::mem::take(line_chars);
+                    lines.push(build_text_line(flushed, *line_top, *line_bottom));
+                    line_chars.push((left, right, unicode));
+                    *line_top = top;
+                    *line_bottom = bottom;
                 }
-            } else {
-                // Flush current line and start a new one.
-                lines.push(build_text_line(chars_vec, *lt, *lb));
-                chars_vec.clear();
-                chars_vec.push((left, unicode));
-                *lt = top;
-                *lb = bottom;
             }
-        } else {
-            line_chars = Some((vec![(left, unicode)], top, bottom));
+            None => line = Some((vec![(left, right, unicode)], top, bottom)),
         }
     }
-    if let Some((chars_vec, top, bottom)) = line_chars {
-        lines.push(build_text_line(chars_vec, top, bottom));
+    if let Some((line_chars, top, bottom)) = line {
+        lines.push(build_text_line(line_chars, top, bottom));
     }
 
     Ok(lines)
 }
 
-/// Build a `TextLine` from collected characters.
-fn build_text_line(chars: Vec<(f64, u32)>, top: f64, bottom: f64) -> TextLine {
+/// Build a [`TextLine`] from collected characters (sorted into reading order).
+///
+/// Characters are `(left, right, char)` triples in page space (y-down).
+fn build_text_line(chars: Vec<(f32, f32, char)>, top: f32, bottom: f32) -> TextLine {
     let mut chars = chars;
     chars.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
-    let text: String = chars
-        .iter()
-        .filter_map(|(_, ch)| char::from_u32(*ch))
-        .collect();
-    let left = chars.first().map(|(l, _)| *l).unwrap_or(0.0);
-    let right = chars.last().map(|(r, _)| *r).unwrap_or(0.0);
+    let text: String = chars.iter().map(|(_, _, ch)| ch).collect();
+    let left = chars.first().map(|(l, _, _)| *l).unwrap_or(0.0);
+    let right = chars.iter().map(|(_, r, _)| *r).fold(f32::NEG_INFINITY, f32::max);
 
     TextLine {
         text,
-        at: Pt::new(left as f32, top as f32),
-        width: (right - left) as f32,
-        line_height: (bottom - top) as f32,
+        at: Pt::new(left, top),
+        width: (right - left).max(0.0),
+        line_height: (bottom - top).max(0.0),
     }
 }
 
 /// Find the text line closest to a given page-space point, for snapping
 /// text-anchored markups during drag creation.
 ///
-/// Returns the text anchor point (baseline start) and the text content,
-/// or `None` if no text is within `tolerance` points of the point.
+/// Returns the text anchor point (top-left of the text line, y-down) and the
+/// text content, or `None` if no text is within `tolerance` points of the
+/// point.
 pub fn find_text_at_point(
     pdf_path: &Path,
     page_index: usize,
@@ -905,23 +889,20 @@ pub fn find_text_at_point(
     tolerance: f32,
 ) -> Option<(Pt, String)> {
     let lines = page_text_lines(pdf_path, page_index).ok()?;
-    let mut best: Option<(f64, Pt, String)> = None;
+    let mut best: Option<(f32, Pt, String)> = None;
 
     for line in &lines {
         // Check if the point is within the text line's bounding box
-        // (with tolerance).
+        // (with tolerance), in page space (y-down).
         let x_min = line.at.x - tolerance;
         let x_max = line.at.x + line.width + tolerance;
         let y_min = line.at.y - tolerance;
         let y_max = line.at.y + line.line_height + tolerance;
 
-        if (x as f64) >= x_min && (x as f64) <= x_max && (y as f64) >= y_min && (y as f64) <= y_max
-        {
-            let distance = ((x as f64 - line.at.x as f64).powi(2)
-                + (y as f64 - line.at.y as f64).powi(2))
-            .sqrt();
-            if best.as_ref().map_or(true, |(d, _, _)| distance < d) {
-                best = Some((distance, Pt::new(line.at.x, line.at.y), line.text.clone()));
+        if x >= x_min && x <= x_max && y >= y_min && y <= y_max {
+            let distance = ((x - line.at.x).powi(2) + (y - line.at.y).powi(2)).sqrt();
+            if best.as_ref().is_none_or(|(d, _, _)| distance < *d) {
+                best = Some((distance, line.at, line.text.clone()));
             }
         }
     }
