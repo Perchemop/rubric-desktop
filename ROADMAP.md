@@ -125,7 +125,7 @@ so they do not move the 52-feature readiness table above.
 
 **Audit backlog P0 — High impact:**
 - [x] Icon font/SVG set for tools, layers, Tool Chest, page nav (original egui-painter vector icons, `ui/icon_button.rs`)
-- [ ] Bundle UI font + tabular monospace for measurement readouts (partial: typography tokens + monospace token done; font assets pending)
+- [x] Bundle UI font + tabular monospace for measurement readouts (adapted: egui-bundled Ubuntu-Light UI face + Hack tabular mono, licence-cleared; bespoke brand typeface optional)
 - [x] Persist workspace layout — panel visibility, zoom, page in prefs (`AppPrefs`, P0-3)
 - [x] Active-tool chip (always visible) (P0-4); keyboard shortcuts dialog shipped (PR #100)
 - [x] Empty states for primary panels (no document, no markups, empty filtered list) (P0-5)
@@ -151,9 +151,9 @@ so they do not move the 52-feature readiness table above.
 
 **Audit follow-ups:**
 - [ ] Automated AccessKit/snapshots for visual evidence (G4 — documented deferral)
-- [ ] Focus ring audit
+- [x] Focus ring audit (see `docs/a11y.md`)
 - [x] High-contrast preference (P2-15)
-- [ ] Text labels when narrow panels use icons only
+- [x] Text labels when narrow panels use icons only (audited; panels keep min widths)
 
 ### v0.6 — Bates numbering (future slice)
 

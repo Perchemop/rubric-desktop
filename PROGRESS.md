@@ -1,5 +1,32 @@
 # PROGRESS.md
 
+## 2026-11-05 — v0.5 audit close-out (A2 focus rings, A4 icon labels, P0-2 fonts)
+**Status**: documentation slice; CI pending.
+
+### Recorded
+- **A2 — focus ring audit** (`docs/a11y.md`): keyboard focus is visible in
+  egui 0.36 (`has_focus()` maps to the `active` widget visuals; labels and
+  hyperlinks draw a 1 px focus underline). A separately styled focus ring is not
+  possible (`focus_stroke` does not exist; `debug.show_focused_widget` is a debug
+  aid) — recorded and re-checked on toolkit upgrades. High-contrast mode
+  strengthens the focused outline.
+- **A4 — icon-only controls**: panels keep minimum widths that preserve labels
+  (Tools 180 / Tool Chest 170 / Inspector 240 / Pages 120 px); the icon-only
+  controls all carry tooltips, and the toolbar pairs icons with text labels.
+- **P0-2 — bundled fonts (adapted)**: egui/eframe already bundle the UI face
+  (Ubuntu-Light, Ubuntu Font Licence) and a tabular monospace (Hack, OFL) via
+  `epaint_default_fonts`, recorded in `ATTRIBUTION.md` and licence-cleared in
+  `deny.toml`; `TEXT_MONOSPACE` routes readouts to it. A bespoke brand typeface
+  stays optional (`assets/branding.md`) and is deliberately not vendored.
+- `docs/guide-compliance.md` II.21 row updated (high-contrast + focus audit).
+
+### v0.5 state after close-out
+All actionable audit items are done. Remaining, all documented deferrals:
+- **P2-12** text-anchored markup completion (needs a PDF text-extraction path).
+- **P1-11 / G4** `egui_kittest` visual evidence (owner-approved deferral).
+- **§12.1** signed releases + in-app checksum-verified auto-update install.
+- **v1.0-0** hands-on macOS/Windows installer verification (needs machines).
+
 ## 2026-11-05 — Bates numbering slice 3: flattened-PDF stamp (F-805 complete)
 **Status**: implemented; CI pending on the slice PR.
 
