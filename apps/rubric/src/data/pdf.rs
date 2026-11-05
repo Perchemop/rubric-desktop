@@ -809,7 +809,13 @@ pub fn page_text_lines(pdf_path: &Path, page_index: usize) -> Result<Vec<TextLin
         if let (Some(unicode), Ok(rect)) = (ch.unicode_char(), ch.loose_bounds()) {
             let (left, right) = (rect.left().value, rect.right().value);
             let (top, bottom) = (rect.top().value, rect.bottom().value);
-            chars.push((left, right, page_height - top, page_height - bottom, unicode));
+            chars.push((
+                left,
+                right,
+                page_height - top,
+                page_height - bottom,
+                unicode,
+            ));
         }
     }
 
@@ -865,7 +871,10 @@ fn build_text_line(chars: Vec<(f32, f32, char)>, top: f32, bottom: f32) -> TextL
 
     let text: String = chars.iter().map(|(_, _, ch)| ch).collect();
     let left = chars.first().map(|(l, _, _)| *l).unwrap_or(0.0);
-    let right = chars.iter().map(|(_, r, _)| *r).fold(f32::NEG_INFINITY, f32::max);
+    let right = chars
+        .iter()
+        .map(|(_, r, _)| *r)
+        .fold(f32::NEG_INFINITY, f32::max);
 
     TextLine {
         text,
