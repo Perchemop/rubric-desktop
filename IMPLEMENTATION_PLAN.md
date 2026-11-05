@@ -234,7 +234,13 @@ Build vertically: domain + tests → minimal UI → drawing + selection → save
 
 P0 — High impact (audit backlog items 1–5):
 - [x] **P0-1**: Icon set for tools, layers, Tool Chest, page nav — original egui-painter vector icons (`ui/icon_button.rs`), no external font/image deps
-- [ ] **P0-2**: Bundle UI font + tabular monospace for measurement readouts (partial: typography tokens + `TEXT_MONOSPACE` done; real font assets pending)
+- [x] **P0-2**: Bundle UI font + tabular monospace for measurement readouts —
+  **adapted**: egui/eframe bundle the UI face (Ubuntu-Light, Ubuntu Font
+  Licence) and a tabular monospace (Hack, OFL) inside `epaint_default_fonts`,
+  already recorded in `ATTRIBUTION.md` and licence-cleared in `deny.toml`
+  (`OFL-1.1`/`Ubuntu-font-1.0`); `TEXT_MONOSPACE` routes numeric readouts to it.
+  A bespoke brand typeface stays optional (see `assets/branding.md`) and is
+  deliberately not vendored here.
 - [x] **P0-3**: Persist workspace layout — panel visibility, zoom, page in `AppPrefs`
 - [x] **P0-4**: Active-tool chip (always visible); keyboard shortcuts dialog shipped (PR #100)
 - [x] **P0-5**: Empty states for primary panels (no document, no markups, empty filtered list)
@@ -261,9 +267,18 @@ Guide §12.1 suite standards (audit approved 2026-11-04):
 
 Audit follow-ups to track separately:
 - [ ] **A1**: Automated AccessKit/snapshots for visual evidence (G4, guide II.27.12) — documented deferral
-- [ ] **A2**: Focus ring audit
+- [x] **A2**: Focus ring audit — keyboard focus is visible (egui maps
+  `has_focus()` to the `active` widget visuals; labels/hyperlinks add a 1 px
+  underline); egui 0.36 exposes no separately styleable focus ring
+  (`focus_stroke` does not exist) and `debug.show_focused_widget` is a debug
+  aid, so the limitation is recorded in `docs/a11y.md` and re-checked on
+  toolkit upgrades. High-contrast mode strengthens the focused outline.
+- [x] **A4**: Text labels when narrow panels use icons only — audited in
+  `docs/a11y.md`: panels carry minimum widths that keep labels visible
+  (Tools 180 / Tool Chest 170 / Inspector 240 / Pages 120 px), and the genuinely
+  icon-only controls (layer eye/padlock, reorder ▲/▼, page arrows) all carry
+  descriptive tooltips; the toolbar pairs every icon with a text label.
 - [x] **A3**: High-contrast preference — implemented as the P2-15 high-contrast mode
-- [ ] **A4**: Text labels when narrow panels use icons only
 
 ---
 
