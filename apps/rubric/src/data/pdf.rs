@@ -22,6 +22,7 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
 use crate::domain::bates::BatesConfig;
+use crate::domain::geom::Pt;
 use crate::domain::markup::{Markup, MarkupGeometry};
 use crate::domain::style::FillMode;
 use directories::ProjectDirs;
@@ -748,6 +749,183 @@ fn array_num(obj: &lopdf::Object) -> Result<f64, DataError> {
     }
 }
 
+/// A line of text on a PDF page, with its bounding box in page space
+/// (y-down from top-left).
+#[derive(Debug, Clone)]
+pub struct TextLine {
+    /// The text content of the line.
+    pub text: String,
+    /// Top-left of the line's bounding box (y-down from the top-left of the
+    /// page) — the anchor point for text-anchored markups.
+    pub at: Pt,
+    /// Width of the text line in page points.
+    pub width: f32,
+    /// Per-line height in page points.
+    pub line_height: f32,
+}
+
+/// Extract all text lines from a PDF page.
+///
+/// Uses pdfium-render's public page-text collection to get per-character
+/// bounding boxes, then groups characters into lines by their top coordinate.
+///
+/// PDF character boxes come back in PDF user space (y-up, origin bottom-left);
+/// they are converted to the domain's page space (y-down, origin top-left)
+/// with the page height, so callers can anchor markups directly.
+///
+/// Returns `Ok(Vec::new())` if the page has no extractable text.
+///
+/// Rotated pages are a known limitation: character boxes are reported in
+/// un-rotated user space, so anchors on `/Rotate`d pages can be offset.
+pub fn page_text_lines(pdf_path: &Path, page_index: usize) -> Result<Vec<TextLine>, DataError> {
+    let pdfium = bind_pdfium()?;
+    let document = load_document(&pdfium, pdf_path)?;
+    let pages = document.pages();
+    let page_count = usize::try_from(pages.len()).unwrap_or(0);
+    if page_index >= page_count {
+        return Err(DataError::Pdf(format!(
+            "page index {} is out of range for {} ({} page(s))",
+            page_index,
+            pdf_path.display(),
+            page_count
+        )));
+    }
+    let page = pages.get(page_index as PdfPageIndex).map_err(|error| {
+        DataError::Pdf(format!("page index {page_index} is out of range: {error}"))
+    })?;
+    let text = page.text().map_err(|error| {
+        DataError::Pdf(format!(
+            "could not extract text from {}: {error}",
+            pdf_path.display()
+        ))
+    })?;
+
+    // PDF user space is y-up from the bottom-left; domain page space is y-down
+    // from the top-left. Flip y around the page height.
+    let page_height = page.height().value;
+
+    // Collect character bounding boxes (page space, y-down) and characters.
+    let mut chars: Vec<(f32, f32, f32, f32, char)> = Vec::new();
+    for ch in text.chars().iter() {
+        if let (Some(unicode), Ok(rect)) = (ch.unicode_char(), ch.loose_bounds()) {
+            let (left, right) = (rect.left().value, rect.right().value);
+            let (top, bottom) = (rect.top().value, rect.bottom().value);
+            chars.push((
+                left,
+                right,
+                page_height - top,
+                page_height - bottom,
+                unicode,
+            ));
+        }
+    }
+
+    if chars.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Sort by top (y-down), then by left (x).
+    chars.sort_by(|a, b| {
+        a.2.partial_cmp(&b.2)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
+    });
+
+    // Group characters into lines by their top coordinate.
+    let mut lines: Vec<TextLine> = Vec::new();
+    let mut line: Option<LineAcc> = None;
+
+    for (left, right, top, bottom, unicode) in chars {
+        match line.as_mut() {
+            Some((line_chars, line_top, line_bottom)) => {
+                // Same line when the tops agree (within 4 points).
+                if (top - *line_top).abs() < 4.0 {
+                    line_chars.push((left, right, unicode));
+                    if bottom > *line_bottom {
+                        *line_bottom = bottom;
+                    }
+                } else {
+                    // Flush the current line and start a new one.
+                    let flushed = std::mem::take(line_chars);
+                    lines.push(build_text_line(flushed, *line_top, *line_bottom));
+                    line_chars.push((left, right, unicode));
+                    *line_top = top;
+                    *line_bottom = bottom;
+                }
+            }
+            None => line = Some((vec![(left, right, unicode)], top, bottom)),
+        }
+    }
+    if let Some((line_chars, top, bottom)) = line {
+        lines.push(build_text_line(line_chars, top, bottom));
+    }
+
+    Ok(lines)
+}
+
+/// Accumulator for one in-progress text line: `(left, right, char)` triples
+/// plus the line's top and bottom edges in page space (y-down).
+type LineAcc = (Vec<(f32, f32, char)>, f32, f32);
+
+/// Build a [`TextLine`] from collected characters (sorted into reading order).
+///
+/// Characters are `(left, right, char)` triples in page space (y-down).
+fn build_text_line(chars: Vec<(f32, f32, char)>, top: f32, bottom: f32) -> TextLine {
+    let mut chars = chars;
+    chars.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    let text: String = chars.iter().map(|(_, _, ch)| ch).collect();
+    let left = chars.first().map(|(l, _, _)| *l).unwrap_or(0.0);
+    let right = chars
+        .iter()
+        .map(|(_, r, _)| *r)
+        .fold(f32::NEG_INFINITY, f32::max);
+
+    TextLine {
+        text,
+        at: Pt::new(left, top),
+        width: (right - left).max(0.0),
+        line_height: (bottom - top).max(0.0),
+    }
+}
+
+/// Find the text line under a given page-space point, for snapping
+/// text-anchored markups during drag creation.
+///
+/// Returns the line whose bounding box (expanded by `tolerance` points)
+/// contains the point, nearest by distance to the line's top-left anchor —
+/// anchor, text, width and line height all come from the real line. `None`
+/// when no line is within tolerance or extraction failed (callers treat that
+/// as "no text here" and fall back to unsnapped placement).
+pub fn find_text_line_at_point(
+    pdf_path: &Path,
+    page_index: usize,
+    x: f32,
+    y: f32,
+    tolerance: f32,
+) -> Option<TextLine> {
+    let lines = page_text_lines(pdf_path, page_index).ok()?;
+    let mut best: Option<(f32, TextLine)> = None;
+
+    for line in lines {
+        // Check if the point is within the text line's bounding box
+        // (with tolerance), in page space (y-down).
+        let x_min = line.at.x - tolerance;
+        let x_max = line.at.x + line.width + tolerance;
+        let y_min = line.at.y - tolerance;
+        let y_max = line.at.y + line.line_height + tolerance;
+
+        if x >= x_min && x <= x_max && y >= y_min && y <= y_max {
+            let distance = ((x - line.at.x).powi(2) + (y - line.at.y).powi(2)).sqrt();
+            if best.as_ref().is_none_or(|(d, _)| distance < *d) {
+                best = Some((distance, line));
+            }
+        }
+    }
+
+    best.map(|(_, line)| line)
+}
+
 /// Check if a markup's geometry intersects the page bounds.
 ///
 /// Page bounds in domain coordinates: x in [0, width], y in [0, height] (y-down from top-left).
@@ -1243,7 +1421,35 @@ mod tests {
                  /Resources << >> >>"
             ),
         ];
+        pdf_from_objects(&objects)
+    }
 
+    /// Assemble a minimal one-page PDF that draws one line of text.
+    ///
+    /// Same hand-rolled xref discipline as [`minimal_pdf`], plus a base-14
+    /// Helvetica font (built into PDFium; no embedded font file needed) and a
+    /// content stream that draws `text` at (72, 700) in PDF user space (y-up)
+    /// at 24 pt.
+    fn text_pdf(page_width: f32, page_height: f32, text: &str) -> Vec<u8> {
+        let content = format!("BT /F1 24 Tf 72 700 Td ({text}) Tj ET");
+        let objects = [
+            "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string(),
+            format!(
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page_width} {page_height}] \
+                 /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
+            ),
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_string(),
+            format!(
+                "<< /Length {} >>\nstream\n{content}\nendstream",
+                content.len()
+            ),
+        ];
+        pdf_from_objects(&objects)
+    }
+
+    /// Serialise numbered objects into a valid PDF byte stream.
+    fn pdf_from_objects(objects: &[String]) -> Vec<u8> {
         let mut bytes = Vec::new();
         // ASCII-only header keeps byte offsets stable when the test decodes the
         // document as text to validate the xref table.
@@ -1755,5 +1961,66 @@ mod tests {
         // Cleanup
         let _ = fs::remove_file(&source_pdf);
         let _ = fs::remove_file(&output_path);
+    }
+
+    #[test]
+    fn page_text_lines_extracts_text_with_page_space_geometry() {
+        // Needs the PDFium runtime (provisioned by CI; skip when absent).
+        if std::env::var_os(PDFIUM_PATH_ENV).is_none() {
+            eprintln!("skipping: {PDFIUM_PATH_ENV} not set");
+            return;
+        }
+
+        let path = temp_pdf_path("text_lines");
+        fs::write(&path, text_pdf(612.0, 792.0, "Hello Rubric")).expect("write test PDF");
+
+        let lines = page_text_lines(&path, 0).expect("extract text lines");
+        assert_eq!(lines.len(), 1, "one drawn text line, got {lines:?}");
+        let line = &lines[0];
+        assert_eq!(line.text, "Hello Rubric");
+        assert!(
+            (line.at.x - 72.0).abs() < 2.0,
+            "anchor x near the 72 pt pen origin, got {}",
+            line.at.x
+        );
+        // The text is drawn at y=700 in PDF user space (y-up) on a 792-point
+        // page, so in page space (y-down) the line's top edge sits a little
+        // below 792-700=92: 92 minus the glyph ascent above the baseline.
+        assert!(
+            line.at.y > 60.0 && line.at.y < 92.0,
+            "anchor y converted to page space, got {}",
+            line.at.y
+        );
+        assert!(
+            line.line_height > 12.0 && line.line_height < 40.0,
+            "line height for 24 pt text, got {}",
+            line.line_height
+        );
+        assert!(
+            line.width > 100.0,
+            "width of 'Hello Rubric' at 24 pt, got {}",
+            line.width
+        );
+
+        // Snapping: a point inside the line box snaps to it; a far point does
+        // not (and no crash on a page index that exists but has no text).
+        let inside = find_text_line_at_point(
+            &path,
+            0,
+            line.at.x + 10.0,
+            line.at.y + line.line_height * 0.5,
+            10.0,
+        );
+        assert!(inside.is_some(), "a point inside the line must snap");
+        assert!(
+            find_text_line_at_point(&path, 0, 600.0, 100.0, 10.0).is_none(),
+            "a point far from the text must not snap"
+        );
+        assert!(
+            page_text_lines(&path, 3).is_err(),
+            "an out-of-range page index is an error"
+        );
+
+        let _ = fs::remove_file(&path);
     }
 }

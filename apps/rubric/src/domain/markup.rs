@@ -275,12 +275,24 @@ impl MarkupGeometry {
             MarkupGeometry::Text { at, wrap, text } => {
                 text_box_rect(*at, *wrap, text, MarkupStyle::default().font_size)
             }
-            MarkupGeometry::TextAnchor { at, .. } => Rect::new(
-                at.x - 1.0,
-                at.y - text_line_height(MarkupStyle::default().font_size) / 2.0,
-                100.0,
-                text_line_height(MarkupStyle::default().font_size),
-            ),
+            MarkupGeometry::TextAnchor {
+                at,
+                line_height,
+                line_count,
+                text_width,
+                ..
+            } => {
+                // The renderer draws from `at` downward for
+                // `line_height * line_count` points and `text_width` to the
+                // right, so the bounding box covers exactly that area (and
+                // hit-testing / page-crop checks agree with what is drawn).
+                Rect::new(
+                    at.x,
+                    at.y,
+                    text_width.max(1.0),
+                    (line_height * (*line_count).max(1) as f32).max(1.0),
+                )
+            }
             MarkupGeometry::Callout { rect, tail, .. } => {
                 rect.union(&Rect::new(tail.x, tail.y, 0.0, 0.0))
             }
@@ -1622,6 +1634,37 @@ mod tests {
             "the tail point hits within tolerance"
         );
         assert!(!callout_m.hit_test(Pt::new(200.0, 200.0), 2.0), "far away");
+    }
+
+    #[test]
+    fn text_anchor_geometry_roundtrip_bounds_and_hit_test() {
+        let anchor_m = Markup::new(
+            0,
+            MarkupKind::Strikeout,
+            MarkupGeometry::TextAnchor {
+                at: Pt::new(20.0, 30.0),
+                text: "Hello Rubric".to_string(),
+                line_height: 14.0,
+                line_count: 1,
+                text_width: 100.0,
+            },
+            "t",
+        );
+        let json = serde_json::to_string(&anchor_m).expect("serialize");
+        let back: Markup = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(anchor_m.geometry, back.geometry);
+
+        // Bounds cover the drawn line area: from `at` rightward by
+        // `text_width` and downward by `line_height * line_count`.
+        let b = anchor_m.geometry.bounds();
+        assert_eq!(b, Rect::new(20.0, 30.0, 100.0, 14.0));
+        assert!(anchor_m.hit_test(Pt::new(70.0, 35.0), 2.0), "on the line");
+        assert!(anchor_m.hit_test(Pt::new(20.0, 30.0), 2.0), "the anchor");
+        assert!(
+            !anchor_m.hit_test(Pt::new(20.0, 28.0), 0.0),
+            "just above the line"
+        );
+        assert!(!anchor_m.hit_test(Pt::new(200.0, 200.0), 2.0), "far away");
     }
 
     #[test]

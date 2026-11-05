@@ -1,10 +1,13 @@
 //! Canvas: page rendering, tool interaction, drafting and selection.
 
+use std::path::Path;
+
 use eframe::egui::{
     self, Align2, Color32, FontId, Painter, Pos2, Sense, Stroke, StrokeKind, Ui, Vec2,
 };
 use uuid::Uuid;
 
+use crate::data::pdf::find_text_line_at_point;
 use crate::domain::markup::{
     count_markers_on_page, count_total_label, next_count_number, text_line_height,
 };
@@ -375,23 +378,23 @@ fn draw_markup(
             text_width,
             ..
         } => {
-            // Text-anchored markup: draw line(s) at text baseline positions,
-            // anchored to text rather than a bounding box.
+            // Text-anchored markup: draw line(s) at text line positions,
+            // anchored to text rather than a bounding box. `at` is the
+            // top-left of the text line in page space (y-down); every value
+            // is scaled into screen space before it reaches the painter.
             let sa = to_screen(*at, pan, zoom, origin);
-            let baseline_y = at.y;
-            let text_width = text_width.max(text.len() as f32 * line_height * 0.6);
-            let _stroke = egui::Stroke::new((style.width * zoom).max(1.0), stroke_c);
+            let w = text_width.max(text.chars().count() as f32 * line_height * 0.6) * zoom;
+            let h = *line_height * zoom;
             match m.kind {
                 MarkupKind::Highlight => {
                     let fill = style.fill;
                     if fill.a > 0 {
                         // Draw fill highlight over text line area
-                        let hl_rect =
-                            egui::Rect::from_min_size(sa, Vec2::new(text_width, *line_height));
+                        let hl_rect = egui::Rect::from_min_size(sa, Vec2::new(w, h));
                         painter.rect_filled(hl_rect, egui::CornerRadius::ZERO, fill_c);
                     }
                     painter.rect_stroke(
-                        egui::Rect::from_min_size(sa, Vec2::new(text_width, *line_height)),
+                        egui::Rect::from_min_size(sa, Vec2::new(w, h)),
                         egui::CornerRadius::ZERO,
                         stroke_eg,
                         egui::StrokeKind::Inside,
@@ -399,34 +402,28 @@ fn draw_markup(
                 }
                 MarkupKind::Strikeout => {
                     // Line through middle of text line
-                    let y = baseline_y + line_height * 0.5;
-                    painter.line_segment(
-                        [Pos2::new(at.x, y), Pos2::new(at.x + text_width, y)],
-                        stroke_eg,
-                    );
+                    let y = sa.y + h * 0.5;
+                    painter.line_segment([Pos2::new(sa.x, y), Pos2::new(sa.x + w, y)], stroke_eg);
                 }
                 MarkupKind::Underline => {
                     // Line at bottom of text line
-                    let y = baseline_y + line_height - stroke_w * 0.5;
-                    painter.line_segment(
-                        [Pos2::new(at.x, y), Pos2::new(at.x + text_width, y)],
-                        stroke_eg,
-                    );
+                    let y = sa.y + h - stroke_w * 0.5;
+                    painter.line_segment([Pos2::new(sa.x, y), Pos2::new(sa.x + w, y)], stroke_eg);
                 }
                 MarkupKind::Squiggly => {
-                    // Zig-zag near text baseline
-                    let y = baseline_y + line_height - stroke_w * 0.5;
-                    let step = (text_width / 16.0).clamp(3.0, 12.0);
+                    // Zig-zag near the bottom of the text line
+                    let y = sa.y + h - stroke_w * 0.5;
+                    let step = (w / 16.0).clamp(3.0, 12.0);
                     let mut pts: Vec<Pos2> = Vec::new();
-                    let mut x = at.x;
+                    let mut x = sa.x;
                     let mut up = true;
-                    while x < at.x + text_width {
+                    while x < sa.x + w {
                         let dy = if up { -step * 0.5 } else { step * 0.5 };
                         pts.push(Pos2::new(x, y + dy));
                         x += step;
                         up = !up;
                     }
-                    pts.push(Pos2::new(at.x + text_width, y));
+                    pts.push(Pos2::new(sa.x + w, y));
                     if pts.len() >= 2 {
                         painter.add(egui::Shape::line(pts, stroke_eg));
                     }
@@ -1666,7 +1663,52 @@ pub(crate) fn draw_canvas(
                         | MarkupKind::Note => {
                             MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv))
                         }
-                        MarkupKind::Highlight => MarkupGeometry::TextAnchor {
+                        MarkupKind::Highlight => {
+                            // Snap to the text line under the click when one is
+                            // close enough: anchor, text and metrics all come
+                            // from the real line so the markup tracks the text.
+                            // Without a source PDF there is nothing to extract.
+                            let line = project.source_pdf.as_deref().and_then(|source| {
+                                find_text_line_at_point(
+                                    Path::new(source),
+                                    page.index,
+                                    pp.x,
+                                    pp.y,
+                                    10.0,
+                                )
+                            });
+                            match line {
+                                Some(line) => MarkupGeometry::TextAnchor {
+                                    at: line.at,
+                                    text: line.text,
+                                    line_height: line.line_height,
+                                    line_count: 1,
+                                    text_width: line.width,
+                                },
+                                None => MarkupGeometry::TextAnchor {
+                                    at: pp,
+                                    text: String::new(),
+                                    line_height: 12.0 * inv,
+                                    line_count: 1,
+                                    text_width: 40.0 * inv,
+                                },
+                            }
+                        }
+                        MarkupKind::Strikeout => MarkupGeometry::TextAnchor {
+                            at: Pt::new(pp.x, pp.y),
+                            text: String::new(),
+                            line_height: 12.0 * inv,
+                            line_count: 1,
+                            text_width: 40.0 * inv,
+                        },
+                        MarkupKind::Underline => MarkupGeometry::TextAnchor {
+                            at: Pt::new(pp.x, pp.y),
+                            text: String::new(),
+                            line_height: 12.0 * inv,
+                            line_count: 1,
+                            text_width: 40.0 * inv,
+                        },
+                        MarkupKind::Squiggly => MarkupGeometry::TextAnchor {
                             at: Pt::new(pp.x, pp.y),
                             text: String::new(),
                             line_height: 12.0 * inv,
@@ -1686,8 +1728,8 @@ pub(crate) fn draw_canvas(
                         MarkupKind::Ink => MarkupGeometry::Ink {
                             strokes: vec![vec![pp]],
                         },
-                        // Remaining kinds (strikeout, underline, squiggly) are
-                        // bounds-like and default to a small rect.
+                        // Every MarkupKind is matched above; this arm stays as
+                        // a safe default for kinds added in the future.
                         _ => MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv)),
                     };
                     let m = finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
