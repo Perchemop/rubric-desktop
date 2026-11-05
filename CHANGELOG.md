@@ -15,6 +15,12 @@ All notable changes to this project will be documented here. Format: semantic-is
   each exported page carries its stamp and the `/F1` font resource. The source
   PDF is never modified.
 
+- **Fixed: PDF overlay font reference.** The overlay's `Tf` operator referenced
+  the font as `Object::Name(b"/F1")`, which lopdf escapes to the name `/F1`
+  while the page resource provides `F1` — so flattened text markups rendered
+  with a viewer fallback font. The leading slash is dropped so lopdf writes
+  `/F1`; exposed by the new Bates export test.
+
 - **Bates numbering — canvas overlay preview + stamped export/print** (spec
   F-804/F-805, v0.6): when Bates is enabled, `draw_bates_overlay` paints the
   stamp at its configured corner — ghosted on the live canvas and solid in the
