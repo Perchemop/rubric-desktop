@@ -532,9 +532,8 @@ mod tests {
         let output = temp_pdf_path("range_out");
         let _ = fs::remove_file(&output);
 
-        let error =
-            export_page_to_pdf(&source, 5, &output, &[], &BatesConfig::default())
-                .expect_err("page 5 must not export");
+        let error = export_page_to_pdf(&source, 5, &output, &[], &BatesConfig::default())
+            .expect_err("page 5 must not export");
         match &error {
             DataError::Pdf(message) => {
                 assert!(message.contains("out of range"), "message: {message}");
@@ -553,9 +552,8 @@ mod tests {
         let output = temp_pdf_path("missing_out");
         let _ = fs::remove_file(&output);
 
-        let error =
-            export_page_to_pdf(&missing, 0, &output, &[], &BatesConfig::default())
-                .expect_err("missing source must fail");
+        let error = export_page_to_pdf(&missing, 0, &output, &[], &BatesConfig::default())
+            .expect_err("missing source must fail");
         assert!(matches!(error, DataError::Pdf(_)), "got {error:?}");
         assert!(!output.exists(), "a failed export must write no output");
     }
