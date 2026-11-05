@@ -1,10 +1,11 @@
 //! Canvas: page rendering, tool interaction, drafting and selection.
 
+use std::path::Path;
+
 use eframe::egui::{
     self, Align2, Color32, FontId, Painter, Pos2, Sense, Stroke, StrokeKind, Ui, Vec2,
 };
 use uuid::Uuid;
-use std::path::Path;
 
 use crate::data::pdf::find_text_at_point;
 use crate::domain::markup::{
@@ -1671,9 +1672,7 @@ pub(crate) fn draw_canvas(
                         MarkupKind::Highlight => {
                             // Snap to text line start point if dragging over text.
                             let anchor = find_text_at_point(
-                                Path::new(
-                                    project.source_pdf.as_deref().unwrap_or(""),
-                                ),
+                                Path::new(project.source_pdf.as_deref().unwrap_or("")),
                                 page.index,
                                 pp.x,
                                 pp.y,
