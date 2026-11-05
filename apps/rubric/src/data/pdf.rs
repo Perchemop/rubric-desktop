@@ -781,9 +781,9 @@ pub fn page_text_lines(pdf_path: &Path, page_index: usize) -> Result<Vec<TextLin
             page_count
         )));
     }
-    let page = pages.get(page_index as PdfPageIndex).ok_or_else(|| {
-        DataError::Pdf(format!("page index {page_index} is out of range"))
-    })?;
+    let page = pages
+        .get(page_index as PdfPageIndex)
+        .ok_or_else(|| DataError::Pdf(format!("page index {page_index} is out of range")))?;
 
     let text_page = unsafe { pdfium.bindings().FPDFText_LoadPage(page) };
     if text_page.is_null() {
@@ -833,7 +833,8 @@ pub fn page_text_lines(pdf_path: &Path, page_index: usize) -> Result<Vec<TextLin
 
     // Sort by top (y), then by left (x).
     chars.sort_by(|a, b| {
-        a.3.partial_cmp(&b.3).unwrap_or(std::cmp::Ordering::Equal)
+        a.3.partial_cmp(&b.3)
+            .unwrap_or(std::cmp::Ordering::Equal)
             .then(a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
     });
 
@@ -875,7 +876,10 @@ fn build_text_line(chars: Vec<(f64, u32)>, top: f64, bottom: f64) -> TextLine {
     let mut chars = chars;
     chars.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
-    let text: String = chars.iter().filter_map(|(_, ch)| char::from_u32(*ch)).collect();
+    let text: String = chars
+        .iter()
+        .filter_map(|(_, ch)| char::from_u32(*ch))
+        .collect();
     let left = chars.first().map(|(l, _)| *l).unwrap_or(0.0);
     let right = chars.last().map(|(r, _)| *r).unwrap_or(0.0);
 
@@ -910,18 +914,13 @@ pub fn find_text_at_point(
         let y_min = line.at.y - tolerance;
         let y_max = line.at.y + line.line_height + tolerance;
 
-        if (x as f64) >= x_min && (x as f64) <= x_max
-            && (y as f64) >= y_min && (y as f64) <= y_max
+        if (x as f64) >= x_min && (x as f64) <= x_max && (y as f64) >= y_min && (y as f64) <= y_max
         {
-            let distance =
-                ((x as f64 - line.at.x as f64).powi(2) + (y as f64 - line.at.y as f64).powi(2))
-                    .sqrt();
+            let distance = ((x as f64 - line.at.x as f64).powi(2)
+                + (y as f64 - line.at.y as f64).powi(2))
+            .sqrt();
             if best.as_ref().map_or(true, |(d, _, _)| distance < d) {
-                best = Some((
-                    distance,
-                    Pt::new(line.at.x, line.at.y),
-                    line.text.clone(),
-                ));
+                best = Some((distance, Pt::new(line.at.x, line.at.y), line.text.clone()));
             }
         }
     }
