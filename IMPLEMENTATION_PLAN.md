@@ -287,10 +287,12 @@ F-8xx. Capability inventory row 32.
   follows pan/zoom and shows only when Bates is enabled; preview only (creates
   no markup, no undo snapshot). `draw_bates_overlay` in `ui/canvas.rs`;
   `BatesConfig::anchor_point` is unit-tested.
-- [~] **F-805 (partial)**: Stamped export + print — the exported **page image**
-  and **print** output include the stamp solid, because both reuse
-  `draw_canvas(is_export = true)`. Remaining: the flattened-**PDF** export path
-  (`data/pdf.rs`, lopdf) does not yet draw Bates; tracked as the next slice.
+- [x] **F-805**: Stamped export + print — the sequence is baked into **all three
+    output paths**: the flattened **PDF** (`overlay_page_with_markups` + a
+    Helvetica width estimate for right-corner alignment), the exported **page
+    image**, and **print** (both reuse `draw_canvas(is_export = true)`). A
+    headless test asserts each exported page carries its stamp and the font
+    resource. The source PDF is never modified.
 
 Ordering: after the remaining v0.5 audit items (notably the **P2-12**
 text-anchored markup completion, which needs a PDF text-extraction path, and

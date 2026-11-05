@@ -21,6 +21,7 @@ use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
+use crate::domain::bates::BatesConfig;
 use crate::domain::markup::{Markup, MarkupGeometry};
 use crate::domain::style::FillMode;
 use directories::ProjectDirs;
@@ -474,6 +475,7 @@ pub fn export_pdf_to(
     source_pdf: &Path,
     output_path: &Path,
     markups: &[Markup],
+    bates: &BatesConfig,
 ) -> Result<(), DataError> {
     let mut doc = lopdf::Document::load(source_pdf)
         .map_err(|e| DataError::Pdf(format!("could not open PDF {}: {e}", source_pdf.display())))?;
@@ -485,7 +487,8 @@ pub fn export_pdf_to(
         markups_by_page.entry(m.page).or_default().push(m);
     }
 
-    // Register a base-14 Helvetica font object once, for text markups.
+    // Register a base-14 Helvetica font object once, for text markups and the
+    // Bates stamps.
     let font_id = add_base_font_object(&mut doc);
 
     for (page_num, page_id) in doc.get_pages() {
@@ -494,7 +497,14 @@ pub fn export_pdf_to(
             .get(&page_index)
             .cloned()
             .unwrap_or_default();
-        overlay_page_with_markups(&mut doc, page_id, font_id, page_num, &page_markups)?;
+        overlay_page_with_markups(
+            &mut doc,
+            page_id,
+            font_id,
+            page_num,
+            &page_markups,
+            Some(bates),
+        )?;
     }
 
     doc.save(output_path).map_err(|e| {
@@ -542,8 +552,16 @@ pub(crate) fn overlay_page_with_markups(
     font_id: lopdf::ObjectId,
     page_number: u32,
     markups: &[&Markup],
+    bates: Option<&BatesConfig>,
 ) -> Result<bool, DataError> {
-    if markups.is_empty() {
+    // The Bates stamp for this page (domain pages are 0-based; the lopdf page
+    // number is 1-based). Computed before the page dimensions so a page that is
+    // stamp-only still gets an overlay.
+    let bates_stamp = bates
+        .filter(|b| b.enabled)
+        .and_then(|b| b.stamp_for_page((page_number as usize).saturating_sub(1)));
+
+    if markups.is_empty() && bates_stamp.is_none() {
         return Ok(false);
     }
 
@@ -555,23 +573,101 @@ pub(crate) fn overlay_page_with_markups(
         .copied()
         .filter(|m| markup_intersects_page(m, width, height))
         .collect();
-    if page_markups.is_empty() {
+    if page_markups.is_empty() && bates_stamp.is_none() {
         return Ok(false);
     }
 
-    // Ensure the page has a Resources dictionary mapping /F1 to the font.
+    // Ensure the page has a Resources dictionary mapping /F1 to the font when
+    // either a text markup or a Bates stamp needs it.
     let has_text = page_markups
         .iter()
         .any(|m| matches!(m.geometry, MarkupGeometry::Text { .. }));
-    if has_text {
+    if has_text || bates_stamp.is_some() {
         add_font_resource_to_page(doc, page_id, font_id)?;
     }
 
-    let content = render_page_overlay(&page_markups, width, height);
+    let mut content = render_page_overlay(&page_markups, width, height);
+    if let (Some(cfg), Some(stamp)) = (bates.filter(|b| b.enabled), bates_stamp.as_deref()) {
+        content
+            .operations
+            .extend(bates_overlay_ops(cfg, stamp, width, height));
+    }
     doc.add_to_page_content(page_id, content)
         .map_err(|e| DataError::Pdf(format!("could not add overlay to page {page_number}: {e}")))?;
 
     Ok(true)
+}
+
+/// Approximate advance width of `text` in base-14 Helvetica at `font_size`, in
+/// PDF points.
+///
+/// The lopdf overlay path has no font-metrics table, so this uses the published
+/// Helvetica AFM widths for the characters a Bates stamp is made of (digits
+/// 0.556 em; uppercase letters 0.278–0.944 em) with a conservative fallback. It
+/// is only used to right-align a stamp against a right-hand margin; the
+/// on-canvas preview uses exact egui metrics.
+fn helvetica_width_estimate(text: &str, font_size: f32) -> f32 {
+    let mut em = 0.0_f32;
+    for ch in text.chars() {
+        em += match ch {
+            '0'..='9' => 0.556,
+            ' ' => 0.278,
+            'I' => 0.278,
+            'J' => 0.500,
+            'L' => 0.556,
+            'M' => 0.833,
+            'W' => 0.944,
+            'T' | 'Z' => 0.611,
+            'C' | 'D' | 'H' | 'N' | 'R' | 'U' => 0.722,
+            'G' | 'O' | 'Q' => 0.778,
+            'A'..='Z' => 0.667,
+            '-' => 0.333,
+            '.' => 0.278,
+            '_' => 0.556,
+            _ => 0.600,
+        };
+    }
+    em * font_size
+}
+
+/// PDF text operations for one Bates stamp at its configured corner and margin.
+fn bates_overlay_ops(
+    bates: &BatesConfig,
+    stamp: &str,
+    width: f32,
+    height: f32,
+) -> Vec<lopdf::content::Operation> {
+    use lopdf::content::Operation;
+
+    let anchor = bates.anchor_point(width, height);
+    let size = bates.font_size.max(4.0);
+    // Right-hand corners: shift left by the estimated text width so the stamp
+    // ends at the margin. Left-hand corners start at the anchor.
+    let x = if bates.corner.is_right() {
+        anchor.x - helvetica_width_estimate(stamp, size)
+    } else {
+        anchor.x
+    };
+    // The domain anchor is the text-box corner; place the baseline just inside
+    // it (PDF y runs up from the bottom).
+    let baseline_y = if bates.corner.is_top() {
+        pdf_y(anchor.y, height) - size * 0.8
+    } else {
+        pdf_y(anchor.y, height)
+    };
+
+    vec![
+        Operation::new("q", vec![]),
+        Operation::new("BT", vec![]),
+        Operation::new(
+            "Tf",
+            vec![Object::Name(b"/F1".to_vec()), Object::Real(size)],
+        ),
+        Operation::new("Td", vec![Object::Real(x), Object::Real(baseline_y)]),
+        Operation::new("Tj", vec![Object::string_literal(stamp)]),
+        Operation::new("ET", vec![]),
+        Operation::new("Q", vec![]),
+    ]
 }
 
 /// Add a /Font resource mapping /F1 to `font_id` on `page_id`.
@@ -1648,7 +1744,8 @@ mod tests {
             ),
         ];
 
-        export_pdf_to(&source_pdf, &output_path, &markups).expect("export should succeed");
+        export_pdf_to(&source_pdf, &output_path, &markups, &BatesConfig::default())
+            .expect("export should succeed");
 
         // Verify output file exists and starts with %PDF-1.4
         assert!(output_path.exists(), "output PDF should exist");

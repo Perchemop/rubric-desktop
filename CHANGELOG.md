@@ -6,6 +6,15 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ### Added
 
+- **Bates numbering — flattened-PDF export stamp** (spec F-805, v0.6): the
+  flattened **PDF** export now bakes the sequential stamps into each page's
+  content stream (`overlay_page_with_markups` + `bates_overlay_ops`), alongside
+  the already-covered exported page image and print. Right-corner alignment
+  uses a published Helvetica AFM width estimate (the lopdf path has no metrics
+  table); the on-canvas preview uses exact egui metrics. A headless test asserts
+  each exported page carries its stamp and the `/F1` font resource. The source
+  PDF is never modified.
+
 - **Bates numbering — canvas overlay preview + stamped export/print** (spec
   F-804/F-805, v0.6): when Bates is enabled, `draw_bates_overlay` paints the
   stamp at its configured corner — ghosted on the live canvas and solid in the
