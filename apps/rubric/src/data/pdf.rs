@@ -805,7 +805,7 @@ pub fn page_text_lines(pdf_path: &Path, page_index: usize) -> Result<Vec<TextLin
 
     // Collect character bounding boxes (page space, y-down) and characters.
     let mut chars: Vec<(f32, f32, f32, f32, char)> = Vec::new();
-    for ch in text.chars() {
+    for ch in text.chars().iter() {
         if let (Some(unicode), Ok(rect)) = (ch.unicode_char(), ch.loose_bounds()) {
             let (left, right) = (rect.left().value, rect.right().value);
             let (top, bottom) = (rect.top().value, rect.bottom().value);
