@@ -755,7 +755,8 @@ fn array_num(obj: &lopdf::Object) -> Result<f64, DataError> {
 pub struct TextLine {
     /// The text content of the line.
     pub text: String,
-    /// Baseline start point (top-left of text line, y-down from top-left of page).
+    /// Top-left of the line's bounding box (y-down from the top-left of the
+    /// page) — the anchor point for text-anchored markups.
     pub at: Pt,
     /// Width of the text line in page points.
     pub width: f32,
@@ -888,23 +889,25 @@ fn build_text_line(chars: Vec<(f32, f32, char)>, top: f32, bottom: f32) -> TextL
     }
 }
 
-/// Find the text line closest to a given page-space point, for snapping
+/// Find the text line under a given page-space point, for snapping
 /// text-anchored markups during drag creation.
 ///
-/// Returns the text anchor point (top-left of the text line, y-down) and the
-/// text content, or `None` if no text is within `tolerance` points of the
-/// point.
-pub fn find_text_at_point(
+/// Returns the line whose bounding box (expanded by `tolerance` points)
+/// contains the point, nearest by distance to the line's top-left anchor —
+/// anchor, text, width and line height all come from the real line. `None`
+/// when no line is within tolerance or extraction failed (callers treat that
+/// as "no text here" and fall back to unsnapped placement).
+pub fn find_text_line_at_point(
     pdf_path: &Path,
     page_index: usize,
     x: f32,
     y: f32,
     tolerance: f32,
-) -> Option<(Pt, String)> {
+) -> Option<TextLine> {
     let lines = page_text_lines(pdf_path, page_index).ok()?;
-    let mut best: Option<(f32, Pt, String)> = None;
+    let mut best: Option<(f32, TextLine)> = None;
 
-    for line in &lines {
+    for line in lines {
         // Check if the point is within the text line's bounding box
         // (with tolerance), in page space (y-down).
         let x_min = line.at.x - tolerance;
@@ -914,13 +917,13 @@ pub fn find_text_at_point(
 
         if x >= x_min && x <= x_max && y >= y_min && y <= y_max {
             let distance = ((x - line.at.x).powi(2) + (y - line.at.y).powi(2)).sqrt();
-            if best.as_ref().is_none_or(|(d, _, _)| distance < *d) {
-                best = Some((distance, line.at, line.text.clone()));
+            if best.as_ref().is_none_or(|(d, _)| distance < *d) {
+                best = Some((distance, line));
             }
         }
     }
 
-    best.map(|(_, at, text)| (at, text))
+    best.map(|(_, line)| line)
 }
 
 /// Check if a markup's geometry intersects the page bounds.
@@ -1418,7 +1421,35 @@ mod tests {
                  /Resources << >> >>"
             ),
         ];
+        pdf_from_objects(&objects)
+    }
 
+    /// Assemble a minimal one-page PDF that draws one line of text.
+    ///
+    /// Same hand-rolled xref discipline as [`minimal_pdf`], plus a base-14
+    /// Helvetica font (built into PDFium; no embedded font file needed) and a
+    /// content stream that draws `text` at (72, 700) in PDF user space (y-up)
+    /// at 24 pt.
+    fn text_pdf(page_width: f32, page_height: f32, text: &str) -> Vec<u8> {
+        let content = format!("BT /F1 24 Tf 72 700 Td ({text}) Tj ET");
+        let objects = [
+            "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string(),
+            format!(
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page_width} {page_height}] \
+                 /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
+            ),
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_string(),
+            format!(
+                "<< /Length {} >>\nstream\n{content}\nendstream",
+                content.len()
+            ),
+        ];
+        pdf_from_objects(&objects)
+    }
+
+    /// Serialise numbered objects into a valid PDF byte stream.
+    fn pdf_from_objects(objects: &[String]) -> Vec<u8> {
         let mut bytes = Vec::new();
         // ASCII-only header keeps byte offsets stable when the test decodes the
         // document as text to validate the xref table.
@@ -1930,5 +1961,66 @@ mod tests {
         // Cleanup
         let _ = fs::remove_file(&source_pdf);
         let _ = fs::remove_file(&output_path);
+    }
+
+    #[test]
+    fn page_text_lines_extracts_text_with_page_space_geometry() {
+        // Needs the PDFium runtime (provisioned by CI; skip when absent).
+        if std::env::var_os(PDFIUM_PATH_ENV).is_none() {
+            eprintln!("skipping: {PDFIUM_PATH_ENV} not set");
+            return;
+        }
+
+        let path = temp_pdf_path("text_lines");
+        fs::write(&path, text_pdf(612.0, 792.0, "Hello Rubric")).expect("write test PDF");
+
+        let lines = page_text_lines(&path, 0).expect("extract text lines");
+        assert_eq!(lines.len(), 1, "one drawn text line, got {lines:?}");
+        let line = &lines[0];
+        assert_eq!(line.text, "Hello Rubric");
+        assert!(
+            (line.at.x - 72.0).abs() < 2.0,
+            "anchor x near the 72 pt pen origin, got {}",
+            line.at.x
+        );
+        // The text is drawn at y=700 in PDF user space (y-up) on a 792-point
+        // page, so in page space (y-down) the line's top edge sits a little
+        // below 792-700=92: 92 minus the glyph ascent above the baseline.
+        assert!(
+            line.at.y > 60.0 && line.at.y < 92.0,
+            "anchor y converted to page space, got {}",
+            line.at.y
+        );
+        assert!(
+            line.line_height > 12.0 && line.line_height < 40.0,
+            "line height for 24 pt text, got {}",
+            line.line_height
+        );
+        assert!(
+            line.width > 100.0,
+            "width of 'Hello Rubric' at 24 pt, got {}",
+            line.width
+        );
+
+        // Snapping: a point inside the line box snaps to it; a far point does
+        // not (and no crash on a page index that exists but has no text).
+        let inside = find_text_line_at_point(
+            &path,
+            0,
+            line.at.x + 10.0,
+            line.at.y + line.line_height * 0.5,
+            10.0,
+        );
+        assert!(inside.is_some(), "a point inside the line must snap");
+        assert!(
+            find_text_line_at_point(&path, 0, 600.0, 100.0, 10.0).is_none(),
+            "a point far from the text must not snap"
+        );
+        assert!(
+            page_text_lines(&path, 3).is_err(),
+            "an out-of-range page index is an error"
+        );
+
+        let _ = fs::remove_file(&path);
     }
 }
