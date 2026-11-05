@@ -776,7 +776,8 @@ pub fn page_text_lines(pdf_path: &Path, page_index: usize) -> Result<Vec<TextLin
     let page_count = pages.len();
     if page_index >= page_count {
         return Err(DataError::Pdf(format!(
-            "page index {page_index} is out of range for {} ({page_count} page(s))",
+            "page index {} is out of range for {} ({} page(s))",
+            page_index,
             pdf_path.display(),
             page_count
         )));
