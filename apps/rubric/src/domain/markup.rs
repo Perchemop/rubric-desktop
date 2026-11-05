@@ -290,7 +290,7 @@ impl MarkupGeometry {
                     at.x,
                     at.y,
                     text_width.max(1.0),
-                    (line_height * line_count.max(1) as f32).max(1.0),
+                    (line_height * (*line_count).max(1) as f32).max(1.0),
                 )
             }
             MarkupGeometry::Callout { rect, tail, .. } => {
