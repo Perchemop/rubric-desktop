@@ -659,10 +659,7 @@ fn bates_overlay_ops(
     vec![
         Operation::new("q", vec![]),
         Operation::new("BT", vec![]),
-        Operation::new(
-            "Tf",
-            vec![Object::Name(b"F1".to_vec()), Object::Real(size)],
-        ),
+        Operation::new("Tf", vec![Object::Name(b"F1".to_vec()), Object::Real(size)]),
         Operation::new("Td", vec![Object::Real(x), Object::Real(baseline_y)]),
         Operation::new("Tj", vec![Object::string_literal(stamp)]),
         Operation::new("ET", vec![]),
