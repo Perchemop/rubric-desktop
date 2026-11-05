@@ -801,7 +801,7 @@ pub fn page_text_lines(pdf_path: &Path, page_index: usize) -> Result<Vec<TextLin
 
     // Collect character bounding boxes and glyph codes.
     let mut chars: Vec<(f64, f64, f64, f64, u32)> = Vec::with_capacity(char_count as usize);
-    for i in 0..count {
+    for i in 0..char_count {
         let mut left: f64 = 0.0;
         let mut right: f64 = 0.0;
         let mut bottom: f64 = 0.0;
