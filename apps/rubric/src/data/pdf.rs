@@ -22,6 +22,7 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
 use crate::domain::bates::BatesConfig;
+use crate::domain::geom::Pt;
 use crate::domain::markup::{Markup, MarkupGeometry};
 use crate::domain::style::FillMode;
 use directories::ProjectDirs;
@@ -746,6 +747,186 @@ fn array_num(obj: &lopdf::Object) -> Result<f64, DataError> {
         lopdf::Object::Real(f) => Ok(*f as f64),
         _ => Err(DataError::Pdf("MediaBox element is not a number".into())),
     }
+}
+
+/// A line of text on a PDF page, with its bounding box in page space
+/// (y-down from top-left).
+#[derive(Debug, Clone)]
+pub struct TextLine {
+    /// The text content of the line.
+    pub text: String,
+    /// Baseline start point (top-left of text line, y-down from top-left of page).
+    pub at: Pt,
+    /// Width of the text line in page points.
+    pub width: f32,
+    /// Per-line height in page points.
+    pub line_height: f32,
+}
+
+/// Extract all text lines from a PDF page.
+///
+/// Uses PDFium's text extraction API to get per-character bounding boxes,
+/// then groups characters into lines by their baseline (top) coordinate.
+///
+/// Returns `Ok(Vec::new())` if the page has no extractable text.
+pub fn page_text_lines(pdf_path: &Path, page_index: usize) -> Result<Vec<TextLine>, DataError> {
+    let pdfium = bind_pdfium()?;
+    let document = load_document(&pdfium, pdf_path)?;
+    let pages = document.pages();
+    let page_count = pages.len();
+    if page_index >= page_count {
+        return Err(DataError::Pdf(format!(
+            "page index {page_index} is out of range for {} ({page_count} page(s))",
+            pdf_path.display(),
+            page_count
+        )));
+    }
+    let page = pages.get(page_index as PdfPageIndex).ok_or_else(|| {
+        DataError::Pdf(format!("page index {page_index} is out of range"))
+    })?;
+
+    let text_page = unsafe { pdfium.bindings().FPDFText_LoadPage(page) };
+    if text_page.is_null() {
+        return Ok(Vec::new());
+    }
+
+    let char_count = unsafe { pdfium.bindings().FPDFText_CountChars(text_page) };
+    if char_count <= 0 {
+        unsafe {
+            pdfium.bindings().FPDFText_ClosePage(text_page);
+        }
+        return Ok(Vec::new());
+    }
+
+    // Collect character bounding boxes and glyph codes.
+    let mut chars: Vec<(f64, f64, f64, f64, u32)> = Vec::with_capacity(char_count as usize);
+    for i in 0..count {
+        let mut left: f64 = 0.0;
+        let mut right: f64 = 0.0;
+        let mut bottom: f64 = 0.0;
+        let mut top: f64 = 0.0;
+        let ok = unsafe {
+            pdfium.bindings().FPDFText_GetCharBox(
+                text_page,
+                i,
+                &mut left,
+                &mut right,
+                &mut bottom,
+                &mut top,
+            )
+        };
+        if !ok {
+            continue;
+        }
+        let unicode = unsafe { pdfium.bindings().FPDFText_GetUnicode(text_page, i) };
+        if unicode == 0 {
+            continue;
+        }
+        chars.push((left, right, bottom, top, unicode as u32));
+    }
+
+    unsafe { pdfium.bindings().FPDFText_ClosePage(text_page) };
+
+    if chars.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Sort by top (y), then by left (x).
+    chars.sort_by(|a, b| {
+        a.3.partial_cmp(&b.3).unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
+    });
+
+    // Group characters into lines by their top coordinate.
+    let mut lines: Vec<TextLine> = Vec::new();
+    let mut line_chars: Vec<(f64, u32)> = Vec::new();
+    let mut line_top: f64 = 0.0;
+    let mut line_bottom: f64 = 0.0;
+
+    for (left, right, bottom, top, unicode) in chars {
+        if let Some((ref mut chars_vec, ref mut lt, ref mut lb)) = line_chars.as_mut() {
+            // Check if this character is on the same line (within 4 points).
+            if (top - *lt).abs() < 4.0 {
+                chars_vec.push((left, unicode));
+                if bottom > *lb {
+                    *lb = bottom;
+                }
+            } else {
+                // Flush current line and start a new one.
+                lines.push(build_text_line(chars_vec, *lt, *lb));
+                chars_vec.clear();
+                chars_vec.push((left, unicode));
+                *lt = top;
+                *lb = bottom;
+            }
+        } else {
+            line_chars = Some((vec![(left, unicode)], top, bottom));
+        }
+    }
+    if let Some((chars_vec, top, bottom)) = line_chars {
+        lines.push(build_text_line(chars_vec, top, bottom));
+    }
+
+    Ok(lines)
+}
+
+/// Build a `TextLine` from collected characters.
+fn build_text_line(chars: Vec<(f64, u32)>, top: f64, bottom: f64) -> TextLine {
+    let mut chars = chars;
+    chars.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    let text: String = chars.iter().filter_map(|(_, ch)| char::from_u32(*ch)).collect();
+    let left = chars.first().map(|(l, _)| *l).unwrap_or(0.0);
+    let right = chars.last().map(|(r, _)| *r).unwrap_or(0.0);
+
+    TextLine {
+        text,
+        at: Pt::new(left as f32, top as f32),
+        width: (right - left) as f32,
+        line_height: (bottom - top) as f32,
+    }
+}
+
+/// Find the text line closest to a given page-space point, for snapping
+/// text-anchored markups during drag creation.
+///
+/// Returns the text anchor point (baseline start) and the text content,
+/// or `None` if no text is within `tolerance` points of the point.
+pub fn find_text_at_point(
+    pdf_path: &Path,
+    page_index: usize,
+    x: f32,
+    y: f32,
+    tolerance: f32,
+) -> Option<(Pt, String)> {
+    let lines = page_text_lines(pdf_path, page_index).ok()?;
+    let mut best: Option<(f64, Pt, String)> = None;
+
+    for line in &lines {
+        // Check if the point is within the text line's bounding box
+        // (with tolerance).
+        let x_min = line.at.x - tolerance;
+        let x_max = line.at.x + line.width + tolerance;
+        let y_min = line.at.y - tolerance;
+        let y_max = line.at.y + line.line_height + tolerance;
+
+        if (x as f64) >= x_min && (x as f64) <= x_max
+            && (y as f64) >= y_min && (y as f64) <= y_max
+        {
+            let distance =
+                ((x as f64 - line.at.x as f64).powi(2) + (y as f64 - line.at.y as f64).powi(2))
+                    .sqrt();
+            if best.as_ref().map_or(true, |(d, _, _)| distance < d) {
+                best = Some((
+                    distance,
+                    Pt::new(line.at.x, line.at.y),
+                    line.text.clone(),
+                ));
+            }
+        }
+    }
+
+    best.map(|(_, at, text)| (at, text))
 }
 
 /// Check if a markup's geometry intersects the page bounds.

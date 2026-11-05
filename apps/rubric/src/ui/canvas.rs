@@ -4,7 +4,9 @@ use eframe::egui::{
     self, Align2, Color32, FontId, Painter, Pos2, Sense, Stroke, StrokeKind, Ui, Vec2,
 };
 use uuid::Uuid;
+use std::path::Path;
 
+use crate::data::pdf::find_text_at_point;
 use crate::domain::markup::{
     count_markers_on_page, count_total_label, next_count_number, text_line_height,
 };
@@ -1666,13 +1668,23 @@ pub(crate) fn draw_canvas(
                         | MarkupKind::Note => {
                             MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv))
                         }
-                        MarkupKind::Highlight => MarkupGeometry::TextAnchor {
-                            at: Pt::new(pp.x, pp.y),
-                            text: String::new(),
-                            line_height: 12.0 * inv,
-                            line_count: 1,
-                            text_width: 40.0 * inv,
-                        },
+                        MarkupKind::Highlight => {
+                            // Snap to text line start point if dragging over text.
+                            let anchor = find_text_at_point(
+                                project.source_pdf.as_deref().unwrap_or(Path::new("")),
+                                page.index,
+                                pp.x,
+                                pp.y,
+                                10.0,
+                            );
+                            MarkupGeometry::TextAnchor {
+                                at: Pt::new(pp.x, pp.y),
+                                text: anchor.map(|(_, t)| t).unwrap_or_default(),
+                                line_height: 12.0 * inv,
+                                line_count: 1,
+                                text_width: 40.0 * inv,
+                            }
+                        }
                         MarkupKind::Strikeout => MarkupGeometry::TextAnchor {
                             at: Pt::new(pp.x, pp.y),
                             text: String::new(),
