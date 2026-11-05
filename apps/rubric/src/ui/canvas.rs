@@ -1673,6 +1673,27 @@ pub(crate) fn draw_canvas(
                             line_count: 1,
                             text_width: 40.0 * inv,
                         },
+                        MarkupKind::Strikeout => MarkupGeometry::TextAnchor {
+                            at: Pt::new(pp.x, pp.y),
+                            text: String::new(),
+                            line_height: 12.0 * inv,
+                            line_count: 1,
+                            text_width: 40.0 * inv,
+                        },
+                        MarkupKind::Underline => MarkupGeometry::TextAnchor {
+                            at: Pt::new(pp.x, pp.y),
+                            text: String::new(),
+                            line_height: 12.0 * inv,
+                            line_count: 1,
+                            text_width: 40.0 * inv,
+                        },
+                        MarkupKind::Squiggly => MarkupGeometry::TextAnchor {
+                            at: Pt::new(pp.x, pp.y),
+                            text: String::new(),
+                            line_height: 12.0 * inv,
+                            line_count: 1,
+                            text_width: 40.0 * inv,
+                        },
                         MarkupKind::MeasureCount => {
                             // Number each new marker after the highest already
                             // on this page, so the running count never repeats
