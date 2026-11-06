@@ -2989,9 +2989,11 @@ mod kittest_tests {
         harness.run_steps(2);
 
         // Toolbar buttons are queryable by their visible text labels through
-        // the AccessKit tree.
-        let _select = harness.get_by_label("Select");
+        // the AccessKit tree. ("Select" is intentionally not queried: at
+        // startup the active-tool chip also reads "Select", so that label
+        // legitimately matches two nodes.)
         let _highlight = harness.get_by_label("Highlight");
+        let _rectangle = harness.get_by_label("Rectangle");
         let _length = harness.get_by_label("Length");
     }
 
