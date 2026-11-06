@@ -4,6 +4,8 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-06
+
 ### Added
 
 - **Text-anchored markup completion** (design-audit proposal P2-12, PRs #130/#131,

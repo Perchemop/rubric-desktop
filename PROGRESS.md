@@ -1,5 +1,24 @@
 # PROGRESS.md
 
+## 2026-11-06 — v0.3.0 release prep (owner-approved) and §2.5 re-run
+**Status**: release prep merged to main; tag `v0.3.0` next; release workflow pending.
+
+### Completed
+- **Owner decision**: cut **v0.3.0** so the installed copy (and GitHub
+  Releases) match current `main` — flattened-PDF export, hayro engine work,
+  Bates numbering (F-801–F-805), text-anchored markup (P2-12), high-contrast
+  mode, design-audit polish, and the G4 evidence infrastructure.
+- **CHANGELOG**: `## [Unreleased]` rolled into **`## [0.3.0] - 2026-11-06`**;
+  a fresh empty `[Unreleased]` left on top. `scripts/release-notes.py` picks
+  the exact `[0.3.0]` section for the release body.
+- **Versions**: apps/rubric, crash-report and update-check all already at
+  `0.3.0` (bumped in the v0.3-01 wave); `Cargo.lock` matches.
+- **§2.5 exhaustive legal checklist re-run at release time**: all rows stand as
+  recorded in the 2026-11-06 run (PR #133) — the tree changed only by docs
+  slices and this release prep since; the Secret scan and Personal data scan
+  required checks are green on every PR including this one. To be re-run at
+  the next release.
+
 ## 2026-11-06 — G4-2b: snapshot PNG evidence for the shell (PR #138) — G4 closed
 **Status**: merged to main; CI green including the new required `snapshot` job.
 
