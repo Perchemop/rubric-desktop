@@ -3013,4 +3013,19 @@ mod kittest_tests {
             "clicking the Highlight tool button must activate the tool"
         );
     }
+
+    #[test]
+    fn shell_empty_state_snapshot_matches_baseline() {
+        // Rendered visual evidence (guide II.27.12, G4-2b): the real empty
+        // shell — menu bar, toolbar, inspector empty state, status bar — is
+        // rasterised with kittest's wgpu renderer (it prefers CPU/software
+        // adapters, so no GPU is needed in CI) and compared against the
+        // committed baseline. Re-baseline with `UPDATE_SNAPSHOTS=1` in CI and
+        // commit the new PNG (see PROGRESS.md G4-2b).
+        let ctx = egui::Context::default();
+        let mut app = RubricApp::new_headless(&ctx, None);
+        let mut harness = shell_harness(&mut app);
+        harness.run_steps(2);
+        harness.snapshot("shell_empty_state");
+    }
 }
