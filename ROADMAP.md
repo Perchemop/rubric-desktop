@@ -139,7 +139,8 @@ so they do not move the 52-feature readiness table above.
 - [x] Virtualised Markups List (egui `ScrollArea` viewport culling; async thumbnails pending)
 - [x] Single tool metadata source drives all UIs (`ToolMeta`/`TOOL_METADATA`, P1-9)
 - [x] Persist Tool Chest library in prefs (P1-10)
-- [ ] Host/Ui seam + egui_kittest visual/a11y evidence G4 (guide II.27.12) — documented deferral
+- [ ] Host/Ui seam + egui_kittest visual/a11y evidence G4 (guide II.27.12) —
+      **seam shipped (G4-1, PR #134)**; kittest snapshot harness (G4-2) next
 
 **Audit backlog P2 — Later:**
 - [x] Text-anchored highlight/strikeout (part 1 foundation: `MarkupGeometry::TextAnchor`; part 2: PDF text extraction via pdfium-render's public page-text API, snapped Highlight creation and text-anchored strikeout/underline/squiggly rendering — PR #131 merged; rotated-page anchors a documented limitation)
