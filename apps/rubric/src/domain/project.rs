@@ -1364,11 +1364,7 @@ mod tests {
         // (b) For every tool, Tool::label() equals the TOOL_METADATA entry's label.
         for tool in Tool::ALL {
             let meta = tool_meta(tool).expect("metadata for tool");
-            assert_eq!(
-                tool.label(),
-                meta.label,
-                "label mismatch for {tool:?}"
-            );
+            assert_eq!(tool.label(), meta.label, "label mismatch for {tool:?}");
         }
     }
 
