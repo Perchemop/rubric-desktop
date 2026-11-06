@@ -251,7 +251,11 @@ P1 — Quality (audit backlog items 6–11):
 - [x] **P1-8**: Virtualised Markups List (egui `ScrollArea` viewport culling; async thumbnails pending)
 - [x] **P1-9**: Single tool metadata source drives all UIs (`ToolMeta`/`TOOL_METADATA`, PR #117)
 - [x] **P1-10**: Persist Tool Chest library in prefs (PR #114)
-- [ ] **P1-11**: Host/Ui seam + egui_kittest visual/a11y evidence G4 (guide II.27.12) — documented deferral
+- [x] **P1-11**: Host/Ui seam + egui_kittest visual/a11y evidence G4 (guide
+  II.27.12) — **G4-1 seam done (PR #134)**: `RubricApp::new_headless` +
+  frame-free `run_logic`/`draw_ui` reachable headlessly, with a shell smoke
+  test through `egui::Context::run_ui`; **G4-2** (kittest snapshot harness +
+  PNG baselines in CI) tracked in PROGRESS.md
 
 P2 — Later (audit backlog items 12–16):
 - [x] **P2-12**: Text-anchored highlight/strikeout — part 1 foundation

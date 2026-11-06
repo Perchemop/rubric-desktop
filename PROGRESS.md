@@ -1,5 +1,33 @@
 # PROGRESS.md
 
+## 2026-11-06 — G4-1: Host/Ui seam — headless RubricApp (PR #134)
+**Status**: merged to main; CI green (all required checks).
+
+### Completed
+- **The seam the G4 deferral asked for** (guide II.27.12): `RubricApp` is now
+  constructible and runnable without eframe —
+  - `RubricApp::new_headless(egui_ctx, parked_crash)` shares the constructor
+    body; the eframe `new(cc, …)` delegates to it (`cc` was only ever used for
+    `cc.egui_ctx`);
+  - `RubricApp::run_logic(ctx)` / `RubricApp::draw_ui(ui)` carry the
+    `App::logic`/`App::ui` bodies as inherent methods with **no `Frame`**
+    parameter; the eframe trait impl is two one-line shims preserving eframe's
+    call order.
+- **Headless shell test** (`ui/app.rs` `headless_tests`): drives the real shell
+  — menu, toolbar, panels, canvas, the exact shape the deferral said kittest
+  could not reach — through `egui::Context::run_ui` (eframe's own call path),
+  twice, asserting painted shapes with no document open and state carried
+  across passes. Headless specifics: font-atlas `textures_delta` must be
+  cleared before dropping the output (a renderer would upload it).
+- **kittest compatibility confirmed**: `egui_kittest` 0.36.2 exists for
+  egui 0.36, and its `snapshot` feature renders in software (`dify`) — no
+  wgpu/GPU needed in CI.
+
+### Next (G4-2)
+- Add `egui_kittest` 0.36.2 (`snapshot` feature) as a dev-dependency, render
+  the shell through the new seam, and commit snapshot PNG baselines as CI
+  visual/a11y evidence (AccessKit tree included).
+
 ## 2026-11-06 — v1.0-0 gates: §2.5 legal checklist run + README/ROADMAP claims re-audit
 **Status**: documentation slice; CI pending on the slice PR.
 
