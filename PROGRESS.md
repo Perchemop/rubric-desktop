@@ -1,5 +1,33 @@
 # PROGRESS.md
 
+## 2026-11-06 — G4-2a: kittest AccessKit harness over the real shell (PR #136)
+**Status**: merged to main; CI green (all required checks).
+
+### Completed
+- **Automated AccessKit evidence** (guide II.27.12, audit follow-up **A1**):
+  `egui_kittest` 0.36.2 (dev-dependency; no wgpu needed) drives the real app
+  shell headlessly through the G4-1 seam:
+  - `shell_settles_with_widgets_queryable_by_label` — two frames through the
+    harness; toolbar buttons are queryable by visible label through the
+    AccessKit tree;
+  - `clicking_a_tool_button_activates_the_tool` — `get_by_label("Highlight")
+    .click()` activates the tool (verified on `UiState.active_tool`).
+- **`icon_button` names its click target** after the painted text label
+  (`Response::labelled_by`) — icon-paired buttons are now screen-reader
+  operable in the AccessKit tree (the harness exposed that the bare
+  `allocate_rect` click target was unnamed).
+- Harness mechanics learned and recorded: the shell requests a periodic
+  repaint every frame (autosave/status), so the harness must be driven with
+  `run_steps`, not `run()`; at startup the active-tool chip also reads
+  "Select", so that label legitimately matches two nodes.
+
+### Next (G4-2b, optional follow-up)
+- Snapshot **PNG** evidence needs kittest's `wgpu` + `snapshot` features and a
+  software renderer (mesa/lavapipe) in CI, plus committed baselines
+  (`UPDATE_SNAPSHOTS=true` round-trip). Deferred as its own slice — the
+  headless a11y evidence above is the gate relevant to II.27.12's
+  "automated AccessKit" requirement.
+
 ## 2026-11-06 — G4-1: Host/Ui seam — headless RubricApp (PR #134)
 **Status**: merged to main; CI green (all required checks).
 
