@@ -154,7 +154,10 @@ so they do not move the 52-feature readiness table above.
 - [ ] Signed releases + in-app checksum-verified auto-update install (guide §12.1)
 
 **Audit follow-ups:**
-- [ ] Automated AccessKit/snapshots for visual evidence (G4 — documented deferral)
+- [x] Automated **AccessKit** evidence (A1/G4): egui_kittest drives the real
+      shell headlessly — widgets queryable/clickable through the AccessKit
+      tree, icon buttons named via `labelled_by` (PR #136); snapshot **PNG**
+      baselines (wgpu + software renderer in CI) remain a follow-up (G4-2b)
 - [x] Focus ring audit (see `docs/a11y.md`)
 - [x] High-contrast preference (P2-15)
 - [x] Text labels when narrow panels use icons only (audited; panels keep min widths)
