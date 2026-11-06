@@ -33,7 +33,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | §2.2 No RE / no proprietary paste / no trade dress | Met | `docs/inspiration.md` clean-room statement; all first-party code/assets |
 | §2.3 Research after v0.1.0 + human gate | Met | `docs/research/bluebeam-studio-capabilities.md`, `adobe-acrobat-capabilities.md`, `stirling-pdf-capabilities.md`; approval recorded in `IMPLEMENTATION_PLAN.md` |
 | §2.4 Research method ladder | Met | recorded in `docs/current-model-map.md` |
-| §2.5 Legal checklist every release | **Deferred** | checklist exists in `docs/qc/checklist.md`; the per-release run + CI-run-ID record (II.19.5) has not yet been written for a v0.2.0 release — see gap G5 |
+| §2.5 Legal checklist every release | Met | checklist exists in `docs/qc/checklist.md`; the full 13-row run is recorded in PROGRESS.md (2026-11-06, PR #133) and re-run before the **v0.3.0** tag (release run `42216503269`) — gap G5 closed for this release; re-run per release |
 | §3 Stack (defaults) | Adapted | Rust + egui/eframe as recommended; persistence is pretty JSON `.rubric.json` instead of SQLite (DECISIONS 2026-10-17, "Persistence format") |
 | §4 Local test + Actions for heavy work | Met | no `cargo` locally; `ci.sh` drives GitHub Actions; repo public |
 | §4 Early CI + release workflows | Met | `.github/workflows/ci.yml`, `release.yml`, `package.yml`, `security.yml` |
@@ -60,7 +60,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | --- | --- | --- |
 | II.18 Naming/branding | Met | `docs/product-name.md`, `docs/design/brand.md` |
 | II.19 Legal depth | Adapted | clean-room, trademark, secrets and research rules met; **licence is MIT-only**, not dual MIT OR Apache-2.0 — recorded open as `Q-LIC-1` in `docs/assumptions-and-questions.md` |
-| II.19.5 Release checklist recorded in PROGRESS | **Deferred** | gap G5 (next release) |
+| II.19.5 Release checklist recorded in PROGRESS | Met | §2.5 checklist re-run and recorded in PROGRESS.md for **v0.3.0** before tagging (2026-11-06/07; release run `42216503269`) — gap G5 closed for this release; re-run per release |
 | II.20 Security audit | Met | `SECURITY.md` threat model; `deny.toml`, `scripts/scan-secrets.sh`, CodeQL, SBOM |
 | II.20.4 Authoritative checks in `.ci-required.txt` | Met (fixed 2026-10-27) | root `.ci-required.txt` added — gap G1. On pull requests it lists the always-present checks; **CodeQL is excluded from the PR verdict** because it is skipped on PRs, and it still runs on pushes to `main` (and on schedule), where it is read from the run status directly. `Dependency review` is PR-only, which is exactly the flow `ci.sh` uses |
 | II.21 Accessibility | Adapted | `ACCESSIBILITY.md`/`docs/a11y.md` + a11y PR checklist; WCAG contrast audit test, **high-contrast mode** (View ▸ High Contrast, WCAG AAA text), **focus-visibility audit** (egui maps focus to the `active` visuals; no separately styled ring is possible in egui 0.36 — recorded), and icon-only controls carry tooltips; full screen-reader pass is tracked as F-605; egui/AccessKit limits stated honestly |
@@ -120,7 +120,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | G2 | README had no "download, no Rust" path; repo layout and shortcut table were stale | Slows-work | **Fixed 2026-10-27** — README updated |
 | G3 | `docs/capability-inventory.md` (II.27.3) absent | Slows-work | **Fixed 2026-10-30** — capability rows with source URLs, acceptance criteria and evidence, cross-linked from `docs/parity.md` |
 | G4 | egui visual evidence (`egui_kittest`, II.27.12) needs a `Host`-seam refactor | **Resolved 2026-11-06** | three slices shipped: Host/Ui seam (G4-1, PR #134), AccessKit harness (G4-2a, PR #136), snapshot PNG evidence with a required macOS `snapshot` CI job (G4-2b, PR #138); see the II.27.12 row |
-| G5 | §2.5/II.19.5 release legal checklist not yet recorded per release | Blocks a release only | Run and record in `PROGRESS.md` with the CI run ID when v0.2.0 is tagged |
+| G5 | §2.5/II.19.5 release legal checklist not yet recorded per release | **Resolved for v0.3.0** | full 13-row §2.5 run recorded 2026-11-06 (PR #133) and re-confirmed before the v0.3.0 tag; release run `42216503269`. Standing rule: re-run at every release |
 | G6 | The git-identity rule has no home in the revised guide (II.26.7) | Client decision | **Resolved 2026-10-30** — owner directed the rule be re-homed; recorded in `AGENTS.md` (commits/PRs/merges/tags authored `Rubric Dev <dev@example.com>`; PR authorship follows the pushing account) |
 | G7 | A maintainer absolute home path was committed and published (II.29.4) | **Resolved 2026-10-28** | Two carriers: `.opencode/agents/*.md` (removed in PR #37) and a tracked `scripts/__pycache__/*.pyc` (untracked, `*.pyc` ignored). Owner approved a purge; every branch, tag and commit was rewritten with `git filter-repo`, force-pushed, and branch protection restored. Residual risk (GitHub cached views/forks) recorded in `SECURITY.md` |
 
