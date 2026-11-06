@@ -24,7 +24,7 @@ use uuid::Uuid;
 use crate::domain::{Color, MarkupKind, Project, StylePreset, StylePresetLibrary};
 
 use super::app::UiState;
-use super::theme::to_color32;
+use super::theme::{TEXT_CAPTION, to_color32};
 
 /// Draw the Tool Chest panel.
 ///
@@ -60,9 +60,17 @@ pub(crate) fn draw_tool_chest(
 
     if library.is_empty() {
         ui.label("No saved styles yet.");
-        ui.small("Save a style below, then Apply it any time.");
+        ui.label(
+            egui::RichText::new("Save a style below, then Apply it any time.")
+                .font(TEXT_CAPTION)
+                .color(egui::Color32::from_gray(120)),
+        );
     } else {
-        ui.small(format!("{} of {} saved styles", library.len(), StylePresetLibrary::MAX_PRESETS));
+        ui.label(
+            egui::RichText::new(format!("{} of {} saved styles", library.len(), StylePresetLibrary::MAX_PRESETS))
+                .font(TEXT_CAPTION)
+                .color(egui::Color32::from_gray(120)),
+        );
         ui.separator();
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
