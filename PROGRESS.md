@@ -1,5 +1,37 @@
 # PROGRESS.md
 
+## 2026-11-07 — v0.3.0 published; local install updated
+**Status**: release published; CI green; app installed and verified on the primary platform (Linux aarch64).
+
+### Released
+- **Tag `v0.3.0`** (on merge `f187eb7`, authored `Rubric Dev <dev@example.com>`):
+  GitHub Release with all four platform artefacts (`rubric-linux-arm64.zip`
+  included) + `SHA256SUMS`; notes extracted from the CHANGELOG `[0.3.0]`
+  section by `scripts/release-notes.py`. Release run `42216503269`.
+- **§2.5 legal checklist**: re-run recorded before tagging (release-prep PR
+  #140); scans green throughout.
+
+### Release blockers found and fixed on the way (PRs #141, #142)
+- **Stray `v0.3.0` tag**: a previous session had pushed a tag of that name
+  pointing at an intermediate, non-compiling P2-12 commit; its release run had
+  failed and published nothing. Moved the tag to the release commit and
+  force-pushed the tag (no release, artefact or note existed under it).
+- **Stale committed `Cargo.lock`**: the release build uses `--locked`, and the
+  lock had no `egui_kittest` entry — CI test steps ran without `--locked`, so
+  runners silently resolved the dev-dependency and never committed the lock.
+  New `lock-update` workflow (PR #141) regenerates the lock in Actions and
+  uploads it; the regenerated lock (11 pure insertions: the egui_kittest/kittest
+  /dify/snapshot subtree, zero version upgrades) was committed with `--locked`
+  added to the CI test and release-build steps (PR #142) so a stale lock now
+  fails the PR instead of the release.
+
+### Local install (owner request)
+- v0.2.0 install replaced with the verified **v0.3.0** `linux-arm64` build:
+  checksum chain verified (installed binary = zip = published SHA256SUMS),
+  `~/.local/lib/rubric/` (binary + pinned `libpdfium.so`), `~/.local/bin/rubric`
+  on PATH, hicolor icon + `.desktop` entry, docs under `~/.local/share/doc/rubric/`.
+  In-app **Help ▸ Check for Updates** now reports v0.3.0 as current.
+
 ## 2026-11-06 — v0.3.0 release prep (owner-approved) and §2.5 re-run
 **Status**: release prep merged to main; tag `v0.3.0` next; release workflow pending.
 
