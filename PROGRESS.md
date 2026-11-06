@@ -1,5 +1,40 @@
 # PROGRESS.md
 
+## 2026-11-07 — external audit remediation round 1 (PRs #144, #145, #146)
+**Status**: merged to main; CI green (8/8 required checks on each PR).
+
+### Context
+An exhaustive external audit (2026-11-07, tree `f187eb7`) graded Rubric **A−**:
+"feature-complete against its own expanded spec… remaining gaps are operational
+and structural, not missing product." Its priority order is now the repo queue
+(ROADMAP "Post-v0.3.0 audit queue (2026-11-07)", PR #145).
+
+### Closed this round
+- **PR #144** — the v0.3.0 token-ledger bookkeeping (guide §12.1) completed:
+  the release workflow pushed `chore/token-ledger-0.3.0` but its PR step failed
+  silently; the PR was created and merged so `docs/tokens.json` carries the
+  0.3.0 entry.
+- **PR #145 (docs truth, audit §11/§15)** — README Keyboard Shortcuts table
+  synced to the canonical Help ▸ Keyboard Shortcuts dialog (µ1); README PDFium
+  matrix added (installers bundle fail-closed; plain zips locate at run time);
+  ROADMAP's four stale "52/17" mentions reconciled to 57/18; the audit's
+  priority order recorded as the repo queue.
+- **PR #146 (audit µ2, µ6)** — `Tool::label()` reads the canonical
+  `TOOL_METADATA` and both toolbar surfaces take labels from it (labels
+  byte-identical; drift-guard test added); the window title shows `* ` while
+  the project has unsaved changes, recomputed on dirty-state change.
+- **Branch hygiene (audit M5)** — 17 stale remote branches deleted
+  (`opencode/*`, old dependabot, `fix/*`, `polish/*`, release prep); only
+  `main` remains.
+
+### Open from the audit (queued, in ROADMAP)
+macOS/Windows hands-on installer smoke (needs machines); issue #29 dependency
+refresh (egui 0.37 / ureq 3 / rfd 0.17); god-file splits (`app.rs` ~130 KB,
+`canvas.rs` ~106 KB, `markup.rs` ~77 KB); async page thumbnails; glyph-range
+text anchoring + rotated-page fidelity; signed releases + verified
+auto-update; optional minimap. v0.3.0 remains the current release (the
+µ2/µ6 fixes land in the next one).
+
 ## 2026-11-07 — v0.3.0 published; local install updated
 **Status**: release published; CI green; app installed and verified on the primary platform (Linux aarch64).
 
