@@ -21,6 +21,10 @@ pub const TEXT_SIZE_SECONDARY: f32 = 11.0;
 /// Monospace token used for numeric readouts (cursor coordinates, scale, units).
 pub const TEXT_MONOSPACE: FontId = FontId::new(TEXT_SIZE_BODY, FontFamily::Monospace);
 
+/// Caption token used for helper text, hints, and secondary annotations.
+/// Smaller and muted than body text so it doesn't compete for attention.
+pub const TEXT_CAPTION: FontId = FontId::new(TEXT_SIZE_SECONDARY, FontFamily::Proportional);
+
 /// Spacing grid (pixels).
 pub const SPACING_4: f32 = 4.0;
 pub const SPACING_8: f32 = 8.0;
