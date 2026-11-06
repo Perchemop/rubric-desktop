@@ -276,11 +276,13 @@ Guide §12.1 suite standards (audit approved 2026-11-04):
 - [ ] Signed releases + in-app checksum-verified auto-update install
 
 Audit follow-ups to track separately:
-- [x] **A1**: Automated AccessKit evidence (G4, guide II.27.12) — **done for the
-  AccessKit half (PR #136)**: egui_kittest drives the real shell headlessly
+- [x] **A1**: Automated AccessKit/snapshot evidence (G4, guide II.27.12) —
+  **done (PRs #136, #138)**: egui_kittest drives the real shell headlessly
   (widgets queryable/clickable through the AccessKit tree; icon buttons named
-  via `labelled_by`). Snapshot **PNG** baselines (kittest `wgpu`+`snapshot`
-  features, software renderer in CI) remain as G4-2b
+  via `labelled_by`), and a required macOS `snapshot` CI job renders the shell
+  and compares it to the committed baseline PNG
+  (`apps/rubric/tests/snapshots/shell_empty_state.png`), with the
+  artifact-based re-baselining round-trip wired in `ci.yml`
 - [x] **A2**: Focus ring audit — keyboard focus is visible (egui maps
   `has_focus()` to the `active` widget visuals; labels/hyperlinks add a 1 px
   underline); egui 0.36 exposes no separately styleable focus ring

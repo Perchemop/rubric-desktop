@@ -1,5 +1,32 @@
 # PROGRESS.md
 
+## 2026-11-06 — G4-2b: snapshot PNG evidence for the shell (PR #138) — G4 closed
+**Status**: merged to main; CI green including the new required `snapshot` job.
+
+### Completed
+- **Rendered visual evidence** (guide II.27.12, audit follow-up A1 second
+  half): `shell_empty_state_snapshot_matches_baseline` rasterises the real
+  empty shell (menu bar, toolbar, pages sidebar, Tools/My Tools panels,
+  canvas, Markups List, Inspector with tabs, status bar) with kittest's
+  wgpu renderer and compares it against the committed baseline
+  `apps/rubric/tests/snapshots/shell_empty_state.png` (88 KB).
+- **macOS rendering job**: egui's own CI renders kittest snapshots on
+  `macos-latest` (real GPU); Linux runners have no wgpu adapter (verified —
+  the renderer panics with "No adapter found"), so the snapshot test skips
+  unless `RUBRIC_SNAPSHOTS` is set, and a dedicated **required** `snapshot`
+  job on macOS renders and uploads the scratch images (`.ci-required.txt`
+  gained `snapshot`).
+- **Re-baselining round-trip**: `ci.yml` uploads `apps/rubric/tests/snapshots/`
+  on every run (`always()`); a failing/re-baselined snapshot's `.new.png` is
+  downloaded, committed, and re-run — exercised live for this baseline.
+  `.gitignore` keeps the `.new/.diff/.old` scratch images untracked.
+- The baseline reproduces on a fresh macOS runner (determinism check passed).
+
+### G4 status
+**Closed** (guide II.27.12): Host/Ui seam (G4-1), AccessKit harness (G4-2a)
+and rendered PNG evidence (G4-2b) are all shipped and CI-enforced. The guide's
+"Rubric's shell shape cannot be driven" limitation no longer applies.
+
 ## 2026-11-06 — G4-2a: kittest AccessKit harness over the real shell (PR #136)
 **Status**: merged to main; CI green (all required checks).
 
