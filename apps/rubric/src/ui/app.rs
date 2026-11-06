@@ -364,6 +364,9 @@ pub struct RubricApp {
     force_close: bool,
     /// Set when the window title needs to be re-synced with `current_path`.
     title_dirty: bool,
+    /// Last dirty state reflected in the window title, used to recompute the
+    /// dirty marker when the unsaved state changes.
+    title_shown_dirty: bool,
     /// Instant of the most recent autosave **attempt** in this session, or
     /// `None` before the first one. Recording the attempt (even a failed one)
     /// rate-limits retries to one per interval instead of one per frame.
@@ -478,6 +481,7 @@ impl RubricApp {
             update_dismissed: false,
             force_close: false,
             title_dirty: true,
+            title_shown_dirty: false,
             last_autosave: None,
             page_textures: HashMap::new(),
             failed_page_textures: HashSet::new(),
@@ -2520,8 +2524,8 @@ impl RubricApp {
     /// can headless harnesses (guide II.27.12, gap G4 seam) — no `Frame`
     /// needed.
     pub fn draw_ui(&mut self, ui: &mut Ui) {
-        if self.title_dirty {
-            let title = match &self.current_path {
+        if self.title_dirty || self.title_shown_dirty != self.ui.dirty {
+            let base = match &self.current_path {
                 Some(p) => format!(
                     "{} — Rubric",
                     p.file_name()
@@ -2530,8 +2534,14 @@ impl RubricApp {
                 ),
                 None => "Untitled — Rubric".to_string(),
             };
+            let title = if self.ui.dirty {
+                format!("* {}", base)
+            } else {
+                base
+            };
             ui.ctx()
                 .send_viewport_cmd(egui::ViewportCommand::Title(title));
+            self.title_shown_dirty = self.ui.dirty;
             self.title_dirty = false;
         }
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(ui));

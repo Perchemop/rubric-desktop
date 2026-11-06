@@ -42,18 +42,18 @@ pub(crate) fn draw_toolbar(ui: &mut Ui, active: &mut Tool, _status: &mut String)
     ui.horizontal(|ui| {
         ui.label("Tool:");
         let kinds = [
-            (Tool::Select, "Select"),
-            (Tool::Highlight, "Highlight"),
-            (Tool::Rectangle, "Rectangle"),
-            (Tool::Ellipse, "Ellipse"),
-            (Tool::Line, "Line"),
-            (Tool::Arrow, "Arrow"),
-            (Tool::Ink, "Pen"),
-            (Tool::Text, "Text Box"),
-            (Tool::MeasureLength, "Length"),
+            Tool::Select,
+            Tool::Highlight,
+            Tool::Rectangle,
+            Tool::Ellipse,
+            Tool::Line,
+            Tool::Arrow,
+            Tool::Ink,
+            Tool::Text,
+            Tool::MeasureLength,
         ];
-        for (t, name) in kinds {
-            tool_button(ui, active, t, name);
+        for t in kinds {
+            tool_button(ui, active, t, t.label());
         }
     });
 }
@@ -69,7 +69,7 @@ pub(crate) fn draw_tool_groups(
         ui.separator();
 
         // Select first
-        tool_button(ui, active, Tool::Select, "Select");
+        tool_button(ui, active, Tool::Select, Tool::Select.label());
 
         // Review
         ui.collapsing("Review", |ui| {
@@ -84,9 +84,8 @@ pub(crate) fn draw_tool_groups(
                 Tool::Stamp,
             ];
             for t in &review {
-                let k = t.to_kind().unwrap_or(MarkupKind::Highlight);
-                if tool_button(ui, active, *t, k.label()) {
-                    *hint = format!("Using {}", k.label());
+                if tool_button(ui, active, *t, t.label()) {
+                    *hint = format!("Using {}", t.label());
                 }
             }
         });
@@ -101,9 +100,8 @@ pub(crate) fn draw_tool_groups(
                 Tool::Polyline,
             ];
             for t in &shapes {
-                let k = t.to_kind().unwrap_or(MarkupKind::Rectangle);
-                if tool_button(ui, active, *t, k.label()) {
-                    *hint = format!("Using {}", k.label());
+                if tool_button(ui, active, *t, t.label()) {
+                    *hint = format!("Using {}", t.label());
                 }
             }
         });
@@ -112,9 +110,8 @@ pub(crate) fn draw_tool_groups(
         ui.collapsing("Paths", |ui| {
             let paths = [Tool::Line, Tool::Arrow, Tool::Ink];
             for t in &paths {
-                let k = t.to_kind().unwrap_or(MarkupKind::Line);
-                if tool_button(ui, active, *t, k.label()) {
-                    *hint = format!("Measurement: {}", k.label());
+                if tool_button(ui, active, *t, t.label()) {
+                    *hint = format!("Measurement: {}", t.label());
                 }
             }
         });
@@ -131,9 +128,8 @@ pub(crate) fn draw_tool_groups(
                 Tool::MeasureCount,
             ];
             for t in &meas {
-                let k = t.to_kind().unwrap_or(MarkupKind::MeasureLength);
-                if tool_button(ui, active, *t, k.label()) {
-                    *hint = format!("Measurement: {}", k.label());
+                if tool_button(ui, active, *t, t.label()) {
+                    *hint = format!("Measurement: {}", t.label());
                 }
             }
         });

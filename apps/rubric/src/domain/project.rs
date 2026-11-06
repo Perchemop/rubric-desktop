@@ -520,17 +520,9 @@ impl Tool {
         )
     }
 
-    /// Canonical UI label for this tool (`"Select"`, `"Calibrate"`,
-    /// `"Length"`, ...).
-    ///
-    /// Markup tools reuse their [`MarkupKind::label`]; the two tools that
-    /// create no markup name themselves.
+    /// Canonical human-readable label for this tool (TOOL_METADATA).
     pub fn label(self) -> &'static str {
-        match self {
-            Tool::Select => "Select",
-            Tool::Calibrate => "Calibrate",
-            other => other.to_kind().map(MarkupKind::label).unwrap_or("Tool"),
-        }
+        tool_meta(self).map(|meta| meta.label).unwrap_or("")
     }
 
     /// One-line human-readable description of what the tool does, used for
@@ -1349,6 +1341,35 @@ mod tests {
         assert_eq!(history.current(), &fresh);
         assert!(!history.can_undo());
         assert!(!history.can_redo());
+    }
+
+    #[test]
+    fn tool_metadata_labels_are_unique_and_match_tool_label() {
+        // (a) Every TOOL_METADATA label is non-empty and unique across the 25 entries.
+        let labels: Vec<&str> = TOOL_METADATA.iter().map(|meta| meta.label).collect();
+        assert_eq!(labels.len(), 25);
+        for label in &labels {
+            assert!(!label.is_empty(), "empty label in TOOL_METADATA");
+        }
+        let mut sorted = labels.clone();
+        sorted.sort_unstable();
+        let mut unique = sorted.clone();
+        unique.dedup();
+        assert_eq!(
+            sorted.len(),
+            unique.len(),
+            "duplicate labels in TOOL_METADATA: {sorted:?}"
+        );
+
+        // (b) For every tool, Tool::label() equals the TOOL_METADATA entry's label.
+        for tool in Tool::ALL {
+            let meta = tool_meta(tool).expect("metadata for tool");
+            assert_eq!(
+                tool.label(),
+                meta.label,
+                "label mismatch for {tool:?}"
+            );
+        }
     }
 
     #[test]
