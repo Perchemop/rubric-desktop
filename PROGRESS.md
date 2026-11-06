@@ -1,5 +1,51 @@
 # PROGRESS.md
 
+## 2026-11-06 — v1.0-0 gates: §2.5 legal checklist run + README/ROADMAP claims re-audit
+**Status**: documentation slice; CI pending on the slice PR.
+
+### §2.5 exhaustive legal checklist — run 2026-11-06 (all rows clean)
+| Area | Result | Evidence |
+|---|---|---|
+| Copyright | ✅ | 170 tracked files, all original; no external material in tree (`.gitignore` + scans); a stray accidental `refs/heads/main` file (a bare commit SHA dumped by a plumbing call in `bf0f386`) removed this slice |
+| Clean-room | ✅ | no RE tool output used as input; capability-level inspiration only in `docs/inspiration.md` |
+| Trademarks | ✅ | name/logo original (`docs/product-name.md`, `docs/design/brand.md`); no vendor marks in UI/installers; Q28 name-conflict check recorded |
+| Trade dress | ✅ | original UI expression (`docs/design/brand.md`, `docs/parity.md`) |
+| Patents | ✅ | public standards only (PDF page geometry; base-14 fonts); no patented techniques implemented |
+| Licence | ✅ | MIT; `ATTRIBUTION.md` covers all notable deps incl. egui-bundled Ubuntu/Hack fonts, `hayro`, `lopdf`, `rfd`, `pdfium-render`; `cargo-deny` gate green every PR. Dual-licence remains open as `Q-LIC-1` (owner decision, recorded) |
+| Secrets | ✅ | `Secret scan` + `Personal data scan` required checks green on every PR and on `main` (latest: PR #132 runs) |
+| Privacy | ✅ | crash report is review-and-cancel with user-supplied token only; README privacy section states it |
+| GitHub API | ✅ | user-supplied token only (crash-report design); update-check is unauthenticated, on-demand |
+| Research files | ✅ | `docs/research/*` are original summaries + URLs (human-approved) |
+| Claims | ✅ | README features refreshed this slice (PDF I/O, Bates, accessibility); no certification/affiliation/“drop-in replacement” claims anywhere; ROADMAP readiness reconciled to 18/18 groups + 57/57 feature IDs with evidence |
+| Export/crypto | ✅ | no export-controlled code; SHA-256 checksums only |
+| Contributors | ✅ | `CONTRIBUTING.md` states MIT licence terms + DCO-style sign-off for PRs |
+
+To be re-run at the next tagged release (guide §2.5 runs before **every**
+release).
+
+### Claims & records reconciled (README/ROADMAP re-audit, v1.0-0)
+- **README** — Features list was stale (skeleton-era): added the shipped PDF
+  I/O story (import read-only; flattened-PDF/page-image/print/report export),
+  Bates numbering (non-destructive overlay), and the accessible-UI row
+  (light/dark/high-contrast). No over-claims added.
+- **ROADMAP readiness** — 17/17 groups and 52 feature IDs were pre-Bates
+  numbers: updated to **18/18 requirement groups** and **57/57 feature IDs**
+  (R-S-018/F-801–F-805 shipped; traceability rows R-S-018 and F-8xx moved
+  PLANNED → DONE with test/CI evidence).
+- **ROADMAP v0.1.x** — "Installer polish: bundle PDFium in every artefact;
+  record checksums" was stale-open: the packaging workflow has fetched the
+  pinned PDFium per platform and failed the job when absent since the M27
+  amendment, and every release publishes `SHA256SUMS`. Marked done.
+- Stray tracked file `refs/heads/main` removed (accidental plumbing output
+  committed in `bf0f386`; content was a single commit SHA — no secret).
+
+### Remaining v1.0-0 gates (unchanged, recorded deferrals)
+- Multi-platform installer verification: macOS/Windows hands-on (needs
+  machines).
+- Owner decisions open: `Q-LIC-1` (dual licence), engine-default question
+  (hayro default vs PDFium default while text extraction binds PDFium —
+  recorded in `docs/assumptions-and-questions.md` this slice).
+
 ## 2026-11-06 — P2-12 complete: PDF text extraction + text-anchored markup (PRs #130/#131)
 **Status**: merged to main (PR #131, merge commit `0b6f42e`); CI green on `main`
 (CI + Security both SUCCESS).

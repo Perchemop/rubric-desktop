@@ -15,10 +15,10 @@ This file is the staged, milestone view over those.
 
 | Measure | Value | Evidence |
 |---|---|---|
-| Requirement groups fully done | **17 / 17 (100 %)** | `REQUIREMENTS_TRACEABILITY.md` — all R-S rows marked DONE |
-| Requirement groups partial | 0 / 17 | — |
-| Requirement groups not started | 0 / 17 | — |
-| Feature IDs done (52 total) | **52 / 52 (100 %)** | `docs/spec/README.md` reconciled 2026-10-30 |
+| Requirement groups fully done | **18 / 18 (100 %)** | `REQUIREMENTS_TRACEABILITY.md` — all R-S rows marked DONE (R-S-018 Bates closed 2026-11-06) |
+| Requirement groups partial | 0 / 18 | — |
+| Requirement groups not started | 0 / 18 | — |
+| Feature IDs done (57 total) | **57 / 57 (100 %)** | `docs/spec/README.md` — 52 original IDs + F-801–F-805 (Bates), all shipped; reconciled 2026-11-06 |
 | Feature IDs open | 0 | — |
 | CI | green on `main` | fmt · clippy `-D warnings` · tests · release build |
 | Primary-platform install | verified | installed from CI artefact and launched (Linux aarch64, Crostini) |
@@ -53,7 +53,10 @@ Small, low-risk completions; each its own Task + release.
 - [x] F-401: zoom presets (50 / 100 / 200 %) in the View menu — v0.2-07
 - [x] F-004: layer rename / reorder in the Inspector — v0.2-07 (layer-major paint order, default layer pinned)
 - [x] F-103: floating note popover on the canvas pin — v0.2-08 (threaded comments via Markup::add_comment)
-- [ ] Installer polish: bundle PDFium in every artefact; record checksums
+- [x] Installer polish: bundle PDFium in every artefact; record checksums — the
+      packaging workflow fetches the pinned PDFium library on every platform and
+      **fails** the job when absent (audit M27 amendment), and every GitHub
+      Release publishes `SHA256SUMS` over the archives (`release.yml`)
 
 ### v0.2.0 — finish the review workflow
 
