@@ -2175,10 +2175,14 @@ impl RubricApp {
             // Active-tool chip (P0-4): a persistent pill showing what tool is
             // currently active, with its shortcut key. Always visible so the
             // user never has to hunt through the left panel to know the mode.
+            // Uses a neutral chip style (not the selection orange) so the
+            // active tool is distinct from selected markups.
             ui.separator();
             egui::Frame::new()
-                .fill(ui.visuals().selection.bg_fill)
-                .stroke(ui.visuals().selection.stroke)
+                .fill(ui.visuals().widgets.active.bg_fill)
+                .stroke(ui.visuals().widgets.active.bg_stroke)
+                .rounding(egui::Rounding::same(6.0))
+                .inner_margin(egui::vec2(6.0, 2.0))
                 .show(ui, |ui| {
                     let tool_name = self.ui.active_tool.label();
                     let shortcut = self
@@ -2191,7 +2195,7 @@ impl RubricApp {
                         Some(armed) => format!("{} (style: {})", tool_name, armed.name),
                         None => format!("{}{}", tool_name, shortcut),
                     };
-                    ui.label(label);
+                    ui.label(label).text_color(ui.visuals().widgets.active.text_color());
                 });
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
