@@ -1658,7 +1658,7 @@ impl RubricApp {
         use egui::MenuBar;
         MenuBar::new().ui(ui, |ui| {
             ui.menu_button("File", |ui| {
-                if ui.button("New Project").clicked() {
+                if menu_shortcut_button(ui, "New Project", "Ctrl+N") {
                     self.install_project(
                         Project::new("Untitled Rubric Project"),
                         None,
