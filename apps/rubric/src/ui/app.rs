@@ -358,9 +358,9 @@ pub struct RubricApp {
     /// changes (full-app audit B2). `None` when nothing is pending.
     pub(crate) pending_replace: Option<PendingReplace>,
     /// Help ▸ About window visibility (full-app audit M4).
-    pub(crate) show_about: bool,,
+    pub(crate) show_about: bool,
     /// Shows the keyboard shortcuts dialog (proposal 10).
-    pub(crate) show_keyboard_shortcuts: bool,,
+    pub(crate) show_keyboard_shortcuts: bool,
     /// Shows the user guide window (Help ▸ User Guide).
     pub(crate) show_user_guide: bool,,
     /// Set when the user closed the update-check window, so it stays closed

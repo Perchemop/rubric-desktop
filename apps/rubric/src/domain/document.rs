@@ -151,7 +151,7 @@ impl Page {
         Rect::new(0.0, 0.0, self.width, self.height)
     }
 
-    /// Orientation-sensitive bounds (ignores rotation for now; rotation tracked).
+    /// Orientation-sensitive bounds: swaps width/height when rotation is 90/270 degrees.
     pub fn effective_bounds(&self) -> Rect {
         let (w, h) = if self.rotation % 180 == 0 {
             (self.width, self.height)

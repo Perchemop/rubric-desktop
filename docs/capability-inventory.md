@@ -4,7 +4,7 @@
 delivers: the *capability* (not any vendor's implementation), the public
 source that showed the capability is useful, the acceptance criteria that
 define "done", and the **evidence** that it is done. It is the design/parity
-view over `docs/spec/README.md` (the 52 feature IDs),
+view over `docs/spec/README.md` (the 57 feature IDs),
 `REQUIREMENTS_TRACEABILITY.md` (requirement → feature → module) and
 `docs/parity.md` (inspiration-level parity).
 

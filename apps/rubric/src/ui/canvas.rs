@@ -1044,12 +1044,8 @@ pub(crate) fn draw_canvas(
             }
         }
     }
-    // Release the immutable borrow of `project` taken for paint order so later
-    // interaction code can mutate it.
-    // (paint_order goes out of scope here)
-    let _ = &paint_order;
+    // Release the borrow of `project` held by `paint_order` before we mutate it.
     drop(paint_order);
-    // markups/labels; commits on focus loss.
     let mut commit_edit = false;
     let mut text_edit_committed_this_frame = false;
     if ui_state.text_edit.is_some() {
