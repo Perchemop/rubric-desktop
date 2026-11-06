@@ -11,8 +11,11 @@
 - **Markup tools**: Review (Highlight, Strikeout, Underline, Squiggly, Text, Callout, Note, Stamp), Shapes (Rectangle, Ellipse, Cloud, Polygon, Polyline), Paths (Line, Arrow, Ink) and Measurements (Length, Perimeter, Area, Angle, Diameter, Radius, Count).
 - **Review workflow**: Status (Open / In review / Approved / Rejected), Subject, Author, Comments, Layer/Toolset grouping.
 - **Measurements with scale**: Page scale (units/point), automatic recomputation for measure tools; displays values in chosen units (points/in/ft/mm/cm/m etc).
+- **PDF in, PDF out (non-destructive)**: import a PDF and mark it up read-only; export a flattened PDF (markups + optional Bates stamps baked in), a page image (PNG), a print job, and a summary report (text/JSON/CSV).
+- **Bates numbering** (optional overlay): configurable prefix/suffix/start/padding, corner placement and page range, with a ghosted canvas preview — the source PDF is never modified.
 - **Selection, move/translate, undo/redo** (snapshots), hit testing, inspector for properties/comments/measurements.
 - **Persistence**: Save/load projects as pretty-printed JSON (`.rubric.json`) with timestamps and UUIDs.
+- **Accessible UI**: light/dark/high-contrast themes, keyboard-first operation, WCAG-audited text colours (see `ACCESSIBILITY.md`).
 - **Tooling**: `cargo test`, `cargo clippy`, `cargo fmt`, CI-ready.
 
 ## Try Rubric without Rust
