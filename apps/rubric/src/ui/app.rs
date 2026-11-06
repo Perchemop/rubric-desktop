@@ -34,7 +34,7 @@ const EMBEDDED_TOKENS: &str = include_str!("../../../../docs/tokens.json");
 /// User guide embedded at build time for Help ▸ User Guide. Baking it in
 /// means the guide works in a packaged binary, where a source-checkout
 /// relative path would not resolve.
-const USER_GUIDE: &str = include_str!("../../../../USER_GUIDE.md");
+pub(crate) const USER_GUIDE: &str = include_str!("../../../../USER_GUIDE.md");
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
@@ -356,7 +356,7 @@ pub struct RubricApp {
     current_path: Option<PathBuf>,
     /// A project install waiting for the user to confirm discarding unsaved
     /// changes (full-app audit B2). `None` when nothing is pending.
-    pending_replace: Option<PendingReplace>,
+    pub(crate) pending_replace: Option<PendingReplace>,
     /// Help ▸ About window visibility (full-app audit M4).
     pub(crate) show_about: bool,,
     /// Shows the keyboard shortcuts dialog (proposal 10).
@@ -1166,7 +1166,7 @@ impl RubricApp {
     /// the drawn reference segment. Pre-filled with the segment's length under
     /// the page's current scale, so confirming unchanged is a no-op; changing
     /// the value (or unit) recalibrates the page.
-    fn draw_calibration_dialog(&mut self, ctx: &egui::Context) {
+    pub(crate) fn draw_calibration_dialog(&mut self, ctx: &egui::Context) {
         let Some(state) = self.ui.calibration.as_mut() else {
             return;
         };
@@ -2244,199 +2244,13 @@ impl RubricApp {
 
         // Calibration dialog (v0.4 gap #4): confirm the real distance of the
         // drawn reference segment and rewrite the page scale.
-        self.draw_calibration_dialog(ui.ctx());
-
-        // About window (full-app audit M4): version, licence and links instead
-        // of a transient status line.
-        if self.show_about {
-            let mut open = true;
-            egui::Window::new("About Rubric")
-                .open(&mut open)
-                .resizable(false)
-                .show(ui.ctx(), |ui| {
-                    ui.heading("Rubric");
-                    ui.label("Free, cross-platform PDF markup & measurement");
-                    ui.separator();
-                    ui.horizontal(|ui| {
-                        ui.label("Version:");
-                        ui.label(env!("CARGO_PKG_VERSION"));
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("Licence:");
-                        ui.label("MIT");
-                    });
-                    ui.hyperlink_to(
-                        "Source & releases",
-                        "https://github.com/Perchemop/rubric-desktop",
-                    );
-                    ui.separator();
-                    if ui.button("Close").clicked() {
-                        self.show_about = false;
-                    }
-                });
-            if !open {
-                self.show_about = false;
-            }
-            self.ui.status = "Rubric — free, cross-platform PDF markup & measurement".to_string();
-        }
-
-        // Keyboard shortcuts dialog (proposal 10): lists all discoverable
-        // shortcuts grouped by category, for reference while working.
-        if self.show_keyboard_shortcuts {
-            let mut open = true;
-            egui::Window::new("Keyboard Shortcuts")
-                .open(&mut open)
-                .resizable(false)
-                .fixed_size(egui::vec2(600.0, 500.0))
-                .show(ui.ctx(), |ui| {
-                    ui.heading("Rubric Keyboard Shortcuts");
-                    ui.separator();
-                    ui.label("File:");
-                    ui.label("Ctrl+N — New Project        Ctrl+O — Open Project        Ctrl+S — Save Project        Ctrl+Shift+S — Save Project As…");
-                    ui.label("Ctrl+I — Import PDF        Ctrl+P — Print        Ctrl+W / Cmd+Q — Quit");
-                    ui.separator();
-                    ui.label("Edit:");
-                    ui.label("Ctrl+Z — Undo        Ctrl+Y — Redo        Ctrl+A — Select All        Del / Backspace — Delete");
-                    ui.separator();
-                    ui.label("View:");
-                    ui.label("Zoom In / Out / Fit Page        PageUp / PageDown        Grid / Snap to Grid        Full Screen (Esc)");
-                    ui.label("Auto-save on/off        Theme cycling");
-                    ui.separator();
-                    ui.label("Tools:");
-                    ui.label("Select / Highlight / Rectangle / Ellipse / Line / Arrow / Pen / Text Box");
-                    ui.label("Calibrate Scale (click two points on canvas)");
-                    ui.label("Measurement tools: Length / Diameter / Radius / Perimeter / Area / Angle");
-                    ui.separator();
-                    ui.label("Markup actions:");
-                    ui.label("Ctrl+D — Duplicate        Ctrl+C / Ctrl+V — Copy / Paste Properties");
-                    ui.label("Bring Forward / Send Backward / Bring To Front / Send To Back");
-                    ui.separator();
-                    ui.label("General:");
-                    ui.label("Esc — Close dialog / Cancel operation");
-                    ui.label("Ctrl+Shift+S — Save Project As…");
-                });
-            if !open {
-                self.show_keyboard_shortcuts = false;
-            }
-        }
-
-        // User guide window (Help ▸ User Guide): the embedded USER_GUIDE.md,
-        // so it works in a packaged binary, not only in a source checkout.
-        if self.show_user_guide {
-            let mut open = true;
-            egui::Window::new("User Guide")
-                .open(&mut open)
-                .resizable(true)
-                .min_size(egui::vec2(700.0, 500.0))
-                .default_size(egui::vec2(900.0, 700.0))
-                .show(ui.ctx(), |ui| {
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        ui.heading("Rubric User Guide");
-                        ui.separator();
-                        for line in USER_GUIDE.lines() {
-                            if line.is_empty() {
-                                ui.add_space(4.0);
-                            } else if line.starts_with('#') {
-                                let level = line.chars().take_while(|c| *c == '#').count();
-                                let text = line.trim_start_matches('#').trim();
-                                match level {
-                                    1 => ui.heading(text),
-                                    2 => ui.heading(text),
-                                    _ => ui.label(text),
-                                }
-                            } else if line.starts_with('-') || line.starts_with('*') {
-                                ui.label(format!("  {}", line));
-                            } else if line.starts_with('|') && line.contains("---") {
-                                // skip markdown table separators
-                            } else if line.starts_with('|') {
-                                ui.label(line);
-                            } else {
-                                ui.label(line);
-                            }
-                        }
-                        ui.separator();
-                        ui.hyperlink_to(
-                            "Source & releases",
-                            "https://github.com/Perchemop/rubric-desktop",
-                        );
-                    });
-                });
-            if !open {
-                self.show_user_guide = false;
-            }
-        }
-
-        if self.ui.quit_confirm {
-            let mut open = true;
-            egui::Window::new("Unsaved Changes")
-                .open(&mut open)
-                .resizable(false)
-                .show(ui.ctx(), |ui| {
-                    ui.label("The project has unsaved changes.");
-                    ui.horizontal(|ui| {
-                        // Save first, then quit — but only when the save really
-                        // landed. A cancelled Save As or a failed write leaves
-                        // the project dirty, so the dialog stays open instead of
-                        // quitting on top of unsaved work.
-                        if ui.button("Save and Quit").clicked() {
-                            self.save_project_action();
-                            if !self.ui.dirty {
-                                self.ui.quit_confirm = false;
-                                self.force_close = true;
-                                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-                            }
-                        }
-                        if ui.button("Quit Anyway").clicked() {
-                            self.ui.quit_confirm = false;
-                            // Tell the close veto this close was confirmed
-                            // (audit M1); otherwise it would re-prompt.
-                            self.force_close = true;
-                            ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-                        }
-                        if ui.button("Cancel").clicked() {
-                            self.ui.quit_confirm = false;
-                        }
-                    });
-                });
-            if !open {
-                self.ui.quit_confirm = false;
-            }
-        }
-
-        // Replace-unsaved-project confirmation (full-app audit B2): New / Open
-        // / Import / Recent park their install here instead of discarding work
-        // silently.
-        if self.pending_replace.is_some() {
-            let mut open = true;
-            egui::Window::new("Replace Unsaved Project")
-                .open(&mut open)
-                .resizable(false)
-                .show(ui.ctx(), |ui| {
-                    ui.label(
-                        "The current project has unsaved changes that will be lost. \
-                         Save first (Ctrl+S) to keep them.",
-                    );
-                    ui.horizontal(|ui| {
-                        if ui.button("Discard Changes").clicked() {
-                            if let Some(pending) = self.pending_replace.take() {
-                                self.install_project_now(
-                                    pending.project,
-                                    pending.current_path,
-                                    pending.status,
-                                );
-                            }
-                        }
-                        if ui.button("Cancel").clicked() {
-                            self.pending_replace = None;
-                            self.ui.status = "Replace cancelled — project kept".to_string();
-                        }
-                    });
-                });
-            if !open {
-                self.pending_replace = None;
-                self.ui.status = "Replace cancelled — project kept".to_string();
-            }
-        }
+        // Dialog drawing code extracted to ui/app_dialogs.rs
+        app_dialogs::draw_calibration_dialog(self, ui.ctx());
+        app_dialogs::draw_about_window(self, ui.ctx());
+        app_dialogs::draw_keyboard_shortcuts(self, ui.ctx());
+        app_dialogs::draw_user_guide(self, ui.ctx());
+        app_dialogs::draw_quit_confirm(self, ui.ctx());
+        app_dialogs::draw_replace_unsaved(self, ui.ctx());
 
         // Report export dialog (session state only).
         let mut do_export = false;

@@ -1,6 +1,7 @@
 //! UI module.
 
 pub mod app;
+pub mod app_dialogs;
 pub mod app_menu;
 pub mod canvas;
 pub mod icon_button;
