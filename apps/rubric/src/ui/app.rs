@@ -445,9 +445,19 @@ impl BugReportUi {
 
 impl RubricApp {
     pub fn new(cc: &CreationContext<'_>, parked_crash: Option<crash_report::CrashReport>) -> Self {
+        Self::new_headless(&cc.egui_ctx, parked_crash)
+    }
+
+    /// Construct the app without an eframe `CreationContext`, for headless
+    /// harnesses (guide II.27.12, gap G4 seam). The eframe path passes
+    /// `&cc.egui_ctx`.
+    pub fn new_headless(
+        egui_ctx: &egui::Context,
+        parked_crash: Option<crash_report::CrashReport>,
+    ) -> Self {
         let prefs = load_prefs();
-        theme::apply_theme(&cc.egui_ctx, prefs.theme, prefs.high_contrast);
-        cc.egui_ctx.set_pixels_per_point(prefs.ui_scale);
+        theme::apply_theme(egui_ctx, prefs.theme, prefs.high_contrast);
+        egui_ctx.set_pixels_per_point(prefs.ui_scale);
         let project = Project::new("Untitled Rubric Project");
         Self {
             pending_replace: None,
@@ -2287,8 +2297,11 @@ fn key_to_shortcut_char(key: egui::Key) -> Option<char> {
     }
 }
 
-impl App for RubricApp {
-    fn logic(&mut self, ctx: &egui::Context, _frame: &mut Frame) {
+impl RubricApp {
+    /// Headless-friendly logic pass: input processing and state updates with
+    /// no painting. The eframe `App::logic` shim delegates here, and so can
+    /// headless harnesses (guide II.27.12, gap G4 seam) — no `Frame` needed.
+    pub fn run_logic(&mut self, ctx: &egui::Context) {
         // Refresh the enablement snapshot the shared context menu reads, so
         // Undo/Redo are greyed out whenever the history stack cannot serve
         // them (audit M19).
@@ -2502,7 +2515,11 @@ impl App for RubricApp {
         self.force_close = false;
     }
 
-    fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
+    /// Headless-friendly paint pass: every panel and the canvas, drawn into a
+    /// plain root `egui::Ui`. The eframe `App::ui` shim delegates here, and so
+    /// can headless harnesses (guide II.27.12, gap G4 seam) — no `Frame`
+    /// needed.
+    pub fn draw_ui(&mut self, ui: &mut Ui) {
         if self.title_dirty {
             let title = match &self.current_path {
                 Some(p) => format!(
@@ -2886,5 +2903,51 @@ impl App for RubricApp {
 
         ui.ctx()
             .request_repaint_after(Duration::from_secs_f32(0.25));
+    }
+}
+
+impl App for RubricApp {
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut Frame) {
+        self.run_logic(ctx);
+    }
+
+    fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
+        self.draw_ui(ui);
+    }
+}
+
+#[cfg(test)]
+mod headless_tests {
+    //! A headless smoke pass over the real shell (guide II.27.12, gap G4
+    //! seam): builds the app without eframe and drives it through egui's own
+    //! `run_ui`, exactly like eframe does (logic pass, then paint pass with
+    //! the root Ui).
+
+    use super::*;
+    use eframe::egui::RawInput;
+
+    #[test]
+    fn app_runs_a_full_headless_pass() {
+        let ctx = egui::Context::default();
+        let mut app = RubricApp::new_headless(&ctx, None);
+
+        // One full frame: logic (input/state) + paint (all panels), matching
+        // eframe's call order inside `run_ui`.
+        let output = ctx.run_ui(RawInput::default(), |ui| {
+            app.run_logic(ui.ctx());
+            app.draw_ui(ui);
+        });
+        assert!(!app.title_dirty, "the title command is queued on pass one");
+        assert!(
+            !output.shapes.is_empty(),
+            "the shell must paint something with no document open"
+        );
+
+        // A second frame must also run clean with carried-over state (undo
+        // snapshots, UiState, autosave bookkeeping all persist across passes).
+        let _second = ctx.run_ui(RawInput::default(), |ui| {
+            app.run_logic(ui.ctx());
+            app.draw_ui(ui);
+        });
     }
 }
