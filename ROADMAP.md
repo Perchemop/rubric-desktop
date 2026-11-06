@@ -139,7 +139,7 @@ so they do not move the 52-feature readiness table above.
 - [ ] Host/Ui seam + egui_kittest visual/a11y evidence G4 (guide II.27.12) — documented deferral
 
 **Audit backlog P2 — Later:**
-- [ ] Text-anchored highlight/strikeout (part 1 foundation: `MarkupGeometry::TextAnchor`; full PDF text extraction pending)
+- [x] Text-anchored highlight/strikeout (part 1 foundation: `MarkupGeometry::TextAnchor`; part 2: PDF text extraction via pdfium-render's public page-text API, snapped Highlight creation and text-anchored strikeout/underline/squiggly rendering — PR #131 merged; rotated-page anchors a documented limitation)
 - [x] Focus / reading mode (P2-13)
 - [x] Dual-unit rulers (P2-14)
 - [x] UI scale + high-contrast preference (UI scale PR #116; high-contrast mode via View ▸ High Contrast)

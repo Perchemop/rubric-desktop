@@ -254,7 +254,13 @@ P1 — Quality (audit backlog items 6–11):
 - [ ] **P1-11**: Host/Ui seam + egui_kittest visual/a11y evidence G4 (guide II.27.12) — documented deferral
 
 P2 — Later (audit backlog items 12–16):
-- [ ] **P2-12**: Text-anchored highlight/strikeout (part 1 foundation: `MarkupGeometry::TextAnchor` on `Bounds`-free highlight/strikeout/underline/squiggly; full PDF text extraction + anchoring still pending)
+- [x] **P2-12**: Text-anchored highlight/strikeout — part 1 foundation
+  (`MarkupGeometry::TextAnchor`) plus the PDF text-extraction path
+  (`page_text_lines`/`find_text_line_at_point` in `data/pdf.rs` via
+  pdfium-render's public page-text API, PDF-user-space → page-space y-flip) and
+  snapped click-create for Highlight; Strikeout/Underline/Squiggly render as
+  text-anchored lines. Rotated-page anchors are a documented limitation.
+  (PRs #130/#131, merged 2026-11-05.)
 - [x] **P2-13**: Focus / reading mode (PR #118)
 - [x] **P2-14**: Dual-unit rulers (PR #115)
 - [x] **P2-15**: UI scale + high-contrast preference (UI scale PR #116; high-contrast mode added — View ▸ High Contrast, pure black/white palettes with strong borders, persisted in `AppPrefs.high_contrast`)
