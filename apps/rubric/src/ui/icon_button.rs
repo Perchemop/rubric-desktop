@@ -19,8 +19,22 @@ pub(crate) fn icon_button(
 ) -> eframe::egui::Response {
     let icon_size = 16.0;
     let gap = 4.0;
-    let text = ui.label(label);
-    let total_width = icon_size + gap + text.rect.width();
+
+    // Measure text width without painting it (avoids double-painting and
+    // double space allocation which breaks click targeting in wrapped
+    // layouts). Paint the text manually below so icon and text share one
+    // clickable rect.
+    let text_galley = ui.ctx().fonts_mut(|f| {
+        f.layout(
+            label.to_owned(),
+            FontId::new(13.0, FontFamily::Proportional),
+            Color32::BLACK,
+            f32::INFINITY,
+        )
+    });
+    let text_width = text_galley.size.x;
+    let total_width = icon_size + gap + text_width;
+
     let mut rect = ui.available_rect_before_wrap();
     rect = rect.shrink(2.0);
     rect.set_width(total_width.min(rect.width()));
@@ -30,7 +44,7 @@ pub(crate) fn icon_button(
         // Expose the visible label to Assistive Technology (AccessKit /
         // kittest): the click target is named after the text painted inside
         // it, so icon-paired buttons are screen-reader operable.
-        .labelled_by(text.id);
+        .labelled_by(ui.id().with(label));
     if response.hovered() {
         ui.painter().rect_filled(
             rect,
@@ -54,7 +68,7 @@ pub(crate) fn icon_button(
     // Label to the right of the icon.
     let text_rect = Rect::from_min_size(
         rect.min + Vec2::new(icon_size + gap, 0.0),
-        Vec2::new(text.rect.width(), icon_size),
+        Vec2::new(text_width, icon_size),
     );
     ui.painter().text(
         text_rect.center(),

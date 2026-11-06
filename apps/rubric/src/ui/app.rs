@@ -1710,7 +1710,22 @@ impl RubricApp {
                     }
                     ui.close();
                 }
-                if ui.button("Export Report...").clicked() {
+                let total_markups: usize = self
+                    .history
+                    .current()
+                    .documents
+                    .iter()
+                    .map(|d| d.markups.len())
+                    .sum();
+                let report_enabled = total_markups > 0;
+                if ui
+                    .add_enabled(
+                        report_enabled,
+                        egui::Button::new("Export Report…"),
+                    )
+                    .on_disabled_hover_text("No markups to report yet")
+                    .clicked()
+                {
                     let project = self.history.current();
                     let total_markups: usize =
                         project.documents.iter().map(|d| d.markups.len()).sum();
@@ -1793,7 +1808,7 @@ impl RubricApp {
                     self.export_all_pages_to_pdf_action();
                     ui.close();
                 }
-                if ui.button("Print...").clicked() {
+                if menu_shortcut_button(ui, "Print…", "Ctrl+P") {
                     let _ = self.print_page();
                     ui.close();
                 }
@@ -1835,7 +1850,7 @@ impl RubricApp {
                     self.save_project_action();
                     ui.close();
                 }
-                if ui.button("Save Project As...").clicked() {
+                if menu_shortcut_button(ui, "Save Project As…", "Ctrl+Shift+S") {
                     self.save_project_as_action();
                     ui.close();
                 }
@@ -1871,7 +1886,10 @@ impl RubricApp {
                     }
                 });
                 ui.separator();
-                if ui.button("Quit").clicked() {
+                if ui
+                    .add(egui::Button::new("Quit").shortcut_text("Ctrl+W / Cmd+Q"))
+                    .clicked()
+                {
                     if self.ui.dirty {
                         self.ui.quit_confirm = true;
                     } else {
@@ -1958,7 +1976,10 @@ impl RubricApp {
                 {
                     self.jump_to_page(current + 1);
                 }
-                if ui.button("Full Screen").clicked() {
+                if ui
+                    .add(egui::Button::new("Full Screen").shortcut_text("Esc"))
+                    .clicked()
+                {
                     // Read the live state so the toggle is truthful even if the
                     // WM changed it out from under us.
                     let fullscreen = ui
@@ -1983,6 +2004,23 @@ impl RubricApp {
                     }
                 }
                 ui.separator();
+                // Custom zoom entry (type any percentage).
+                ui.horizontal(|ui| {
+                    ui.label("Custom zoom:");
+                    let mut custom_zoom = (self.ui.zoom * 100.0) as i32;
+                    if ui
+                        .add(
+                            egui::DragValue::new(&mut custom_zoom)
+                                .speed(1)
+                                .clamp_range((view::MIN_ZOOM * 100.0) as i32..=(view::MAX_ZOOM * 100.0) as i32)
+                                .suffix(" %"),
+                        )
+                        .changed()
+                    {
+                        self.ui.zoom = view::clamp_zoom(custom_zoom as f32 / 100.0);
+                        self.ui.status = format!("Zoom {}%", custom_zoom);
+                    }
+                });
                 // Canvas guides (F-405): grid visibility, snapping and pitch.
                 // Grid lines are only drawn when the pitch resolves at the
                 // current zoom, so the tick stays honest even when off.

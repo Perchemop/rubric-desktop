@@ -107,7 +107,7 @@ const TOOL_FAMILIES: &[(&str, &[Tool])] = &[
 ];
 
 pub(crate) fn draw_toolbar(ui: &mut Ui, active: &mut Tool, _status: &mut String) {
-    ui.horizontal_wrap(|ui| {
+    ui.horizontal_wrapped(|ui| {
         ui.label("Tools:");
         for (family_index, (_name, tools)) in TOOL_FAMILIES.iter().enumerate() {
             // small gap between families so the strip stays scannable
