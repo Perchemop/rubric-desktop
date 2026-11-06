@@ -2944,7 +2944,7 @@ mod headless_tests {
         );
         // egui queues font-atlas texture deltas that a renderer would upload;
         // a headless harness drops them intentionally (`TexturesDelta::clear`).
-        output.textures.clear();
+        output.textures_delta.clear();
 
         // A second frame must also run clean with carried-over state (undo
         // snapshots, UiState, autosave bookkeeping all persist across passes).
@@ -2952,6 +2952,6 @@ mod headless_tests {
             app.run_logic(ui.ctx());
             app.draw_ui(ui);
         });
-        second.textures.clear();
+        second.textures_delta.clear();
     }
 }
