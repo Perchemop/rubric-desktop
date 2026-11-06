@@ -23,7 +23,9 @@ jobs:
         mkdir -p "$HOME/pdfium"
         tar -xzf /tmp/pdfium.tgz -C "$HOME/pdfium"
     - name: Tests (default features)
-      run: cargo test --all
+      # --locked: the committed Cargo.lock must be complete for every target;
+      # a stale lock fails here instead of at release time (v0.3.0 lesson).
+      run: cargo test --all --locked
       env:
         RUBRIC_PDFIUM_PATH: /home/runner/pdfium/lib
     # kittest snapshot round-trip (G4-2b): a failing or re-baselined snapshot
@@ -39,9 +41,9 @@ jobs:
     - name: Clippy (hayro feature, no warnings)
       run: cargo clippy -p rubric --features hayro -- -D warnings
     - name: Tests (with hayro feature)
-      run: cargo test -p rubric --features hayro
+      run: cargo test -p rubric --features hayro --locked
     - name: Build release
-      run: cargo build --release
+      run: cargo build --release --locked
 
   # kittest snapshot evidence (guide II.27.12, G4-2b): rendered on macOS where
   # runners expose a real GPU (egui's own CI does the same; Linux runners have
