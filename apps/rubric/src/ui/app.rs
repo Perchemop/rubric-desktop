@@ -190,7 +190,7 @@ pub(crate) struct UiState {
     pub(crate) current_page: usize,
     /// True when a committed project change has not reached disk yet (save or
     /// autosave). Session-only; it drives autosave and the save path.
-    dirty: bool,
+    pub(crate) dirty: bool,
     /// Custom scale editor inputs (paper inches and real units).
     pub(crate) scale_paper_inches: f64,
     pub(crate) scale_real_units: f64,
