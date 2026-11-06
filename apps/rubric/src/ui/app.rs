@@ -2955,3 +2955,59 @@ mod headless_tests {
         second.textures_delta.clear();
     }
 }
+
+#[cfg(test)]
+mod kittest_tests {
+    //! Automated AccessKit evidence over the real shell (guide II.27.12,
+    //! audit follow-up A1, gap G4-2): egui_kittest settles the UI and panics
+    //! if any input widget lacks an accessible name, then widgets are
+    //! queryable and clickable through the AccessKit tree.
+
+    use super::*;
+    use egui_kittest::kittest::Queryable;
+
+    /// Build a harness over the real app shell, exactly like eframe calls it
+    /// (logic pass, then paint pass with the root Ui).
+    fn shell_harness(app: &mut RubricApp) -> egui_kittest::Harness<'_> {
+        egui_kittest::Harness::builder()
+            .with_size(egui::vec2(1100.0, 720.0))
+            .build_ui(|ui| {
+                app.run_logic(ui.ctx());
+                app.draw_ui(ui);
+            })
+    }
+
+    #[test]
+    fn shell_settles_with_every_input_widget_named() {
+        let ctx = egui::Context::default();
+        let mut app = RubricApp::new_headless(&ctx, None);
+        let mut harness = shell_harness(&mut app);
+
+        // `run` settles the UI and performs the accessibility check: an
+        // unnamed input widget (button, checkbox, slider, text field) panics
+        // here — this is the automated a11y audit (A1).
+        harness.run();
+
+        // Toolbar buttons are queryable by their visible text labels.
+        let _select = harness.get_by_label("Select");
+        let _highlight = harness.get_by_label("Highlight");
+        let _length = harness.get_by_label("Length");
+    }
+
+    #[test]
+    fn clicking_a_tool_button_activates_the_tool() {
+        let ctx = egui::Context::default();
+        let mut app = RubricApp::new_headless(&ctx, None);
+        let mut harness = shell_harness(&mut app);
+        harness.run();
+
+        harness.get_by_label("Highlight").click();
+        harness.run();
+        drop(harness);
+
+        assert!(
+            matches!(app.ui.active_tool, Tool::Highlight),
+            "clicking the Highlight tool button must activate the tool"
+        );
+    }
+}
