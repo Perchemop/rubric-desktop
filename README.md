@@ -27,6 +27,20 @@ build artefacts to each run on the [Actions](https://github.com/Perchemop/rubric
 page. Save a project with **File ▸ Save Project** and reopen it with
 **File ▸ Open Project**.
 
+### PDFium (PDF rendering) matrix
+
+PDFium is a run-time dependency, so which download carries it depends on the
+artefact:
+
+| Artefact | PDFium library |
+|---|---|
+| Linux AppImage, macOS `.app`/`.dmg`, Windows MSI and its portable zip | **bundled** — pinned build; the packaging job fails rather than ship an installer without PDF support |
+| Plain release zips (`rubric-<os>-<arch>.zip`) | **not bundled** — the app locates it at run time |
+
+For the plain zips, `docs/pdfium.md` covers the download and the discovery
+order: `RUBRIC_PDFIUM_PATH` → the executable's directory → its `lib/`
+subdirectory → the system library.
+
 ## Repository layout
 
 This is a Cargo workspace. The desktop app lives under `apps/rubric/`:
@@ -99,12 +113,21 @@ in `docs/inspiration.md`. Dependency licences are tracked in
 
 | Shortcut | Action |
 |---|---|
-| Ctrl/Cmd + S | Save project |
+| Ctrl/Cmd + N | New project |
 | Ctrl/Cmd + O | Open project |
+| Ctrl/Cmd + S | Save project |
+| Ctrl/Cmd + Shift + S | Save project as |
+| Ctrl/Cmd + I | Import PDF |
+| Ctrl/Cmd + P | Print |
+| Ctrl/Cmd + W | Quit (Cmd + Q on macOS) |
 | Ctrl + Z / Ctrl + Y | Undo / Redo |
+| Ctrl/Cmd + A | Select all |
+| Ctrl/Cmd + D | Duplicate selection |
+| Ctrl/Cmd + C / Ctrl/Cmd + V | Copy / paste properties |
 | Delete / Backspace | Delete selection |
-| Esc | Cancel current action / close dialog |
+| Ctrl/Cmd + + / − / 0 | Zoom in / out / fit page |
 | Page Up / Page Down | Previous / next page |
+| Esc | Cancel current action / close dialog |
 
 See `ACCESSIBILITY.md` for the full accessibility commitment and `apps/rubric/src/ui/app.rs` for the implementation. In addition to the global shortcuts above, every tool has a single-key shortcut (letter or digit) shown on its toolbar tooltip and in the Tools context menu.
 
