@@ -6,6 +6,7 @@
 # (it runs on pushes to main and on a schedule), so it would fail the PR
 # verdict for a reason unrelated to the change.
 check
+snapshot
 Secret scan
 Personal data scan
 Dependency review

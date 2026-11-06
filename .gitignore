@@ -27,6 +27,13 @@ Thumbs.db
 .idea/
 .vscode/
 
+# kittest snapshot scratch files: on a failing (or re-baselined) snapshot the
+# harness writes the rendered image and a diff next to the committed baseline.
+# Only the plain `{name}.png` baselines are tracked.
+**/tests/snapshots/**/*.diff.png
+**/tests/snapshots/**/*.new.png
+**/tests/snapshots/**/*.old.png
+
 # Python bytecode caches — a .pyc embeds the absolute source path, which is a
 # personal-data leak in a public repository (guide II.29).
 __pycache__/

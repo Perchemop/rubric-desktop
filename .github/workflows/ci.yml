@@ -26,12 +26,45 @@ jobs:
       run: cargo test --all
       env:
         RUBRIC_PDFIUM_PATH: /home/runner/pdfium/lib
+    # kittest snapshot round-trip (G4-2b): a failing or re-baselined snapshot
+    # writes `{name}.new.png` / `{name}.diff.png`; upload them so the new
+    # baseline can be downloaded, committed and the branch re-run green.
+    - name: Upload kittest snapshot artifacts
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: kittest-snapshots
+        path: apps/rubric/tests/snapshots/
+        if-no-files-found: ignore
     - name: Clippy (hayro feature, no warnings)
       run: cargo clippy -p rubric --features hayro -- -D warnings
     - name: Tests (with hayro feature)
       run: cargo test -p rubric --features hayro
     - name: Build release
       run: cargo build --release
+
+  # kittest snapshot evidence (guide II.27.12, G4-2b): rendered on macOS where
+  # runners expose a real GPU (egui's own CI does the same; Linux runners have
+  # no wgpu adapter, and the snapshot test skips there via RUBRIC_SNAPSHOTS).
+  # A failing or re-baselined snapshot uploads `.new.png`/`.diff.png` so the
+  # baseline can be committed and the branch re-run green.
+  snapshot:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+    - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+    - name: Snapshot tests (render the shell)
+      run: cargo test -p rubric --lib kittest_tests
+      env:
+        RUBRIC_SNAPSHOTS: "1"
+    - name: Upload kittest snapshot artifacts
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: kittest-snapshots
+        path: apps/rubric/tests/snapshots/
+        if-no-files-found: ignore
 
   # Packaging declaration check (guide §4): dist-workspace.toml resolves to a
   # concrete artefact list; a broken definition fails the pull request instead

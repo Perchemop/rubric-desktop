@@ -3013,4 +3013,24 @@ mod kittest_tests {
             "clicking the Highlight tool button must activate the tool"
         );
     }
+
+    #[test]
+    fn shell_empty_state_snapshot_matches_baseline() {
+        // Rendered visual evidence (guide II.27.12, G4-2b): the real empty
+        // shell — menu bar, toolbar, inspector empty state, status bar — is
+        // rasterised with kittest's wgpu renderer and compared against the
+        // committed baseline. Rendering needs a wgpu adapter: the CI
+        // `snapshot` job (macos, real GPU) sets RUBRIC_SNAPSHOTS=1; the
+        // Ubuntu test jobs have no adapter, so skip there instead of
+        // panicking inside kittest's adapter selection.
+        if std::env::var_os("RUBRIC_SNAPSHOTS").is_none() {
+            eprintln!("skipping: RUBRIC_SNAPSHOTS not set (no wgpu adapter on this runner)");
+            return;
+        }
+        let ctx = egui::Context::default();
+        let mut app = RubricApp::new_headless(&ctx, None);
+        let mut harness = shell_harness(&mut app);
+        harness.run_steps(2);
+        harness.snapshot("shell_empty_state");
+    }
 }
