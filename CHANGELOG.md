@@ -6,6 +6,24 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ### Added
 
+- **Text-anchored markup completion** (design-audit proposal P2-12, PRs #130/#131,
+  merged as #131): highlight/strikeout/underline/squiggly now carry real
+  `MarkupGeometry::TextAnchor` geometry. A new data-layer text-extraction path
+  (`data/pdf.rs` `page_text_lines`) reads per-character boxes through
+  pdfium-render's public page-text API and groups them into text lines in
+  **page space (y-down)** — PDF user space is flipped with the page height, so
+  anchors land on the drawn text. Click-create for Highlight snaps to the text
+  line under the cursor (`find_text_line_at_point` returns the whole line:
+  anchor, text, width and line height; without a source PDF it falls back to
+  unsnapped defaults without loading PDFium). Strikeout/Underline/Squiggly are
+  drawn as text-anchored lines (screen-space correct at any zoom/pan),
+  `TextAnchor::bounds()` covers the real drawn area (hit-testing and the PDF
+  export fallback agree with what is drawn), and tests cover the serde
+  round-trip plus a PDFium-backed extraction test over a generated text PDF.
+  Known limitation: character boxes on `/Rotate`d pages are reported in
+  un-rotated user space, so anchors there can be offset (documented in
+  `page_text_lines`).
+
 - **Bates numbering — flattened-PDF export stamp** (spec F-805, v0.6): the
   flattened **PDF** export now bakes the sequential stamps into each page's
   content stream (`overlay_page_with_markups` + `bates_overlay_ops`), alongside

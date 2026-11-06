@@ -1,5 +1,50 @@
 # PROGRESS.md
 
+## 2026-11-06 — P2-12 complete: PDF text extraction + text-anchored markup (PRs #130/#131)
+**Status**: merged to main (PR #131, merge commit `0b6f42e`); CI green on `main`
+(CI + Security both SUCCESS).
+
+### Completed
+- **Text extraction path** (`data/pdf.rs`): `page_text_lines` extracts
+  per-character bounding boxes via pdfium-render 0.9.4's **public page-text
+  API** (`PdfPage::text()` → `PdfPageTextChars::iter()` →
+  `unicode_char()`/`loose_bounds()`) — the earlier draft used raw
+  `FPDFText_*` FFI through `pdfium.bindings()`, which is a `pub(crate)` trait
+  method and could never compile outside the crate (the 16 CI errors that
+  blocked PRs #130/#131). Character boxes are converted from PDF user space
+  (y-up) to **page space (y-down)** with the page height, then grouped into
+  `TextLine`s by top coordinate (4 pt tolerance). Rotated-page anchors are a
+  documented limitation.
+- **Snapping** (`find_text_line_at_point`): returns the whole nearest
+  `TextLine` inside a tolerance box; Highlight click-create uses the real
+  anchor/text/width/line-height (the draft discarded the snap point and kept
+  default metrics), and skips the PDFium load entirely when there is no source
+  PDF.
+- **Rendering**: the `TextAnchor` canvas arm now scales everything into screen
+  space first (`to_screen` + zoom) — the draft drew page-space coordinates on
+  the screen-space painter, wrong at any zoom/pan. Strikeout (mid-line),
+  Underline (bottom) and Squiggly (zig-zag) draw as anchored lines;
+  Highlight keeps its fill + stroke box.
+- **Domain**: `TextAnchor::bounds()` covers `at .. at+text_width` ×
+  `at .. at+line_height*line_count` (was a hardcoded 100 pt centred box), so
+  hit-testing and the flattened-PDF export fallback agree with the drawn line.
+- **Tests**: `text_anchor_geometry_roundtrip_bounds_and_hit_test` (serde
+  round-trip + bounds/hit agreement) and
+  `page_text_lines_extracts_text_with_page_space_geometry` (PDFium-backed:
+  generated text PDF, line content, y-flip ranges, snap inside/far,
+  out-of-range page error) — runs in both default and `hayro` CI
+  configurations.
+- **Process**: reviewer pass ran on the fix branch (2 HIGH + 3 MEDIUM + 3 LOW
+  findings; all HIGH/MEDIUM and the cheap LOWs fixed in-slice, the fixed 10 pt
+  snap tolerance and per-click re-extraction recorded as follow-ups); stale
+  branches `p2-12-text-anchored-strikeout{,-fix,-fix2}` deleted after merge;
+  PR #130 auto-marked merged (its commits are reachable from `main`).
+
+### Remaining v0.5/v1.0 deferrals (unchanged)
+- **P1-11 / G4** `egui_kittest` visual evidence (owner-approved deferral).
+- **§12.1** signed releases + in-app checksum-verified auto-update install.
+- **v1.0-0** hands-on macOS/Windows installer verification (needs machines).
+
 ## 2026-11-05 — v0.5 audit close-out (A2 focus rings, A4 icon labels, P0-2 fonts)
 **Status**: documentation slice; CI pending.
 
