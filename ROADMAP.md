@@ -6,7 +6,7 @@ run or hands-on verification on the primary local platform (Linux, aarch64).
 Never from intention.
 
 **Evidence source of truth:** `REQUIREMENTS_TRACEABILITY.md` (requirement →
-feature → module mapping) and `docs/spec/README.md` (the 52 feature IDs).
+feature → module mapping) and `docs/spec/README.md` (the 57 feature IDs).
 This file is the staged, milestone view over those.
 
 ---
@@ -91,7 +91,7 @@ Small, low-risk completions; each its own Task + release.
 
 Items from the ranked gap list in
 `docs/research/v0.4-capability-gap-analysis.md`; they are not spec feature IDs,
-so they do not move the 52-feature readiness table above.
+so they do not move the 57-feature readiness table above.
 
 - [x] **v0.4-01**: multi-select (gap #2) — Shift+click toggle + marquee drag — PR #86 merged
 - [x] **v0.4-02**: batch status (gap #3) — `EditorAction::BatchStatus` +
@@ -119,7 +119,7 @@ so they do not move the 52-feature readiness table above.
 
 ### v1.0.0 — finished (guide §9)
 
-- [x] All 52 feature IDs done; all 17 requirement groups DONE (CI-verified)
+- [x] All 57 feature IDs done; all 18 requirement groups DONE (CI-verified)
 - [ ] Multi-platform installers verified hands-on (Linux ✅, macOS, Windows)
 - [ ] §2.5 legal checklist clean for a public release
 - [ ] README/ROADMAP claims re-audited (no over-claiming)
@@ -180,7 +180,7 @@ capability inventory row 32.
 ### Community, security and operating hygiene — done 2026-10-24 (guide Part II)
 
 Not product features: tracked as R-C-001…R-C-012 in
-`REQUIREMENTS_TRACEABILITY.md`, so the 52-feature readiness above is
+`REQUIREMENTS_TRACEABILITY.md`, so the 57-feature readiness above is
 unchanged by this work.
 
 - Community files: `CODE_OF_CONDUCT.md`, `SECURITY.md` (threat model +
@@ -197,6 +197,19 @@ unchanged by this work.
   name-conflict check (Q28), employer/IP note (Q29), licence question
   (Q-LIC-1) and the six Part II §26 decisions recorded in
   `docs/assumptions-and-questions.md`; metrics statement in `docs/metrics.md`.
+
+### Post-v0.3.0 audit queue (2026-11-07)
+
+Open items from the documentation/readiness audit, in its priority order. None
+are marked done; each needs its own slice and evidence.
+
+- [ ] Hands-on macOS + Windows installer smoke (install → import → mark → export → print) — v1.0 gate, needs machines
+- [ ] Issue #29 dependency refresh (egui/eframe 0.37, ureq 3.x, rfd 0.17)
+- [ ] Split god files: `ui/app.rs` (~130 KB), `ui/canvas.rs` (~106 KB), `domain/markup.rs` (~77 KB)
+- [ ] Async page thumbnails (thumbnails currently render on the UI thread)
+- [ ] Glyph-range (not whole-line) text anchoring for highlight/strikeout; rotated-page text-anchor fidelity (documented limitation)
+- [ ] Signed releases + checksum-verified auto-update install (guide §12.1)
+- [ ] Optional: minimap
 
 ---
 
