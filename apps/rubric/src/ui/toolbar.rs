@@ -4,8 +4,14 @@ use eframe::egui::{Align, Layout, Ui};
 
 use crate::domain::{MarkupKind, Tool, ToolGroup, ToolSet};
 use crate::ui::icon_button::{
-    draw_arrow_icon, draw_ellipse_icon, draw_highlight_icon, draw_length_icon, draw_line_icon,
-    draw_rectangle_icon, draw_select_icon, draw_text_icon, icon_button,
+    draw_arrow_icon, draw_calibrate_icon, draw_cloud_icon, draw_ellipse_icon,
+    draw_highlight_icon, draw_ink_icon, draw_callout_icon, draw_length_icon,
+    draw_line_icon, draw_note_icon, draw_measure_area_icon,
+    draw_measure_angle_icon, draw_measure_count_icon, draw_measure_diameter_icon,
+    draw_measure_perimeter_icon, draw_measure_radius_icon, draw_polygon_icon,
+    draw_polyline_icon, draw_rectangle_icon, draw_select_icon, draw_strikeout_icon,
+    draw_stamp_icon, draw_squiggly_icon, draw_text_icon, draw_underline_icon,
+    icon_button,
 };
 
 /// Map a tool to its icon drawing function.
@@ -13,13 +19,29 @@ fn tool_icon(tool: Tool) -> fn(&eframe::egui::Painter, eframe::egui::Rect) {
     match tool {
         Tool::Select => draw_select_icon,
         Tool::Highlight => draw_highlight_icon,
+        Tool::Strikeout => draw_strikeout_icon,
+        Tool::Underline => draw_underline_icon,
+        Tool::Squiggly => draw_squiggly_icon,
+        Tool::Text => draw_text_icon,
+        Tool::Callout => draw_callout_icon,
+        Tool::Note => draw_note_icon,
+        Tool::Stamp => draw_stamp_icon,
         Tool::Rectangle => draw_rectangle_icon,
         Tool::Ellipse => draw_ellipse_icon,
+        Tool::Cloud => draw_cloud_icon,
+        Tool::Polygon => draw_polygon_icon,
+        Tool::Polyline => draw_polyline_icon,
         Tool::Line => draw_line_icon,
         Tool::Arrow => draw_arrow_icon,
-        Tool::Text => draw_text_icon,
+        Tool::Ink => draw_ink_icon,
         Tool::MeasureLength => draw_length_icon,
-        _ => draw_select_icon,
+        Tool::MeasurePerimeter => draw_measure_perimeter_icon,
+        Tool::MeasureArea => draw_measure_area_icon,
+        Tool::MeasureAngle => draw_measure_angle_icon,
+        Tool::MeasureDiameter => draw_measure_diameter_icon,
+        Tool::MeasureRadius => draw_measure_radius_icon,
+        Tool::MeasureCount => draw_measure_count_icon,
+        Tool::Calibrate => draw_calibrate_icon,
     }
 }
 
@@ -38,22 +60,63 @@ fn tool_button(ui: &mut Ui, active: &mut Tool, tool: Tool, label: &str) -> bool 
     }
 }
 
-pub(crate) fn draw_toolbar(ui: &mut Ui, active: &mut Tool, _status: &mut String) {
-    ui.horizontal(|ui| {
-        ui.label("Tool:");
-        let kinds = [
+/// Tool families used to order and visually group the toolbar strip.
+/// Each family is a contiguous run of tools; a small gap separates families.
+const TOOL_FAMILIES: &[(&str, &[Tool])] = &[
+    (
+        "Select",
+        &[
             Tool::Select,
             Tool::Highlight,
+            Tool::Strikeout,
+            Tool::Underline,
+            Tool::Squiggly,
+        ],
+    ),
+    (
+        "Review",
+        &[Tool::Text, Tool::Callout, Tool::Note, Tool::Stamp],
+    ),
+    (
+        "Shapes",
+        &[
             Tool::Rectangle,
             Tool::Ellipse,
-            Tool::Line,
-            Tool::Arrow,
-            Tool::Ink,
-            Tool::Text,
+            Tool::Cloud,
+            Tool::Polygon,
+            Tool::Polyline,
+        ],
+    ),
+    (
+        "Paths",
+        &[Tool::Line, Tool::Arrow, Tool::Ink],
+    ),
+    (
+        "Measure",
+        &[
             Tool::MeasureLength,
-        ];
-        for t in kinds {
-            tool_button(ui, active, t, t.label());
+            Tool::MeasurePerimeter,
+            Tool::MeasureArea,
+            Tool::MeasureAngle,
+            Tool::MeasureDiameter,
+            Tool::MeasureRadius,
+            Tool::MeasureCount,
+        ],
+    ),
+    ("Calibrate", &[Tool::Calibrate]),
+];
+
+pub(crate) fn draw_toolbar(ui: &mut Ui, active: &mut Tool, _status: &mut String) {
+    ui.horizontal_wrap(|ui| {
+        ui.label("Tools:");
+        for (family_index, (_name, tools)) in TOOL_FAMILIES.iter().enumerate() {
+            // small gap between families so the strip stays scannable
+            if family_index > 0 {
+                ui.add_space(6.0);
+            }
+            for tool in tools.iter() {
+                tool_button(ui, active, *tool, tool.label());
+            }
         }
     });
 }

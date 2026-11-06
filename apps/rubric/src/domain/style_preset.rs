@@ -116,7 +116,9 @@ pub struct StylePresetLibrary {
 }
 
 impl StylePresetLibrary {
-    const MAX_PRESETS: usize = 64;
+    /// Maximum number of saved styles in the library. Oldest entries are
+    /// dropped when the cap is exceeded.
+    pub const MAX_PRESETS: usize = 64;
 
     pub fn new() -> Self {
         Self::default()

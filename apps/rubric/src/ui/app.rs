@@ -31,6 +31,11 @@ const EMBEDDED_CHANGELOG: &str = include_str!("../../../../CHANGELOG.md");
 /// tokens since project start plus per-release token metrics.
 const EMBEDDED_TOKENS: &str = include_str!("../../../../docs/tokens.json");
 
+/// User guide embedded at build time for Help ▸ User Guide. Baking it in
+/// means the guide works in a packaged binary, where a source-checkout
+/// relative path would not resolve.
+const USER_GUIDE: &str = include_str!("../../../../USER_GUIDE.md");
+
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum DrawState {
@@ -356,6 +361,8 @@ pub struct RubricApp {
     show_about: bool,
     /// Shows the keyboard shortcuts dialog (proposal 10).
     show_keyboard_shortcuts: bool,
+    /// Shows the user guide window (Help ▸ User Guide).
+    show_user_guide: bool,
     /// Set when the user closed the update-check window, so it stays closed
     /// until a new check is requested (full-app audit M8).
     update_dismissed: bool,
@@ -478,6 +485,7 @@ impl RubricApp {
             current_path: None,
             show_about: false,
             show_keyboard_shortcuts: false,
+            show_user_guide: false,
             update_dismissed: false,
             force_close: false,
             title_dirty: true,
@@ -1165,7 +1173,7 @@ impl RubricApp {
         let mut open = true;
         let mut cancelled = false;
         let mut apply = false;
-        egui::Window::new("Calibrate Page Scale")
+        egui::Window::new("Calibrate Scale")
             .open(&mut open)
             .resizable(false)
             .default_width(560.0)
@@ -1921,21 +1929,34 @@ impl RubricApp {
                 // Drag calibration (v0.4 gap #4): selecting the tool starts a
                 // two-click reference segment on the canvas; the dialog that
                 // follows writes the page scale.
-                if ui.button("Calibrate Page Scale…").clicked() {
+                if ui.button("Calibrate Scale (click two points on canvas)…").clicked() {
                     self.select_tool(Tool::Calibrate);
                     ui.close();
                 }
                 ui.separator();
-                // Page navigation in the menu (full-app audit M10): the arrows
-                // and PageUp/PageDown were the only paths before.
-                if menu_shortcut_button(ui, "Previous Page", "PageUp") {
-                    self.jump_to_page(self.ui.current_page.saturating_sub(1));
+                // Page navigation in the menu (full-app audit M10): gated at
+                // document boundaries so the menu never silently does nothing.
+                let count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
+                let current = self.ui.current_page.min(count.saturating_sub(1));
+                if ui
+                    .add_enabled(
+                        current > 0,
+                        egui::Button::new("Previous Page").shortcut_text("PageUp"),
+                    )
+                    .on_disabled_hover_text("Already on the first page")
+                    .clicked()
+                {
+                    self.jump_to_page(current.saturating_sub(1));
                 }
-                if menu_shortcut_button(ui, "Next Page", "PageDown") {
-                    let count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
-                    if self.ui.current_page + 1 < count {
-                        self.jump_to_page(self.ui.current_page + 1);
-                    }
+                if ui
+                    .add_enabled(
+                        current + 1 < count,
+                        egui::Button::new("Next Page").shortcut_text("PageDown"),
+                    )
+                    .on_disabled_hover_text("Already on the last page")
+                    .clicked()
+                {
+                    self.jump_to_page(current + 1);
                 }
                 if ui.button("Full Screen").clicked() {
                     // Read the live state so the toggle is truthful even if the
@@ -2101,6 +2122,10 @@ impl RubricApp {
                     self.show_keyboard_shortcuts = !self.show_keyboard_shortcuts;
                     ui.close();
                 }
+                if ui.button("User Guide…").clicked() {
+                    self.show_user_guide = !self.show_user_guide;
+                    ui.close();
+                }
             });
         });
     }
@@ -2117,19 +2142,18 @@ impl RubricApp {
                 .fill(ui.visuals().selection.bg_fill)
                 .stroke(ui.visuals().selection.stroke)
                 .show(ui, |ui| {
-                    let tool_name = self
-                        .ui
-                        .active_tool
-                        .to_kind()
-                        .map(|k| k.label())
-                        .unwrap_or("Select");
+                    let tool_name = self.ui.active_tool.label();
                     let shortcut = self
                         .ui
                         .active_tool
                         .shortcut_key()
                         .map(|k| format!(" ({})", k.to_ascii_uppercase()))
                         .unwrap_or_default();
-                    ui.label(format!("{}{}", tool_name, shortcut));
+                    let label = match &self.ui.pending_style_preset {
+                        Some(armed) => format!("{} (style: {})", tool_name, armed.name),
+                        None => format!("{}{}", tool_name, shortcut),
+                    };
+                    ui.label(label);
                 });
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -2748,7 +2772,7 @@ impl RubricApp {
                     ui.separator();
                     ui.label("Tools:");
                     ui.label("Select / Highlight / Rectangle / Ellipse / Line / Arrow / Pen / Text Box");
-                    ui.label("Calibrate Page Scale (two-click reference segment)");
+                    ui.label("Calibrate Scale (click two points on canvas)");
                     ui.label("Measurement tools: Length / Diameter / Radius / Perimeter / Area / Angle");
                     ui.separator();
                     ui.label("Markup actions:");
@@ -2761,6 +2785,52 @@ impl RubricApp {
                 });
             if !open {
                 self.show_keyboard_shortcuts = false;
+            }
+        }
+
+        // User guide window (Help ▸ User Guide): the embedded USER_GUIDE.md,
+        // so it works in a packaged binary, not only in a source checkout.
+        if self.show_user_guide {
+            let mut open = true;
+            egui::Window::new("User Guide")
+                .open(&mut open)
+                .resizable(true)
+                .min_size(egui::vec2(700.0, 500.0))
+                .default_size(egui::vec2(900.0, 700.0))
+                .show(ui.ctx(), |ui| {
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        ui.heading("Rubric User Guide");
+                        ui.separator();
+                        for line in USER_GUIDE.lines() {
+                            if line.is_empty() {
+                                ui.add_space(4.0);
+                            } else if line.starts_with('#') {
+                                let level = line.chars().take_while(|c| *c == '#').count();
+                                let text = line.trim_start_matches('#').trim();
+                                match level {
+                                    1 => ui.heading(text),
+                                    2 => ui.heading(text),
+                                    _ => ui.label(text),
+                                }
+                            } else if line.starts_with('-') || line.starts_with('*') {
+                                ui.label(format!("  {}", line));
+                            } else if line.starts_with('|') && line.contains("---") {
+                                // skip markdown table separators
+                            } else if line.starts_with('|') {
+                                ui.label(line);
+                            } else {
+                                ui.label(line);
+                            }
+                        }
+                        ui.separator();
+                        ui.hyperlink_to(
+                            "Source & releases",
+                            "https://github.com/Perchemop/rubric-desktop",
+                        );
+                    });
+                });
+            if !open {
+                self.show_user_guide = false;
             }
         }
 

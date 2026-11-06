@@ -48,20 +48,22 @@ pub(crate) fn draw_tool_chest(
     if let Some(armed) = ui_state.pending_style_preset.clone() {
         ui.horizontal(|ui| {
             draw_swatch(ui, armed.style.stroke);
-            ui.label(format!("Next markup: {}", armed.name));
+            ui.label(format!("Next markup style: {}", armed.name));
             if ui.button("Stop").clicked() {
                 set_armed(ui_state, &armed, true);
             }
         });
     } else {
-        ui.small("No active tool. Pick Apply on a saved tool to arm it.");
+        ui.small("No active style. Pick Apply on a saved style to arm it.");
     }
     ui.separator();
 
     if library.is_empty() {
-        ui.label("No saved tools yet.");
-        ui.small("Save a tool below, then Apply it any time.");
+        ui.label("No saved styles yet.");
+        ui.small("Save a style below, then Apply it any time.");
     } else {
+        ui.small(format!("{} of {} saved styles", library.len(), StylePresetLibrary::MAX_PRESETS));
+        ui.separator();
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| {
@@ -110,7 +112,7 @@ fn draw_preset_row(
         draw_swatch(ui, preset.style.stroke);
         if ui
             .selectable_label(is_armed, preset.name.as_str())
-            .on_hover_text(format!("{} tool", preset.kind.label()))
+            .on_hover_text(format!("{} style", preset.kind.label()))
             .clicked()
         {
             // The name doubles as the arm toggle, mirroring the tool
@@ -119,11 +121,12 @@ fn draw_preset_row(
         }
         let apply_label = if is_armed { "Stop" } else { "Apply" };
         if ui
-            .add_sized(egui::vec2(46.0, 18.0), egui::Button::new(apply_label))
+            .button(apply_label)
+            .min_size(egui::vec2(42.0, 24.0))
             .on_hover_text(if is_armed {
-                "Stop styling new markups with this tool"
+                "Stop styling new markups with this style"
             } else {
-                "Style every markup created from now on with this tool"
+                "Style every markup created from now on with this style"
             })
             .clicked()
         {
@@ -136,23 +139,26 @@ fn draw_preset_row(
         // project, so it asks for an undo snapshot.
         if has_selection
             && ui
-                .add_sized(egui::vec2(22.0, 18.0), egui::Button::new("→"))
-                .on_hover_text("Apply to selection")
+                .button("Apply to Selection")
+                .min_size(egui::vec2(88.0, 24.0))
+                .on_hover_text("Apply this style to every selected markup")
                 .clicked()
         {
             project_mutated = apply_preset_to_selection(project, ui_state, preset);
         }
 
         if ui
-            .add_sized(egui::vec2(22.0, 18.0), egui::Button::new("✎"))
-            .on_hover_text("Rename")
+            .button("Rename")
+            .min_size(egui::vec2(56.0, 24.0))
+            .on_hover_text("Rename this style")
             .clicked()
         {
             ui_state.tool_chest_rename = Some((preset.id, preset.name.clone()));
         }
         if ui
-            .add_sized(egui::vec2(22.0, 18.0), egui::Button::new("✖"))
-            .on_hover_text("Delete")
+            .button("Delete")
+            .min_size(egui::vec2(56.0, 24.0))
+            .on_hover_text("Delete this style")
             .clicked()
         {
             library.remove(preset.id);
@@ -166,7 +172,7 @@ fn draw_preset_row(
             {
                 ui_state.tool_chest_rename = None;
             }
-            ui_state.status = format!("Tool '{}' deleted", preset.name);
+            ui_state.status = format!("Style '{}' deleted", preset.name);
         }
     });
     project_mutated
@@ -193,7 +199,7 @@ fn draw_rename_editor(
         if ui.button("Save").clicked() {
             let new_name = draft.trim().to_string();
             if new_name.is_empty() {
-                ui_state.status = "Tool name cannot be empty".to_string();
+                ui_state.status = "Style name cannot be empty".to_string();
             } else if library.rename(preset.id, new_name.clone()) {
                 // Keep the armed copy in sync so the banner and the row
                 // agree on the new name.
@@ -204,10 +210,10 @@ fn draw_rename_editor(
                 {
                     armed.name = new_name.clone();
                 }
-                ui_state.status = format!("Tool renamed to '{new_name}'");
+                ui_state.status = format!("Style renamed to '{new_name}'");
                 close = true;
             } else {
-                ui_state.status = "Tool no longer exists".to_string();
+                ui_state.status = "Style no longer exists".to_string();
                 close = true;
             }
         }
@@ -221,7 +227,7 @@ fn draw_rename_editor(
     false
 }
 
-/// "Save as Tool" section: a shared name draft with two capture paths — the
+/// "Save Style" section: a shared name draft with two capture paths — the
 /// active tool's default style, and (when exactly one markup is selected) a
 /// full capture of that markup via `StylePreset::from_markup`. Both save
 /// through `save_named`, so re-using a name updates one entry.
@@ -231,10 +237,10 @@ fn draw_save_section(
     project: &mut Project,
     ui_state: &mut UiState,
 ) {
-    ui.heading("Save as Tool");
+    ui.heading("Save Style");
     ui.add(
         egui::TextEdit::singleline(&mut ui_state.tool_chest_save_name)
-            .hint_text("Tool name")
+            .hint_text("Style name")
             .desired_width(ui.available_width())
             .id(egui::Id::new("tool_chest_save_name")),
     );
@@ -248,9 +254,9 @@ fn draw_save_section(
         if ui
             .add_enabled(
                 name_ok && kind.is_some(),
-                egui::Button::new("Save current tool"),
+                egui::Button::new("Save Current Style"),
             )
-            .on_hover_text("Capture the active tool's default style")
+            .on_hover_text("Capture the active tool's default style as a named style")
             .on_disabled_hover_text("Pick a drawing tool and enter a name")
             .clicked()
         {
@@ -259,8 +265,8 @@ fn draw_save_section(
         let single_id = single_selected_id(ui_state);
         let markup_enabled = name_ok && single_id.is_some();
         if ui
-            .add_enabled(markup_enabled, egui::Button::new("Save selected markup"))
-            .on_hover_text("Capture the selected markup's style and metadata")
+            .add_enabled(markup_enabled, egui::Button::new("Save Markup as Style"))
+            .on_hover_text("Capture the selected markup's style and metadata as a named style")
             .on_disabled_hover_text("Select exactly one markup and enter a name")
             .clicked()
         {
@@ -268,7 +274,7 @@ fn draw_save_section(
         }
     });
     if kind.is_none() && single_selected_id(ui_state).is_none() {
-        ui.small("Pick a drawing tool (or select a markup) to capture.");
+        ui.small("Pick a drawing tool (or select a markup) to capture its style.");
     }
 }
 
@@ -289,7 +295,7 @@ fn save_current_tool(
     let style = kind.default_style();
     library.save_named(StylePreset::from_style(name, kind, style, author));
     ui_state.tool_chest_save_name.clear();
-    ui_state.status = format!("Tool '{name}' saved");
+    ui_state.status = format!("Style '{name}' saved");
 }
 
 /// Capture the single selected markup as a named preset via
@@ -312,19 +318,19 @@ fn save_selected_markup(
     if let Some(preset) = captured {
         library.save_named(preset);
         ui_state.tool_chest_save_name.clear();
-        ui_state.status = format!("Tool '{name}' saved");
+        ui_state.status = format!("Style '{name}' saved");
     }
 }
 
-/// Arm (or stop) a Tool Chest preset. While armed, `canvas::finish_markup`
+/// Arm (or stop) a Tool Chest style preset. While armed, `canvas::finish_markup`
 /// styles every non-stamp markup created from now on with the preset's look.
 fn set_armed(ui_state: &mut UiState, preset: &StylePreset, stop: bool) {
     if stop {
         ui_state.pending_style_preset = None;
-        ui_state.status = format!("Tool '{}' stopped", preset.name);
+        ui_state.status = format!("Style '{}' stopped", preset.name);
     } else {
         ui_state.pending_style_preset = Some(preset.clone());
-        ui_state.status = format!("Tool '{}' active — next markup uses it", preset.name);
+        ui_state.status = format!("Style '{}' active — next markup uses it", preset.name);
     }
 }
 
