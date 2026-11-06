@@ -2933,7 +2933,7 @@ mod headless_tests {
 
         // One full frame: logic (input/state) + paint (all panels), matching
         // eframe's call order inside `run_ui`.
-        let output = ctx.run_ui(RawInput::default(), |ui| {
+        let mut output = ctx.run_ui(RawInput::default(), |ui| {
             app.run_logic(ui.ctx());
             app.draw_ui(ui);
         });
@@ -2942,12 +2942,16 @@ mod headless_tests {
             !output.shapes.is_empty(),
             "the shell must paint something with no document open"
         );
+        // egui queues font-atlas texture deltas that a renderer would upload;
+        // a headless harness drops them intentionally (`TexturesDelta::clear`).
+        output.textures.clear();
 
         // A second frame must also run clean with carried-over state (undo
         // snapshots, UiState, autosave bookkeeping all persist across passes).
-        let _second = ctx.run_ui(RawInput::default(), |ui| {
+        let mut second = ctx.run_ui(RawInput::default(), |ui| {
             app.run_logic(ui.ctx());
             app.draw_ui(ui);
         });
+        second.textures.clear();
     }
 }
