@@ -2955,3 +2955,62 @@ mod headless_tests {
         second.textures_delta.clear();
     }
 }
+
+#[cfg(test)]
+mod kittest_tests {
+    //! Automated AccessKit evidence over the real shell (guide II.27.12,
+    //! audit follow-up A1, gap G4-2): egui_kittest drives the real app shell
+    //! headlessly and widgets are queryable and clickable through the
+    //! AccessKit tree, so screen-reader operability is exercised in CI.
+
+    use super::*;
+    use egui_kittest::kittest::Queryable;
+
+    /// Build a harness over the real app shell, exactly like eframe calls it
+    /// (logic pass, then paint pass with the root Ui).
+    fn shell_harness(app: &mut RubricApp) -> egui_kittest::Harness<'_> {
+        egui_kittest::Harness::builder()
+            .with_size(egui::vec2(1100.0, 720.0))
+            .build_ui(|ui| {
+                app.run_logic(ui.ctx());
+                app.draw_ui(ui);
+            })
+    }
+
+    #[test]
+    fn shell_settles_with_widgets_queryable_by_label() {
+        let ctx = egui::Context::default();
+        let mut app = RubricApp::new_headless(&ctx, None);
+        let mut harness = shell_harness(&mut app);
+
+        // Two frames: the first builds the AccessKit tree, the second runs
+        // with settled state. (`run()` would never settle — the shell always
+        // requests a periodic repaint for autosave/status — so use steps.)
+        harness.run_steps(2);
+
+        // Toolbar buttons are queryable by their visible text labels through
+        // the AccessKit tree. ("Select" is intentionally not queried: at
+        // startup the active-tool chip also reads "Select", so that label
+        // legitimately matches two nodes.)
+        let _highlight = harness.get_by_label("Highlight");
+        let _rectangle = harness.get_by_label("Rectangle");
+        let _length = harness.get_by_label("Length");
+    }
+
+    #[test]
+    fn clicking_a_tool_button_activates_the_tool() {
+        let ctx = egui::Context::default();
+        let mut app = RubricApp::new_headless(&ctx, None);
+        let mut harness = shell_harness(&mut app);
+        harness.run_steps(2);
+
+        harness.get_by_label("Highlight").click();
+        harness.run_steps(1);
+        drop(harness);
+
+        assert!(
+            matches!(app.ui.active_tool, Tool::Highlight),
+            "clicking the Highlight tool button must activate the tool"
+        );
+    }
+}

@@ -25,7 +25,12 @@ pub(crate) fn icon_button(
     rect = rect.shrink(2.0);
     rect.set_width(total_width.min(rect.width()));
 
-    let response = ui.allocate_rect(rect, Sense::click());
+    let response = ui
+        .allocate_rect(rect, Sense::click())
+        // Expose the visible label to Assistive Technology (AccessKit /
+        // kittest): the click target is named after the text painted inside
+        // it, so icon-paired buttons are screen-reader operable.
+        .labelled_by(text.id);
     if response.hovered() {
         ui.painter().rect_filled(
             rect,
