@@ -119,8 +119,6 @@ pub(crate) fn draw_user_guide(app: &mut RubricApp, ctx: &egui::Context) {
                         // skip markdown table separators
                     } else if line.starts_with('|') {
                         ui.label(line);
-                    } else {
-                        ui.label(line);
                     }
                 }
                 ui.separator();

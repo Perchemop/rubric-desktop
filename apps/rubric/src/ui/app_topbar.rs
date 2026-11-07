@@ -36,9 +36,9 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
                     None => format!("{}{}", tool_name, shortcut),
                 };
                 ui.label(
-                    egui::RichText::new(label)
-                        .color(ui.visuals().widgets.active.text_color())
-                        .heading(),
+                    egui::RichText::new(label).color(
+                        ui.visuals().widgets.active.text_color(),
+                    ),
                 );
             });
 

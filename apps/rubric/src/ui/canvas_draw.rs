@@ -56,6 +56,7 @@ pub(crate) fn draw_grid(
 /// a canvas position can be read in page points. Tick spacing follows the
 /// 1/2/5 ladder in `domain::grid`, chosen from the zoom so labels never
 /// collide.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn draw_rulers(
     painter: &Painter,
     ui: &Ui,
@@ -292,6 +293,7 @@ pub(crate) fn draw_minimap(
 /// per endpoint/vertex — dragging it reshapes the markup directly (v0.4 gap #5
 /// follow-up). Everything else keeps the bounding-box corner handles plus a
 /// centre grab dot; only `Bounds` geometry actually resizes from a corner.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn draw_selection(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup) {
     let b = screen_rect(m.bounds(), origin, pan, zoom);
     let stroke = egui::Stroke::new(1.0, Color32::from_rgb(30, 144, 255));
