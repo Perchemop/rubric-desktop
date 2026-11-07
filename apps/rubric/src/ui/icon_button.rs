@@ -4,6 +4,7 @@
 
 use eframe::egui::{
     Align2, Color32, FontFamily, FontId, Painter, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, Vec2,
+    WidgetInfo, WidgetType,
 };
 
 /// Draw a small geometric icon to the left of a text label inside `ui`.
@@ -39,12 +40,18 @@ pub(crate) fn icon_button(
     rect = rect.shrink(2.0);
     rect.set_width(total_width.min(rect.width()));
 
-    let response = ui
-        .allocate_rect(rect, Sense::click())
-        // Expose the visible label to Assistive Technology (AccessKit /
-        // kittest): the click target is named after the text painted inside
-        // it, so icon-paired buttons are screen-reader operable.
-        .labelled_by(ui.id().with(label));
+    let response = ui.allocate_rect(rect, Sense::click());
+    // Expose the visible label to Assistive Technology (AccessKit /
+    // kittest): the click target is named after the text painted inside
+    // it, so icon-paired buttons are screen-reader operable. The text is
+    // painted manually (there is no `Ui::label` widget to point at), so
+    // the button's own AccessKit node carries the name directly — a
+    // `labelled_by` relation would reference a node that never exists in
+    // the tree, and AccessKit consumers (including kittest) panic while
+    // resolving the dangling id.
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(WidgetType::Button, response.enabled(), label.to_owned())
+    });
     if response.hovered() {
         ui.painter().rect_filled(
             rect,
