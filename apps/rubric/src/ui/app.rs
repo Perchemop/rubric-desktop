@@ -411,6 +411,9 @@ pub struct RubricApp {
     bg_error: Option<String>,
     /// Session-only report export dialog state (no undo snapshot).
     pub(crate) report_export: Option<ReportExportUi>,
+    /// Transient toast notification (UI audit P1-1): shown briefly with
+    /// severity colour then auto-cleared after 3 seconds.
+    pub(crate) toast: Option<(StatusKind, String, Instant)>,
     /// Active colour theme (app-level preference, not project data).
     pub(crate) theme: Theme,
     /// High-contrast mode (a11y A3 / proposal P2-15), applied over the theme.
@@ -518,6 +521,7 @@ impl RubricApp {
             thumb_cache: pages::ThumbCache::default(),
             bg_error: None,
             report_export: None,
+            toast: None,
             theme: prefs.theme,
             high_contrast: prefs.high_contrast,
             ui_scale: prefs.ui_scale,
@@ -1258,6 +1262,12 @@ impl RubricApp {
     pub(crate) fn set_status(&mut self, kind: StatusKind, msg: impl Into<String>) {
         self.ui.status_kind = kind;
         self.ui.status = msg.into();
+    }
+
+    /// Set a transient toast notification (UI audit P1-1): shown briefly with
+    /// severity colour then auto-cleared after 3 seconds.
+    pub(crate) fn set_toast(&mut self, kind: StatusKind, msg: impl Into<String>) {
+        self.toast = Some((kind, msg.into(), Instant::now()));
     }
 
     /// Push a snapshot without touching the status bar. Used when the canvas
