@@ -146,6 +146,53 @@ pub(crate) struct RenderQueue {
     completed_key: Option<String>,
 }
 
+/// A render job for off-loading PDF page rendering to a worker thread
+/// (UI audit P1-2: move heavy work off the UI thread).
+#[derive(Debug)]
+pub(crate) struct RenderJob {
+    /// Path to the PDF file.
+    pub pdf_path: String,
+    /// Page index (0-based).
+    pub page_index: usize,
+    /// Thumbnail width in pixels (for thumbnails).
+    pub thumb_width_px: u32,
+    /// Key to identify this render request in the cache.
+    pub cache_key: String,
+    /// Optional channel sender to receive the result back on the UI thread.
+    pub result_tx: Option<mpsc::Sender<RenderResult>>,
+}
+
+/// Outcome of a render job, sent back to the UI thread.
+#[derive(Debug)]
+pub(crate) enum RenderResult {
+    /// Success: the page was rendered and the texture is ready.
+    Success { texture: egui::TextureHandle },
+    /// Failure: the render failed (e.g. PDF not found, invalid page).
+    Failure { error: String },
+}
+
+/// Repaint request signal (UI audit P1-2): posted by worker threads to
+/// notify the UI that a resource has finished loading/rendering.
+#[derive(Debug)]
+pub(crate) struct RepaintSignal;
+
+/// Render queue state (UI audit P1-2: move heavy work off the UI thread).
+///
+/// Follows the same `Arc<Mutex>` + worker-thread pattern as `update-check`
+/// (guide §7.2). One render job may be in flight at a time; the UI reads
+/// this state each frame to show a "working" indicator and repaint when
+/// the job completes.
+#[derive(Default)]
+pub(crate) struct RenderQueue {
+    /// True while a render job is in progress; the UI shows a placeholder
+    /// while this is `true`.
+    in_flight: bool,
+    /// Result of the completed render job, if any.
+    result: Option<RenderResult>,
+    /// Key of the render job that just completed, so the UI can cache it.
+    completed_key: Option<String>,
+}
+
 /// Layer criterion in the Markups List. The default layer is a distinct case
 /// because markups on it store `layer_id: None` in the domain model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
