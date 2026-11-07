@@ -3,7 +3,7 @@
 This document provides guidance for AI coding agents working on **Rubric**.
 
 ## Purpose
-Build a free, cross-platform Rust PDF markup/measurement desktop app (egui/eframe). Adhere to the build guide (kept outside the repo, never committed/pushed); other products may be named only as capability-level inspiration in `docs/inspiration.md`. Maintain quality gates.
+Build a free, cross-platform Rust PDF markup/measurement desktop app (egui/eframe). Adhere to the build guide `~/guide.md` (kept outside the repo, never committed/pushed) — the **single source of truth**: the former `~/addendum.md` is archived, its rules merged into the guide's Appendix A (Sections A–O). Other products may be named only as capability-level inspiration in `docs/inspiration.md`. Maintain quality gates.
 
 ## Operating model (CTO.new-style free process, guide §5)
 
@@ -33,7 +33,7 @@ models and GitHub Actions:
 - Domain-first: `src/domain/` is pure (no UI), fully serialisable with serde, testable headlessly.
 - Formatting: rustfmt conventions, checked by CI. No trailing whitespace.
 - Linting: `cargo clippy -- -D warnings` (treat warnings as errors).
-- Testing: `cargo test` before committing. Add/extend tests when changing behaviour or fixing bugs.
+- Testing: `cargo test` is the QA engine, run **by CI, never locally** (see CI-first below). Add/extend tests when changing behaviour or fixing bugs.
 - Error handling: use `thiserror` for domain/data errors; avoid panics in logic; prefer `Result`.
 - Conventions: snake_case, modules flat and explicit; doc comments for public API.
 - Dependencies: prefer well-maintained, MIT/Apache-2.0 crates.

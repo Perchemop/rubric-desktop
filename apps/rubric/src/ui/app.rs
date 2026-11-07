@@ -14,12 +14,13 @@ use crate::data::{
 };
 use crate::domain::units::calibrate_scale;
 use crate::domain::{
-    auto_save_interval_label, view, AppPrefs, Corner, Document, EditorAction, Grid, History,
-    Markup, MarkupGroupKey, MarkupKind, MarkupListSort, MarkupStyle, MeasureUnit, Project, Pt,
-    Report, ReportGroupKey, ReviewStatus, StampPreset, StylePreset, StylePresetLibrary, Theme,
-    Tool, AUTO_SAVE_INTERVALS,
+    view, AppPrefs, Corner, Document, EditorAction, Grid, History, Markup, MarkupGroupKey,
+    MarkupKind, MarkupListSort, MarkupStyle, MeasureUnit, Project, Pt, Report, ReportGroupKey,
+    ReviewStatus, StampPreset, StylePreset, StylePresetLibrary, Theme, Tool,
 };
-use crate::ui::{canvas, inspector, markups_list, menu, pages, theme, tool_chest, toolbar};
+use crate::ui::{
+    app_dialogs, canvas, inspector, markups_list, menu, pages, theme, tool_chest, toolbar,
+};
 use uuid::Uuid;
 
 /// Changelog embedded at build time for the in-app release-notes popup
@@ -30,6 +31,11 @@ const EMBEDDED_CHANGELOG: &str = include_str!("../../../../CHANGELOG.md");
 /// CI-managed token ledger embedded at build time (guide §12.1): cumulative
 /// tokens since project start plus per-release token metrics.
 const EMBEDDED_TOKENS: &str = include_str!("../../../../docs/tokens.json");
+
+/// User guide embedded at build time for Help ▸ User Guide. Baking it in
+/// means the guide works in a packaged binary, where a source-checkout
+/// relative path would not resolve.
+pub(crate) const USER_GUIDE: &str = include_str!("../../../../USER_GUIDE.md");
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
@@ -150,6 +156,9 @@ pub(crate) struct UiState {
     /// central panel so Fit Page can scale to it.
     pub(crate) canvas_size: Vec2,
     pub(crate) page_origin: Pos2,
+    /// One-frame flag raised by the canvas empty state's "Import PDF…"
+    /// button; consumed in `draw_ui` right after the central panel.
+    pub(crate) request_import: bool,
     hint: String,
     pub(crate) status: String,
     /// Set when an in-progress draw is cancelled (Esc) so the still-held drag
@@ -185,7 +194,7 @@ pub(crate) struct UiState {
     pub(crate) current_page: usize,
     /// True when a committed project change has not reached disk yet (save or
     /// autosave). Session-only; it drives autosave and the save path.
-    dirty: bool,
+    pub(crate) dirty: bool,
     /// Custom scale editor inputs (paper inches and real units).
     pub(crate) scale_paper_inches: f64,
     pub(crate) scale_real_units: f64,
@@ -287,6 +296,7 @@ impl Default for UiState {
             pan: Vec2::ZERO,
             canvas_size: Vec2::ZERO,
             page_origin: Pos2::new(40.0, 40.0),
+            request_import: false,
             hint: "Ctrl+S Save · Ctrl+O Open · Ctrl+Z Undo · Ctrl+Y Redo · Ctrl+A Select All · Del Delete · Esc Cancel"
                 .to_string(),
             status: "Ready".to_string(),
@@ -340,8 +350,8 @@ impl Default for UiState {
 }
 
 pub struct RubricApp {
-    history: History,
-    ui: UiState,
+    pub(crate) history: History,
+    pub(crate) ui: UiState,
     draw: DrawState,
     /// The last pointer page position (for the status bar).
     last_page_pos: Option<Pt>,
@@ -351,17 +361,19 @@ pub struct RubricApp {
     current_path: Option<PathBuf>,
     /// A project install waiting for the user to confirm discarding unsaved
     /// changes (full-app audit B2). `None` when nothing is pending.
-    pending_replace: Option<PendingReplace>,
+    pub(crate) pending_replace: Option<PendingReplace>,
     /// Help ▸ About window visibility (full-app audit M4).
-    show_about: bool,
+    pub(crate) show_about: bool,
     /// Shows the keyboard shortcuts dialog (proposal 10).
-    show_keyboard_shortcuts: bool,
+    pub(crate) show_keyboard_shortcuts: bool,
+    /// Shows the user guide window (Help ▸ User Guide).
+    pub(crate) show_user_guide: bool,
     /// Set when the user closed the update-check window, so it stays closed
     /// until a new check is requested (full-app audit M8).
     update_dismissed: bool,
     /// Set by "Quit Anyway" so the close-request veto (audit M1) lets the
     /// explicitly-confirmed close through instead of re-prompting forever.
-    force_close: bool,
+    pub(crate) force_close: bool,
     /// Set when the window title needs to be re-synced with `current_path`.
     title_dirty: bool,
     /// Last dirty state reflected in the window title, used to recompute the
@@ -381,15 +393,15 @@ pub struct RubricApp {
     /// Last PDF background error shown, to avoid spamming status every frame.
     bg_error: Option<String>,
     /// Session-only report export dialog state (no undo snapshot).
-    report_export: Option<ReportExportUi>,
+    pub(crate) report_export: Option<ReportExportUi>,
     /// Active colour theme (app-level preference, not project data).
-    theme: Theme,
+    pub(crate) theme: Theme,
     /// High-contrast mode (a11y A3 / proposal P2-15), applied over the theme.
-    high_contrast: bool,
+    pub(crate) high_contrast: bool,
     /// UI scale multiplier (app-level preference, not project data).
     ui_scale: f32,
     /// In-progress bug report the user is reviewing before sending (guide §7.1).
-    report: Option<BugReportUi>,
+    pub(crate) report: Option<BugReportUi>,
     /// Shared update-check state, written by the worker thread and read by the
     /// UI each frame (guide §7.2).
     update: Arc<Mutex<UpdateCheck>>,
@@ -417,7 +429,7 @@ pub(crate) struct UpdateCheck {
 /// [`RubricApp::install_project`], which parks the install here while the
 /// current project has unsaved changes.
 #[derive(Debug, Clone, PartialEq)]
-struct PendingReplace {
+pub(crate) struct PendingReplace {
     project: Project,
     current_path: Option<PathBuf>,
     status: String,
@@ -478,6 +490,7 @@ impl RubricApp {
             current_path: None,
             show_about: false,
             show_keyboard_shortcuts: false,
+            show_user_guide: false,
             update_dismissed: false,
             force_close: false,
             title_dirty: true,
@@ -509,7 +522,7 @@ impl RubricApp {
     /// never blocked; the result arrives via the shared `update` state and the
     /// thread requests a repaint when done. `egui::Context` is cheap to clone,
     /// so the worker keeps its own handle for the repaint signal.
-    fn begin_update_check(&mut self, ctx: &egui::Context) {
+    pub(crate) fn begin_update_check(&mut self, ctx: &egui::Context) {
         self.update_dismissed = false;
         {
             let mut state = self.update.lock().unwrap_or_else(|p| p.into_inner());
@@ -538,7 +551,7 @@ impl RubricApp {
         self.history.current()
     }
 
-    fn active_doc(&self) -> Option<&Document> {
+    pub(crate) fn active_doc(&self) -> Option<&Document> {
         self.current_project().active()
     }
 
@@ -604,7 +617,7 @@ impl RubricApp {
     /// Perform a context-menu [`EditorAction`] (spec F-603). Shared by the
     /// canvas and inspector context menus and by the Edit/View menu bar so a
     /// command has exactly one implementation.
-    fn apply_editor_action(&mut self, action: EditorAction) {
+    pub(crate) fn apply_editor_action(&mut self, action: EditorAction) {
         match action {
             EditorAction::Undo => {
                 if self.ui.text_edit.is_some() {
@@ -677,14 +690,14 @@ impl RubricApp {
     }
 
     /// Set the canvas zoom level, clamped to valid bounds, and update status.
-    fn set_zoom_level(&mut self, zoom: f32) {
+    pub(crate) fn set_zoom_level(&mut self, zoom: f32) {
         self.ui.zoom = zoom.clamp(view::MIN_ZOOM, view::MAX_ZOOM);
         self.ui.status = format!("Zoom {:.0}%", self.ui.zoom * 100.0);
         self.save_app_prefs();
     }
 
     /// Fit the current page to the canvas viewport (View ▸ Fit Page).
-    fn fit_page(&mut self) {
+    pub(crate) fn fit_page(&mut self) {
         let (page_w, page_h) = self
             .active_doc()
             .and_then(|doc| doc.pages.get(self.ui.current_page))
@@ -731,7 +744,7 @@ impl RubricApp {
     /// Select every editable markup on the current page (Edit ▸ Select All,
     /// Ctrl+A; full-app audit M10). Shared by the menu entry and the keyboard
     /// shortcut so the two cannot diverge.
-    fn select_all_on_page(&mut self) {
+    pub(crate) fn select_all_on_page(&mut self) {
         let page = self.ui.current_page;
         let ids: Vec<Uuid> = self
             .active_doc()
@@ -1158,14 +1171,14 @@ impl RubricApp {
     /// the drawn reference segment. Pre-filled with the segment's length under
     /// the page's current scale, so confirming unchanged is a no-op; changing
     /// the value (or unit) recalibrates the page.
-    fn draw_calibration_dialog(&mut self, ctx: &egui::Context) {
+    pub(crate) fn draw_calibration_dialog(&mut self, ctx: &egui::Context) {
         let Some(state) = self.ui.calibration.as_mut() else {
             return;
         };
         let mut open = true;
         let mut cancelled = false;
         let mut apply = false;
-        egui::Window::new("Calibrate Page Scale")
+        egui::Window::new("Calibrate Scale")
             .open(&mut open)
             .resizable(false)
             .default_width(560.0)
@@ -1224,7 +1237,7 @@ impl RubricApp {
 
     /// Push a snapshot without touching the status bar. Used when the canvas
     /// already set a more specific status earlier in the same frame.
-    fn push_snapshot_quiet(&mut self) {
+    pub(crate) fn push_snapshot_quiet(&mut self) {
         let proj = self.history.current().clone();
         self.history.push(proj);
         self.ui.dirty = true;
@@ -1239,7 +1252,7 @@ impl RubricApp {
     /// / Recent can no longer discard work silently (full-app audit B2).
     /// Returns `true` when the install happened now, `false` when it was
     /// parked behind the confirmation.
-    fn install_project(
+    pub(crate) fn install_project(
         &mut self,
         project: Project,
         current_path: Option<PathBuf>,
@@ -1287,9 +1300,64 @@ impl RubricApp {
         }
     }
 
+    /// Install the project parked in [`Self::pending_replace`] (full-app
+    /// audit B2 / UI audit P0-1). Called by the Replace Unsaved Project
+    /// dialog once the user has chosen to discard unsaved work; a no-op
+    /// when nothing is parked.
+    pub(crate) fn install_pending_replace(&mut self) {
+        if let Some(pending) = self.pending_replace.take() {
+            self.install_project_now(pending.project, pending.current_path, pending.status);
+        }
+    }
+
+    /// Drop the parked install and keep the current project, telling the
+    /// user what happened instead of silently discarding their choice.
+    pub(crate) fn cancel_pending_replace(&mut self) {
+        if self.pending_replace.take().is_some() {
+            self.ui.status = "Replace cancelled — current project kept".to_string();
+        }
+    }
+
+    /// Import a PDF from an explicit path — the shared pipeline behind
+    /// File ▸ Import PDF…, the canvas empty-state button and drag-and-drop
+    /// (UI audit P0-2). Parks behind the dirty-check like every install.
+    pub(crate) fn import_pdf_from_path(&mut self, path: &Path) {
+        match crate::data::pdf::read_pdf_info(path) {
+            // Audit M9: a 0-page PDF used to report "Imported 1 page(s)"
+            // and fabricate an unrenderable page.
+            Ok(info) if info.page_sizes.is_empty() => {
+                self.ui.status = "Import failed: the PDF has no pages".to_string();
+            }
+            Ok(info) => {
+                let stem = path
+                    .file_stem()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "Imported PDF".to_string());
+                let count = info.page_sizes.len();
+                let project =
+                    Project::from_pdf(stem, path.to_string_lossy().to_string(), &info.page_sizes);
+                self.install_project(project, None, format!("Imported {count} page(s)"));
+            }
+            Err(e) => {
+                self.ui.status = format!("Import failed: {e}");
+            }
+        }
+    }
+
+    /// Ask for a PDF with the native file dialog and import it through
+    /// [`Self::import_pdf_from_path`].
+    pub(crate) fn import_pdf_dialog(&mut self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("PDF document", &["pdf"])
+            .pick_file()
+        {
+            self.import_pdf_from_path(&path);
+        }
+    }
+
     /// Switch the colour theme, persist it as an app-level preference and
     /// repaint the shell with the new palette.
-    fn set_theme(&mut self, ctx: &egui::Context, theme: Theme) {
+    pub(crate) fn set_theme(&mut self, ctx: &egui::Context, theme: Theme) {
         self.theme = theme;
         theme::apply_theme(ctx, theme, self.high_contrast);
         match save_prefs(&self.build_prefs()) {
@@ -1300,7 +1368,7 @@ impl RubricApp {
 
     /// Toggle high-contrast mode, re-apply the palette and persist the choice
     /// (a11y A3 / proposal P2-15).
-    fn set_high_contrast(&mut self, ctx: &egui::Context, enabled: bool) {
+    pub(crate) fn set_high_contrast(&mut self, ctx: &egui::Context, enabled: bool) {
         self.high_contrast = enabled;
         theme::apply_theme(ctx, self.theme, enabled);
         self.ui.status = if enabled {
@@ -1331,7 +1399,7 @@ impl RubricApp {
     }
 
     /// Persist all app-level preferences (panel visibility, zoom, page).
-    fn save_app_prefs(&mut self) {
+    pub(crate) fn save_app_prefs(&mut self) {
         let prefs = self.build_prefs();
         if let Err(e) = save_prefs(&prefs) {
             self.ui.status = format!("Workspace saved, but preferences write failed: {e}");
@@ -1339,7 +1407,7 @@ impl RubricApp {
     }
 
     /// Export the currently displayed page as a PNG image.
-    fn export_page_image(&mut self, path: PathBuf) -> Result<(), DataError> {
+    pub(crate) fn export_page_image(&mut self, path: PathBuf) -> Result<(), DataError> {
         let mut last_page_pos: Option<Pt> = None;
         let project = self.history.current_mut();
         let bytes = match render_page_to_png_bytes(
@@ -1371,7 +1439,7 @@ impl RubricApp {
     }
 
     /// Send the currently displayed page to the default printer.
-    fn print_page(&mut self) -> Result<(), DataError> {
+    pub(crate) fn print_page(&mut self) -> Result<(), DataError> {
         let mut last_page_pos: Option<Pt> = None;
         let project = self.history.current_mut();
         let bytes = match render_page_to_png_bytes(
@@ -1418,7 +1486,7 @@ impl RubricApp {
     /// what the user sees; hidden markups are intentionally left out. The
     /// save dialog runs first, and cancelling it is not an error: the status
     /// line stays untouched.
-    fn export_current_page_to_pdf(&mut self) {
+    pub(crate) fn export_current_page_to_pdf(&mut self) {
         let Some(doc) = self.active_doc() else {
             self.ui.status = "Export failed: no document is open".to_string();
             return;
@@ -1466,7 +1534,7 @@ impl RubricApp {
 
     /// Flatten every page of the source PDF — with its markups — into a new
     /// PDF (File ▸ Export All Pages to PDF...).
-    fn export_all_pages_to_pdf_action(&mut self) {
+    pub(crate) fn export_all_pages_to_pdf_action(&mut self) {
         let source_pdf = self
             .history
             .current()
@@ -1513,7 +1581,7 @@ impl RubricApp {
     /// Switch to another page (spec F-404), committing any in-flight text edit
     /// first. Shared by the top-bar arrows, Page Up/Down and the pages sidebar,
     /// so all three agree on snapshot and draft-abandon semantics.
-    fn jump_to_page(&mut self, index: usize) -> bool {
+    pub(crate) fn jump_to_page(&mut self, index: usize) -> bool {
         let count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
         if count == 0 || index >= count || index == self.ui.current_page {
             return false;
@@ -1528,7 +1596,7 @@ impl RubricApp {
     }
 
     /// Open (or re-open) a project file, replacing the current session.
-    fn open_project_path(&mut self, path: PathBuf) {
+    pub(crate) fn open_project_path(&mut self, path: PathBuf) {
         if !path.exists() {
             // Drop the missing file from the app-level recents. App state,
             // not project state — no undo snapshot, and a read-only config
@@ -1628,7 +1696,7 @@ impl RubricApp {
         }
     }
 
-    fn save_project_action(&mut self) {
+    pub(crate) fn save_project_action(&mut self) {
         if let Some(p) = self.current_path.clone() {
             self.save_project_to(p);
         } else {
@@ -1636,7 +1704,7 @@ impl RubricApp {
         }
     }
 
-    fn save_project_as_action(&mut self) {
+    pub(crate) fn save_project_as_action(&mut self) {
         if let Some(path) = rfd::FileDialog::new()
             .add_filter("Rubric project", &["rubric.json"])
             .set_file_name("project.rubric.json")
@@ -1647,516 +1715,11 @@ impl RubricApp {
     }
 
     fn menu_bar(&mut self, ui: &mut Ui) {
-        use egui::MenuBar;
-        MenuBar::new().ui(ui, |ui| {
-            ui.menu_button("File", |ui| {
-                if ui.button("New Project").clicked() {
-                    self.install_project(
-                        Project::new("Untitled Rubric Project"),
-                        None,
-                        "New project created".to_string(),
-                    );
-                    ui.close();
-                }
-                if menu_shortcut_button(ui, "Open Project...", "Ctrl+O") {
-                    if let Some(path) = rfd::FileDialog::new()
-                        .add_filter("Rubric project", &["rubric.json"])
-                        .pick_file()
-                    {
-                        self.open_project_path(path);
-                    }
-                    ui.close();
-                }
-                if menu_shortcut_button(ui, "Import PDF…", "Ctrl+I") {
-                    if let Some(path) = rfd::FileDialog::new()
-                        .add_filter("PDF document", &["pdf"])
-                        .pick_file()
-                    {
-                        match crate::data::pdf::read_pdf_info(&path) {
-                            // Audit M9: a 0-page PDF used to report "Imported
-                            // 1 page(s)" and fabricate an unrenderable page.
-                            Ok(info) if info.page_sizes.is_empty() => {
-                                self.ui.status = "Import failed: the PDF has no pages".to_string();
-                            }
-                            Ok(info) => {
-                                let stem = path
-                                    .file_stem()
-                                    .map(|n| n.to_string_lossy().to_string())
-                                    .unwrap_or_else(|| "Imported PDF".to_string());
-                                let count = info.page_sizes.len();
-                                let project = Project::from_pdf(
-                                    stem,
-                                    path.to_string_lossy().to_string(),
-                                    &info.page_sizes,
-                                );
-                                self.install_project(
-                                    project,
-                                    None,
-                                    format!("Imported {count} page(s)"),
-                                );
-                            }
-                            Err(e) => {
-                                self.ui.status = format!("Import failed: {e}");
-                            }
-                        }
-                    }
-                    ui.close();
-                }
-                if ui.button("Export Report...").clicked() {
-                    let project = self.history.current();
-                    let total_markups: usize =
-                        project.documents.iter().map(|d| d.markups.len()).sum();
-                    self.report_export = Some(ReportExportUi {
-                        group_key: ReportGroupKey::Status,
-                        format: ReportExportFormat::Text,
-                        project_title: project.name.clone(),
-                        total_markups,
-                    });
-                    ui.close();
-                }
-                if ui.button("Export Page Image...").clicked() {
-                    if let Some(path) = rfd::FileDialog::new()
-                        .set_file_name("rubric-page.png")
-                        .add_filter("PNG image", &["png"])
-                        .save_file()
-                    {
-                        let _ = self.export_page_image(path);
-                    }
-                    ui.close();
-                }
-                if ui.button("Export PDF...").clicked() {
-                    let source_pdf = self
-                        .history
-                        .current()
-                        .source_pdf
-                        .clone()
-                        .unwrap_or_default();
-                    if let Some(path) = rfd::FileDialog::new()
-                        .set_file_name("rubric-export.pdf")
-                        .add_filter("PDF document", &["pdf"])
-                        .save_file()
-                    {
-                        if !source_pdf.is_empty() {
-                            if let Some(doc) = self.active_doc() {
-                                let bates = self.history.current().settings.bates.clone();
-                                match crate::data::pdf::export_pdf_to(
-                                    Path::new(&source_pdf),
-                                    &path,
-                                    &doc.markups,
-                                    &bates,
-                                ) {
-                                    Ok(()) => {
-                                        self.ui.status =
-                                            format!("PDF exported to {}", path.display());
-                                    }
-                                    Err(e) => {
-                                        self.ui.status = format!("PDF export failed: {e}");
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    ui.close();
-                }
-                // Flatten-to-PDF (gap #1): a path from markups back into a
-                // PDF. Both items need the imported source PDF — without one
-                // there is no page content to flatten the markups onto — so
-                // they are disabled until a PDF is imported.
-                let has_source_pdf = self
-                    .history
-                    .current()
-                    .source_pdf
-                    .as_deref()
-                    .is_some_and(|p| !p.is_empty());
-                let export_page_pdf = ui
-                    .add_enabled(has_source_pdf, egui::Button::new("Export Page to PDF..."))
-                    .on_disabled_hover_text("Import a PDF before flattening a page");
-                if export_page_pdf.clicked() {
-                    self.export_current_page_to_pdf();
-                    ui.close();
-                }
-                let export_all_pdf = ui
-                    .add_enabled(
-                        has_source_pdf,
-                        egui::Button::new("Export All Pages to PDF..."),
-                    )
-                    .on_disabled_hover_text("Import a PDF before flattening pages");
-                if export_all_pdf.clicked() {
-                    self.export_all_pages_to_pdf_action();
-                    ui.close();
-                }
-                if ui.button("Print...").clicked() {
-                    let _ = self.print_page();
-                    ui.close();
-                }
-                // Recent submenu: app-level recents (data layer), not project
-                // settings — reads/writes `recent.json` in the config dir.
-                ui.menu_button("Recent", |ui| {
-                    let recents = load_recent();
-                    if recents.is_empty() {
-                        ui.label("No recent projects");
-                    } else {
-                        for r in recents.as_slice() {
-                            let path = PathBuf::from(r);
-                            let label = path
-                                .file_name()
-                                .map(|n| n.to_string_lossy().to_string())
-                                .unwrap_or_else(|| r.clone());
-                            let resp = ui.button(&label);
-                            resp.clone().on_hover_text(r.as_str());
-                            if resp.clicked() {
-                                self.open_project_path(path);
-                                ui.close();
-                            }
-                        }
-                        ui.separator();
-                        if ui.button("Clear Recent").clicked() {
-                            let mut recent = load_recent();
-                            recent.clear();
-                            // Report the real outcome: don't claim success when
-                            // the recents file could not be rewritten (audit M2).
-                            self.ui.status = match save_recent(&recent) {
-                                Ok(()) => "Recent list cleared".to_string(),
-                                Err(e) => format!("Could not clear the recent list: {e}"),
-                            };
-                            ui.close();
-                        }
-                    }
-                });
-                if menu_shortcut_button(ui, "Save Project", "Ctrl+S") {
-                    self.save_project_action();
-                    ui.close();
-                }
-                if ui.button("Save Project As...").clicked() {
-                    self.save_project_as_action();
-                    ui.close();
-                }
-                // Autosave controls (spec F-502). These edit `Settings`, which
-                // is project data, so each change pushes one undo snapshot.
-                ui.menu_button("Auto-save", |ui| {
-                    let mut enabled = self.history.current().settings.auto_save;
-                    if ui.checkbox(&mut enabled, "Enable Auto-save").changed() {
-                        self.history.current_mut().settings.auto_save = enabled;
-                        self.ui.status = if enabled {
-                            "Auto-save on".to_string()
-                        } else {
-                            "Auto-save off".to_string()
-                        };
-                        self.push_snapshot_quiet();
-                    }
-                    ui.separator();
-                    let current = self.history.current().settings.auto_save_interval_secs;
-                    // Keep a non-preset persisted interval honest by showing it.
-                    let mut options = AUTO_SAVE_INTERVALS.to_vec();
-                    if !options.contains(&current) {
-                        options.insert(0, current);
-                    }
-                    let mut chosen = current;
-                    for secs in options {
-                        ui.selectable_value(&mut chosen, secs, auto_save_interval_label(secs));
-                    }
-                    if chosen != current {
-                        self.history.current_mut().settings.auto_save_interval_secs = chosen;
-                        self.ui.status =
-                            format!("Auto-save every {}", auto_save_interval_label(chosen));
-                        self.push_snapshot_quiet();
-                    }
-                });
-                ui.separator();
-                if ui.button("Quit").clicked() {
-                    if self.ui.dirty {
-                        self.ui.quit_confirm = true;
-                    } else {
-                        // Let eframe tear down normally instead of exiting the
-                        // process outright.
-                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-                    }
-                }
-            });
-            ui.menu_button("Edit", |ui| {
-                if ui
-                    .add_enabled(
-                        self.history.can_undo(),
-                        egui::Button::new("Undo").shortcut_text("Ctrl+Z"),
-                    )
-                    .clicked()
-                {
-                    self.apply_editor_action(EditorAction::Undo);
-                    ui.close();
-                }
-                if ui
-                    .add_enabled(
-                        self.history.can_redo(),
-                        egui::Button::new("Redo").shortcut_text("Ctrl+Y"),
-                    )
-                    .clicked()
-                {
-                    self.apply_editor_action(EditorAction::Redo);
-                    ui.close();
-                }
-                ui.separator();
-                // Select All (full-app audit M10): select every editable,
-                // visible markup on the current page — the delete and
-                // apply-style paths already operate on the whole selection.
-                if menu_shortcut_button(ui, "Select All", "Ctrl+A") {
-                    self.select_all_on_page();
-                    ui.close();
-                }
-                ui.separator();
-                menu::draw_selection_commands(ui, &mut self.ui);
-            });
-            ui.menu_button("View", |ui| {
-                if menu_shortcut_button(ui, "Zoom In", "Ctrl++") {
-                    self.set_zoom_level(self.ui.zoom * 1.25);
-                    ui.close();
-                }
-                if menu_shortcut_button(ui, "Zoom Out", "Ctrl+-") {
-                    self.set_zoom_level(self.ui.zoom * 0.8);
-                    ui.close();
-                }
-                if menu_shortcut_button(ui, "Fit Page", "Ctrl+0") {
-                    self.fit_page();
-                    ui.close();
-                }
-                // Drag calibration (v0.4 gap #4): selecting the tool starts a
-                // two-click reference segment on the canvas; the dialog that
-                // follows writes the page scale.
-                if ui.button("Calibrate Page Scale…").clicked() {
-                    self.select_tool(Tool::Calibrate);
-                    ui.close();
-                }
-                ui.separator();
-                // Page navigation in the menu (full-app audit M10): the arrows
-                // and PageUp/PageDown were the only paths before.
-                if menu_shortcut_button(ui, "Previous Page", "PageUp") {
-                    self.jump_to_page(self.ui.current_page.saturating_sub(1));
-                }
-                if menu_shortcut_button(ui, "Next Page", "PageDown") {
-                    let count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
-                    if self.ui.current_page + 1 < count {
-                        self.jump_to_page(self.ui.current_page + 1);
-                    }
-                }
-                if ui.button("Full Screen").clicked() {
-                    // Read the live state so the toggle is truthful even if the
-                    // WM changed it out from under us.
-                    let fullscreen = ui
-                        .ctx()
-                        .input(|i| i.viewport().fullscreen)
-                        .unwrap_or(self.ui.fullscreen);
-                    self.ui.fullscreen = !fullscreen;
-                    ui.ctx()
-                        .send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
-                    self.ui.status = if self.ui.fullscreen {
-                        "Full screen on (Esc-exit via the View menu)".to_string()
-                    } else {
-                        "Full screen off".to_string()
-                    };
-                }
-                ui.separator();
-                for pct in view::ZOOM_PRESETS {
-                    let zoom = pct as f32 / 100.0;
-                    if ui.button(format!("{}%", pct)).clicked() {
-                        self.ui.zoom = view::clamp_zoom(zoom);
-                        self.ui.status = format!("Zoom {}%", pct);
-                    }
-                }
-                ui.separator();
-                // Canvas guides (F-405): grid visibility, snapping and pitch.
-                // Grid lines are only drawn when the pitch resolves at the
-                // current zoom, so the tick stays honest even when off.
-                let mut grid_visible = self.ui.grid.visible;
-                if ui.checkbox(&mut grid_visible, "Show Grid").changed() {
-                    self.ui.grid.visible = grid_visible;
-                }
-                if ui
-                    .checkbox(&mut self.ui.grid.snap, "Snap to Grid")
-                    .clicked()
-                {
-                    self.ui.status = if self.ui.grid.snap {
-                        "Snap to grid on".to_string()
-                    } else {
-                        "Snap to grid off".to_string()
-                    };
-                }
-                ui.menu_button("Grid Spacing", |ui| {
-                    let mut spacing = self.ui.grid.spacing;
-                    for s in Grid::SPACINGS {
-                        if ui
-                            .selectable_value(&mut spacing, s, format!("{s} pt"))
-                            .clicked()
-                        {
-                            self.ui.grid.spacing = s;
-                            self.ui.status = format!("Grid spacing → {s} pt");
-                        }
-                    }
-                });
-                ui.separator();
-                {
-                    let mut show_measurements = self.history.current().settings.show_measurements;
-                    if ui
-                        .checkbox(&mut show_measurements, "Show Measurements")
-                        .changed()
-                    {
-                        self.history.current_mut().settings.show_measurements = show_measurements;
-                        self.ui.status = if show_measurements {
-                            "Measurements shown".to_string()
-                        } else {
-                            "Measurements hidden".to_string()
-                        };
-                        self.push_snapshot_quiet();
-                    }
-                }
-                ui.separator();
-                ui.menu_button("Theme", |ui| {
-                    for option in Theme::ALL {
-                        let mut current = self.theme;
-                        if ui
-                            .radio_value(&mut current, option, option.label())
-                            .clicked()
-                            && current != self.theme
-                        {
-                            self.set_theme(ui.ctx(), current);
-                        }
-                    }
-                });
-                let mut high_contrast = self.high_contrast;
-                if ui
-                    .checkbox(&mut high_contrast, "High Contrast")
-                    .on_hover_text("Maximum contrast for low-vision use (WCAG AAA text)")
-                    .changed()
-                {
-                    self.set_high_contrast(ui.ctx(), high_contrast);
-                }
-                ui.separator();
-                if ui
-                    .checkbox(&mut self.ui.show_tool_chest, "Show Tool Chest")
-                    .changed()
-                {
-                    self.ui.status = if self.ui.show_tool_chest {
-                        "Tool Chest shown".to_string()
-                    } else {
-                        "Tool Chest hidden".to_string()
-                    };
-                    self.save_app_prefs();
-                }
-                if ui.checkbox(&mut self.ui.focus_mode, "Focus Mode").changed() {
-                    self.ui.status = if self.ui.focus_mode {
-                        "Focus mode on — panels hidden".to_string()
-                    } else {
-                        "Focus mode off".to_string()
-                    };
-                    self.save_app_prefs();
-                }
-                if ui
-                    .checkbox(&mut self.ui.show_markups_list, "Show Markups List")
-                    .changed()
-                {
-                    self.ui.status = if self.ui.show_markups_list {
-                        "Markups List shown".to_string()
-                    } else {
-                        "Markups List hidden".to_string()
-                    };
-                    self.save_app_prefs();
-                }
-                if ui.checkbox(&mut self.ui.show_pages, "Show Pages").changed() {
-                    self.ui.status = if self.ui.show_pages {
-                        "Pages panel shown".to_string()
-                    } else {
-                        "Pages panel hidden".to_string()
-                    };
-                    self.save_app_prefs();
-                }
-                if ui
-                    .checkbox(&mut self.ui.show_minimap, "Show Minimap")
-                    .changed()
-                {
-                    self.ui.status = if self.ui.show_minimap {
-                        "Minimap shown".to_string()
-                    } else {
-                        "Minimap hidden".to_string()
-                    };
-                    self.save_app_prefs();
-                }
-            });
-            ui.menu_button("Help", |ui| {
-                if ui.button("About Rubric").clicked() {
-                    self.show_about = !self.show_about;
-                    ui.close();
-                }
-                if ui.button("Check for Updates…").clicked() {
-                    self.ui.status = "Checking for updates…".to_string();
-                    self.begin_update_check(ui.ctx());
-                    ui.close();
-                }
-                if ui.button("Report a Bug…").clicked() {
-                    self.report = Some(BugReportUi::new(
-                        crash_report::Environment::capture(env!("CARGO_PKG_VERSION")),
-                        "describe what you were doing when the problem happened",
-                    ));
-                    ui.close();
-                }
-                ui.separator();
-                if ui.button("Keyboard Shortcuts…").clicked() {
-                    self.show_keyboard_shortcuts = !self.show_keyboard_shortcuts;
-                    ui.close();
-                }
-            });
-        });
+        crate::ui::app_menu::draw_menu_bar(self, ui);
     }
 
     fn top_bar(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            toolbar::draw_toolbar(ui, &mut self.ui.active_tool, &mut self.ui.status);
-
-            // Active-tool chip (P0-4): a persistent pill showing what tool is
-            // currently active, with its shortcut key. Always visible so the
-            // user never has to hunt through the left panel to know the mode.
-            ui.separator();
-            egui::Frame::new()
-                .fill(ui.visuals().selection.bg_fill)
-                .stroke(ui.visuals().selection.stroke)
-                .show(ui, |ui| {
-                    let tool_name = self
-                        .ui
-                        .active_tool
-                        .to_kind()
-                        .map(|k| k.label())
-                        .unwrap_or("Select");
-                    let shortcut = self
-                        .ui
-                        .active_tool
-                        .shortcut_key()
-                        .map(|k| format!(" ({})", k.to_ascii_uppercase()))
-                        .unwrap_or_default();
-                    ui.label(format!("{}{}", tool_name, shortcut));
-                });
-
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                ui.label(self.ui.status.clone());
-                ui.label(format!("{:.0}%", self.ui.zoom * 100.0));
-                // Page navigation chrome.
-                let count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
-                if count > 0 {
-                    let current = self.ui.current_page.min(count - 1);
-                    if ui
-                        .add_enabled(current > 0, egui::Button::new("◀"))
-                        .on_hover_text("Previous page")
-                        .clicked()
-                    {
-                        self.jump_to_page(current.saturating_sub(1));
-                    }
-                    ui.label(format!("Page {}/{}", current + 1, count));
-                    if ui
-                        .add_enabled(current + 1 < count, egui::Button::new("▶"))
-                        .on_hover_text("Next page")
-                        .clicked()
-                    {
-                        self.jump_to_page(current + 1);
-                    }
-                }
-            });
-        });
+        crate::ui::app_topbar::draw_top_bar(self, ui);
     }
 
     fn left_panel(&mut self, ui: &mut Ui) {
@@ -2207,7 +1770,7 @@ impl RubricApp {
     /// Switch the active tool, abandoning any in-flight draft gesture exactly
     /// like Escape does (but keeping the current selection). Used by the
     /// unmodified-key tool shortcuts.
-    fn select_tool(&mut self, tool: Tool) {
+    pub(crate) fn select_tool(&mut self, tool: Tool) {
         if self.ui.active_tool == tool {
             return;
         }
@@ -2259,7 +1822,7 @@ fn open_url(url: &str) -> Result<(), String> {
 
 /// A menu button that renders its keyboard shortcut on the right (full-app
 /// audit M5). Returns true when clicked.
-fn menu_shortcut_button(ui: &mut Ui, label: &str, shortcut: &str) -> bool {
+pub(crate) fn menu_shortcut_button(ui: &mut Ui, label: &str, shortcut: &str) -> bool {
     ui.add(egui::Button::new(label).shortcut_text(shortcut))
         .clicked()
 }
@@ -2306,6 +1869,23 @@ impl RubricApp {
     /// no painting. The eframe `App::logic` shim delegates here, and so can
     /// headless harnesses (guide II.27.12, gap G4 seam) — no `Frame` needed.
     pub fn run_logic(&mut self, ctx: &egui::Context) {
+        // Drag-and-drop import (UI audit P0-2): a dropped PDF enters the
+        // same pipeline as File ▸ Import PDF… (including the dirty-check
+        // park); other extensions are ignored. Only the first PDF in a
+        // multi-file drop is taken — installing two would just replace one
+        // with the other. egui clears `dropped_files` next frame.
+        let dropped_pdf = ctx
+            .input(|i| i.raw.dropped_files.clone())
+            .into_iter()
+            .find(|f| {
+                f.path()
+                    .extension()
+                    .is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
+            });
+        if let Some(file) = dropped_pdf {
+            self.import_pdf_from_path(file.path());
+        }
+
         // Refresh the enablement snapshot the shared context menu reads, so
         // Undo/Redo are greyed out whenever the history stack cannot serve
         // them (audit M19).
@@ -2367,45 +1947,17 @@ impl RubricApp {
                     self.open_project_path(path);
                 }
             }
-            if i.modifiers.command && i.key_pressed(egui::Key::S) {
+            if i.modifiers.command && !i.modifiers.shift && i.key_pressed(egui::Key::S) {
                 // save_project_to sets an accurate "Saved" / "Save failed: …"
-                // status; no override here.
+                // status; no override here. The shift guard keeps Ctrl+Shift+S
+                // (Save As) from also firing the plain save (UI audit P1-4).
                 self.save_project_action();
             }
             if i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::S) {
                 self.save_project_as_action();
             }
             if i.modifiers.command && i.key_pressed(egui::Key::I) {
-                if let Some(path) = rfd::FileDialog::new()
-                    .add_filter("PDF document", &["pdf"])
-                    .pick_file()
-                {
-                    match crate::data::pdf::read_pdf_info(&path) {
-                        Ok(info) if info.page_sizes.is_empty() => {
-                            self.ui.status = "Import failed: the PDF has no pages".to_string();
-                        }
-                        Ok(info) => {
-                            let stem = path
-                                .file_stem()
-                                .map(|n| n.to_string_lossy().to_string())
-                                .unwrap_or_else(|| "Imported PDF".to_string());
-                            let count = info.page_sizes.len();
-                            let project = Project::from_pdf(
-                                stem,
-                                path.to_string_lossy().to_string(),
-                                &info.page_sizes,
-                            );
-                            self.install_project(
-                                project,
-                                None,
-                                format!("Imported {count} page(s)"),
-                            );
-                        }
-                        Err(e) => {
-                            self.ui.status = format!("Import failed: {e}");
-                        }
-                    }
-                }
+                self.import_pdf_dialog();
             }
             if i.modifiers.command && i.key_pressed(egui::Key::P) {
                 let _ = self.print_page();
@@ -2669,6 +2221,13 @@ impl RubricApp {
         if inspector_mutated {
             self.push_snapshot("inspector edit");
         }
+        // Canvas empty-state CTA (UI audit P0-2): the "Import PDF…" button
+        // can only raise a flag (the canvas has no `RubricApp` borrow), so
+        // consume it here where the dialog can be opened safely.
+        if self.ui.request_import {
+            self.ui.request_import = false;
+            self.import_pdf_dialog();
+        }
         // Execute any context-menu action requested this frame (spec F-603).
         if let Some(action) = self.ui.pending_action.take() {
             self.apply_editor_action(action);
@@ -2688,153 +2247,13 @@ impl RubricApp {
 
         // Calibration dialog (v0.4 gap #4): confirm the real distance of the
         // drawn reference segment and rewrite the page scale.
-        self.draw_calibration_dialog(ui.ctx());
-
-        // About window (full-app audit M4): version, licence and links instead
-        // of a transient status line.
-        if self.show_about {
-            let mut open = true;
-            egui::Window::new("About Rubric")
-                .open(&mut open)
-                .resizable(false)
-                .show(ui.ctx(), |ui| {
-                    ui.heading("Rubric");
-                    ui.label("Free, cross-platform PDF markup & measurement");
-                    ui.separator();
-                    ui.horizontal(|ui| {
-                        ui.label("Version:");
-                        ui.label(env!("CARGO_PKG_VERSION"));
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("Licence:");
-                        ui.label("MIT");
-                    });
-                    ui.hyperlink_to(
-                        "Source & releases",
-                        "https://github.com/Perchemop/rubric-desktop",
-                    );
-                    ui.separator();
-                    if ui.button("Close").clicked() {
-                        self.show_about = false;
-                    }
-                });
-            if !open {
-                self.show_about = false;
-            }
-            self.ui.status = "Rubric — free, cross-platform PDF markup & measurement".to_string();
-        }
-
-        // Keyboard shortcuts dialog (proposal 10): lists all discoverable
-        // shortcuts grouped by category, for reference while working.
-        if self.show_keyboard_shortcuts {
-            let mut open = true;
-            egui::Window::new("Keyboard Shortcuts")
-                .open(&mut open)
-                .resizable(false)
-                .fixed_size(egui::vec2(600.0, 500.0))
-                .show(ui.ctx(), |ui| {
-                    ui.heading("Rubric Keyboard Shortcuts");
-                    ui.separator();
-                    ui.label("File:");
-                    ui.label("Ctrl+N — New Project        Ctrl+O — Open Project        Ctrl+S — Save Project        Ctrl+Shift+S — Save Project As…");
-                    ui.label("Ctrl+I — Import PDF        Ctrl+P — Print        Ctrl+W / Cmd+Q — Quit");
-                    ui.separator();
-                    ui.label("Edit:");
-                    ui.label("Ctrl+Z — Undo        Ctrl+Y — Redo        Ctrl+A — Select All        Del / Backspace — Delete");
-                    ui.separator();
-                    ui.label("View:");
-                    ui.label("Zoom In / Out / Fit Page        PageUp / PageDown        Grid / Snap to Grid        Full Screen (Esc)");
-                    ui.label("Auto-save on/off        Theme cycling");
-                    ui.separator();
-                    ui.label("Tools:");
-                    ui.label("Select / Highlight / Rectangle / Ellipse / Line / Arrow / Pen / Text Box");
-                    ui.label("Calibrate Page Scale (two-click reference segment)");
-                    ui.label("Measurement tools: Length / Diameter / Radius / Perimeter / Area / Angle");
-                    ui.separator();
-                    ui.label("Markup actions:");
-                    ui.label("Ctrl+D — Duplicate        Ctrl+C / Ctrl+V — Copy / Paste Properties");
-                    ui.label("Bring Forward / Send Backward / Bring To Front / Send To Back");
-                    ui.separator();
-                    ui.label("General:");
-                    ui.label("Esc — Close dialog / Cancel operation");
-                    ui.label("Ctrl+Shift+S — Save Project As…");
-                });
-            if !open {
-                self.show_keyboard_shortcuts = false;
-            }
-        }
-
-        if self.ui.quit_confirm {
-            let mut open = true;
-            egui::Window::new("Unsaved Changes")
-                .open(&mut open)
-                .resizable(false)
-                .show(ui.ctx(), |ui| {
-                    ui.label("The project has unsaved changes.");
-                    ui.horizontal(|ui| {
-                        // Save first, then quit — but only when the save really
-                        // landed. A cancelled Save As or a failed write leaves
-                        // the project dirty, so the dialog stays open instead of
-                        // quitting on top of unsaved work.
-                        if ui.button("Save and Quit").clicked() {
-                            self.save_project_action();
-                            if !self.ui.dirty {
-                                self.ui.quit_confirm = false;
-                                self.force_close = true;
-                                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-                            }
-                        }
-                        if ui.button("Quit Anyway").clicked() {
-                            self.ui.quit_confirm = false;
-                            // Tell the close veto this close was confirmed
-                            // (audit M1); otherwise it would re-prompt.
-                            self.force_close = true;
-                            ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-                        }
-                        if ui.button("Cancel").clicked() {
-                            self.ui.quit_confirm = false;
-                        }
-                    });
-                });
-            if !open {
-                self.ui.quit_confirm = false;
-            }
-        }
-
-        // Replace-unsaved-project confirmation (full-app audit B2): New / Open
-        // / Import / Recent park their install here instead of discarding work
-        // silently.
-        if self.pending_replace.is_some() {
-            let mut open = true;
-            egui::Window::new("Replace Unsaved Project")
-                .open(&mut open)
-                .resizable(false)
-                .show(ui.ctx(), |ui| {
-                    ui.label(
-                        "The current project has unsaved changes that will be lost. \
-                         Save first (Ctrl+S) to keep them.",
-                    );
-                    ui.horizontal(|ui| {
-                        if ui.button("Discard Changes").clicked() {
-                            if let Some(pending) = self.pending_replace.take() {
-                                self.install_project_now(
-                                    pending.project,
-                                    pending.current_path,
-                                    pending.status,
-                                );
-                            }
-                        }
-                        if ui.button("Cancel").clicked() {
-                            self.pending_replace = None;
-                            self.ui.status = "Replace cancelled — project kept".to_string();
-                        }
-                    });
-                });
-            if !open {
-                self.pending_replace = None;
-                self.ui.status = "Replace cancelled — project kept".to_string();
-            }
-        }
+        // Dialog drawing code extracted to ui/app_dialogs.rs
+        app_dialogs::draw_calibration_dialog(self, ui.ctx());
+        app_dialogs::draw_about_window(self, ui.ctx());
+        app_dialogs::draw_keyboard_shortcuts(self, ui.ctx());
+        app_dialogs::draw_user_guide(self, ui.ctx());
+        app_dialogs::draw_quit_confirm(self, ui.ctx());
+        app_dialogs::draw_replace_unsaved(self, ui.ctx());
 
         // Report export dialog (session state only).
         let mut do_export = false;

@@ -8,9 +8,10 @@ This requirement set is **original material authored for Rubric**. It is derived
 
 ## Conventions
 
-- **ID groups**: F-1xx markups/tools · F-2xx measurements/scale · F-3xx review workflow · F-4xx navigation/pages · F-5xx persistence/I/O · F-6xx UI/UX polish · F-7xx packaging · F-8xx Bates numbering (future).
+- **ID groups**: F-1xx markups/tools · F-2xx measurements/scale · F-3xx review workflow · F-4xx navigation/pages · F-5xx persistence/I/O · F-6xx UI/UX polish · F-7xx packaging · F-8xx Bates numbering.
 - **Priority** maps to `IMPLEMENTATION_PLAN.md`: `MVP` = core of Phases 2–3 (first usable release); `Ph 4` / `Ph 5` / `Ph 6` = scheduled in that phase; `later` = after Phase 6 / optional.
-- **Traceability**: `REQUIREMENTS_TRACEABILITY.md` maps each area to R-S-001…R-S-017 and to the planned modules.
+- **Traceability**: `REQUIREMENTS_TRACEABILITY.md` maps each area to R-S-001…R-S-018 and to the planned modules.
+- **Feature count**: 57 feature IDs across eight groups (52 original + F-801–F-805 Bates numbering).
 - Notes column records current state at adoption (2026-10-19).
 
 ## Feature inventory

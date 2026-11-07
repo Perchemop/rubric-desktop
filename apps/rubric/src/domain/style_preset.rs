@@ -116,7 +116,9 @@ pub struct StylePresetLibrary {
 }
 
 impl StylePresetLibrary {
-    const MAX_PRESETS: usize = 64;
+    /// Maximum number of saved styles in the library. Oldest entries are
+    /// dropped when the cap is exceeded.
+    pub const MAX_PRESETS: usize = 64;
 
     pub fn new() -> Self {
         Self::default()
@@ -271,7 +273,7 @@ mod tests {
     #[test]
     fn library_cap_and_dedupe() {
         let mut lib = StylePresetLibrary::new();
-        let mut base = sample_markup();
+        let base = sample_markup();
         for i in 0..70 {
             let mut m = base.clone();
             m.id = Uuid::new_v4();

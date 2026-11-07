@@ -13,7 +13,7 @@
 - Free-only deps: MIT/Apache-2.0 (image, serde, egui, uuid, thiserror, tracing, directories, chrono).
 
 ## Scope decisions (Phase 1 — 2026-10-19)
-- Feature inventory frozen as `docs/spec/README.md`: 52 feature IDs in seven groups (F-1xx markups/tools, F-2xx measurements/scale, F-3xx review, F-4xx navigation/pages, F-5xx persistence/I/O, F-6xx UI/UX, F-7xx packaging); priorities map to IMPLEMENTATION_PLAN phases (MVP = Phases 2–3 core).
+- Feature inventory frozen as `docs/spec/README.md`: 57 feature IDs in eight groups (F-1xx markups/tools, F-2xx measurements/scale, F-3xx review, F-4xx navigation/pages, F-5xx persistence/I/O, F-6xx UI/UX, F-7xx packaging, F-8xx Bates numbering); priorities map to IMPLEMENTATION_PLAN phases (MVP = Phases 2–3 core).
 - PDF rendering: attempt a **pure-Rust crate first** (keeps CI, cross-compilation and packaging free of native/system dependencies); the exact crate is decided in Phase 5 (see Questions 17).
 - Persistence MVP is **sidecar-only**: all markups/review data live in `.rubric.json`; the source PDF is never opened for writing.
 - Export MVP = **rendered image (PNG) + print**; PDF-embedded annotation export is excluded from the MVP and only revisited later (spec non-goal for now).

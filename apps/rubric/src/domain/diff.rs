@@ -445,7 +445,7 @@ mod tests {
 
     #[test]
     fn by_page_grouping() {
-        let mut a = Document::empty("D");
+        let a = Document::empty("D");
         let mut b = Document::empty("D");
         b.add_markup(make_markup(
             1,
@@ -599,7 +599,7 @@ mod tests {
 
     #[test]
     fn duplicate_ids_in_one_document_are_diffed_once() {
-        let mut a = Document::empty("D");
+        let a = Document::empty("D");
         let mut b = Document::empty("D");
         let dup1 = make_markup(
             1,
