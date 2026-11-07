@@ -904,8 +904,7 @@ pub(crate) fn draw_inspector(
                 });
                 ui.horizontal(|ui| {
                     ui.label("Font size (pt)");
-                    let resp =
-                        ui.add(egui::DragValue::new(&mut bates.font_size).range(4.0..=72.0));
+                    let resp = ui.add(egui::DragValue::new(&mut bates.font_size).range(4.0..=72.0));
                     if resp.changed() {
                         ui_state.bates_dirty = true;
                     }
