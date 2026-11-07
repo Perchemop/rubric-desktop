@@ -630,7 +630,7 @@ mod tests {
             MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0, 1.0)),
         ));
         let mut b2 = Document::empty("B2");
-        let mut changed1 = make_markup(
+        let changed1 = make_markup(
             1,
             0,
             MarkupKind::Highlight,

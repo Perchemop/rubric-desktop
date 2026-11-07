@@ -51,8 +51,7 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
             };
             ui.add(egui::Label::new(
                 egui::RichText::new(app.ui.status.clone())
-                    .color(status_color)
-                    .truncate(),
+                    .color(status_color),
             ))
             .on_hover_text(app.ui.status.clone());
 
