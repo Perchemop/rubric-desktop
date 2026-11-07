@@ -972,10 +972,12 @@ pub(crate) fn draw_canvas(
                     let screen_bounds = screen_rect(m.bounds(), origin, pan, zoom);
                     if let Some(corner) = handle_at(screen_bounds, sp, ui_state.zoom) {
                         icon = match corner {
-                            crate::domain::Corner::TopLeft
-                            | crate::domain::Corner::BottomRight => egui::CursorIcon::ResizeNwSe,
-                            crate::domain::Corner::TopRight
-                            | crate::domain::Corner::BottomLeft => egui::CursorIcon::ResizeNeSw,
+                            crate::domain::Corner::TopLeft | crate::domain::Corner::BottomRight => {
+                                egui::CursorIcon::ResizeNwSe
+                            }
+                            crate::domain::Corner::TopRight | crate::domain::Corner::BottomLeft => {
+                                egui::CursorIcon::ResizeNeSw
+                            }
                         };
                     }
                 }
