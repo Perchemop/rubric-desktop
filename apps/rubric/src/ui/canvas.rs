@@ -12,78 +12,19 @@ use crate::domain::markup::{
     count_markers_on_page, count_total_label, next_count_number, text_line_height,
 };
 use crate::domain::{
-    angle_degrees, format_value, ruler_ticks, BatesConfig, Corner, Grid, Markup, MarkupGeometry,
+    angle_degrees, format_value, ruler_ticks, BatesConfig, Grid, Markup, MarkupGeometry,
     MarkupKind, MeasureKind, Page, Project, Pt, Rect as DRect, ReviewStatus, Scale, Tool,
 };
 
 use super::theme::to_color32;
 
-/// Map page point to screen space.
-fn to_screen(page: Pt, pan: Vec2, zoom: f32, origin: Pos2) -> Pos2 {
-    origin + pan + Vec2::new(page.x * zoom, page.y * zoom)
-}
+use crate::ui::canvas_geom::{screen_rect, to_page, to_screen};
+use crate::ui::canvas_hit::{handle_at, pick_markup_id, point_handle_at};
+use crate::ui::canvas_draw::{
+    draw_bates_overlay, draw_grid, draw_measure_badge, draw_minimap, draw_rulers,
+    draw_selection,
+};
 
-/// Map screen point to page space.
-fn to_page(screen: Pos2, pan: Vec2, zoom: f32, origin: Pos2) -> Pt {
-    let v = screen - origin - pan;
-    let inv = if zoom.abs() < 1e-4 { 1.0 } else { 1.0 / zoom };
-    Pt::new(v.x * inv, v.y * inv)
-}
-
-/// Pick a markup id at page point (frontmost = last in paint order).
-fn pick_markup_id(project: &Project, page_idx: usize, p: Pt, tol: f32) -> Option<Uuid> {
-    let doc = project.active()?;
-    doc.markups_in_paint_order(page_idx)
-        .into_iter()
-        .rev()
-        .find(|m| m.hit_test(p, tol))
-        .map(|m| m.id)
-}
-
-fn screen_rect(r: DRect, origin: Pos2, pan: Vec2, zoom: f32) -> egui::Rect {
-    let min = to_screen(Pt::new(r.x, r.y), pan, zoom, origin);
-    let max = to_screen(Pt::new(r.right(), r.bottom()), pan, zoom, origin);
-    egui::Rect::from_min_max(min, max)
-}
-
-/// Which selection-handle corner, if any, the screen point `pp` is over.
-///
-/// The hit area is slightly larger than the drawn handle so grabbing a corner
-/// does not require pixel precision (v0.4 gap #5: resize grips).
-fn handle_at(b: egui::Rect, pp: Pos2, zoom: f32) -> Option<Corner> {
-    let radius = 8.0_f32.max(4.5 * zoom.max(0.7));
-    let corners = [
-        (Corner::TopLeft, b.left_top()),
-        (Corner::TopRight, b.right_top()),
-        (Corner::BottomLeft, b.left_bottom()),
-        (Corner::BottomRight, b.right_bottom()),
-    ];
-    for (c, p) in corners {
-        if (p - pp).length() <= radius {
-            return Some(c);
-        }
-    }
-    None
-}
-
-/// Which draggable endpoint/vertex of `m`, if any, the screen point `pp` is
-/// over (v0.4 gap #5 follow-up). Checked before the bounding-box corner
-/// handles so a coincident endpoint wins.
-fn point_handle_at(m: &Markup, pp: Pos2, origin: Pos2, pan: Vec2, zoom: f32) -> Option<usize> {
-    let radius = 8.0_f32.max(4.5 * zoom.max(0.7));
-    m.draggable_points()
-        .iter()
-        .position(|p| (to_screen(*p, pan, zoom, origin) - pp).length() <= radius)
-}
-
-/// Draw a small dark measurement badge with white text at `anchor` (screen
-/// space). Used for measurement labels and the running count total.
-fn draw_measure_badge(painter: &Painter, anchor: Pos2, label: String) {
-    let galley = painter.layout_no_wrap(label, FontId::proportional(12.0), Color32::WHITE);
-    let text_rect = galley.rect.translate(Vec2::new(anchor.x, anchor.y));
-    painter.rect_filled(text_rect.expand(4.0), 4.0, Color32::from_black_alpha(180));
-    painter.galley(anchor, galley, Color32::WHITE);
-}
 
 /// Refuse to begin a draft when the markup it would create could not be edited.
 ///
@@ -180,10 +121,6 @@ fn measure_anchor(m: &Markup) -> Pt {
 /// Canvas grid (spec F-405). Guides only: drawn under the markups and skipped
 /// entirely when the pitch would be too fine to resolve, so a far zoom never
 /// produces an unreadable wash.
-fn draw_grid(painter: &Painter, bounds: DRect, grid: Grid, pan: Vec2, zoom: f32, origin: Pos2) {
-    if !grid.should_draw(zoom) {
-        return;
-    }
     let step = grid.spacing as f64;
     let stroke = egui::Stroke::new(1.0, Color32::from_rgb(203, 209, 221));
     let cols = (bounds.right() as f64 / step).ceil() as i32;
@@ -206,63 +143,6 @@ fn draw_grid(painter: &Painter, bounds: DRect, grid: Grid, pan: Vec2, zoom: f32,
 /// canvas position can be read in page points. Tick spacing follows the 1/2/5
 /// ladder in `domain::grid`, chosen from the zoom so labels never collide.
 #[allow(clippy::too_many_arguments)]
-fn draw_rulers(
-    painter: &Painter,
-    ui: &Ui,
-    page_rect: egui::Rect,
-    bounds: DRect,
-    pan: Vec2,
-    zoom: f32,
-    origin: Pos2,
-    scale: &Scale,
-) {
-    const RULER_H: f32 = 18.0;
-    const RULER_W: f32 = 30.0;
-    let text_c = ui.visuals().text_color();
-    let tick_c = Color32::from_rgba_unmultiplied(
-        text_c.r(),
-        text_c.g(),
-        text_c.b(),
-        text_c.a().saturating_mul(6) / 10,
-    );
-    let tick = egui::Stroke::new(1.0, tick_c);
-    let font = FontId::proportional(9.0);
-    // Aim for labelled ticks at least ~72 px apart.
-    let min_step = 72.0 / (zoom as f64).max(1e-3);
-
-    // Top ruler: page x.
-    let base_y = page_rect.min.y;
-    let top = base_y - RULER_H;
-    if top > -RULER_H {
-        painter.line_segment(
-            [
-                Pos2::new(page_rect.min.x, base_y - 1.0),
-                Pos2::new(page_rect.max.x, base_y - 1.0),
-            ],
-            tick,
-        );
-        for v in ruler_ticks(bounds.x as f64, bounds.right() as f64, min_step) {
-            let x = to_screen(Pt::new(v as f32, bounds.y), pan, zoom, origin).x;
-            painter.line_segment(
-                [Pos2::new(x, base_y - 5.0), Pos2::new(x, base_y - 1.0)],
-                tick,
-            );
-            let units = scale.points_to_units(v);
-            painter.text(
-                Pos2::new(x + 2.0, top + 2.0),
-                Align2::LEFT_TOP,
-                format!("{v:.0}"),
-                font.clone(),
-                text_c,
-            );
-            painter.text(
-                Pos2::new(x + 2.0, top + 12.0),
-                Align2::LEFT_TOP,
-                format!("{units:.2}{}", scale.unit.suffix()),
-                font.clone(),
-                text_c.gamma_multiply(0.6),
-            );
-        }
     }
 
     // Left ruler: page y.
@@ -584,18 +464,6 @@ fn draw_markup(
 /// in export/print (both paths reuse `draw_canvas`). Nothing is created in the
 /// project and the source PDF is never modified: this is purely a painted
 /// overlay derived from [`BatesConfig`].
-fn draw_bates_overlay(
-    painter: &Painter,
-    origin: Pos2,
-    pan: Vec2,
-    zoom: f32,
-    page: &Page,
-    bates: &BatesConfig,
-    is_export: bool,
-) {
-    if !bates.enabled {
-        return;
-    }
     let Some(stamp) = bates.stamp_for_page(page.index) else {
         return;
     };
@@ -623,96 +491,6 @@ fn draw_bates_overlay(
 /// Draw a minimap in the bottom-right corner of the canvas showing the full
 /// page with a viewport rectangle indicating the current view area.
 /// Clicking the minimap pans the canvas to the clicked position.
-fn draw_minimap(
-    painter: &Painter,
-    page_bounds: DRect,
-    viewport_rect: egui::Rect,
-    zoom: f32,
-    canvas_size: Vec2,
-    origin: Pos2,
-    pan: Vec2,
-) {
-    // Minimap size: fixed pixel size, scaled down to fit
-    const MINIMAP_SIZE: f32 = 140.0;
-    let aspect = page_bounds.w / page_bounds.h;
-    let minimap_w = MINIMAP_SIZE;
-    let minimap_h = MINIMAP_SIZE / aspect.clamp(0.1, 10.0);
-
-    // Position: bottom-right corner with padding
-    let margin = 10.0;
-    let anchor_x = canvas_size.x - margin - minimap_w;
-    let anchor_y = canvas_size.y - margin - minimap_h;
-    let anchor = Pos2::new(anchor_x, anchor_y);
-
-    // Draw minimap background (page bounds)
-    let minimap_rect = egui::Rect::from_min_size(anchor, Vec2::new(minimap_w, minimap_h));
-    painter.rect_filled(
-        minimap_rect,
-        4.0,
-        Color32::from_rgba_unmultiplied(0, 0, 0, 120),
-    );
-    painter.rect_stroke(
-        minimap_rect,
-        4.0,
-        Stroke::new(1.0, Color32::WHITE),
-        StrokeKind::Middle,
-    );
-
-    // Draw page content area scaled into minimap
-    let page_w = page_bounds.w;
-    let page_h = page_bounds.h;
-    let scale = minimap_w / page_w.max(1.0);
-    let page_height_scaled = page_h * scale;
-    let page_rect_minimap =
-        egui::Rect::from_min_size(anchor, Vec2::new(minimap_w, page_height_scaled))
-            .translate(Vec2::new(0.0, (minimap_h - page_height_scaled) / 2.0));
-
-    // Draw page bounds rect
-    painter.rect_stroke(
-        page_rect_minimap,
-        0.0,
-        Stroke::new(0.5, Color32::from_rgba_unmultiplied(200, 200, 200, 100)),
-        StrokeKind::Middle,
-    );
-
-    // Draw viewport rectangle
-    // Map viewport_rect (in screen space) back to page space, then to minimap space
-    let viewport_page_x1 = (viewport_rect.min.x - origin.x - pan.x) / zoom;
-    let viewport_page_y1 = (viewport_rect.min.y - origin.y - pan.y) / zoom;
-    let viewport_page_x2 = (viewport_rect.max.x - origin.x - pan.x) / zoom;
-    let viewport_page_y2 = (viewport_rect.max.y - origin.y - pan.y) / zoom;
-
-    let viewport_minimap = egui::Rect::from_two_pos(
-        Pos2::new(
-            anchor.x + viewport_page_x1 * scale,
-            anchor.y + page_rect_minimap.top() + viewport_page_y1 * scale,
-        ),
-        Pos2::new(
-            anchor.x + viewport_page_x2 * scale,
-            anchor.y + page_rect_minimap.top() + viewport_page_y2 * scale,
-        ),
-    );
-    painter.rect_stroke(
-        viewport_minimap,
-        1.0,
-        Stroke::new(1.0, Color32::from_rgb(228, 87, 46)),
-        StrokeKind::Middle,
-    );
-    painter.rect_filled(
-        viewport_minimap,
-        0.0,
-        Color32::from_rgba_unmultiplied(228, 87, 46, 60),
-    );
-
-    // Draw minimap border label
-    painter.text(
-        anchor + Vec2::new(4.0, -8.0),
-        Align2::LEFT_TOP,
-        "Overview",
-        FontId::proportional(10.0),
-        Color32::WHITE,
-    );
-}
 
 /// Draw selection handles for a selected markup.
 ///
@@ -720,22 +498,6 @@ fn draw_minimap(
 /// per endpoint/vertex — dragging it reshapes the markup directly (v0.4 gap #5
 /// follow-up). Everything else keeps the bounding-box corner handles plus a
 /// centre grab dot; only `Bounds` geometry actually resizes from a corner.
-fn draw_selection(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup) {
-    let b = screen_rect(m.bounds(), origin, pan, zoom);
-    let stroke = egui::Stroke::new(1.0, Color32::from_rgb(30, 144, 255));
-    let points = m.draggable_points();
-    if points.is_empty() {
-        let handle = |p: Pos2| painter.circle(p, 4.5 * zoom.max(0.7), Color32::WHITE, stroke);
-        handle(b.left_top());
-        handle(b.right_top());
-        handle(b.left_bottom());
-        handle(b.right_bottom());
-        handle(b.center());
-    } else {
-        for p in points {
-            let sp = to_screen(p, pan, zoom, origin);
-            painter.circle(sp, 4.0 * zoom.max(0.7), Color32::WHITE, stroke);
-        }
     }
     painter.rect_stroke(
         b,
