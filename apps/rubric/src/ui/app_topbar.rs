@@ -49,8 +49,10 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
                 StatusKind::Warning => egui::Color32::from_rgb(255, 152, 0),
                 StatusKind::Error => egui::Color32::from_rgb(229, 57, 53),
             };
-            ui.add(egui::Label::new(egui::RichText::new(app.ui.status.clone()).color(status_color)))
-                .on_hover_text(app.ui.status.clone());
+            ui.add(egui::Label::new(
+                egui::RichText::new(app.ui.status.clone()).color(status_color),
+            ))
+            .on_hover_text(app.ui.status.clone());
 
             ui.label(format!("{:.0}%", app.ui.zoom * 100.0));
             // Page navigation chrome.
