@@ -156,6 +156,9 @@ pub(crate) struct UiState {
     /// central panel so Fit Page can scale to it.
     pub(crate) canvas_size: Vec2,
     pub(crate) page_origin: Pos2,
+    /// One-frame flag raised by the canvas empty state's "Import PDF…"
+    /// button; consumed in `draw_ui` right after the central panel.
+    pub(crate) request_import: bool,
     hint: String,
     pub(crate) status: String,
     /// Set when an in-progress draw is cancelled (Esc) so the still-held drag
@@ -293,6 +296,7 @@ impl Default for UiState {
             pan: Vec2::ZERO,
             canvas_size: Vec2::ZERO,
             page_origin: Pos2::new(40.0, 40.0),
+            request_import: false,
             hint: "Ctrl+S Save · Ctrl+O Open · Ctrl+Z Undo · Ctrl+Y Redo · Ctrl+A Select All · Del Delete · Esc Cancel"
                 .to_string(),
             status: "Ready".to_string(),
@@ -1296,6 +1300,64 @@ impl RubricApp {
         }
     }
 
+    /// Install the project parked in [`Self::pending_replace`] (full-app
+    /// audit B2 / UI audit P0-1). Called by the Replace Unsaved Project
+    /// dialog once the user has chosen to discard unsaved work; a no-op
+    /// when nothing is parked.
+    pub(crate) fn install_pending_replace(&mut self) {
+        if let Some(pending) = self.pending_replace.take() {
+            self.install_project_now(pending.project, pending.current_path, pending.status);
+        }
+    }
+
+    /// Drop the parked install and keep the current project, telling the
+    /// user what happened instead of silently discarding their choice.
+    pub(crate) fn cancel_pending_replace(&mut self) {
+        if self.pending_replace.take().is_some() {
+            self.ui.status = "Replace cancelled — current project kept".to_string();
+        }
+    }
+
+    /// Import a PDF from an explicit path — the shared pipeline behind
+    /// File ▸ Import PDF…, the canvas empty-state button and drag-and-drop
+    /// (UI audit P0-2). Parks behind the dirty-check like every install.
+    pub(crate) fn import_pdf_from_path(&mut self, path: &Path) {
+        match crate::data::pdf::read_pdf_info(path) {
+            // Audit M9: a 0-page PDF used to report "Imported 1 page(s)"
+            // and fabricate an unrenderable page.
+            Ok(info) if info.page_sizes.is_empty() => {
+                self.ui.status = "Import failed: the PDF has no pages".to_string();
+            }
+            Ok(info) => {
+                let stem = path
+                    .file_stem()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "Imported PDF".to_string());
+                let count = info.page_sizes.len();
+                let project = Project::from_pdf(
+                    stem,
+                    path.to_string_lossy().to_string(),
+                    &info.page_sizes,
+                );
+                self.install_project(project, None, format!("Imported {count} page(s)"));
+            }
+            Err(e) => {
+                self.ui.status = format!("Import failed: {e}");
+            }
+        }
+    }
+
+    /// Ask for a PDF with the native file dialog and import it through
+    /// [`Self::import_pdf_from_path`].
+    pub(crate) fn import_pdf_dialog(&mut self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("PDF document", &["pdf"])
+            .pick_file()
+        {
+            self.import_pdf_from_path(&path);
+        }
+    }
+
     /// Switch the colour theme, persist it as an app-level preference and
     /// repaint the shell with the new palette.
     pub(crate) fn set_theme(&mut self, ctx: &egui::Context, theme: Theme) {
@@ -1810,6 +1872,25 @@ impl RubricApp {
     /// no painting. The eframe `App::logic` shim delegates here, and so can
     /// headless harnesses (guide II.27.12, gap G4 seam) — no `Frame` needed.
     pub fn run_logic(&mut self, ctx: &egui::Context) {
+        // Drag-and-drop import (UI audit P0-2): a dropped PDF enters the
+        // same pipeline as File ▸ Import PDF… (including the dirty-check
+        // park); other extensions are ignored. Only the first PDF in a
+        // multi-file drop is taken — installing two would just replace one
+        // with the other. egui clears `dropped_files` next frame.
+        let dropped_pdf = ctx
+            .input(|i| i.raw.dropped_files.clone().unwrap_or_default())
+            .into_iter()
+            .find(|f| {
+                f.path
+                    .as_deref()
+                    .is_some_and(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")))
+            });
+        if let Some(file) = dropped_pdf {
+            if let Some(path) = file.path {
+                self.import_pdf_from_path(&path);
+            }
+        }
+
         // Refresh the enablement snapshot the shared context menu reads, so
         // Undo/Redo are greyed out whenever the history stack cannot serve
         // them (audit M19).
@@ -1871,45 +1952,17 @@ impl RubricApp {
                     self.open_project_path(path);
                 }
             }
-            if i.modifiers.command && i.key_pressed(egui::Key::S) {
+            if i.modifiers.command && !i.modifiers.shift && i.key_pressed(egui::Key::S) {
                 // save_project_to sets an accurate "Saved" / "Save failed: …"
-                // status; no override here.
+                // status; no override here. The shift guard keeps Ctrl+Shift+S
+                // (Save As) from also firing the plain save (UI audit P1-4).
                 self.save_project_action();
             }
             if i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::S) {
                 self.save_project_as_action();
             }
             if i.modifiers.command && i.key_pressed(egui::Key::I) {
-                if let Some(path) = rfd::FileDialog::new()
-                    .add_filter("PDF document", &["pdf"])
-                    .pick_file()
-                {
-                    match crate::data::pdf::read_pdf_info(&path) {
-                        Ok(info) if info.page_sizes.is_empty() => {
-                            self.ui.status = "Import failed: the PDF has no pages".to_string();
-                        }
-                        Ok(info) => {
-                            let stem = path
-                                .file_stem()
-                                .map(|n| n.to_string_lossy().to_string())
-                                .unwrap_or_else(|| "Imported PDF".to_string());
-                            let count = info.page_sizes.len();
-                            let project = Project::from_pdf(
-                                stem,
-                                path.to_string_lossy().to_string(),
-                                &info.page_sizes,
-                            );
-                            self.install_project(
-                                project,
-                                None,
-                                format!("Imported {count} page(s)"),
-                            );
-                        }
-                        Err(e) => {
-                            self.ui.status = format!("Import failed: {e}");
-                        }
-                    }
-                }
+                self.import_pdf_dialog();
             }
             if i.modifiers.command && i.key_pressed(egui::Key::P) {
                 let _ = self.print_page();
@@ -2172,6 +2225,13 @@ impl RubricApp {
         }
         if inspector_mutated {
             self.push_snapshot("inspector edit");
+        }
+        // Canvas empty-state CTA (UI audit P0-2): the "Import PDF…" button
+        // can only raise a flag (the canvas has no `RubricApp` borrow), so
+        // consume it here where the dialog can be opened safely.
+        if self.ui.request_import {
+            self.ui.request_import = false;
+            self.import_pdf_dialog();
         }
         // Execute any context-menu action requested this frame (spec F-603).
         if let Some(action) = self.ui.pending_action.take() {

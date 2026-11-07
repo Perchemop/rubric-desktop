@@ -34,34 +34,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 ui.close();
             }
             if crate::ui::app::menu_shortcut_button(ui, "Import PDF…", "Ctrl+I") {
-                if let Some(path) = rfd::FileDialog::new()
-                    .add_filter("PDF document", &["pdf"])
-                    .pick_file()
-                {
-                    match pdf::read_pdf_info(&path) {
-                        // Audit M9: a 0-page PDF used to report "Imported
-                        // 1 page(s)" and fabricate an unrenderable page.
-                        Ok(info) if info.page_sizes.is_empty() => {
-                            app.ui.status = "Import failed: the PDF has no pages".to_string();
-                        }
-                        Ok(info) => {
-                            let stem = path
-                                .file_stem()
-                                .map(|n| n.to_string_lossy().to_string())
-                                .unwrap_or_else(|| "Imported PDF".to_string());
-                            let count = info.page_sizes.len();
-                            let project = Project::from_pdf(
-                                stem,
-                                path.to_string_lossy().to_string(),
-                                &info.page_sizes,
-                            );
-                            app.install_project(project, None, format!("Imported {count} page(s)"));
-                        }
-                        Err(e) => {
-                            app.ui.status = format!("Import failed: {e}");
-                        }
-                    }
-                }
+                app.import_pdf_dialog();
                 ui.close();
             }
             let total_markups: usize = app

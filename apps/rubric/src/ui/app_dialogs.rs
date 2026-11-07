@@ -40,7 +40,8 @@ pub(crate) fn draw_about_window(app: &mut RubricApp, ctx: &egui::Context) {
     if !open {
         app.show_about = false;
     }
-    app.ui.status = "Rubric — free, cross-platform PDF markup & measurement".to_string();
+    // No status write: this runs every frame the window is open and used to
+    // stomp the transient status line with the tagline (UI audit P1-6).
 }
 
 /// Keyboard shortcuts dialog (proposal 10): lists all discoverable
@@ -176,7 +177,8 @@ pub(crate) fn draw_quit_confirm(app: &mut RubricApp, ctx: &egui::Context) {
 
 /// Replace-unsaved-project confirmation (full-app audit B2): New / Open
 /// / Import / Recent park their install here instead of discarding work
-/// silently.
+/// silently. UI audit P0-1: the dialog must offer a real way through —
+/// Save First, Discard & Replace, or Cancel — not just a warning label.
 pub(crate) fn draw_replace_unsaved(app: &mut RubricApp, ctx: &egui::Context) {
     if app.pending_replace.is_none() {
         return;
@@ -187,12 +189,31 @@ pub(crate) fn draw_replace_unsaved(app: &mut RubricApp, ctx: &egui::Context) {
         .resizable(false)
         .show(ctx, |ui| {
             ui.label(
-                "The current project has unsaved changes that will be lost. \
-                 Save first (Ctrl+S) to keep them.",
+                "The current project has unsaved changes that will be lost \
+                 if you replace it.",
             );
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                if ui.button("Save First").clicked() {
+                    // save_project_action opens a Save-As dialog when the
+                    // project has no path yet; if the save did not land the
+                    // project stays dirty and the parked install remains.
+                    app.save_project_action();
+                    if !app.ui.dirty {
+                        app.install_pending_replace();
+                    }
+                }
+                if ui.button("Discard & Replace").clicked() {
+                    app.install_pending_replace();
+                }
+                if ui.button("Cancel").clicked() {
+                    app.cancel_pending_replace();
+                }
+            });
         });
     if !open {
-        app.pending_replace = None;
+        // Closing the window is a choice to keep the current project.
+        app.cancel_pending_replace();
     }
 }
 

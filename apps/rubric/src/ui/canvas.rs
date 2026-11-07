@@ -497,6 +497,9 @@ pub(crate) fn draw_canvas(
 
     let page_rect = screen_rect(page.bounds(), origin, pan, zoom);
     let source_pdf = project.source_pdf.clone();
+    // True when a real PDF backs this project (UI audit P0-2): an empty
+    // string behaves like no source at all.
+    let has_pdf = source_pdf.as_ref().is_some_and(|p| !p.is_empty());
     // Paint the PDF page as a background texture when available; otherwise
     // keep the existing flat white fill. NOTE: first paint of a page may hitch
     // while PDFium rasterises + writes the cache PNG; the cache makes it
@@ -596,6 +599,8 @@ pub(crate) fn draw_canvas(
         );
     }
 
+    }
+
     // Canvas grid (F-405) and rulers (F-406). Both are guides: they are painted
     // before the markups so they always sit under the content.
     if !is_export {
@@ -618,6 +623,51 @@ pub(crate) fn draw_canvas(
             &page.scale,
         );
     }
+
+    // First-run empty state (UI audit P0-2): a project with no imported PDF
+    // and nothing drawn yet teaches the next step instead of showing a blank
+    // page. The card sits on the always-paper-white page, so its ink is a
+    // fixed dark paper ink (matching the theme's light-text value) rather
+    // than a theme-following colour that would vanish on the white sheet.
+    if !is_export && !has_pdf && project.active().is_some_and(|d| d.markups.is_empty()) {
+        let card = egui::Rect::from_center_size(page_rect.center(), egui::vec2(300.0, 132.0));
+        painter.rect_filled(
+            card,
+            egui::CornerRadius::same(8),
+            Color32::WHITE.gamma_multiply(0.96),
+        );
+        painter.rect_stroke(
+            card,
+            egui::CornerRadius::same(8),
+            egui::Stroke::new(1.0, Color32::from_rgb(200, 206, 218)),
+            egui::StrokeKind::Middle,
+        );
+        let paper_ink = Color32::from_rgb(32, 34, 48);
+        let muted_ink = Color32::from_rgb(110, 116, 132);
+        painter.text(
+            card.left_top() + Vec2::new(card.width() / 2.0, 22.0),
+            Align2::CENTER_CENTER,
+            "Import a PDF to begin",
+            FontId::proportional(17.0),
+            paper_ink,
+        );
+        painter.text(
+            card.left_top() + Vec2::new(card.width() / 2.0, 46.0),
+            Align2::CENTER_CENTER,
+            "Drag a PDF file here, or use the button below.\nMarkups are stored separately — the PDF is never modified.",
+            FontId::proportional(11.5),
+            muted_ink,
+        );
+        let button_rect = egui::Rect::from_center_size(
+            card.center() + Vec2::new(0.0, 36.0),
+            egui::vec2(150.0, 30.0),
+        );
+        if ui
+            .put(button_rect, egui::Button::new("Import PDF…"))
+            .clicked()
+        {
+            ui_state.request_import = true;
+        }
 
     // Render markups in paint order (layer-major, then vector order). Computed
     // once per frame and reused for the measurement labels below.
