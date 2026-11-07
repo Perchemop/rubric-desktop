@@ -16,7 +16,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
     use egui::MenuBar;
     MenuBar::new().ui(ui, |ui| {
         ui.menu_button("File", |ui| {
-            if crate::ui::app::menu_shortcut_button(ui, "New Project", "Ctrl+N") {
+            if ui.button("New Project").clicked() {
                 app.install_project(
                     Project::new("Untitled Rubric Project"),
                     None,
@@ -72,6 +72,12 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 .map(|d| d.markups.len())
                 .sum();
             let report_enabled = total_markups > 0;
+            let has_source_pdf = app
+                .history
+                .current()
+                .source_pdf
+                .as_deref()
+                .is_some_and(|p| !p.is_empty());
             if ui
                 .add_enabled(report_enabled, egui::Button::new("Export Report…"))
                 .on_disabled_hover_text("No markups to report yet")
@@ -87,7 +93,14 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 });
                 ui.close();
             }
-            if ui.button("Export Page Image…").clicked() {
+            if ui
+                .add_enabled(
+                    has_source_pdf,
+                    egui::Button::new("Export Page Image…"),
+                )
+                .on_disabled_hover_text("Import a PDF before exporting an image")
+                .clicked()
+            {
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("rubric-page.png")
                     .add_filter("PNG image", &["png"])
@@ -97,7 +110,11 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 }
                 ui.close();
             }
-            if ui.button("Export PDF…").clicked() {
+            if ui
+                .add_enabled(has_source_pdf, egui::Button::new("Export PDF…"))
+                .on_disabled_hover_text("Import a PDF before exporting")
+                .clicked()
+            {
                 let source_pdf = app.history.current().source_pdf.clone().unwrap_or_default();
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("rubric-export.pdf")
@@ -121,6 +138,8 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                                 }
                             }
                         }
+                    } else {
+                        app.ui.status = "Nothing to export — import a PDF first".to_string();
                     }
                 }
                 ui.close();
@@ -129,12 +148,6 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
             // Both items need the imported source PDF — without one there is no
             // page content to flatten the markups onto — so they are disabled
             // until a PDF is imported.
-            let has_source_pdf = app
-                .history
-                .current()
-                .source_pdf
-                .as_deref()
-                .is_some_and(|p| !p.is_empty());
             let export_page_pdf = ui
                 .add_enabled(has_source_pdf, egui::Button::new("Export Page to PDF…"))
                 .on_disabled_hover_text("Import a PDF before flattening a page");
@@ -152,7 +165,11 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 app.export_all_pages_to_pdf_action();
                 ui.close();
             }
-            if ui.button("Print…").clicked() {
+            if ui
+                .add_enabled(has_source_pdf, egui::Button::new("Print…"))
+                .on_disabled_hover_text("Import a PDF before printing")
+                .clicked()
+            {
                 let _ = app.print_page();
                 ui.close();
             }
@@ -236,10 +253,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 }
             });
             ui.separator();
-            if ui
-                .add(egui::Button::new("Quit").shortcut_text("Ctrl+W / Cmd+Q"))
-                .clicked()
-            {
+            if ui.button("Quit").clicked() {
                 if app.ui.dirty {
                     app.ui.quit_confirm = true;
                 } else {
@@ -329,10 +343,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
             {
                 app.jump_to_page(current + 1);
             }
-            if ui
-                .add(egui::Button::new("Full Screen").shortcut_text("Esc"))
-                .clicked()
-            {
+            if ui.button("Full Screen").clicked() {
                 // Read the live state so the toggle is truthful even if the
                 // WM changed it out from under us.
                 let fullscreen = ui

@@ -13,7 +13,7 @@ use crate::ui::icon_button::{
 };
 
 /// Map a tool to its icon drawing function.
-fn tool_icon(tool: Tool) -> fn(&eframe::egui::Painter, eframe::egui::Rect) {
+fn tool_icon(tool: Tool) -> fn(&eframe::egui::Painter, eframe::egui::Rect, eframe::egui::Color32) {
     match tool {
         Tool::Select => draw_select_icon,
         Tool::Highlight => draw_highlight_icon,
@@ -169,7 +169,7 @@ pub(crate) fn draw_tool_groups(
             let paths = [Tool::Line, Tool::Arrow, Tool::Ink];
             for t in &paths {
                 if tool_button(ui, active, *t, t.label()) {
-                    *hint = format!("Measurement: {}", t.label());
+                    *hint = format!("Using {}", t.label());
                 }
             }
         });

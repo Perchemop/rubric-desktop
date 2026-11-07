@@ -14,7 +14,7 @@ use eframe::egui::{
 /// `on_hover_text` or check `.clicked()`.
 pub(crate) fn icon_button(
     ui: &mut Ui,
-    icon: impl FnOnce(&Painter, Rect),
+    icon: impl FnOnce(&Painter, Rect, Color32),
     label: &str,
     active: bool,
 ) -> eframe::egui::Response {
@@ -24,7 +24,8 @@ pub(crate) fn icon_button(
     // Measure text width without painting it (avoids double-painting and
     // double space allocation which breaks click targeting in wrapped
     // layouts). Paint the text manually below so icon and text share one
-    // clickable rect.
+    // clickable rect. The rect is allocated with an exact size so hover and
+    // click targets match the visible pill rather than the full wrapped row.
     let text_galley = ui.ctx().fonts_mut(|f| {
         f.layout(
             label.to_owned(),
@@ -36,11 +37,18 @@ pub(crate) fn icon_button(
     let text_width = text_galley.size().x;
     let total_width: f32 = icon_size + gap + text_width;
 
-    let mut rect = ui.available_rect_before_wrap();
-    rect = rect.shrink(2.0);
-    rect.set_width(total_width.min(rect.width()));
+    // Theme-derived colours: derive from the active visuals so the button
+    // stays legible on light, dark, and high-contrast surfaces.
+    let stroke_color = ui.visuals().text_color();
+    let hover_fill = ui.visuals().widgets.hovered.bg_fill;
+    let active_color = ui.visuals().selection.bg_fill;
+    let text_color = ui.visuals().text_color();
 
-    let response = ui.allocate_rect(rect, Sense::click());
+    // Allocate an exact-sized rect so hover/click targets match the visible
+    // pill instead of spanning the full wrapped row or remaining panel
+    // height.
+    let response = ui.allocate_exact_size(Vec2::new(total_width, icon_size + 8.0), Sense::click());
+    let rect = response.rect;
     // Expose the visible label to Assistive Technology (AccessKit /
     // kittest): the click target is named after the text painted inside
     // it, so icon-paired buttons are screen-reader operable. The text is
@@ -56,25 +64,25 @@ pub(crate) fn icon_button(
         ui.painter().rect_filled(
             rect,
             4.0,
-            Color32::from_rgb(228, 231, 240).gamma_multiply(0.5),
+            hover_fill.gamma_multiply(0.5),
         );
     }
     if active {
         ui.painter().rect_stroke(
             rect,
             4.0,
-            Stroke::new(1.0, Color32::from_rgb(228, 87, 46)),
+            Stroke::new(1.0, active_color),
             StrokeKind::Middle,
         );
     }
 
-    // Icon square on the left.
-    let icon_rect = Rect::from_min_size(rect.min, Vec2::splat(icon_size));
-    icon(ui.painter(), icon_rect);
+    // Icon square on the left, vertically centred in the button.
+    let icon_rect = Rect::from_min_size(rect.min + Vec2::new(0.0, 4.0), Vec2::splat(icon_size));
+    icon(ui.painter(), icon_rect, stroke_color);
 
-    // Label to the right of the icon.
+    // Label to the right of the icon, centred on the icon square.
     let text_rect = Rect::from_min_size(
-        rect.min + Vec2::new(icon_size + gap, 0.0),
+        rect.min + Vec2::new(icon_size + gap, 4.0),
         Vec2::new(text_width, icon_size),
     );
     ui.painter().text(
@@ -82,15 +90,15 @@ pub(crate) fn icon_button(
         Align2::CENTER_CENTER,
         label,
         FontId::new(13.0, FontFamily::Proportional),
-        Color32::BLACK,
+        text_color,
     );
 
     response
 }
 
 /// Icon: select / arrow cursor.
-pub(crate) fn draw_select_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_select_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     // Arrow shaft pointing up-right.
     painter.line_segment([rect.left_center(), rect.right_top()], stroke);
     // Arrow head.
@@ -100,35 +108,35 @@ pub(crate) fn draw_select_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: highlight marker.
-pub(crate) fn draw_highlight_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(2.0, Color32::from_rgb(228, 87, 46));
+pub(crate) fn draw_highlight_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(2.0, stroke_color);
     painter.line_segment([rect.left_bottom(), rect.right_top()], stroke);
     // Cap at each end.
-    painter.circle_filled(rect.left_bottom(), 2.0, Color32::from_rgb(228, 87, 46));
-    painter.circle_filled(rect.right_top(), 2.0, Color32::from_rgb(228, 87, 46));
+    painter.circle_filled(rect.left_bottom(), 2.0, stroke_color);
+    painter.circle_filled(rect.right_top(), 2.0, stroke_color);
 }
 
 /// Icon: rectangle outline.
-pub(crate) fn draw_rectangle_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_rectangle_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     painter.rect_stroke(rect, 2.0, stroke, StrokeKind::Middle);
 }
 
 /// Icon: ellipse outline (approximated with rect).
-pub(crate) fn draw_ellipse_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_ellipse_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     painter.rect_stroke(rect, rect.height() / 2.0, stroke, StrokeKind::Middle);
 }
 
 /// Icon: diagonal line.
-pub(crate) fn draw_line_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_line_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     painter.line_segment([rect.left_top(), rect.right_bottom()], stroke);
 }
 
 /// Icon: arrow (line with head).
-pub(crate) fn draw_arrow_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_arrow_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     painter.line_segment([rect.left_center(), rect.right_center()], stroke);
     let head = rect.right_center();
     painter.line_segment([head, head + Vec2::new(-5.0, -3.0)], stroke);
@@ -136,21 +144,21 @@ pub(crate) fn draw_arrow_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: text box (T in a square).
-pub(crate) fn draw_text_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_text_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     painter.rect_stroke(rect, 2.0, stroke, StrokeKind::Middle);
     painter.text(
         rect.center(),
         Align2::CENTER_CENTER,
         "T",
         FontId::new(16.0, FontFamily::Proportional),
-        Color32::from_rgb(60, 60, 70),
+        stroke_color,
     );
 }
 
 /// Icon: ruler / measurement.
-pub(crate) fn draw_length_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_length_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     // Ruler body.
     painter.line_segment([rect.left_bottom(), rect.right_bottom()], stroke);
     // Tick marks.
@@ -166,38 +174,38 @@ pub(crate) fn draw_length_icon(painter: &Painter, rect: Rect) {
         );
     }
     // End caps.
-    painter.circle_filled(rect.left_bottom(), 2.0, Color32::from_rgb(60, 60, 70));
-    painter.circle_filled(rect.right_bottom(), 2.0, Color32::from_rgb(60, 60, 70));
+    painter.circle_filled(rect.left_bottom(), 2.0, stroke_color);
+    painter.circle_filled(rect.right_bottom(), 2.0, stroke_color);
 }
 
 /// Icon: strikeout (horizontal line through text center).
-pub(crate) fn draw_strikeout_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(2.0, Color32::from_rgb(228, 87, 46));
+pub(crate) fn draw_strikeout_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(2.0, stroke_color);
     painter.line_segment([rect.left_center(), rect.right_center()], stroke);
-    painter.circle_filled(rect.left_center(), 2.0, Color32::from_rgb(228, 87, 46));
-    painter.circle_filled(rect.right_center(), 2.0, Color32::from_rgb(228, 87, 46));
+    painter.circle_filled(rect.left_center(), 2.0, stroke_color);
+    painter.circle_filled(rect.right_center(), 2.0, stroke_color);
 }
 
 /// Icon: underline (line at text baseline).
-pub(crate) fn draw_underline_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(2.0, Color32::from_rgb(228, 87, 46));
+pub(crate) fn draw_underline_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(2.0, stroke_color);
     painter.line_segment([rect.left_top(), rect.right_top()], stroke);
     // small caps to read as a baseline.
     painter.circle_filled(
         Pos2::new(rect.left(), rect.bottom() - 2.0),
         1.5,
-        Color32::from_rgb(228, 87, 46),
+        stroke_color,
     );
     painter.circle_filled(
         Pos2::new(rect.right(), rect.bottom() - 2.0),
         1.5,
-        Color32::from_rgb(228, 87, 46),
+        stroke_color,
     );
 }
 
 /// Icon: squiggly (zig-zag annotation line).
-pub(crate) fn draw_squiggly_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(228, 87, 46));
+pub(crate) fn draw_squiggly_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     let steps = 6;
     let step_w = rect.width() / steps as f32;
     let mid = rect.center().y;
@@ -211,8 +219,8 @@ pub(crate) fn draw_squiggly_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: callout (text box with leader tail).
-pub(crate) fn draw_callout_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_callout_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     let box_rect =
         Rect::from_min_size(rect.min, Vec2::new(rect.width() * 0.6, rect.height() * 0.6));
     painter.rect_stroke(box_rect, 2.0, stroke, StrokeKind::Middle);
@@ -229,8 +237,8 @@ pub(crate) fn draw_callout_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: sticky note (dog-eared corner).
-pub(crate) fn draw_note_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_note_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     painter.rect_stroke(rect, 2.0, stroke, StrokeKind::Middle);
     // dog-eared top-right corner.
     let head = rect.right_top();
@@ -243,8 +251,8 @@ pub(crate) fn draw_note_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: stamp (square border with review mark).
-pub(crate) fn draw_stamp_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(228, 87, 46));
+pub(crate) fn draw_stamp_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     painter.rect_stroke(rect, 3.0, stroke, StrokeKind::Middle);
     // review check glyph.
     let center = rect.center();
@@ -259,8 +267,8 @@ pub(crate) fn draw_stamp_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: cloud (bumpy outline).
-pub(crate) fn draw_cloud_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_cloud_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     let cx = rect.center().x;
     let cy = rect.center().y;
     let rx = rect.width() * 0.35;
@@ -277,8 +285,8 @@ pub(crate) fn draw_cloud_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: polygon (closed multi-point shape).
-pub(crate) fn draw_polygon_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_polygon_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     let cx = rect.center().x;
     let cy = rect.center().y;
     let r = rect.width() * 0.3;
@@ -293,8 +301,8 @@ pub(crate) fn draw_polygon_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: polyline (open multi-point stroke).
-pub(crate) fn draw_polyline_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_polyline_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     let cx = rect.center().x;
     let cy = rect.center().y;
     let r = rect.width() * 0.3;
@@ -308,8 +316,8 @@ pub(crate) fn draw_polyline_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: ink (freehand squiggly stroke).
-pub(crate) fn draw_ink_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(2.0, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_ink_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(2.0, stroke_color);
     let cy = rect.center().y;
     let pts: Vec<Pos2> = (0..=7)
         .map(|i| {
@@ -322,8 +330,8 @@ pub(crate) fn draw_ink_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: measure perimeter (closed loop with dimension ticks).
-pub(crate) fn draw_measure_perimeter_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_measure_perimeter_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     painter.rect_stroke(rect, 2.0, stroke, StrokeKind::Middle);
     // dimension ticks along bottom.
     let y = rect.bottom();
@@ -333,8 +341,8 @@ pub(crate) fn draw_measure_perimeter_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: measure area (hatched fill).
-pub(crate) fn draw_measure_area_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_measure_area_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     painter.rect_stroke(rect, 2.0, stroke, StrokeKind::Middle);
     // diagonal hatch lines.
     let steps = 4;
@@ -350,8 +358,8 @@ pub(crate) fn draw_measure_area_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: measure angle (arc between two lines).
-pub(crate) fn draw_measure_angle_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_measure_angle_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     let vertex = rect.center();
     // two rays from vertex.
     painter.line_segment([vertex, Pos2::new(rect.left(), rect.bottom())], stroke);
@@ -368,8 +376,8 @@ pub(crate) fn draw_measure_angle_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: measure diameter (circle with line through center).
-pub(crate) fn draw_measure_diameter_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_measure_diameter_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     let center = rect.center();
     let r = rect.width() * 0.3;
     // circle.
@@ -384,8 +392,8 @@ pub(crate) fn draw_measure_diameter_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: measure radius (circle with radius line from center to edge).
-pub(crate) fn draw_measure_radius_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_measure_radius_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     let center = rect.center();
     let r = rect.width() * 0.3;
     let pts: Vec<Pos2> = (0..=12)
@@ -399,8 +407,8 @@ pub(crate) fn draw_measure_radius_icon(painter: &Painter, rect: Rect) {
 }
 
 /// Icon: measure count (numbered circle).
-pub(crate) fn draw_measure_count_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_measure_count_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     let center = rect.center();
     let r = rect.width() * 0.3;
     let pts: Vec<Pos2> = (0..=12)
@@ -415,13 +423,13 @@ pub(crate) fn draw_measure_count_icon(painter: &Painter, rect: Rect) {
         Align2::CENTER_CENTER,
         "1",
         FontId::new(12.0, FontFamily::Proportional),
-        Color32::from_rgb(60, 60, 70),
+        stroke_color,
     );
 }
 
 /// Icon: calibrate (ruler with two reference marks).
-pub(crate) fn draw_calibrate_icon(painter: &Painter, rect: Rect) {
-    let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
+pub(crate) fn draw_calibrate_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
+    let stroke = Stroke::new(1.5, stroke_color);
     // ruler baseline.
     let y = rect.center().y;
     painter.line_segment([rect.left_center(), rect.right_center()], stroke);
