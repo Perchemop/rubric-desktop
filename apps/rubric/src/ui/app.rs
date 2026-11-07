@@ -1244,7 +1244,7 @@ impl RubricApp {
         }
     }
 
-    fn push_snapshot(&mut self, reason: &str) {
+    fn push_snapshot(&mut self, _reason: &str) {
         let proj = self.history.current().clone();
         self.history.push(proj);
         // A committed change is exactly what auto-save should persist.
