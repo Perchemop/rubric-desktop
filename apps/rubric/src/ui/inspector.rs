@@ -675,7 +675,15 @@ pub(crate) fn draw_inspector(
                     if colour_changed {
                         let c = color32_to_domain(sc);
                         m.style.stroke = c;
-                        m.style.fill = c;
+                        // Keep the fill's own translucency (UI audit P1-7):
+                        // adopt the new hue but preserve the fill's alpha —
+                        // recolouring the stroke used to erase the fill tint.
+                        m.style.fill = Color {
+                            r: c.r,
+                            g: c.g,
+                            b: c.b,
+                            a: m.style.fill.a,
+                        };
                         edited = true;
                         ui_state.colour_pending = Some(sc);
                     }
@@ -820,42 +828,59 @@ pub(crate) fn draw_inspector(
         let bates_pages = project.active().map(|d| d.page_count()).unwrap_or(0);
         ui.collapsing("Bates numbering", |ui| {
             let bates = &mut project.settings.bates;
-            let mut changed = ui
+            // Undo discipline (UI audit P1-4): discrete controls (checkbox,
+            // corner picker) commit immediately; continuous ones (text
+            // fields, drag values) apply live so the First/Last previews
+            // track, but commit exactly ONE snapshot when the interaction
+            // ends. Typing a prefix or dragging Start used to push a
+            // snapshot per frame.
+            let mut committed_now = ui
                 .checkbox(&mut bates.enabled, "Enable Bates numbering")
                 .changed();
+            if committed_now {
+                ui_state.bates_dirty = false;
+            }
+            let mut interaction_ended = false;
             ui.add_enabled_ui(bates.enabled, |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Prefix");
-                    changed |= ui.text_edit_singleline(&mut bates.prefix).changed();
+                    let resp = ui.text_edit_singleline(&mut bates.prefix);
+                    if resp.changed() {
+                        ui_state.bates_dirty = true;
+                    }
+                    interaction_ended |= resp.lost_focus();
                 });
                 ui.horizontal(|ui| {
                     ui.label("Suffix");
-                    changed |= ui.text_edit_singleline(&mut bates.suffix).changed();
+                    let resp = ui.text_edit_singleline(&mut bates.suffix);
+                    if resp.changed() {
+                        ui_state.bates_dirty = true;
+                    }
+                    interaction_ended |= resp.lost_focus();
                 });
                 ui.horizontal(|ui| {
                     ui.label("Start");
                     let mut start = bates.start;
-                    if ui
-                        .add(egui::DragValue::new(&mut start).range(0..=MAX_BATES_START))
-                        .changed()
-                    {
+                    let resp =
+                        ui.add(egui::DragValue::new(&mut start).range(0..=MAX_BATES_START));
+                    if resp.changed() {
                         bates.start = start;
-                        changed = true;
+                        ui_state.bates_dirty = true;
                     }
+                    interaction_ended |= resp.drag_stopped() || resp.lost_focus();
                 });
                 ui.horizontal(|ui| {
                     ui.label("Digits");
                     let mut digits = bates.digits;
-                    if ui
-                        .add(
-                            egui::DragValue::new(&mut digits)
-                                .range(MIN_BATES_DIGITS..=MAX_BATES_DIGITS),
-                        )
-                        .changed()
-                    {
+                    let resp = ui.add(
+                        egui::DragValue::new(&mut digits)
+                            .range(MIN_BATES_DIGITS..=MAX_BATES_DIGITS),
+                    );
+                    if resp.changed() {
                         bates.set_digits(digits);
-                        changed = true;
+                        ui_state.bates_dirty = true;
                     }
+                    interaction_ended |= resp.drag_stopped() || resp.lost_focus();
                 });
                 ComboBox::from_id_salt("bates_corner")
                     .selected_text(bates.corner.label())
@@ -865,21 +890,28 @@ pub(crate) fn draw_inspector(
                                 .selectable_value(&mut bates.corner, corner, corner.label())
                                 .changed()
                             {
-                                changed = true;
+                                committed_now = true;
+                                ui_state.bates_dirty = false;
                             }
                         }
                     });
                 ui.horizontal(|ui| {
                     ui.label("Margin (pt)");
-                    changed |= ui
-                        .add(egui::DragValue::new(&mut bates.margin).range(0.0..=200.0))
-                        .changed();
+                    let resp =
+                        ui.add(egui::DragValue::new(&mut bates.margin).range(0.0..=200.0));
+                    if resp.changed() {
+                        ui_state.bates_dirty = true;
+                    }
+                    interaction_ended |= resp.drag_stopped() || resp.lost_focus();
                 });
                 ui.horizontal(|ui| {
                     ui.label("Font size (pt)");
-                    changed |= ui
-                        .add(egui::DragValue::new(&mut bates.font_size).range(4.0..=72.0))
-                        .changed();
+                    let resp =
+                        ui.add(egui::DragValue::new(&mut bates.font_size).range(4.0..=72.0));
+                    if resp.changed() {
+                        ui_state.bates_dirty = true;
+                    }
+                    interaction_ended |= resp.drag_stopped() || resp.lost_focus();
                 });
                 ui.horizontal(|ui| {
                     ui.label("Pages to stamp");
@@ -896,8 +928,9 @@ pub(crate) fn draw_inspector(
                     ui.small(format!("Last: {last}"));
                 }
             });
-            if changed {
+            if committed_now || (interaction_ended && ui_state.bates_dirty) {
                 committed = true;
+                ui_state.bates_dirty = false;
             }
         });
     }

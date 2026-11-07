@@ -922,13 +922,15 @@ pub(crate) fn draw_canvas(
         ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
     }
 
-    // Wheel zoom centred on cursor (and horizontal-scroll pan).
+    // Wheel navigation (UI audit P1-5): plain scroll pans the page — the
+    // dominant trackpad gesture in document viewers — while Ctrl/⌘+scroll
+    // zooms centred on the cursor. Previously every scroll zoomed, making
+    // two-finger trackpad panning unusable.
     if response.hovered() {
         let scroll = ui.ctx().input(|i| i.smooth_scroll_delta);
         if scroll != Vec2::ZERO {
-            if scroll.x.abs() > scroll.y.abs() && scroll.y.abs() < 0.5 {
-                ui_state.pan.x += scroll.x;
-            } else if scroll.y.abs() > f32::EPSILON {
+            let zoom_modifier = ui.ctx().input(|i| i.modifiers.command || i.modifiers.ctrl);
+            if zoom_modifier && scroll.y.abs() > f32::EPSILON {
                 if let Some(hover) = response.hover_pos() {
                     let page_before = to_page(hover, pan, zoom, origin);
                     let factor = (scroll.y * 0.001).exp();
@@ -939,8 +941,59 @@ pub(crate) fn draw_canvas(
                     ui_state.zoom = new_zoom;
                     ui_state.pan = new_pan;
                 }
+            } else {
+                ui_state.pan += scroll;
             }
         }
+    }
+
+    // Cursor affordances (UI audit P1-8): the pointer reflects the hovered
+    // target instead of one arrow everywhere. Space-pan keeps its Grab
+    // cursor (set above); an in-progress text edit shows the I-beam; draw
+    // and calibrate tools show a crosshair; Select shows move over a markup
+    // and the matching resize cursor over a selected markup's corner
+    // handles.
+    if response.hovered() && !space_held {
+        let hover_icon = if ui_state.text_edit.is_some() {
+            egui::CursorIcon::Text
+        } else if ui_state.active_tool != crate::domain::Tool::Select {
+            egui::CursorIcon::Crosshair
+        } else {
+            let mut icon = egui::CursorIcon::Default;
+            if let Some(sp) = response.hover_pos() {
+                let corner_hit = project.active().and_then(|d| {
+                    if ui_state.selected.len() != 1 {
+                        return None;
+                    }
+                    let id = *ui_state.selected.iter().next()?;
+                    d.markups.iter().find(|m| m.id == id)
+                });
+                if let Some(m) = corner_hit {
+                    let screen_bounds = screen_rect(m.bounds(), origin, pan, zoom);
+                    if let Some(corner) = handle_at(screen_bounds, sp, ui_state.zoom) {
+                        icon = match corner {
+                            crate::domain::Corner::TopLeft
+                            | crate::domain::Corner::BottomRight => egui::CursorIcon::ResizeNwSe,
+                            crate::domain::Corner::TopRight
+                            | crate::domain::Corner::BottomLeft => egui::CursorIcon::ResizeNeSw,
+                        };
+                    }
+                }
+                if icon == egui::CursorIcon::Default
+                    && pick_markup_id(
+                        project,
+                        page.index,
+                        to_page(sp, pan, zoom, origin),
+                        hit_tolerance_page(zoom),
+                    )
+                    .is_some()
+                {
+                    icon = egui::CursorIcon::Move;
+                }
+            }
+            icon
+        };
+        ui.ctx().set_cursor_icon(hover_icon);
     }
 
     let panning = space_held || response.dragged_by(egui::PointerButton::Middle);
