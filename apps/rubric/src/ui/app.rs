@@ -1878,7 +1878,7 @@ impl RubricApp {
         // multi-file drop is taken — installing two would just replace one
         // with the other. egui clears `dropped_files` next frame.
         let dropped_pdf = ctx
-            .input(|i| i.raw.dropped_files.clone().unwrap_or_default())
+            .input(|i| i.raw.dropped_files.clone())
             .into_iter()
             .find(|f| {
                 f.path
