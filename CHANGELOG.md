@@ -4,6 +4,29 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ## [Unreleased]
 
+### Fixed
+
+- **UI/UX audit P0 round** (2026-11-07, PR #148; findings in
+  `docs/audit-ui-2026-11-07.md`): the Replace Unsaved Project dialog is no
+  longer a dead end (Save First / Discard & Replace / Cancel — New, Open,
+  Import and Recent are usable again while dirty); PDFs can be imported by
+  drag-and-drop and a first-run "Import a PDF to begin" card with a working
+  button replaces the blank-page void; the toolbar is legible in dark and
+  high-contrast themes (colours derived from the active visuals instead of
+  hardcoded black/grey); toolbar buttons name their own AccessKit nodes
+  (fixing a `labelled_by`-to-nowhere panic for kittest and screen readers)
+  and size their hover/click targets to the visible pill; Ctrl+Shift+S no
+  longer also fires Save; unwired shortcut hints (Ctrl+N, Ctrl+W/Cmd+Q,
+  Esc-fullscreen) were removed and Export PDF / Export Page Image / Print are
+  gated with honest hover text; the About window no longer overwrites the
+  status line every frame.
+
+### Changed
+
+- Import pipeline unified: `import_pdf_from_path` / `import_pdf_dialog`
+  behind File ▸ Import PDF…, Ctrl+I, drag-and-drop and the canvas CTA
+  (previously three inline copies).
+
 ## [0.3.0] - 2026-11-06
 
 ### Added

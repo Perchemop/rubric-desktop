@@ -211,6 +211,26 @@ are marked done; each needs its own slice and evidence.
 - [ ] Signed releases + checksum-verified auto-update install (guide §12.1)
 - [ ] Optional: minimap
 
+### UI/UX audit queue (2026-11-07, [`docs/audit-ui-2026-11-07.md`](docs/audit-ui-2026-11-07.md))
+
+P0 items from the UI/UX audit were fixed and merged in PR #148 (replace-dialog
+dead end, drag-drop + first-run CTA, theme-aware toolbar, AccessKit naming,
+Ctrl+Shift+S, honest menus). The remaining queue, in priority order:
+
+- [ ] P1-1 Severity-coloured status + toasts; dedicated messages (no "Snapshot: …", no raw UUIDs)
+- [ ] P1-2 Move heavy work off the UI thread (print/export render, report submit, Highlight text lookups, page backgrounds, thumbnails)
+- [ ] P1-3 Inspector tabs become the sole navigator (no decorative tab strip)
+- [ ] P1-4 Bates/settings edits commit undo snapshots on drag-stopped/lost-focus only
+- [ ] P1-5 Scroll pans; Ctrl/⌘+scroll zooms (or a setting)
+- [ ] P1-6 Tool Chest rows fit the default panel width; disabled-with-hint "Apply to Selection"
+- [ ] P1-7 Stroke colour edit preserves fill hue/alpha
+- [ ] P1-8 Cursor affordances (crosshair/move/resize/I-beam) + theme-aware marquee
+- [ ] P1-9 Canvas + thumbnails accessibility (AccessKit nodes, keyboard nudge)
+- [ ] P1-10 Unify the two tool pickers (one grouping, one source of truth)
+- [ ] P1-11 Workspace prefs survive project installs; restore show_pages/focus_mode; expose ui_scale; surface prefs parse failures
+- [ ] P1-12 Rewrite the Keyboard Shortcuts dialog + USER_GUIDE.md against the real input map
+- [ ] P2 batch (see audit doc §P2): page-nav order, resizable Inspector/Tools, comment dates, minimap navigation, icon vocabulary, dead glyph table, type-scale tokens in overlays, Delete confirmation, guide table rendering
+
 ---
 
 ## Sequencing rules
