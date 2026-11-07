@@ -4,7 +4,7 @@
 
 use eframe::egui::{
     Align2, Color32, FontFamily, FontId, Painter, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, Vec2,
-    WidgetInfo, WidgetType,
+    WidgetType,
 };
 
 /// Draw a small geometric icon to the left of a text label inside `ui`.
