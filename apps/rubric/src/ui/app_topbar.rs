@@ -4,7 +4,7 @@
 
 use eframe::egui::{self, Align, Ui};
 
-use crate::ui::app::RubricApp;
+use crate::ui::app::{RubricApp, StatusKind};
 use crate::ui::toolbar;
 
 /// Draw the top bar: toolbar, active-tool chip, status, zoom, page nav.
@@ -41,7 +41,19 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
             });
 
         ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
-            ui.label(app.ui.status.clone());
+            // Severity-coloured status (UI audit P1-1): errors are visually
+            // distinct from success/info and long messages are shown on hover.
+            let status_color = match app.ui.status_kind {
+                StatusKind::Info => ui.visuals().text_color(),
+                StatusKind::Success => egui::Color32::from_rgb(76, 175, 80),
+                StatusKind::Warning => egui::Color32::from_rgb(255, 152, 0),
+                StatusKind::Error => egui::Color32::from_rgb(229, 57, 53),
+            };
+            ui.add(egui::Label::new(
+                egui::RichText::new(app.ui.status.clone()).color(status_color),
+            ))
+            .on_hover_text(app.ui.status.clone());
+
             ui.label(format!("{:.0}%", app.ui.zoom * 100.0));
             // Page navigation chrome.
             let count = app.active_doc().map(|d| d.page_count()).unwrap_or(0);

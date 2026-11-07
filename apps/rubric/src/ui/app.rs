@@ -89,6 +89,16 @@ pub(crate) enum InspectorMode {
     Settings,
 }
 
+/// Visual severity for the status bar (UI audit P1-1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum StatusKind {
+    #[default]
+    Info,
+    Success,
+    Warning,
+    Error,
+}
+
 /// Layer criterion in the Markups List. The default layer is a distinct case
 /// because markups on it store `layer_id: None` in the domain model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -165,6 +175,7 @@ pub(crate) struct UiState {
     pub(crate) bates_dirty: bool,
     hint: String,
     pub(crate) status: String,
+    pub(crate) status_kind: StatusKind,
     /// Set when an in-progress draw is cancelled (Esc) so the still-held drag
     /// does not spawn a fresh draft; cleared when that drag starts or ends.
     pub(crate) draw_cancelled: bool,
@@ -305,6 +316,7 @@ impl Default for UiState {
             hint: "Ctrl+S Save · Ctrl+O Open · Ctrl+Z Undo · Ctrl+Y Redo · Ctrl+A Select All · Del Delete · Esc Cancel"
                 .to_string(),
             status: "Ready".to_string(),
+            status_kind: StatusKind::Info,
             draw_cancelled: false,
             last_tool: Tool::Select,
             move_selection: false,
@@ -1232,12 +1244,20 @@ impl RubricApp {
         }
     }
 
-    fn push_snapshot(&mut self, reason: &str) {
+    fn push_snapshot(&mut self, _reason: &str) {
         let proj = self.history.current().clone();
         self.history.push(proj);
         // A committed change is exactly what auto-save should persist.
         self.ui.dirty = true;
-        self.ui.status = format!("Snapshot: {reason}");
+        // UI audit P1-1: do not spam the status bar with developer jargon.
+        // The caller already set a human message if needed; push_snapshot
+        // is silent.
+    }
+
+    /// Set status text with visual severity (UI audit P1-1).
+    pub(crate) fn set_status(&mut self, kind: StatusKind, msg: impl Into<String>) {
+        self.ui.status_kind = kind;
+        self.ui.status = msg.into();
     }
 
     /// Push a snapshot without touching the status bar. Used when the canvas
@@ -1344,7 +1364,7 @@ impl RubricApp {
                 self.install_project(project, None, format!("Imported {count} page(s)"));
             }
             Err(e) => {
-                self.ui.status = format!("Import failed: {e}");
+                self.set_status(StatusKind::Error, format!("Import failed: {e}"));
             }
         }
     }
@@ -1426,7 +1446,7 @@ impl RubricApp {
         ) {
             Ok(b) => b,
             Err(e) => {
-                self.ui.status = format!("Export failed: {e}");
+                self.set_status(StatusKind::Error, format!("Export failed: {e}"));
                 return Err(e);
             }
         };
@@ -1458,7 +1478,7 @@ impl RubricApp {
         ) {
             Ok(b) => b,
             Err(e) => {
-                self.ui.status = format!("Print failed: {e}");
+                self.set_status(StatusKind::Error, format!("Print failed: {e}"));
                 return Err(e);
             }
         };
@@ -1466,7 +1486,7 @@ impl RubricApp {
             std::env::temp_dir().join(format!("rubric_print_{}.png", uuid::Uuid::new_v4()));
         if let Err(e) = std::fs::write(&temp_path, &bytes) {
             let err = DataError::Io(e);
-            self.ui.status = format!("Print failed: {err}");
+            self.set_status(StatusKind::Error, format!("Print failed: {err}"));
             return Err(err);
         }
         let result = print_image(&temp_path);
@@ -1474,11 +1494,11 @@ impl RubricApp {
         let _ = std::fs::remove_file(&temp_path);
         match result {
             Ok(()) => {
-                self.ui.status = "Print job sent".to_string();
+                self.set_status(StatusKind::Success, "Print job sent".to_string());
                 Ok(())
             }
             Err(e) => {
-                self.ui.status = format!("Print failed: {e}");
+                self.set_status(StatusKind::Error, format!("Print failed: {e}"));
                 Err(e)
             }
         }
@@ -1633,7 +1653,7 @@ impl RubricApp {
                 }
             }
             Err(e) => {
-                self.ui.status = format!("Open failed: {e}");
+                self.set_status(StatusKind::Error, format!("Open failed: {e}"));
             }
         }
     }
@@ -1659,7 +1679,7 @@ impl RubricApp {
                 let _ = save_recent(&recent);
             }
             Err(e) => {
-                self.ui.status = format!("Save failed: {e}");
+                self.set_status(StatusKind::Error, format!("Save failed: {e}"));
             }
         }
     }
@@ -1696,7 +1716,7 @@ impl RubricApp {
                 // the project dirty; File → Save As resolves it for good.
             }
             Err(e) => {
-                self.ui.status = format!("Autosave failed: {e}");
+                self.set_status(StatusKind::Warning, format!("Autosave failed: {e}"));
             }
         }
     }
