@@ -1188,7 +1188,7 @@ pub(crate) fn draw_canvas(
                         } else {
                             ui_state.selected.clear();
                             ui_state.selected.insert(id);
-                            ui_state.status = format!("Selected {}", id);
+                            ui_state.status = format!("Selected 1 markup");
                         }
                         // Note pins open a floating comment popover (F-103);
                         // selecting anything else closes an open one.
