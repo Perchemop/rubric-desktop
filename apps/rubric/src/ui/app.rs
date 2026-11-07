@@ -159,6 +159,10 @@ pub(crate) struct UiState {
     /// One-frame flag raised by the canvas empty state's "Import PDF…"
     /// button; consumed in `draw_ui` right after the central panel.
     pub(crate) request_import: bool,
+    /// Bates-numbering edits are in flight (UI audit P1-4): set live by the
+    /// inspector's continuous Bates controls, cleared when the single undo
+    /// snapshot commits at interaction end.
+    pub(crate) bates_dirty: bool,
     hint: String,
     pub(crate) status: String,
     /// Set when an in-progress draw is cancelled (Esc) so the still-held drag
@@ -297,6 +301,7 @@ impl Default for UiState {
             canvas_size: Vec2::ZERO,
             page_origin: Pos2::new(40.0, 40.0),
             request_import: false,
+            bates_dirty: false,
             hint: "Ctrl+S Save · Ctrl+O Open · Ctrl+Z Undo · Ctrl+Y Redo · Ctrl+A Select All · Del Delete · Esc Cancel"
                 .to_string(),
             status: "Ready".to_string(),
