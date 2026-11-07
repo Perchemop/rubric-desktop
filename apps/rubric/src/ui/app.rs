@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use eframe::{App, CreationContext, Frame};
@@ -97,6 +97,53 @@ pub(crate) enum StatusKind {
     Success,
     Warning,
     Error,
+}
+
+/// A render job for off-loading PDF page rendering to a worker thread
+/// (UI audit P1-2: move heavy work off the UI thread).
+#[derive(Debug)]
+pub(crate) struct RenderJob {
+    /// Path to the PDF file.
+    pub pdf_path: String,
+    /// Page index (0-based).
+    pub page_index: usize,
+    /// Thumbnail width in pixels (for thumbnails).
+    pub thumb_width_px: u32,
+    /// Key to identify this render request in the cache.
+    pub cache_key: String,
+    /// Optional channel sender to receive the result back on the UI thread.
+    pub result_tx: Option<mpsc::Sender<RenderResult>>,
+}
+
+/// Outcome of a render job, sent back to the UI thread.
+#[derive(Debug)]
+pub(crate) enum RenderResult {
+    /// Success: the page was rendered and the texture is ready.
+    Success { texture: egui::TextureHandle },
+    /// Failure: the render failed (e.g. PDF not found, invalid page).
+    Failure { error: String },
+}
+
+/// Repaint request signal (UI audit P1-2): posted by worker threads to
+/// notify the UI that a resource has finished loading/rendering.
+#[derive(Debug)]
+pub(crate) struct RepaintSignal;
+
+/// Render queue state (UI audit P1-2: move heavy work off the UI thread).
+///
+/// Follows the same `Arc<Mutex>` + worker-thread pattern as `update-check`
+/// (guide §7.2). One render job may be in flight at a time; the UI reads
+/// this state each frame to show a "working" indicator and repaint when
+/// the job completes.
+#[derive(Default)]
+pub(crate) struct RenderQueue {
+    /// True while a render job is in progress; the UI shows a placeholder
+    /// while this is `true`.
+    in_flight: bool,
+    /// Result of the completed render job, if any.
+    result: Option<RenderResult>,
+    /// Key of the render job that just completed, so the UI can cache it.
+    completed_key: Option<String>,
 }
 
 /// Layer criterion in the Markups List. The default layer is a distinct case
@@ -422,6 +469,9 @@ pub struct RubricApp {
     /// Shared update-check state, written by the worker thread and read by the
     /// UI each frame (guide §7.2).
     update: Arc<Mutex<UpdateCheck>>,
+    /// Render queue state, written by the worker thread and read by the
+    /// UI each frame (UI audit P1-2: move heavy work off the UI thread).
+    render: Arc<Mutex<RenderQueue>>,
     /// Repository used for issue URLs and release checks.
     repo: String,
     /// Tool Chest preset library (v0.4 gap #7). App-level session state: it
@@ -530,6 +580,7 @@ impl RubricApp {
                 open_in_browser: true,
             }),
             update: Arc::new(Mutex::new(UpdateCheck::default())),
+            render: Arc::new(Mutex::new(RenderQueue::default())),
             repo: "Perchemop/rubric-desktop".to_string(),
             tool_chest_library: prefs.tool_chest_library.clone(),
         }
@@ -561,6 +612,54 @@ impl RubricApp {
                 state.result = Some(status);
             }
             ctx.request_repaint();
+        });
+
+    /// Submit a thumbnail-render job to the worker thread (UI audit P1-2).
+    ///
+    /// If a render is already in flight, this call is a no-op. The job
+    /// parameters are stored in the shared `RenderQueue`; the worker thread
+    /// renders the page to a cached PNG using the existing `pdf::render_page_to_cache`
+    /// (which has on-disk caching so re-renders are free). The UI reads the
+    /// queue each frame and, once the job completes, creates the egui texture
+    /// from the cached file and adds it to `thumb_cache`.
+    pub(crate) fn begin_render_thumb(&mut self, pdf_path: &Path, page_index: usize, thumb_width_px: u32, cache_key: &str) {
+        let mut queue = self.render.lock().unwrap_or_else(|p| p.into_inner());
+        if queue.in_flight {
+            // Already rendering; don't spawn a second concurrent job.
+            return;
+        }
+        queue.in_flight = true;
+        queue.result = None;
+        queue.completed_key = Some(cache_key.to_string());
+        drop(queue);
+
+        let shared = Arc::clone(&self.render);
+        let pdf_path_str = pdf_path.to_string_lossy().to_string();
+        let page_index_val = page_index;
+        let thumb_width_px_val = thumb_width_px;
+        let cache_key_val = cache_key.to_string();
+        std::thread::spawn(move || {
+            // Render to the on-disk cache using the existing pdf infrastructure.
+            // This is the "heavy" part; subsequent renders will hit the cache.
+            if let Ok(_cache_path) = crate::data::pdf::render_page_to_cache(
+                &PathBuf::from(&pdf_path_str),
+                page_index_val,
+                thumb_width_px_val,
+            ) {
+                // Rendering succeeded; mark as complete.
+                if let Ok(mut state) = shared.lock() {
+                    state.in_flight = false;
+                    state.result = Some(RenderResult::Success);
+                    // The UI will pick up the cached file on the next frame.
+                }
+            } else {
+                if let Ok(mut state) = shared.lock() {
+                    state.in_flight = false;
+                    state.result = Some(RenderResult::Failure {
+                        error: "PDF render failed".into(),
+                    });
+                }
+            }
         });
     }
 
