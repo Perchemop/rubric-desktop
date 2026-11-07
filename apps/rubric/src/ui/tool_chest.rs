@@ -151,13 +151,17 @@ fn draw_preset_row(
         if has_selection
             && ui
                 .add_sized(
-                    egui::vec2(88.0, 24.0),
+                    egui::vec2(84.0, 24.0),
                     egui::Button::new("Apply to Selection"),
                 )
                 .on_hover_text("Apply this style to every selected markup")
                 .clicked()
         {
             project_mutated = apply_preset_to_selection(project, ui_state, preset);
+        // P1-6: disable Apply to Selection when panel is too narrow.
+        if has_selection && ui.state().rect.width() < 180.0 {
+            ui.add_enabled(false, egui::Button::new("Apply to Selection"))
+                .on_hover_text("Apply this style to every selected markup");
         }
 
         if ui
