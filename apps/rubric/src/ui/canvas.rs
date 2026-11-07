@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use eframe::egui::{self, Align2, Color32, FontId, Painter, Pos2, Sense, Ui, Vec2};
+use eframe::egui::{self, Align2, Color32, FontId, Painter, Pos2, Sense, Ui, Vec2, WidgetType};
 use uuid::Uuid;
 
 use crate::data::pdf::find_text_line_at_point;
@@ -827,6 +827,9 @@ pub(crate) fn draw_canvas(
             let popover_resp =
                 ui.interact(popover, egui::Id::new("note_popover"), egui::Sense::click());
             let inner = popover.shrink(8.0);
+                response.widget_info(|| {
+                    egui::WidgetInfo::labeled(WidgetType::Button, response.enabled(), "Note popover".to_owned())
+                })
             let mut cy = inner.min.y;
             let mut next_row = move |h: f32| {
                 let r = egui::Rect::from_min_size(
