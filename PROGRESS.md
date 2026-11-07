@@ -1,5 +1,38 @@
 # PROGRESS.md
 
+## 2026-11-07 — UI/UX audit + P0 remediation (PR #148)
+**Status**: merged to main; CI green (check, snapshot, packaging-plan + all
+Security checks).
+
+### Context
+Owner directive: "audit every aspect of a visual or manual feature a user
+would use." Three parallel passes (surface inventory, standards audit,
+capability-level comparison against the inspiration products) produced
+`docs/audit-ui-2026-11-07.md`: 8 P0 / 13 P1 / ~15 P2 findings plus a
+keep-list of 10 verified strengths. The full remaining queue is in ROADMAP
+("UI/UX audit queue").
+
+### Fixed in PR #148 (P0 round)
+- Replace Unsaved Project dead end → real Save First / Discard & Replace /
+  Cancel; `install_pending_replace` / `cancel_pending_replace`.
+- Drag-and-drop PDF import + first-run "Import a PDF to begin" CTA; import
+  pipeline unified into `import_pdf_from_path` / `import_pdf_dialog` (was
+  three inline copies).
+- Theme-aware toolbar (was hardcoded black/grey — unreadable in dark and
+  high-contrast); pill-sized hover/click targets with centred contents.
+- AccessKit: toolbar buttons name their own nodes (dangling `labelled_by`
+  panicked kittest and would panic real screen readers).
+- Ctrl+Shift+S double-fire; unwired shortcut hints removed; Export PDF /
+  Page Image / Print gated honestly; About-window status stomp removed.
+
+### Evidence
+- CI green on the merge commit (`check` = fmt+clippy+tests+release,
+  `snapshot` re-baselined via the documented artifact round-trip, Security
+  suite green).
+- a11y kittest tests pass again (2 passed after the AccessKit fix).
+
+---
+
 ## 2026-11-07 — external audit remediation round 1 (PRs #144, #145, #146)
 **Status**: merged to main; CI green (8/8 required checks on each PR).
 
