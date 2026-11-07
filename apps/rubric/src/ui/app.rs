@@ -1881,12 +1881,12 @@ impl RubricApp {
             .input(|i| i.raw.dropped_files.clone())
             .into_iter()
             .find(|f| {
-                f.path
-                    .as_deref()
-                    .is_some_and(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")))
+                f.path().as_deref().is_some_and(|p| {
+                    p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
+                })
             });
         if let Some(file) = dropped_pdf {
-            if let Some(path) = file.path {
+            if let Some(path) = file.path() {
                 self.import_pdf_from_path(&path);
             }
         }

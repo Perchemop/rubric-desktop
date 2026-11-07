@@ -599,8 +599,6 @@ pub(crate) fn draw_canvas(
         );
     }
 
-    }
-
     // Canvas grid (F-405) and rulers (F-406). Both are guides: they are painted
     // before the markups so they always sit under the content.
     if !is_export {
@@ -668,6 +666,7 @@ pub(crate) fn draw_canvas(
         {
             ui_state.request_import = true;
         }
+    }
 
     // Render markups in paint order (layer-major, then vector order). Computed
     // once per frame and reused for the measurement labels below.
