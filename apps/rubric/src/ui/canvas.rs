@@ -12,8 +12,8 @@ use crate::domain::markup::{
     count_markers_on_page, count_total_label, next_count_number, text_line_height,
 };
 use crate::domain::{
-    angle_degrees, format_value, ruler_ticks, BatesConfig, Grid, Markup, MarkupGeometry,
-    MarkupKind, MeasureKind, Page, Project, Pt, Rect as DRect, ReviewStatus, Scale, Tool,
+    angle_degrees, format_value, Corner, Markup, MarkupGeometry, MarkupKind, MeasureKind, Project,
+    Pt, Rect as DRect, ReviewStatus, Tool,
 };
 
 use super::theme::to_color32;
@@ -24,7 +24,6 @@ use crate::ui::canvas_draw::{
     draw_bates_overlay, draw_grid, draw_measure_badge, draw_minimap, draw_rulers,
     draw_selection,
 };
-
 
 /// Refuse to begin a draft when the markup it would create could not be edited.
 ///
@@ -115,69 +114,6 @@ fn measure_anchor(m: &Markup) -> Pt {
         MarkupGeometry::Angle { vertex, .. } => *vertex,
         MarkupGeometry::Count { at, .. } => *at,
         _ => m.bounds().center(),
-    }
-}
-
-/// Canvas grid (spec F-405). Guides only: drawn under the markups and skipped
-/// entirely when the pitch would be too fine to resolve, so a far zoom never
-/// produces an unreadable wash.
-    let step = grid.spacing as f64;
-    let stroke = egui::Stroke::new(1.0, Color32::from_rgb(203, 209, 221));
-    let cols = (bounds.right() as f64 / step).ceil() as i32;
-    for k in 0..=cols {
-        let x = (k as f64 * step) as f32;
-        let a = to_screen(Pt::new(x, bounds.y), pan, zoom, origin);
-        let b = to_screen(Pt::new(x, bounds.bottom()), pan, zoom, origin);
-        painter.line_segment([a, b], stroke);
-    }
-    let rows = (bounds.bottom() as f64 / step).ceil() as i32;
-    for k in 0..=rows {
-        let y = (k as f64 * step) as f32;
-        let a = to_screen(Pt::new(bounds.x, y), pan, zoom, origin);
-        let b = to_screen(Pt::new(bounds.right(), y), pan, zoom, origin);
-        painter.line_segment([a, b], stroke);
-    }
-}
-
-/// Rulers (spec F-406): labelled ticks in the margin just outside the page, so a
-/// canvas position can be read in page points. Tick spacing follows the 1/2/5
-/// ladder in `domain::grid`, chosen from the zoom so labels never collide.
-#[allow(clippy::too_many_arguments)]
-    }
-
-    // Left ruler: page y.
-    let base_x = page_rect.min.x;
-    let left = base_x - RULER_W;
-    if left > -RULER_W {
-        painter.line_segment(
-            [
-                Pos2::new(base_x - 1.0, page_rect.min.y),
-                Pos2::new(base_x - 1.0, page_rect.max.y),
-            ],
-            tick,
-        );
-        for v in ruler_ticks(bounds.y as f64, bounds.bottom() as f64, min_step) {
-            let y = to_screen(Pt::new(bounds.x, v as f32), pan, zoom, origin).y;
-            painter.line_segment(
-                [Pos2::new(base_x - 5.0, y), Pos2::new(base_x - 1.0, y)],
-                tick,
-            );
-            let units = scale.points_to_units(v);
-            painter.text(
-                Pos2::new(left + 2.0, y + 2.0),
-                Align2::LEFT_TOP,
-                format!("{v:.0}"),
-                font.clone(),
-                text_c,
-            );
-            painter.text(
-                Pos2::new(left + 2.0, y + 12.0),
-                Align2::LEFT_TOP,
-                format!("{units:.2}{}", scale.unit.suffix()),
-                font.clone(),
-                text_c.gamma_multiply(0.6),
-            );
-        }
     }
 }
 
@@ -455,56 +391,6 @@ fn draw_markup(
         let dot = Pos2::new(b.right() + 4.0, b.top() - 4.0);
         painter.circle_filled(dot, 5.0 * zoom.max(0.7), to_color32(m.status.color()));
     }
-}
-
-/// Draw the Bates stamp for one page as a non-destructive overlay
-/// (spec F-804/F-805).
-///
-/// The stamp is ghosted in the live editor so it reads as a preview, and solid
-/// in export/print (both paths reuse `draw_canvas`). Nothing is created in the
-/// project and the source PDF is never modified: this is purely a painted
-/// overlay derived from [`BatesConfig`].
-    let Some(stamp) = bates.stamp_for_page(page.index) else {
-        return;
-    };
-    let align = match (bates.corner.is_right(), bates.corner.is_top()) {
-        (false, true) => Align2::LEFT_TOP,
-        (true, true) => Align2::RIGHT_TOP,
-        (false, false) => Align2::LEFT_BOTTOM,
-        (true, false) => Align2::RIGHT_BOTTOM,
-    };
-    let anchor = to_screen(
-        bates.anchor_point(page.width, page.height),
-        pan,
-        zoom,
-        origin,
-    );
-    let font = FontId::proportional((bates.font_size.max(4.0) * zoom).max(4.0));
-    let color = if is_export {
-        Color32::from_rgb(20, 20, 20)
-    } else {
-        Color32::from_rgba_unmultiplied(20, 20, 20, 110)
-    };
-    painter.text(anchor, align, stamp, font, color);
-}
-
-/// Draw a minimap in the bottom-right corner of the canvas showing the full
-/// page with a viewport rectangle indicating the current view area.
-/// Clicking the minimap pans the canvas to the clicked position.
-
-/// Draw selection handles for a selected markup.
-///
-/// Geometries with draggable points (segments, paths, angles) show one handle
-/// per endpoint/vertex — dragging it reshapes the markup directly (v0.4 gap #5
-/// follow-up). Everything else keeps the bounding-box corner handles plus a
-/// centre grab dot; only `Bounds` geometry actually resizes from a corner.
-    }
-    painter.rect_stroke(
-        b,
-        egui::CornerRadius::same(4),
-        stroke,
-        egui::StrokeKind::Middle,
-    );
 }
 
 /// Commit a pending in-canvas text edit (if any) using focus-loss semantics.

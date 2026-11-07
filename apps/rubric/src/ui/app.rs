@@ -14,12 +14,13 @@ use crate::data::{
 };
 use crate::domain::units::calibrate_scale;
 use crate::domain::{
-    auto_save_interval_label, view, AppPrefs, Corner, Document, EditorAction, Grid, History,
-    Markup, MarkupGroupKey, MarkupKind, MarkupListSort, MarkupStyle, MeasureUnit, Project, Pt,
-    Report, ReportGroupKey, ReviewStatus, StampPreset, StylePreset, StylePresetLibrary, Theme,
-    Tool, AUTO_SAVE_INTERVALS,
+    view, AppPrefs, Corner, Document, EditorAction, Grid, History, Markup, MarkupGroupKey,
+    MarkupKind, MarkupListSort, MarkupStyle, MeasureUnit, Project, Pt, Report, ReportGroupKey,
+    ReviewStatus, StampPreset, StylePreset, StylePresetLibrary, Theme, Tool,
 };
-use crate::ui::{canvas, inspector, markups_list, menu, pages, theme, tool_chest, toolbar};
+use crate::ui::{
+    app_dialogs, canvas, inspector, markups_list, menu, pages, theme, tool_chest, toolbar,
+};
 use uuid::Uuid;
 
 /// Changelog embedded at build time for the in-app release-notes popup
@@ -345,8 +346,8 @@ impl Default for UiState {
 }
 
 pub struct RubricApp {
-    pub(crate) history: History,,
-    pub(crate) ui: UiState,,
+    pub(crate) history: History,
+    pub(crate) ui: UiState,
     draw: DrawState,
     /// The last pointer page position (for the status bar).
     last_page_pos: Option<Pt>,
@@ -362,13 +363,13 @@ pub struct RubricApp {
     /// Shows the keyboard shortcuts dialog (proposal 10).
     pub(crate) show_keyboard_shortcuts: bool,
     /// Shows the user guide window (Help ▸ User Guide).
-    pub(crate) show_user_guide: bool,,
+    pub(crate) show_user_guide: bool,
     /// Set when the user closed the update-check window, so it stays closed
     /// until a new check is requested (full-app audit M8).
     update_dismissed: bool,
     /// Set by "Quit Anyway" so the close-request veto (audit M1) lets the
     /// explicitly-confirmed close through instead of re-prompting forever.
-    pub(crate) force_close: bool,,
+    pub(crate) force_close: bool,
     /// Set when the window title needs to be re-synced with `current_path`.
     title_dirty: bool,
     /// Last dirty state reflected in the window title, used to recompute the
@@ -388,15 +389,15 @@ pub struct RubricApp {
     /// Last PDF background error shown, to avoid spamming status every frame.
     bg_error: Option<String>,
     /// Session-only report export dialog state (no undo snapshot).
-    report_export: Option<ReportExportUi>,
+    pub(crate) report_export: Option<ReportExportUi>,
     /// Active colour theme (app-level preference, not project data).
-    pub(crate) theme: Theme,,
+    pub(crate) theme: Theme,
     /// High-contrast mode (a11y A3 / proposal P2-15), applied over the theme.
-    pub(crate) high_contrast: bool,,
+    pub(crate) high_contrast: bool,
     /// UI scale multiplier (app-level preference, not project data).
     ui_scale: f32,
     /// In-progress bug report the user is reviewing before sending (guide §7.1).
-    report: Option<BugReportUi>,
+    pub(crate) report: Option<BugReportUi>,
     /// Shared update-check state, written by the worker thread and read by the
     /// UI each frame (guide §7.2).
     update: Arc<Mutex<UpdateCheck>>,
@@ -424,7 +425,7 @@ pub(crate) struct UpdateCheck {
 /// [`RubricApp::install_project`], which parks the install here while the
 /// current project has unsaved changes.
 #[derive(Debug, Clone, PartialEq)]
-struct PendingReplace {
+pub(crate) struct PendingReplace {
     project: Project,
     current_path: Option<PathBuf>,
     status: String,
@@ -1339,7 +1340,7 @@ impl RubricApp {
     }
 
     /// Persist all app-level preferences (panel visibility, zoom, page).
-    fn save_app_prefs(&mut self) {
+    pub(crate) fn save_app_prefs(&mut self) {
         let prefs = self.build_prefs();
         if let Err(e) = save_prefs(&prefs) {
             self.ui.status = format!("Workspace saved, but preferences write failed: {e}");

@@ -399,4 +399,3 @@ pub(crate) fn draw_calibrate_icon(painter: &Painter, rect: Rect) {
         painter.line_segment([Pos2::new(x, y - 6.0), Pos2::new(x, y + 6.0)], stroke);
     }
 }
-}

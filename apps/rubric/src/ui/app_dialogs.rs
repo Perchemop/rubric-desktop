@@ -3,7 +3,7 @@
 //! Each function takes `&mut RubricApp` and `&egui::Context` and draws the
 //! corresponding dialog if its visibility flag is set.
 
-use eframe::egui::{self, Ui};
+use eframe::egui;
 
 use crate::ui::app::RubricApp;
 

@@ -7,7 +7,7 @@ use eframe::egui::{Pos2, Vec2};
 
 use crate::domain::geom::Pt;
 use crate::domain::{Corner, Markup, Project};
-use crate::ui::canvas_geom::{screen_rect, to_screen};
+use crate::ui::canvas_geom::to_screen;
 use uuid::Uuid;
 
 /// Pick a markup id at page point (frontmost = last in paint order).

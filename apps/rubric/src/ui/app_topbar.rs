@@ -5,6 +5,7 @@
 use eframe::egui::{self, Align, Ui};
 
 use crate::ui::app::RubricApp;
+use crate::ui::toolbar;
 
 /// Draw the top bar: toolbar, active-tool chip, status, zoom, page nav.
 pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
@@ -18,8 +19,8 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
         // active tool is distinct from selected markups.
         ui.separator();
         egui::Frame::new()
-            .fill(app.ui.visuals().widgets.active.bg_fill)
-            .stroke(app.ui.visuals().widgets.active.bg_stroke)
+            .fill(ui.visuals().widgets.active.bg_fill)
+            .stroke(ui.visuals().widgets.active.bg_stroke)
             .rounding(egui::Rounding::same(6.0))
             .inner_margin(egui::vec2(6.0, 2.0))
             .show(ui, |ui| {
@@ -34,7 +35,7 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
                     Some(armed) => format!("{} (style: {})", tool_name, armed.name),
                     None => format!("{}{}", tool_name, shortcut),
                 };
-                ui.label(label).text_color(app.ui.visuals().widgets.active.text_color());
+                ui.label(label).text_color(ui.visuals().widgets.active.text_color());
             });
 
             ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {

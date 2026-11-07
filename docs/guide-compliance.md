@@ -1,24 +1,28 @@
 # Guide & Addendum Compliance
 
 Rule-by-rule record of how Rubric satisfies the local operating manual
-(`guide.md`) and its `addendum.md`. Both are kept **local and untracked**; this
-file is the only surviving statement of that review, so it names the rules and
-the evidence without reproducing the manuals.
+(`guide.md`). The manual is kept **local and untracked**; this file is the only
+surviving statement of that review, so it names the rules and the evidence
+without reproducing the manual.
 
-Hierarchy honoured when the two conflict (guide.md §0, addendum preamble):
-**addendum wins on client interaction / Rust QA / session startup; guide wins on
-clean-room / legal.**
+`guide.md` is the **single source of truth** (guide §12.1: the former
+`addendum.md` is archived to `addendum.md.archive`, and its rules are merged
+into the guide's Appendix A as Sections A–O). Where Part I and Part II
+disagree, guide.md wins on clean-room / legal; its appendices refine
+client / Rust / session. References below to "addendum §X" mean Appendix A,
+Section X, of guide.md.
 
 Legend: **Met** = implemented as written · **Adapted** = implemented with a
 recorded deviation · **Deferred** = tracked gap with a plan · **N/A** = not
 applicable to this project.
 
 Review dates: **2026-10-27**, re-reviewed **2026-10-28** after `guide.md` was
-revised. The revision adds **§II.29** (the mandatory personal-data/secret scan
-gate, owner directive 2026-10-27), extends §II.24 and §II.25, generalises Part
-II to suite-wide wording (`<app>` instead of named products), and moves the
-git-identity rule to §II.26.7. Reviewed against `guide.md` (Part I §0–18, Part
-II §II.18–§II.29) and `addendum.md` (§A–§O).
+revised (adding **§II.29**, the mandatory personal-data/secret scan gate, owner
+directive 2026-10-27; extending §II.24/§II.25; generalising Part II to
+suite-wide wording; and moving the git-identity rule to §II.26.7), and
+re-reviewed **2026-11-07** after the appendices were merged into a single
+`guide.md`. Reviewed against `guide.md` (Part I §0–18, Part II
+§II.18–§II.29, Appendix A Sections A–O, and §12.1).
 
 ---
 
@@ -67,7 +71,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | II.22 Marketing / no false claims | Met | README/VISION wording; no affiliation or "drop-in replacement" claims |
 | II.23 Maintainer sustainability | Met | `GOVERNANCE.md`, small slices, evidence-based roadmap |
 | II.24.1 Per-slice DoD | Met | slice docs record exact CI runs in `PROGRESS.md` |
-| II.24.1 No personal data / secret in the change | Met (gate added 2026-10-28) | `scripts/scan-personal-data.sh` + the required `Personal data scan` check; a historical home-path leak was removed in PR #37 (history purge still open — gap G7) |
+| II.24.1 No personal data / secret in the change | Met (gate added 2026-10-28; re-opened history finding 2026-11-07) | `scripts/scan-personal-data.sh` + the required `Personal data scan` check; current change, worktree, commit metadata and release assets are clean. A historical home-path leak was removed from `HEAD` in PR #37; a **further carrier** was found in published history on 2026-11-07 — see gap G7 |
 | II.24.2 Per-phase DoD | Met | traceability ↔ plan consistent; user directives recorded in `DECISIONS.md` (Ctrl+Y 2026-10-27; the II.29 scan gate 2026-10-28); `docs/capability-inventory.md` present (G3 closed 2026-10-30) |
 | II.24.3 Release/packaging | Met (asset scan added 2026-10-28) | multi-target CI artefacts + `Cargo.lock`; `release.yml` runs `scripts/scan-release-assets.sh` before publishing; round-trip tests |
 | II.25 Launch readiness | Met | community files, branch protection, scanner gates present and include the personal-data scan; capability inventory present (G3 closed); automated visual evidence shipped (G4 closed 2026-11-06) |
@@ -75,7 +79,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | II.27 Designer role | Met | design system/parity via `docs/design/brand.md` + `docs/parity.md` + `docs/capability-inventory.md` (II.27.3, added 2026-10-30); II.27.12 visual evidence shipped (G4 closed 2026-11-06) |
 | II.27.12 Visual evidence for egui apps | **Met (G4 closed 2026-11-06)** | Host/Ui seam (G4-1, PR #134), automated **AccessKit** harness (G4-2a, PR #136: widgets queryable/clickable by label, icon buttons named via `labelled_by`) and rendered **snapshot PNG** evidence (G4-2b, PR #138: required macOS `snapshot` job comparing the real shell against a committed baseline, artifact-based re-baselining round-trip). No fake harness is used |
 | II.28 Naming conventions | Adapted | crate/binary names follow cargo; the release artefacts use `arm64` rather than the guide's `aarch64` — recorded as a `DECISIONS.md` deviation (II.28.3) |
-| II.29 Personal-data/secrets scan gate | Met (added 2026-10-28) | four-part scan done; `scripts/scan-personal-data.sh` + `Personal data scan` required check; release-asset scan wired; the historical leak was purged from **all history** on 2026-10-28 (owner-approved `git filter-repo`, force-push, protection restored) — gap G7 resolved |
+| II.29 Personal-data/secrets scan gate | Met for the gate; **one history finding open (G7, 2026-11-07)** | four-part scan run 2026-11-07: worktree clean, commit metadata clean (authors `Rubric Dev` / GitHub noreply / dependabot), no secrets; `scripts/scan-personal-data.sh` + `Personal data scan` required check; release-asset scan wired. The 2026-10-28 purge covered its two known carriers; a later carrier (temporary `fix_fmt*.py` scripts) remains in published history — see gap G7 |
 
 ## §12.1 Suite-wide standards (guide §12.1, audit approved 2026-11-04)
 
@@ -90,7 +94,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | Addendum archived to `addendum.md.archive`; `guide.md` single source of truth | N/A | both meta-files stay local and untracked here (guide §0); no in-repo addendum to archive |
 | README screenshots reviewed at v1.0 and every major release | Deferred | no README screenshots yet; applies from the v1.0 release on |
 
-## Addendum — addendum.md
+## Appendix A — former addendum (merged into guide.md, Sections A–O)
 
 | Rule | Status | Evidence / deviation |
 | --- | --- | --- |
@@ -122,7 +126,7 @@ II §II.18–§II.29) and `addendum.md` (§A–§O).
 | G4 | egui visual evidence (`egui_kittest`, II.27.12) needs a `Host`-seam refactor | **Resolved 2026-11-06** | three slices shipped: Host/Ui seam (G4-1, PR #134), AccessKit harness (G4-2a, PR #136), snapshot PNG evidence with a required macOS `snapshot` CI job (G4-2b, PR #138); see the II.27.12 row |
 | G5 | §2.5/II.19.5 release legal checklist not yet recorded per release | **Resolved for v0.3.0** | full 13-row §2.5 run recorded 2026-11-06 (PR #133) and re-confirmed before the v0.3.0 tag; release run `42216503269`. Standing rule: re-run at every release |
 | G6 | The git-identity rule has no home in the revised guide (II.26.7) | Client decision | **Resolved 2026-10-30** — owner directed the rule be re-homed; recorded in `AGENTS.md` (commits/PRs/merges/tags authored `Rubric Dev <dev@example.com>`; PR authorship follows the pushing account) |
-| G7 | A maintainer absolute home path was committed and published (II.29.4) | **Resolved 2026-10-28** | Two carriers: `.opencode/agents/*.md` (removed in PR #37) and a tracked `scripts/__pycache__/*.pyc` (untracked, `*.pyc` ignored). Owner approved a purge; every branch, tag and commit was rewritten with `git filter-repo`, force-pushed, and branch protection restored. Residual risk (GitHub cached views/forks) recorded in `SECURITY.md` |
+| G7 | A maintainer absolute home path was committed and published (II.29.4) | **Reopened 2026-11-07 — purge incomplete** | The 2026-10-28 owner-approved purge (`git filter-repo`, force-push, protection restored) covered the two then-known carriers: `.opencode/agents/*.md` (removed in PR #37) and `scripts/__pycache__/*.pyc`. A **third carrier** was found by the 2026-11-07 re-scan: temporary `fix_fmt*.py` helper scripts (added and removed 2026-11-01, after the purge) embed the absolute home path in their `open(...)` calls. They are gone from `HEAD`, but remain reachable in published history on `origin/main`, numerous branches, and the `v0.3.0` tag. The 2026-11-07 finding is described here without reproducing the value (II.29.1). A follow-up purge across all branches and tags is an owner decision (II.29.4) and was raised 2026-11-07; residual risk of cached views/forks remains as recorded in `SECURITY.md` |
 
 No rule in `guide.md` or `addendum.md` was edited: both remain local and
 untracked, per their own "never push" rule and addendum §N.1.
