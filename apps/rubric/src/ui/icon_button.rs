@@ -47,10 +47,8 @@ pub(crate) fn icon_button(
     // Allocate an exact-sized rect so hover/click targets match the visible
     // pill instead of spanning the full wrapped row or remaining panel
     // height.
-    let (rect, response) = ui.allocate_exact_size(
-        Vec2::new(total_width, icon_size + 8.0),
-        Sense::click(),
-    );
+    let (rect, response) =
+        ui.allocate_exact_size(Vec2::new(total_width, icon_size + 8.0), Sense::click());
     // Expose the visible label to Assistive Technology (AccessKit /
     // kittest): the click target is named after the text painted inside
     // it, so icon-paired buttons are screen-reader operable. The text is

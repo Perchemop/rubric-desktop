@@ -1334,11 +1334,8 @@ impl RubricApp {
                     .map(|n| n.to_string_lossy().to_string())
                     .unwrap_or_else(|| "Imported PDF".to_string());
                 let count = info.page_sizes.len();
-                let project = Project::from_pdf(
-                    stem,
-                    path.to_string_lossy().to_string(),
-                    &info.page_sizes,
-                );
+                let project =
+                    Project::from_pdf(stem, path.to_string_lossy().to_string(), &info.page_sizes);
                 self.install_project(project, None, format!("Imported {count} page(s)"));
             }
             Err(e) => {
@@ -1881,14 +1878,12 @@ impl RubricApp {
             .input(|i| i.raw.dropped_files.clone())
             .into_iter()
             .find(|f| {
-                f.path().as_deref().is_some_and(|p| {
-                    p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
-                })
+                f.path()
+                    .extension()
+                    .is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
             });
         if let Some(file) = dropped_pdf {
-            if let Some(path) = file.path() {
-                self.import_pdf_from_path(&path);
-            }
+            self.import_pdf_from_path(file.path());
         }
 
         // Refresh the enablement snapshot the shared context menu reads, so
