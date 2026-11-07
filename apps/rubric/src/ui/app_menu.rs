@@ -94,10 +94,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 ui.close();
             }
             if ui
-                .add_enabled(
-                    has_source_pdf,
-                    egui::Button::new("Export Page Image…"),
-                )
+                .add_enabled(has_source_pdf, egui::Button::new("Export Page Image…"))
                 .on_disabled_hover_text("Import a PDF before exporting an image")
                 .clicked()
             {
