@@ -39,29 +39,29 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
                     .text_color(ui.visuals().widgets.active.text_color());
             });
 
-            ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
-                ui.label(app.ui.status.clone());
-                ui.label(format!("{:.0}%", app.ui.zoom * 100.0));
-                // Page navigation chrome.
-                let count = app.active_doc().map(|d| d.page_count()).unwrap_or(0);
-                if count > 0 {
-                    let current = app.ui.current_page.min(count - 1);
-                    if ui
-                        .add_enabled(current > 0, egui::Button::new("◀"))
-                        .on_hover_text("Previous page")
-                        .clicked()
-                    {
-                        app.jump_to_page(current.saturating_sub(1));
-                    }
-                    ui.label(format!("Page {}/{}", current + 1, count));
-                    if ui
-                        .add_enabled(current + 1 < count, egui::Button::new("▶"))
-                        .on_hover_text("Next page")
-                        .clicked()
-                    {
-                        app.jump_to_page(current + 1);
-                    }
+        ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
+            ui.label(app.ui.status.clone());
+            ui.label(format!("{:.0}%", app.ui.zoom * 100.0));
+            // Page navigation chrome.
+            let count = app.active_doc().map(|d| d.page_count()).unwrap_or(0);
+            if count > 0 {
+                let current = app.ui.current_page.min(count - 1);
+                if ui
+                    .add_enabled(current > 0, egui::Button::new("◀"))
+                    .on_hover_text("Previous page")
+                    .clicked()
+                {
+                    app.jump_to_page(current.saturating_sub(1));
                 }
-            });
+                ui.label(format!("Page {}/{}", current + 1, count));
+                if ui
+                    .add_enabled(current + 1 < count, egui::Button::new("▶"))
+                    .on_hover_text("Next page")
+                    .clicked()
+                {
+                    app.jump_to_page(current + 1);
+                }
+            }
         });
+    });
 }

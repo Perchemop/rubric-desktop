@@ -176,8 +176,16 @@ pub(crate) fn draw_underline_icon(painter: &Painter, rect: Rect) {
     let stroke = Stroke::new(2.0, Color32::from_rgb(228, 87, 46));
     painter.line_segment([rect.left_top(), rect.right_top()], stroke);
     // small caps to read as a baseline.
-    painter.circle_filled(Pos2::new(rect.left(), rect.bottom() - 2.0), 1.5, Color32::from_rgb(228, 87, 46));
-    painter.circle_filled(Pos2::new(rect.right(), rect.bottom() - 2.0), 1.5, Color32::from_rgb(228, 87, 46));
+    painter.circle_filled(
+        Pos2::new(rect.left(), rect.bottom() - 2.0),
+        1.5,
+        Color32::from_rgb(228, 87, 46),
+    );
+    painter.circle_filled(
+        Pos2::new(rect.right(), rect.bottom() - 2.0),
+        1.5,
+        Color32::from_rgb(228, 87, 46),
+    );
 }
 
 /// Icon: squiggly (zig-zag annotation line).
@@ -198,12 +206,19 @@ pub(crate) fn draw_squiggly_icon(painter: &Painter, rect: Rect) {
 /// Icon: callout (text box with leader tail).
 pub(crate) fn draw_callout_icon(painter: &Painter, rect: Rect) {
     let stroke = Stroke::new(1.5, Color32::from_rgb(60, 60, 70));
-    let box_rect = Rect::from_min_size(rect.min, Vec2::new(rect.width() * 0.6, rect.height() * 0.6));
+    let box_rect =
+        Rect::from_min_size(rect.min, Vec2::new(rect.width() * 0.6, rect.height() * 0.6));
     painter.rect_stroke(box_rect, 2.0, stroke, StrokeKind::Middle);
     // leader tail from box corner toward bottom-right.
     let head = box_rect.right_bottom();
     painter.line_segment([head, rect.right_bottom()], stroke);
-    painter.line_segment([rect.right_bottom(), rect.right_bottom() + Vec2::new(-4.0, 0.0)], stroke);
+    painter.line_segment(
+        [
+            rect.right_bottom(),
+            rect.right_bottom() + Vec2::new(-4.0, 0.0),
+        ],
+        stroke,
+    );
 }
 
 /// Icon: sticky note (dog-eared corner).
@@ -214,7 +229,10 @@ pub(crate) fn draw_note_icon(painter: &Painter, rect: Rect) {
     let head = rect.right_top();
     painter.line_segment([head, head + Vec2::new(-8.0, 0.0)], stroke);
     painter.line_segment([head, head + Vec2::new(0.0, 8.0)], stroke);
-    painter.line_segment([head + Vec2::new(-8.0, 0.0), head + Vec2::new(0.0, 8.0)], stroke);
+    painter.line_segment(
+        [head + Vec2::new(-8.0, 0.0), head + Vec2::new(0.0, 8.0)],
+        stroke,
+    );
 }
 
 /// Icon: stamp (square border with review mark).
@@ -223,8 +241,14 @@ pub(crate) fn draw_stamp_icon(painter: &Painter, rect: Rect) {
     painter.rect_stroke(rect, 3.0, stroke, StrokeKind::Middle);
     // review check glyph.
     let center = rect.center();
-    painter.line_segment([center + Vec2::new(-4.0, 0.0), center + Vec2::new(0.0, 4.0)], stroke);
-    painter.line_segment([center + Vec2::new(0.0, 4.0), center + Vec2::new(6.0, -4.0)], stroke);
+    painter.line_segment(
+        [center + Vec2::new(-4.0, 0.0), center + Vec2::new(0.0, 4.0)],
+        stroke,
+    );
+    painter.line_segment(
+        [center + Vec2::new(0.0, 4.0), center + Vec2::new(6.0, -4.0)],
+        stroke,
+    );
 }
 
 /// Icon: cloud (bumpy outline).
@@ -392,7 +416,10 @@ pub(crate) fn draw_calibrate_icon(painter: &Painter, rect: Rect) {
     let y = rect.center().y;
     painter.line_segment([rect.left_center(), rect.right_center()], stroke);
     // two reference ticks.
-    for x in [rect.left() + rect.width() * 0.25, rect.left() + rect.width() * 0.75] {
+    for x in [
+        rect.left() + rect.width() * 0.25,
+        rect.left() + rect.width() * 0.75,
+    ] {
         painter.line_segment([Pos2::new(x, y - 6.0), Pos2::new(x, y + 6.0)], stroke);
     }
 }

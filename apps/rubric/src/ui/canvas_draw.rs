@@ -292,13 +292,7 @@ pub(crate) fn draw_minimap(
 /// per endpoint/vertex — dragging it reshapes the markup directly (v0.4 gap #5
 /// follow-up). Everything else keeps the bounding-box corner handles plus a
 /// centre grab dot; only `Bounds` geometry actually resizes from a corner.
-pub(crate) fn draw_selection(
-    painter: &Painter,
-    origin: Pos2,
-    pan: Vec2,
-    zoom: f32,
-    m: &Markup,
-) {
+pub(crate) fn draw_selection(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup) {
     let b = screen_rect(m.bounds(), origin, pan, zoom);
     let stroke = egui::Stroke::new(1.0, Color32::from_rgb(30, 144, 255));
     let points = m.draggable_points();

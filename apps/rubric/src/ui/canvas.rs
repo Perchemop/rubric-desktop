@@ -16,12 +16,11 @@ use crate::domain::{
 
 use super::theme::to_color32;
 
+use crate::ui::canvas_draw::{
+    draw_bates_overlay, draw_grid, draw_measure_badge, draw_minimap, draw_rulers, draw_selection,
+};
 use crate::ui::canvas_geom::{screen_rect, to_page, to_screen};
 use crate::ui::canvas_hit::{handle_at, pick_markup_id, point_handle_at};
-use crate::ui::canvas_draw::{
-    draw_bates_overlay, draw_grid, draw_measure_badge, draw_minimap, draw_rulers,
-    draw_selection,
-};
 
 /// Refuse to begin a draft when the markup it would create could not be edited.
 ///

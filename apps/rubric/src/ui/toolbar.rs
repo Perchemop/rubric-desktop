@@ -4,14 +4,12 @@ use eframe::egui::{Align, Layout, Ui};
 
 use crate::domain::{MarkupKind, Tool, ToolGroup, ToolSet};
 use crate::ui::icon_button::{
-    draw_arrow_icon, draw_calibrate_icon, draw_cloud_icon, draw_ellipse_icon,
-    draw_highlight_icon, draw_ink_icon, draw_callout_icon, draw_length_icon,
-    draw_line_icon, draw_note_icon, draw_measure_area_icon,
-    draw_measure_angle_icon, draw_measure_count_icon, draw_measure_diameter_icon,
-    draw_measure_perimeter_icon, draw_measure_radius_icon, draw_polygon_icon,
-    draw_polyline_icon, draw_rectangle_icon, draw_select_icon, draw_strikeout_icon,
-    draw_stamp_icon, draw_squiggly_icon, draw_text_icon, draw_underline_icon,
-    icon_button,
+    draw_arrow_icon, draw_calibrate_icon, draw_callout_icon, draw_cloud_icon, draw_ellipse_icon,
+    draw_highlight_icon, draw_ink_icon, draw_length_icon, draw_line_icon, draw_measure_angle_icon,
+    draw_measure_area_icon, draw_measure_count_icon, draw_measure_diameter_icon,
+    draw_measure_perimeter_icon, draw_measure_radius_icon, draw_note_icon, draw_polygon_icon,
+    draw_polyline_icon, draw_rectangle_icon, draw_select_icon, draw_squiggly_icon, draw_stamp_icon,
+    draw_strikeout_icon, draw_text_icon, draw_underline_icon, icon_button,
 };
 
 /// Map a tool to its icon drawing function.
