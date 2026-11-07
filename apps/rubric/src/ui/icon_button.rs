@@ -335,7 +335,10 @@ pub(crate) fn draw_measure_area_icon(painter: &Painter, rect: Rect) {
         let t = i as f32 / steps as f32;
         let x1 = rect.left() + t * rect.width();
         let x2 = rect.left() + t * rect.width();
-        painter.line_segment([Pos2::new(x1, rect.top()), Pos2::new(x2, rect.bottom())], stroke);
+        painter.line_segment(
+            [Pos2::new(x1, rect.top()), Pos2::new(x2, rect.bottom())],
+            stroke,
+        );
     }
 }
 
