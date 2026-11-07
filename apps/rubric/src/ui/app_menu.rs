@@ -55,11 +55,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                                 path.to_string_lossy().to_string(),
                                 &info.page_sizes,
                             );
-                            app.install_project(
-                                project,
-                                None,
-                                format!("Imported {count} page(s)"),
-                            );
+                            app.install_project(project, None, format!("Imported {count} page(s)"));
                         }
                         Err(e) => {
                             app.ui.status = format!("Import failed: {e}");
@@ -77,19 +73,12 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 .sum();
             let report_enabled = total_markups > 0;
             if ui
-                .add_enabled(
-                    report_enabled,
-                    egui::Button::new("Export Report…"),
-                )
+                .add_enabled(report_enabled, egui::Button::new("Export Report…"))
                 .on_disabled_hover_text("No markups to report yet")
                 .clicked()
             {
                 let project = app.history.current();
-                let total_markups: usize = project
-                    .documents
-                    .iter()
-                    .map(|d| d.markups.len())
-                    .sum();
+                let total_markups: usize = project.documents.iter().map(|d| d.markups.len()).sum();
                 app.report_export = Some(crate::ui::app::ReportExportUi {
                     group_key: crate::domain::ReportGroupKey::Status,
                     format: crate::ui::app::ReportExportFormat::Text,
@@ -109,12 +98,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 ui.close();
             }
             if ui.button("Export PDF…").clicked() {
-                let source_pdf = app
-                    .history
-                    .current()
-                    .source_pdf
-                    .clone()
-                    .unwrap_or_default();
+                let source_pdf = app.history.current().source_pdf.clone().unwrap_or_default();
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("rubric-export.pdf")
                     .add_filter("PDF document", &["pdf"])
@@ -130,8 +114,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                                 &bates,
                             ) {
                                 Ok(()) => {
-                                    app.ui.status =
-                                        format!("PDF exported to {}", path.display());
+                                    app.ui.status = format!("PDF exported to {}", path.display());
                                 }
                                 Err(e) => {
                                     app.ui.status = format!("PDF export failed: {e}");
@@ -237,12 +220,18 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 }
                 let mut chosen = current;
                 for secs in options {
-                    ui.selectable_value(&mut chosen, secs, crate::domain::auto_save_interval_label(secs));
+                    ui.selectable_value(
+                        &mut chosen,
+                        secs,
+                        crate::domain::auto_save_interval_label(secs),
+                    );
                 }
                 if chosen != current {
                     app.history.current_mut().settings.auto_save_interval_secs = chosen;
-                    app.ui.status =
-                        format!("Auto-save every {}", crate::domain::auto_save_interval_label(chosen));
+                    app.ui.status = format!(
+                        "Auto-save every {}",
+                        crate::domain::auto_save_interval_label(chosen)
+                    );
                     app.push_snapshot_quiet();
                 }
             });
@@ -308,7 +297,10 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
             // Drag calibration (v0.4 gap #4): selecting the tool starts a
             // two-click reference segment on the canvas; the dialog that
             // follows writes the page scale.
-            if ui.button("Calibrate Scale (click two points on canvas)…").clicked() {
+            if ui
+                .button("Calibrate Scale (click two points on canvas)…")
+                .clicked()
+            {
                 app.select_tool(crate::domain::Tool::Calibrate);
                 ui.close();
             }
@@ -393,10 +385,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
             if ui.checkbox(&mut grid_visible, "Show Grid").changed() {
                 app.ui.grid.visible = grid_visible;
             }
-            if ui
-                .checkbox(&mut app.ui.grid.snap, "Snap to Grid")
-                .clicked()
-            {
+            if ui.checkbox(&mut app.ui.grid.snap, "Snap to Grid").clicked() {
                 app.ui.status = if app.ui.grid.snap {
                     "Snap to grid on".to_string()
                 } else {
@@ -417,8 +406,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
             });
             ui.separator();
             {
-                let mut show_measurements =
-                    app.history.current().settings.show_measurements;
+                let mut show_measurements = app.history.current().settings.show_measurements;
                 if ui
                     .checkbox(&mut show_measurements, "Show Measurements")
                     .changed()
