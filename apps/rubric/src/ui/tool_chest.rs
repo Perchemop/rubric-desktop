@@ -24,7 +24,7 @@ use uuid::Uuid;
 use crate::domain::{Color, MarkupKind, Project, StylePreset, StylePresetLibrary};
 
 use super::app::UiState;
-use super::theme::{TEXT_CAPTION, to_color32};
+use super::theme::{to_color32, TEXT_CAPTION};
 
 /// Draw the Tool Chest panel.
 ///
@@ -67,9 +67,13 @@ pub(crate) fn draw_tool_chest(
         );
     } else {
         ui.label(
-            egui::RichText::new(format!("{} of {} saved styles", library.len(), StylePresetLibrary::MAX_PRESETS))
-                .font(TEXT_CAPTION)
-                .color(egui::Color32::from_gray(120)),
+            egui::RichText::new(format!(
+                "{} of {} saved styles",
+                library.len(),
+                StylePresetLibrary::MAX_PRESETS
+            ))
+            .font(TEXT_CAPTION)
+            .color(egui::Color32::from_gray(120)),
         );
         ui.separator();
         egui::ScrollArea::vertical()
@@ -129,8 +133,7 @@ fn draw_preset_row(
         }
         let apply_label = if is_armed { "Stop" } else { "Apply" };
         if ui
-            .button(apply_label)
-            .min_size(egui::vec2(42.0, 24.0))
+            .add_sized(egui::vec2(42.0, 24.0), egui::Button::new(apply_label))
             .on_hover_text(if is_armed {
                 "Stop styling new markups with this style"
             } else {
@@ -147,8 +150,10 @@ fn draw_preset_row(
         // project, so it asks for an undo snapshot.
         if has_selection
             && ui
-                .button("Apply to Selection")
-                .min_size(egui::vec2(88.0, 24.0))
+                .add_sized(
+                    egui::vec2(88.0, 24.0),
+                    egui::Button::new("Apply to Selection"),
+                )
                 .on_hover_text("Apply this style to every selected markup")
                 .clicked()
         {
@@ -156,16 +161,14 @@ fn draw_preset_row(
         }
 
         if ui
-            .button("Rename")
-            .min_size(egui::vec2(56.0, 24.0))
+            .add_sized(egui::vec2(56.0, 24.0), egui::Button::new("Rename"))
             .on_hover_text("Rename this style")
             .clicked()
         {
             ui_state.tool_chest_rename = Some((preset.id, preset.name.clone()));
         }
         if ui
-            .button("Delete")
-            .min_size(egui::vec2(56.0, 24.0))
+            .add_sized(egui::vec2(56.0, 24.0), egui::Button::new("Delete"))
             .on_hover_text("Delete this style")
             .clicked()
         {

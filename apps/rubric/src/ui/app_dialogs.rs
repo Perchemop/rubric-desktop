@@ -108,11 +108,11 @@ pub(crate) fn draw_user_guide(app: &mut RubricApp, ctx: &egui::Context) {
                     } else if line.starts_with('#') {
                         let level = line.chars().take_while(|c| *c == '#').count();
                         let text = line.trim_start_matches('#').trim();
-                        match level {
+                        let _ = match level {
                             1 => ui.heading(text),
                             2 => ui.heading(text),
                             _ => ui.label(text),
-                        }
+                        };
                     } else if line.starts_with('-') || line.starts_with('*') {
                         ui.label(format!("  {}", line));
                     } else if line.starts_with('|') && line.contains("---") {

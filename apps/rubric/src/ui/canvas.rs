@@ -2,9 +2,7 @@
 
 use std::path::Path;
 
-use eframe::egui::{
-    self, Align2, Color32, FontId, Painter, Pos2, Sense, Stroke, StrokeKind, Ui, Vec2,
-};
+use eframe::egui::{self, Align2, Color32, FontId, Painter, Pos2, Sense, Ui, Vec2};
 use uuid::Uuid;
 
 use crate::data::pdf::find_text_line_at_point;

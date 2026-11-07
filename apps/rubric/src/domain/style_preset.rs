@@ -273,7 +273,7 @@ mod tests {
     #[test]
     fn library_cap_and_dedupe() {
         let mut lib = StylePresetLibrary::new();
-        let mut base = sample_markup();
+        let base = sample_markup();
         for i in 0..70 {
             let mut m = base.clone();
             m.id = Uuid::new_v4();

@@ -21,7 +21,7 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
         egui::Frame::new()
             .fill(ui.visuals().widgets.active.bg_fill)
             .stroke(ui.visuals().widgets.active.bg_stroke)
-            .rounding(egui::Rounding::same(6.0))
+            .corner_radius(egui::CornerRadius::same(6))
             .inner_margin(egui::vec2(6.0, 2.0))
             .show(ui, |ui| {
                 let tool_name = app.ui.active_tool.label();
@@ -35,7 +35,8 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
                     Some(armed) => format!("{} (style: {})", tool_name, armed.name),
                     None => format!("{}{}", tool_name, shortcut),
                 };
-                ui.label(label).text_color(ui.visuals().widgets.active.text_color());
+                ui.label(label)
+                    .text_color(ui.visuals().widgets.active.text_color());
             });
 
             ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {

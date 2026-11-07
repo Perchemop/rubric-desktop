@@ -43,7 +43,13 @@ pub(crate) fn handle_at(b: egui::Rect, pp: Pos2, zoom: f32) -> Option<Corner> {
 /// Which draggable endpoint/vertex of `m`, if any, the screen point `pp` is
 /// over (v0.4 gap #5 follow-up). Checked before the bounding-box corner
 /// handles so a coincident endpoint wins.
-pub(crate) fn point_handle_at(m: &Markup, pp: Pos2, origin: Pos2, pan: Vec2, zoom: f32) -> Option<usize> {
+pub(crate) fn point_handle_at(
+    m: &Markup,
+    pp: Pos2,
+    origin: Pos2,
+    pan: Vec2,
+    zoom: f32,
+) -> Option<usize> {
     let radius = 8.0_f32.max(4.5 * zoom.max(0.7));
     m.draggable_points()
         .iter()

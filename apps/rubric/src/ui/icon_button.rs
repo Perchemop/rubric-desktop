@@ -32,8 +32,8 @@ pub(crate) fn icon_button(
             f32::INFINITY,
         )
     });
-    let text_width = text_galley.size.x;
-    let total_width = icon_size + gap + text_width;
+    let text_width = text_galley.size().x;
+    let total_width: f32 = icon_size + gap + text_width;
 
     let mut rect = ui.available_rect_before_wrap();
     rect = rect.shrink(2.0);
@@ -166,7 +166,6 @@ pub(crate) fn draw_length_icon(painter: &Painter, rect: Rect) {
 /// Icon: strikeout (horizontal line through text center).
 pub(crate) fn draw_strikeout_icon(painter: &Painter, rect: Rect) {
     let stroke = Stroke::new(2.0, Color32::from_rgb(228, 87, 46));
-    let y = rect.center().y;
     painter.line_segment([rect.left_center(), rect.right_center()], stroke);
     painter.circle_filled(rect.left_center(), 2.0, Color32::from_rgb(228, 87, 46));
     painter.circle_filled(rect.right_center(), 2.0, Color32::from_rgb(228, 87, 46));
@@ -175,7 +174,6 @@ pub(crate) fn draw_strikeout_icon(painter: &Painter, rect: Rect) {
 /// Icon: underline (line at text baseline).
 pub(crate) fn draw_underline_icon(painter: &Painter, rect: Rect) {
     let stroke = Stroke::new(2.0, Color32::from_rgb(228, 87, 46));
-    let y = rect.bottom() - 2.0;
     painter.line_segment([rect.left_top(), rect.right_top()], stroke);
     // small caps to read as a baseline.
     painter.circle_filled(Pos2::new(rect.left(), rect.bottom() - 2.0), 1.5, Color32::from_rgb(228, 87, 46));
@@ -243,7 +241,7 @@ pub(crate) fn draw_cloud_icon(painter: &Painter, rect: Rect) {
             Pos2::new(cx + angle.cos() * rx * r, cy + angle.sin() * ry * r)
         })
         .collect();
-    painter.add(egui::Shape::line(pts, stroke));
+    painter.add(egui::Shape::line(pts.clone(), stroke));
     painter.line_segment([pts[8], pts[0]], stroke);
 }
 
@@ -259,7 +257,7 @@ pub(crate) fn draw_polygon_icon(painter: &Painter, rect: Rect) {
             Pos2::new(cx + angle.cos() * r, cy + angle.sin() * r)
         })
         .collect();
-    painter.add(egui::Shape::line(pts, stroke));
+    painter.add(egui::Shape::line(pts.clone(), stroke));
     painter.line_segment([pts[5], pts[0]], stroke);
 }
 
@@ -281,7 +279,6 @@ pub(crate) fn draw_polyline_icon(painter: &Painter, rect: Rect) {
 /// Icon: ink (freehand squiggly stroke).
 pub(crate) fn draw_ink_icon(painter: &Painter, rect: Rect) {
     let stroke = Stroke::new(2.0, Color32::from_rgb(60, 60, 70));
-    let cx = rect.center().x;
     let cy = rect.center().y;
     let pts: Vec<Pos2> = (0..=7)
         .map(|i| {
@@ -348,7 +345,7 @@ pub(crate) fn draw_measure_diameter_icon(painter: &Painter, rect: Rect) {
             Pos2::new(center.x + angle.cos() * r, center.y + angle.sin() * r)
         })
         .collect();
-    painter.add(egui::Shape::line(pts, stroke));
+    painter.add(egui::Shape::line(pts.clone(), stroke));
     painter.line_segment([pts[0], pts[6]], stroke);
 }
 

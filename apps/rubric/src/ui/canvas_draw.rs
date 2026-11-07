@@ -3,14 +3,12 @@
 //! All functions take screen-space/page-space coordinates and draw directly
 //! onto an egui [`Painter`].
 
-use eframe::egui::{
-    self, Align2, Color32, FontId, Painter, Pos2, Stroke, StrokeKind, Ui, Vec2,
-};
+use eframe::egui::{self, Align2, Color32, FontId, Painter, Pos2, Stroke, StrokeKind, Ui, Vec2};
 
 use crate::domain::bates::BatesConfig;
 use crate::domain::geom::Pt;
 use crate::domain::markup::Markup;
-use crate::domain::{ruler_ticks, DRect, Grid, Page, Scale};
+use crate::domain::{ruler_ticks, Grid, Page, Rect as DRect, Scale};
 use crate::ui::canvas_geom::{screen_rect, to_screen};
 
 /// Draw a small dark measurement badge with white text at `anchor` (screen

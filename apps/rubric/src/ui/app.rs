@@ -1656,7 +1656,7 @@ impl RubricApp {
     }
 
     fn menu_bar(&mut self, ui: &mut Ui) {
-    crate::ui::app_menu::draw_menu_bar(self, ui);
+        crate::ui::app_menu::draw_menu_bar(self, ui);
     }
 
     fn top_bar(&mut self, ui: &mut Ui) {

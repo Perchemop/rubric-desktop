@@ -87,10 +87,7 @@ const TOOL_FAMILIES: &[(&str, &[Tool])] = &[
             Tool::Polyline,
         ],
     ),
-    (
-        "Paths",
-        &[Tool::Line, Tool::Arrow, Tool::Ink],
-    ),
+    ("Paths", &[Tool::Line, Tool::Arrow, Tool::Ink]),
     (
         "Measure",
         &[

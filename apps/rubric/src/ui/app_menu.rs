@@ -3,7 +3,7 @@
 //! Extracted from `ui/app.rs` to reduce the god-file size. All methods called
 //! from here must be `pub(crate)` on `RubricApp`.
 
-use eframe::egui::{self, MenuBar, Ui};
+use eframe::egui::{self, Ui};
 
 use std::path::{Path, PathBuf};
 
@@ -176,7 +176,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
             // Recent submenu: app-level recents (data layer), not project
             // settings — reads/writes `recent.json` in the config dir.
             ui.menu_button("Recent", |ui| {
-                let recents = crate::data::store::load_recent();
+                let recents = crate::data::load_recent();
                 if recents.is_empty() {
                     ui.label("No recent projects");
                 } else {
@@ -195,11 +195,11 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                     }
                     ui.separator();
                     if ui.button("Clear Recent").clicked() {
-                        let mut recent = crate::data::store::load_recent();
+                        let mut recent = crate::data::load_recent();
                         recent.clear();
                         // Report the real outcome: don't claim success when
                         // the recents file could not be rewritten (audit M2).
-                        app.ui.status = match crate::data::store::save_recent(&recent) {
+                        app.ui.status = match crate::data::save_recent(&recent) {
                             Ok(()) => "Recent list cleared".to_string(),
                             Err(e) => format!("Could not clear the recent list: {e}"),
                         };
@@ -373,7 +373,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                     .add(
                         egui::DragValue::new(&mut custom_zoom)
                             .speed(1)
-                            .clamp_range(
+                            .range(
                                 (crate::domain::view::MIN_ZOOM * 100.0) as i32
                                     ..=(crate::domain::view::MAX_ZOOM * 100.0) as i32,
                             )
