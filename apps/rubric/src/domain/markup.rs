@@ -18,7 +18,7 @@ use super::markup_stamp::StampPreset;
 use super::style::{palette, Color, FillMode, MarkupStyle};
 use super::units::{self, MeasureKind, Scale};
 
-pub use super::markup_geometry::{text_line_height, text_box_rect};
+pub use super::markup_geometry::{text_line_height, text_box_rect, MarkupGeometry};
 
 /// The tool / shape family of a markup.
 ///
