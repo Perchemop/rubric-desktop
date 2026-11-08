@@ -236,7 +236,10 @@ fn polyline_hit(p: Pt, points: &[Pt], closed: bool, tol: f32) -> bool {
                 || (closed && distance_to_segment(p, points[n - 1], points[0]) <= tol)
         }
     }
-}
+
+pub use self::MarkupGeometry;
+pub use self::text_line_height;
+pub use self::text_box_rect;
 
     #[cfg(test)]
     mod tests {
