@@ -346,7 +346,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                     .add(
                         egui::DragValue::new(&mut custom_zoom)
                             .speed(1)
-                            .clamp_range(
+                            .range(
                                 (crate::domain::view::MIN_ZOOM * 100.0) as i32
                                     ..=(crate::domain::view::MAX_ZOOM * 100.0) as i32,
                             )

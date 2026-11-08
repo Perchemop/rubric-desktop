@@ -351,7 +351,7 @@ pub(crate) fn draw_inspector(
         let precision_resp = ui.add(
             egui::DragValue::new(&mut precision)
                 .speed(1.0)
-                .clamp_range(0..=MAX_PRECISION),
+                .range(0..=MAX_PRECISION),
         );
         if precision_resp.changed() {
             project.settings.set_precision(precision);
@@ -371,14 +371,14 @@ pub(crate) fn draw_inspector(
             let _ = ui.add(
                 egui::DragValue::new(&mut ui_state.scale_real_units)
                     .speed(0.1)
-                    .clamp_range(0.001..=1_000_000.0),
+                    .range(0.001..=1_000_000.0),
             );
             ui.label(scale.unit.suffix());
             ui.label("over");
             let _ = ui.add(
                 egui::DragValue::new(&mut ui_state.scale_paper_inches)
                     .speed(0.1)
-                    .clamp_range(0.01..=100.0),
+                    .range(0.01..=100.0),
             );
             ui.label("in paper");
         });
@@ -862,7 +862,7 @@ pub(crate) fn draw_inspector(
                     ui.label("Start");
                     let mut start = bates.start;
                     let resp =
-                        ui.add(egui::DragValue::new(&mut start).clamp_range(0..=MAX_BATES_START));
+                        ui.add(egui::DragValue::new(&mut start).range(0..=MAX_BATES_START));
                     if resp.changed() {
                         bates.start = start;
                         ui_state.bates_dirty = true;
@@ -874,7 +874,7 @@ pub(crate) fn draw_inspector(
                     let mut digits = bates.digits;
                     let resp = ui.add(
                         egui::DragValue::new(&mut digits)
-                            .clamp_range(MIN_BATES_DIGITS..=MAX_BATES_DIGITS),
+                            .range(MIN_BATES_DIGITS..=MAX_BATES_DIGITS),
                     );
                     if resp.changed() {
                         bates.set_digits(digits);
@@ -898,7 +898,7 @@ pub(crate) fn draw_inspector(
                 ui.horizontal(|ui| {
                     ui.label("Margin (pt)");
                     let resp =
-                        ui.add(egui::DragValue::new(&mut bates.margin).clamp_range(0.0..=200.0));
+                        ui.add(egui::DragValue::new(&mut bates.margin).range(0.0..=200.0));
                     if resp.changed() {
                         ui_state.bates_dirty = true;
                     }
@@ -907,7 +907,7 @@ pub(crate) fn draw_inspector(
                 ui.horizontal(|ui| {
                     ui.label("Font size (pt)");
                     let resp =
-                        ui.add(egui::DragValue::new(&mut bates.font_size).clamp_range(4.0..=72.0));
+                        ui.add(egui::DragValue::new(&mut bates.font_size).range(4.0..=72.0));
                     if resp.changed() {
                         ui_state.bates_dirty = true;
                     }

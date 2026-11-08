@@ -151,7 +151,7 @@ pub fn text_line_height(font_size: f32) -> f32 {
 /// `wrap` points: one [`text_line_height`] per line, with the wrap width
 /// clamped to at least 1 pt so a degenerate stored wrap cannot make the box
 /// unhittable.
-fn text_box_rect(at: Pt, wrap: f32, text: &str, font_size: f32) -> Rect {
+pub fn text_box_rect(at: Pt, wrap: f32, text: &str, font_size: f32) -> Rect {
     let lines = text.lines().count().max(1) as f32;
     Rect::new(
         at.x,

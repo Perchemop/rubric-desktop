@@ -219,7 +219,7 @@ pub(crate) struct UiState {
     /// inspector's continuous Bates controls, cleared when the single undo
     /// snapshot commits at interaction end.
     pub(crate) bates_dirty: bool,
-    hint: String,
+    pub(crate) hint: String,
     pub(crate) status: String,
     pub(crate) status_kind: StatusKind,
     /// Set when an in-progress draw is cancelled (Esc) so the still-held drag
@@ -415,13 +415,13 @@ impl Default for UiState {
 pub struct RubricApp {
     pub(crate) history: History,
     pub(crate) ui: UiState,
-    draw: DrawState,
+    pub(crate) draw: DrawState,
     /// The last pointer page position (for the status bar).
-    last_page_pos: Option<Pt>,
-    comment_text: String,
+    pub(crate) last_page_pos: Option<Pt>,
+    pub(crate) comment_text: String,
     /// Session-only association with a file on disk. Not part of the project
     /// snapshot, so it never undoes/redoes with history.
-    current_path: Option<PathBuf>,
+    pub(crate) current_path: Option<PathBuf>,
     /// A project install waiting for the user to confirm discarding unsaved
     /// changes (full-app audit B2). `None` when nothing is pending.
     pub(crate) pending_replace: Option<PendingReplace>,
@@ -433,28 +433,28 @@ pub struct RubricApp {
     pub(crate) show_user_guide: bool,
     /// Set when the user closed the update-check window, so it stays closed
     /// until a new check is requested (full-app audit M8).
-    update_dismissed: bool,
+    pub(crate) update_dismissed: bool,
     /// Set by "Quit Anyway" so the close-request veto (audit M1) lets the
     /// explicitly-confirmed close through instead of re-prompting forever.
     pub(crate) force_close: bool,
     /// Set when the window title needs to be re-synced with `current_path`.
-    title_dirty: bool,
+    pub(crate) title_dirty: bool,
     /// Last dirty state reflected in the window title, used to recompute the
     /// dirty marker when the unsaved state changes.
-    title_shown_dirty: bool,
+    pub(crate) title_shown_dirty: bool,
     /// Instant of the most recent autosave **attempt** in this session, or
     /// `None` before the first one. Recording the attempt (even a failed one)
     /// rate-limits retries to one per interval instead of one per frame.
-    last_autosave: Option<Instant>,
+    pub(crate) last_autosave: Option<Instant>,
     /// Cache of rendered PDF page textures, keyed by cache PNG path.
-    page_textures: HashMap<String, TextureHandle>,
+    pub(crate) page_textures: HashMap<String, TextureHandle>,
     /// Cache keys whose page render failed this project session. Poisoned so a
     /// failed background render is not attempted again on every repaint frame.
-    failed_page_textures: HashSet<String>,
+    pub(crate) failed_page_textures: HashSet<String>,
     /// Page-thumbnail textures for the pages sidebar (spec F-404).
-    thumb_cache: pages::ThumbCache,
+    pub(crate) thumb_cache: pages::ThumbCache,
     /// Last PDF background error shown, to avoid spamming status every frame.
-    bg_error: Option<String>,
+    pub(crate) bg_error: Option<String>,
     /// Session-only report export dialog state (no undo snapshot).
     pub(crate) report_export: Option<ReportExportUi>,
     /// Transient toast notification (UI audit P1-1): shown briefly with
@@ -465,24 +465,24 @@ pub struct RubricApp {
     /// High-contrast mode (a11y A3 / proposal P2-15), applied over the theme.
     pub(crate) high_contrast: bool,
     /// UI scale multiplier (app-level preference, not project data).
-    ui_scale: f32,
+    pub(crate) ui_scale: f32,
     /// In-progress bug report the user is reviewing before sending (guide §7.1).
     pub(crate) report: Option<BugReportUi>,
     /// Shared update-check state, written by the worker thread and read by the
     /// UI each frame (guide §7.2).
-    update: Arc<Mutex<UpdateCheck>>,
+    pub(crate) update: Arc<Mutex<UpdateCheck>>,
     /// Render queue state, written by the worker thread and read by the
     /// UI each frame (UI audit P1-2: move heavy work off the UI thread).
     #[allow(dead_code)]
-    render: Arc<Mutex<RenderQueue>>,
+    pub(crate) render: Arc<Mutex<RenderQueue>>,
     /// Repository used for issue URLs and release checks.
-    repo: String,
+    pub(crate) repo: String,
     /// Tool Chest preset library (v0.4 gap #7). App-level session state: it
     /// survives project switches (a tool chest belongs to the reviewer, not
     /// the project) and is not written into `.rubric.json` or prefs yet —
     /// `StylePreset`/`StylePresetLibrary` are serde-ready if persistence is
     /// added later. Not part of the undo history.
-    tool_chest_library: StylePresetLibrary,
+    pub(crate) tool_chest_library: StylePresetLibrary,
 }
 
 /// Update-check progress shared between the worker thread and the UI.
@@ -1323,7 +1323,7 @@ impl RubricApp {
                     let _ = ui.add(
                         egui::DragValue::new(&mut state.real_units)
                             .speed(0.1)
-                            .clamp_range(0.001..=1_000_000.0),
+                            .range(0.001..=1_000_000.0),
                     );
                     egui::ComboBox::from_label("Unit")
                         .selected_text(state.unit.name())
@@ -1356,7 +1356,7 @@ impl RubricApp {
         }
     }
 
-    fn push_snapshot(&mut self, _reason: &str) {
+    pub(crate) fn push_snapshot(&mut self, _reason: &str) {
         let proj = self.history.current().clone();
         self.history.push(proj);
         // A committed change is exactly what auto-save should persist.
