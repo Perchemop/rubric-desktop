@@ -861,8 +861,8 @@ pub(crate) fn draw_inspector(
                 ui.horizontal(|ui| {
                     ui.label("Start");
                     let mut start = bates.start;
-                    let resp = ui
-                        .add(egui::DragValue::new(&mut start).clamp_range(0..=MAX_BATES_START));
+                    let resp =
+                        ui.add(egui::DragValue::new(&mut start).clamp_range(0..=MAX_BATES_START));
                     if resp.changed() {
                         bates.start = start;
                         ui_state.bates_dirty = true;
@@ -897,8 +897,8 @@ pub(crate) fn draw_inspector(
                     });
                 ui.horizontal(|ui| {
                     ui.label("Margin (pt)");
-                    let resp = ui
-                        .add(egui::DragValue::new(&mut bates.margin).clamp_range(0.0..=200.0));
+                    let resp =
+                        ui.add(egui::DragValue::new(&mut bates.margin).clamp_range(0.0..=200.0));
                     if resp.changed() {
                         ui_state.bates_dirty = true;
                     }
@@ -906,8 +906,8 @@ pub(crate) fn draw_inspector(
                 });
                 ui.horizontal(|ui| {
                     ui.label("Font size (pt)");
-                    let resp = ui
-                        .add(egui::DragValue::new(&mut bates.font_size).clamp_range(4.0..=72.0));
+                    let resp =
+                        ui.add(egui::DragValue::new(&mut bates.font_size).clamp_range(4.0..=72.0));
                     if resp.changed() {
                         ui_state.bates_dirty = true;
                     }

@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::geom::{self, Pt, Rect};
-use super::markup_geometry::{self, MarkupGeometry, text_box_rect, text_line_height};
 pub use super::markup_comment::Comment;
+use super::markup_geometry::{self, text_box_rect, text_line_height, MarkupGeometry};
 use super::markup_measurement::Measurement;
 use super::markup_stamp::StampPreset;
 use super::style::{palette, Color, FillMode, MarkupStyle};

@@ -1875,7 +1875,6 @@ impl RubricApp {
         );
     }
 
-
     /// Switch the active tool, abandoning any in-flight draft gesture exactly
     /// like Escape does (but keeping the current selection). Used by the
     /// unmodified-key tool shortcuts.
@@ -2224,9 +2223,11 @@ impl RubricApp {
             self.push_snapshot("tool chest apply");
         }
         let inspector_mutated = crate::ui::app_inspector::draw_inspector_panel(self, ui);
-        egui::Panel::bottom("status").show(ui, |ui| crate::ui::app_status::draw_status_bar(self, ui));
+        egui::Panel::bottom("status")
+            .show(ui, |ui| crate::ui::app_status::draw_status_bar(self, ui));
 
-        let (list_action, status_changed) = crate::ui::app_markups_list::draw_markups_list_panel(self, ui);
+        let (list_action, status_changed) =
+            crate::ui::app_markups_list::draw_markups_list_panel(self, ui);
         if status_changed {
             self.push_snapshot_quiet();
         }

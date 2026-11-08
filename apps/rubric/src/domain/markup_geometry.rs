@@ -61,9 +61,12 @@ impl MarkupGeometry {
                 let all: Vec<Pt> = strokes.iter().flatten().copied().collect();
                 Rect::from_bounds(&all).unwrap_or(Rect::new(0.0, 0.0, 0.0, 0.0))
             }
-            MarkupGeometry::Text { at, wrap, text } => {
-                text_box_rect(*at, *wrap, text, super::style::MarkupStyle::default().font_size)
-            }
+            MarkupGeometry::Text { at, wrap, text } => text_box_rect(
+                *at,
+                *wrap,
+                text,
+                super::style::MarkupStyle::default().font_size,
+            ),
             MarkupGeometry::TextAnchor {
                 at,
                 line_height,
@@ -251,7 +254,11 @@ mod tests {
     #[test]
     fn bounds_path_is_tight() {
         let g = MarkupGeometry::Path {
-            points: vec![Pt::new(10.0, 10.0), Pt::new(30.0, 12.0), Pt::new(20.0, 40.0)],
+            points: vec![
+                Pt::new(10.0, 10.0),
+                Pt::new(30.0, 12.0),
+                Pt::new(20.0, 40.0),
+            ],
             closed: true,
         };
         assert_eq!(g.bounds(), Rect::new(10.0, 10.0, 20.0, 30.0));
@@ -312,8 +319,11 @@ mod tests {
 
     #[test]
     fn distance_to_segment_handles_zero_length() {
-        assert!((distance_to_segment(Pt::new(3.0, 4.0), Pt::new(0.0, 0.0), Pt::new(0.0, 0.0)) - 5.0)
-            .abs() < f32::EPSILON);
+        assert!(
+            (distance_to_segment(Pt::new(3.0, 4.0), Pt::new(0.0, 0.0), Pt::new(0.0, 0.0)) - 5.0)
+                .abs()
+                < f32::EPSILON
+        );
     }
 
     #[test]
@@ -337,8 +347,18 @@ mod tests {
 
     #[test]
     fn polyline_hit_single_point_acts_as_dot() {
-        assert!(polyline_hit(Pt::new(11.0, 10.0), &[Pt::new(10.0, 10.0)], false, 2.0));
-        assert!(!polyline_hit(Pt::new(20.0, 10.0), &[Pt::new(10.0, 10.0)], false, 2.0));
+        assert!(polyline_hit(
+            Pt::new(11.0, 10.0),
+            &[Pt::new(10.0, 10.0)],
+            false,
+            2.0
+        ));
+        assert!(!polyline_hit(
+            Pt::new(20.0, 10.0),
+            &[Pt::new(10.0, 10.0)],
+            false,
+            2.0
+        ));
     }
 
     #[test]

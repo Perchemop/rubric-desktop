@@ -52,10 +52,7 @@ mod tests {
             value: 90.0,
             value_points: 90.0,
         };
-        assert_eq!(
-            angle.label_with(units::MeasureUnit::Point, 6),
-            "90.00°"
-        );
+        assert_eq!(angle.label_with(units::MeasureUnit::Point, 6), "90.00°");
     }
 
     #[test]

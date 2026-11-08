@@ -17,7 +17,8 @@ pub(crate) fn draw_tool_chest_panel(app: &mut RubricApp, ui: &mut Ui) -> bool {
             .min_size(170.0)
             .resizable(true)
             .show(ui, |ui| {
-                chest_mutated = crate::ui::tool_chest::draw_tool_chest(ui, library, project, ui_state);
+                chest_mutated =
+                    crate::ui::tool_chest::draw_tool_chest(ui, library, project, ui_state);
             });
     }
     chest_mutated

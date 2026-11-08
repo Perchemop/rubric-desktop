@@ -305,8 +305,7 @@ pub fn submit(repo: &str, issue: &Issue, token: Option<&str>) -> Result<(), Stri
         Err(ureq::Error::StatusCode(code)) => match code {
             401 => Err("GitHub rejected the token (401). Check it and retry.".into()),
             403 => Err(
-                "GitHub refused issue creation (403). The token may lack the `repo` scope."
-                    .into(),
+                "GitHub refused issue creation (403). The token may lack the `repo` scope.".into(),
             ),
             _ => Err(format!("GitHub returned {code}")),
         },

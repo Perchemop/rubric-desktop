@@ -38,6 +38,8 @@ Recorded per note. Preferred order (guide §2.4):
 | [`adobe-acrobat-capabilities.md`](adobe-acrobat-capabilities.md) | Annotation taxonomy, document comparison | Approved 2026-10-24 |
 | [`stirling-pdf-capabilities.md`](stirling-pdf-capabilities.md) | Local-first PDF toolset (compare, redaction, signatures, page ops) | Client-directed 2026-10-26 (gate recorded in `DECISIONS.md`) |
 | [`hayro-pdf-engine.md`](hayro-pdf-engine.md) | Pure-Rust PDF engine (`hayro` rasteriser + `lopdf` writer) to replace native PDFium | Approved 2026-10-31 (owner; recorded in `DECISIONS.md`) |
+| [`async-thumbnails.md`](async-thumbnails.md) | Async page thumbnail rendering (worker thread + on-disk cache eviction; UI audit P1-2) | Design note — pending owner approval |
+| [`signed-releases.md`](signed-releases.md) | Signed releases + `SHA256SUMS` verification + in-app checksum-verified update (guide §12.1) | Proposed — **pending human gate** (2026-11-08) |
 
 When a note is added, link it here with the capability it covers, its
 approval date, and the approving human's initials. The per-capability

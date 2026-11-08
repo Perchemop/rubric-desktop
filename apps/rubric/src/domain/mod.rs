@@ -32,13 +32,11 @@ pub use diff::{diff_documents, diff_projects, DiffResult, MarkupChange, MarkupSu
 pub use document::{Document, Layer, LayerError, Page};
 pub use geom::{angle_degrees, path_length, polygon_area, Pt, Rect};
 pub use grid::{nice_step, ruler_ticks, Grid};
-pub use markup::{
-    Corner, Markup, MarkupGeometry, MarkupKind, ReviewStatus, ToolGroup,
-};
+pub use markup::{Corner, Markup, MarkupGeometry, MarkupKind, ReviewStatus, ToolGroup};
 pub use markup_comment::Comment;
+pub use markup_list::{MarkupGroupKey, MarkupList, MarkupListFilter, MarkupListSort, MarkupRow};
 pub use markup_measurement::Measurement;
 pub use markup_stamp::StampPreset;
-pub use markup_list::{MarkupGroupKey, MarkupList, MarkupListFilter, MarkupListSort, MarkupRow};
 pub use project::{
     auto_save_interval_label, History, Project, ProjectSnapshot, RecentList, Settings, Tool,
     ToolSet, AUTO_SAVE_INTERVALS, CURRENT_SCHEMA_VERSION, MAX_RECENT, MIN_AUTO_SAVE_INTERVAL_SECS,
