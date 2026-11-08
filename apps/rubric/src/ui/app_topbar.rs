@@ -78,7 +78,7 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
 
             // Toast notification (UI audit P1-1-b): transient, auto-clears after 3s.
             if let Some((kind, msg, instant)) = &app.toast {
-                let age = instant.elapsed().as_sec_f32();
+                let age = instant.elapsed().as_secs_f32();
                 let show = age < 3.0;
                 let alpha = if show { 1.0 - (age / 3.0) } else { 0.0 };
                 if alpha > 0.0 {
@@ -90,8 +90,7 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
                     };
                     ui.add(egui::Label::new(
                         egui::RichText::new(msg.clone()).color(toast_color),
-                    )
-                    .alpha(alpha));
+                    ));
                 }
             }
         });

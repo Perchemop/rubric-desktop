@@ -133,10 +133,9 @@ pub(crate) struct RenderJob {
 }
 
 /// Outcome of a render job, sent back to the UI thread.
-#[derive(Debug)]
 pub(crate) enum RenderResult {
     /// Success: the page was rendered and the texture is ready.
-    Success { texture: egui::TextureHandle },
+    Success,
     /// Failure: the render failed (e.g. PDF not found, invalid page).
     Failure { error: String },
 }
