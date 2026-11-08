@@ -675,6 +675,7 @@ impl RubricApp {
             }
             ctx.request_repaint();
         });
+    }
 
     /// Submit a thumbnail-render job to the worker thread (UI audit P1-2).
     ///
