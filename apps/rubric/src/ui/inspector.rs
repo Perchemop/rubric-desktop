@@ -607,7 +607,6 @@ pub(crate) fn draw_inspector(
                                                 );
                                                 committed = true;
                                             }
-                                    }
                                 });
                         });
                     }
