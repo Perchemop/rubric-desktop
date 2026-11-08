@@ -747,7 +747,7 @@ pub(crate) fn draw_inspector(
                 ui.small("No comments yet.");
             } else {
                 for c in &m.comments {
-                    ui.label(format!("{} · {}", c.author, c.created.format("%H:%M:%S")));
+                    ui.label(format!("{} · {}", c.author, c.created.format("%H:%M")));
                     ui.small(&c.text);
                     ui.separator();
                 }
