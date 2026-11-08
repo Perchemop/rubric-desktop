@@ -28,7 +28,7 @@ Reopen it later to continue reviewing.
 ## 2. Tools (toolbar & shortcuts)
 
 | Tool | Shortcut | What it does |
-|------|----------|--------------|
+| --- | --- | --- |
 | Select | `V` | Select, move, and resize existing markups |
 | Highlight | `H` | Highlight text (snaps to text lines under the cursor) |
 | Strikeout | `S` | Strike through text |
