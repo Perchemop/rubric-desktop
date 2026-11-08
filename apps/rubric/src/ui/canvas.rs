@@ -2143,9 +2143,6 @@ fn draw_markup(
         mutated
     }
 
-    pub(crate) use crate::ui::canvas::draw_canvas;
-    pub(crate) use crate::ui::canvas::commit_text_edit;
-
     #[cfg(test)]
     mod tests {
         use super::*;
