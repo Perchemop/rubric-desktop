@@ -238,8 +238,6 @@ fn polyline_hit(p: Pt, points: &[Pt], closed: bool, tol: f32) -> bool {
     }
 }
 
-pub use self::MarkupGeometry;
-
 #[cfg(test)]
 mod tests {
     use super::*;
