@@ -401,6 +401,8 @@ pub(crate) struct UiState {
     /// Tool Chest delete confirmation: set when Delete is clicked, cleared when
     /// confirmed or cancelled. UI-only, never serialized.
     pub(crate) tool_chest_delete_confirm: Option<(uuid::Uuid, String)>,
+    /// The id of the comment being replied to, if any. UI-only, never serialized.
+    pub(crate) comment_reply_target: Option<Uuid>,
 }
 
 impl Default for UiState {
@@ -465,6 +467,8 @@ impl Default for UiState {
             pending_style_preset: None,
             tool_chest_save_name: String::new(),
             tool_chest_rename: None,
+            tool_chest_delete_confirm: None,
+            comment_reply_target: None,
             inspector_width: 280.0,
             tool_chest_width: 210.0,
         }
@@ -478,8 +482,6 @@ pub struct RubricApp {
     /// The last pointer page position (for the status bar).
     last_page_pos: Option<Pt>,
     comment_text: String,
-    /// The id of the comment being replied to, if any. UI-only, never serialized.
-    pub(crate) comment_reply_target: Option<Uuid>,
     /// Session-only association with a file on disk. Not part of the project
     /// snapshot, so it never undoes/redoes with history.
     current_path: Option<PathBuf>,
