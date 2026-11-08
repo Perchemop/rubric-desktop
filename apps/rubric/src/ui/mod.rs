@@ -1,8 +1,14 @@
 //! UI module.
 
 pub mod app;
+pub mod app_canvas;
 pub mod app_dialogs;
+pub mod app_inspector;
+pub mod app_markups_list;
 pub mod app_menu;
+pub mod app_pages;
+pub mod app_status;
+pub mod app_tool_chest;
 pub mod app_topbar;
 pub mod canvas;
 pub mod canvas_draw;

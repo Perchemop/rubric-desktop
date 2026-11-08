@@ -8,7 +8,11 @@ pub mod document;
 pub mod geom;
 pub mod grid;
 pub mod markup;
+pub mod markup_comment;
+pub mod markup_geometry;
 pub mod markup_list;
+pub mod markup_measurement;
+pub mod markup_stamp;
 pub mod project;
 pub mod report;
 pub mod style;
@@ -29,9 +33,11 @@ pub use document::{Document, Layer, LayerError, Page};
 pub use geom::{angle_degrees, path_length, polygon_area, Pt, Rect};
 pub use grid::{nice_step, ruler_ticks, Grid};
 pub use markup::{
-    Comment, Corner, Markup, MarkupGeometry, MarkupKind, Measurement, ReviewStatus, StampPreset,
-    ToolGroup,
+    Corner, Markup, MarkupGeometry, MarkupKind, ReviewStatus, ToolGroup,
 };
+pub use markup_comment::Comment;
+pub use markup_measurement::Measurement;
+pub use markup_stamp::StampPreset;
 pub use markup_list::{MarkupGroupKey, MarkupList, MarkupListFilter, MarkupListSort, MarkupRow};
 pub use project::{
     auto_save_interval_label, History, Project, ProjectSnapshot, RecentList, Settings, Tool,

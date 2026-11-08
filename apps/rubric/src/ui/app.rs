@@ -18,9 +18,7 @@ use crate::domain::{
     MarkupKind, MarkupListSort, MarkupStyle, MeasureUnit, Project, Pt, Report, ReportGroupKey,
     ReviewStatus, StampPreset, StylePreset, StylePresetLibrary, Theme, Tool,
 };
-use crate::ui::{
-    app_dialogs, canvas, inspector, markups_list, menu, pages, theme, tool_chest, toolbar,
-};
+use crate::ui::{app_dialogs, canvas, pages, theme, toolbar};
 use uuid::Uuid;
 
 /// Changelog embedded at build time for the in-app release-notes popup
@@ -1325,7 +1323,7 @@ impl RubricApp {
                     let _ = ui.add(
                         egui::DragValue::new(&mut state.real_units)
                             .speed(0.1)
-                            .range(0.001..=1_000_000.0),
+                            .clamp_range(0.001..=1_000_000.0),
                     );
                     egui::ComboBox::from_label("Unit")
                         .selected_text(state.unit.name())
@@ -1877,41 +1875,6 @@ impl RubricApp {
         );
     }
 
-    fn right_panel(&mut self, ui: &mut Ui) -> bool {
-        inspector::draw_inspector(
-            ui,
-            self.history.current_mut(),
-            &mut self.ui,
-            &mut self.comment_text,
-        )
-    }
-
-    fn bottom_bar(&mut self, ui: &mut Ui) {
-        let doc_title = self.active_doc().map(|d| d.title.clone());
-        let page_count = self.active_doc().map(|d| d.page_count());
-
-        ui.horizontal(|ui| {
-            ui.small(self.ui.hint.clone());
-            if let Some(p) = self.last_page_pos {
-                ui.small(format!("Cursor: {:.1},{:.1} pt", p.x, p.y));
-            }
-            if let (Some(pages), Some(title)) = (page_count, doc_title) {
-                let plural = if pages == 1 { "" } else { "s" };
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    // Version label (guide §9): subtle, non-intrusive, clickable for release notes.
-                    if ui
-                        .small(format!("v{}", env!("CARGO_PKG_VERSION")))
-                        .on_hover_text("Click for release notes")
-                        .clicked()
-                    {
-                        self.ui.show_release_notes = true;
-                    }
-                    ui.small(format!("{pages} page{plural}"));
-                    ui.small(title);
-                });
-            }
-        });
-    }
 
     /// Switch the active tool, abandoning any in-flight draft gesture exactly
     /// like Escape does (but keeping the current selection). Used by the
@@ -2246,26 +2209,7 @@ impl RubricApp {
         egui::Panel::top("toolbar").show(ui, |ui| self.top_bar(ui));
         // Pages sidebar (spec F-404). Only shown when the document has pages
         // and the panel is enabled in the View menu.
-        let page_count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
-        if page_count > 0 && self.ui.show_pages && !self.ui.focus_mode {
-            let source_pdf = self.history.current().source_pdf.clone();
-            egui::Panel::left("pages")
-                .default_size(168.0)
-                .min_size(120.0)
-                .max_size(260.0)
-                .resizable(true)
-                .show(ui, |ui| {
-                    if let Some(index) = pages::draw_pages(
-                        ui,
-                        page_count,
-                        self.ui.current_page.min(page_count - 1),
-                        source_pdf.as_deref().map(std::path::Path::new),
-                        &mut self.thumb_cache,
-                    ) {
-                        self.jump_to_page(index);
-                    }
-                });
-        }
+        crate::ui::app_pages::draw_pages_panel(self, ui);
         egui::Panel::left("tools")
             .default_size(200.0)
             .min_size(180.0)
@@ -2275,54 +2219,14 @@ impl RubricApp {
         // `ui.pending_style_preset`, which `canvas::finish_markup` consumes
         // at creation time; only apply-to-selection mutates the project and
         // asks for a snapshot.
-        let mut chest_mutated = false;
-        if self.ui.show_tool_chest && !self.ui.focus_mode {
-            let library = &mut self.tool_chest_library;
-            let project = self.history.current_mut();
-            let ui_state = &mut self.ui;
-            egui::Panel::left("tool_chest")
-                .default_size(210.0)
-                .min_size(170.0)
-                .resizable(true)
-                .show(ui, |ui| {
-                    chest_mutated = tool_chest::draw_tool_chest(ui, library, project, ui_state);
-                });
-        }
+        let chest_mutated = crate::ui::app_tool_chest::draw_tool_chest_panel(self, ui);
         if chest_mutated {
             self.push_snapshot("tool chest apply");
         }
-        let mut inspector_mutated = false;
-        if !self.ui.focus_mode {
-            let inspector_response = egui::Panel::right("inspector")
-                .default_size(280.0)
-                .min_size(240.0)
-                .show(ui, |ui| {
-                    inspector_mutated = self.right_panel(ui);
-                })
-                .response;
-            // Inspector context menu (spec F-603): the same menu the canvas offers.
-            let _ = inspector_response.context_menu(|ui| {
-                menu::draw_editor_context_menu(ui, &mut self.ui);
-            });
-        }
-        egui::Panel::bottom("status").show(ui, |ui| self.bottom_bar(ui));
+        let inspector_mutated = crate::ui::app_inspector::draw_inspector_panel(self, ui);
+        egui::Panel::bottom("status").show(ui, |ui| crate::ui::app_status::draw_status_bar(self, ui));
 
-        let mut list_action = None;
-        let mut status_changed = false;
-        if self.ui.show_markups_list && !self.ui.focus_mode {
-            let project = self.history.current_mut();
-            let ui_state = &mut self.ui;
-            egui::Panel::bottom("markups_list")
-                .default_size(190.0)
-                .min_size(110.0)
-                .max_size(420.0)
-                .resizable(true)
-                .show(ui, |ui| {
-                    let (action, sc) = markups_list::draw_markups_list(ui, project, ui_state);
-                    list_action = action;
-                    status_changed = sc;
-                });
-        }
+        let (list_action, status_changed) = crate::ui::app_markups_list::draw_markups_list_panel(self, ui);
         if status_changed {
             self.push_snapshot_quiet();
         }
@@ -2335,35 +2239,7 @@ impl RubricApp {
             }
         }
 
-        let prior_status = self.ui.status.clone();
-        let show_minimap = self.ui.show_minimap;
-        let mut need_snapshot = false;
-        egui::CentralPanel::default().show(ui, |ui| {
-            self.ui.canvas_size = ui.available_size();
-            need_snapshot = canvas::draw_canvas(
-                ui,
-                self.history.current_mut(),
-                &mut self.ui,
-                &mut self.draw,
-                &mut self.last_page_pos,
-                &mut self.page_textures,
-                &mut self.failed_page_textures,
-                &mut self.bg_error,
-                false, // is_export: show chrome in live editor
-                show_minimap,
-            );
-        });
-        if need_snapshot {
-            // The canvas can set a more specific status this frame (e.g.
-            // "Text updated" from a text-edit commit); keep it instead of
-            // overwriting it with the generic snapshot message. Comparing
-            // against the pre-canvas status keeps the check frame-scoped.
-            if self.ui.status != prior_status {
-                self.push_snapshot_quiet();
-            } else {
-                self.push_snapshot("drawing");
-            }
-        }
+        crate::ui::app_canvas::draw_canvas_panel(self, ui);
         if inspector_mutated {
             self.push_snapshot("inspector edit");
         }

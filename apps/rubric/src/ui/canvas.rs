@@ -19,7 +19,7 @@ use super::theme::to_color32;
 use crate::ui::canvas_draw::{
     draw_bates_overlay, draw_grid, draw_measure_badge, draw_minimap, draw_rulers, draw_selection,
 };
-use crate::ui::canvas_geom::{screen_rect, to_page, to_screen};
+use crate::ui::canvas_geom::{hit_tolerance_page, measure_anchor, screen_rect, to_page, to_screen};
 use crate::ui::canvas_hit::{handle_at, pick_markup_id, point_handle_at};
 
 /// Refuse to begin a draft when the markup it would create could not be edited.
@@ -46,12 +46,6 @@ fn path_points_ok(points: &[Pt], min: usize, _closed: bool) -> bool {
     points.len() >= min && points.windows(2).any(|w| w[0].distance(w[1]) > 0.5)
 }
 
-/// Hit tolerance expressed in page units for a given zoom, so a fixed screen
-/// pixel budget (~6 px) is used at every zoom level.
-fn hit_tolerance_page(zoom: f32) -> f32 {
-    let z = zoom.max(0.1);
-    (6.0 / z).clamp(0.5, 30.0)
-}
 
 /// Whether an ink stroke is worth committing: it must contain at least two
 /// distinct points and a small amount of total length.
@@ -91,27 +85,6 @@ const MIN_CALIBRATION_POINTS: f32 = 1.0;
 /// Whether a measured reference segment is long enough to calibrate from.
 fn calibration_segment_ok(points: f32) -> bool {
     points.is_finite() && points >= MIN_CALIBRATION_POINTS
-}
-
-/// Anchor point in page space for a measurement label.
-fn measure_anchor(m: &Markup) -> Pt {
-    match &m.geometry {
-        MarkupGeometry::Segment { a, b } => Pt::new((a.x + b.x) * 0.5, (a.y + b.y) * 0.5),
-        MarkupGeometry::Path { points, .. } => {
-            if points.is_empty() {
-                m.bounds().center()
-            } else {
-                let n = points.len() as f32;
-                let (sx, sy) = points
-                    .iter()
-                    .fold((0.0f32, 0.0f32), |(x, y), p| (x + p.x, y + p.y));
-                Pt::new(sx / n, sy / n)
-            }
-        }
-        MarkupGeometry::Angle { vertex, .. } => *vertex,
-        MarkupGeometry::Count { at, .. } => *at,
-        _ => m.bounds().center(),
-    }
 }
 
 /// Draw a single markup.
@@ -383,12 +356,6 @@ fn draw_markup(
         }
     }
 
-    if m.status != ReviewStatus::Open {
-        let b = screen_rect(m.bounds(), origin, pan, zoom);
-        let dot = Pos2::new(b.right() + 4.0, b.top() - 4.0);
-        painter.circle_filled(dot, 5.0 * zoom.max(0.7), to_color32(m.status.color()));
-    }
-}
 
 /// Commit a pending in-canvas text edit (if any) using focus-loss semantics.
 /// Returns `true` when the text actually changed and was written back.
