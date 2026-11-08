@@ -9,6 +9,7 @@ pub mod geom;
 pub mod grid;
 pub mod markup;
 pub mod markup_list;
+pub mod nav;
 pub mod project;
 pub mod report;
 pub mod style;
@@ -33,6 +34,7 @@ pub use markup::{
     ToolGroup,
 };
 pub use markup_list::{MarkupGroupKey, MarkupList, MarkupListFilter, MarkupListSort, MarkupRow};
+pub use nav::{page_nav_target, PageStep};
 pub use project::{
     auto_save_interval_label, History, Project, ProjectSnapshot, RecentList, Settings, Tool,
     ToolSet, AUTO_SAVE_INTERVALS, CURRENT_SCHEMA_VERSION, MAX_RECENT, MIN_AUTO_SAVE_INTERVAL_SECS,

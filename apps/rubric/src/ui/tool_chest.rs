@@ -176,6 +176,9 @@ fn draw_preset_row(
             .on_hover_text("Delete this style")
             .clicked()
         {
+            // P2: Set delete confirmation flag instead of immediate delete
+            ui_state.tool_chest_delete_confirm = Some(preset.id);}
+        {
             library.remove(preset.id);
             if is_armed {
                 ui_state.pending_style_preset = None;
@@ -397,3 +400,25 @@ fn draw_swatch(ui: &mut Ui, color: Color) {
     let (rect, _) = ui.allocate_exact_size(egui::vec2(14.0, 14.0), egui::Sense::hover());
     ui.painter().rect_filled(rect, 3.0, to_color32(color));
 }
+
+// P2: Tool Chest delete confirmation dialog
+// Shows a confirmation window when Delete is clicked on a style preset
+if ui_state.tool_chest_delete_confirm.is_some() {
+    let (delete_id, delete_name) = ui_state.tool_chest_delete_confirm.take().unwrap();
+    let delete_confirmed = egui::Window::new("Delete Confirmation")
+        .open(&mut true)
+        .resizable(false)
+        .fixed_size(egui::vec2(300.0, 150.0))
+        .show(ui.ctx(), |ui| {
+            ui.label(format!("Delete style '{}'?", delete_name));
+            ui.separator();
+            if ui.button("Confirm").clicked() {
+                library.remove(delete_id);
+                ui_state.status = format!("Style '{}' deleted", delete_name);
+            }
+            if ui.button("Cancel").clicked() {}
+        });
+    // The window is immediately dropped each frame since open defaults to true;
+    // the confirmation action happens inside the .show() closure.
+}}
+

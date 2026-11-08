@@ -65,6 +65,14 @@ pub struct AppPrefs {
     /// UI scale multiplier. Missing values fall back to `1.0`.
     #[serde(default = "default_one")]
     pub ui_scale: f32,
+    /// Width of the inspector panel in screen pixels. Persisted across sessions
+    /// for the resizable inspector (P2). Missing values fall back to `280.0`.
+    #[serde(default = "default_280")]
+    pub inspector_width: f32,
+    /// Width of the tool chest panel in screen pixels. Persisted across sessions
+    /// for the resizable tool chest (P2). Missing values fall back to `210.0`.
+    #[serde(default = "default_210")]
+    pub tool_chest_width: f32,
     /// Focus/reading mode: hides all side panels. Missing values fall back to `false`.
     #[serde(default)]
     pub focus_mode: bool,
@@ -84,6 +92,14 @@ fn default_true() -> bool {
 
 fn default_one() -> f32 {
     1.0
+}
+
+fn default_280() -> f32 {
+    280.0
+}
+
+fn default_210() -> f32 {
+    210.0
 }
 
 impl Default for AppPrefs {

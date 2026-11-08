@@ -321,6 +321,12 @@ pub(crate) struct UiState {
     /// Focus/reading mode: hides all side panels so only the canvas is
     /// visible, for distraction-free review (proposal P2-13).
     pub(crate) focus_mode: bool,
+    /// Width of the inspector panel in screen pixels. Persisted across sessions
+    /// via AppPrefs for the resizable inspector (P2).
+    pub(crate) inspector_width: f32,
+    /// Width of the tool chest panel in screen pixels. Persisted across sessions
+    /// via AppPrefs for the resizable tool chest (P2).
+    pub(crate) tool_chest_width: f32,
     /// Show a small minimap in the corner of the canvas showing page overview
     /// with viewport rectangle (proposal P2-16).
     pub(crate) show_minimap: bool,
@@ -392,6 +398,9 @@ pub(crate) struct UiState {
     /// Open Tool Chest rename draft: the preset id plus the editable name, so
     /// the editor survives the per-frame panel rebuild. UI-only.
     pub(crate) tool_chest_rename: Option<(uuid::Uuid, String)>,
+    /// Tool Chest delete confirmation: set when Delete is clicked, cleared when
+    /// confirmed or cancelled. UI-only, never serialized.
+    pub(crate) tool_chest_delete_confirm: Option<(uuid::Uuid, String)>,
 }
 
 impl Default for UiState {
@@ -456,6 +465,8 @@ impl Default for UiState {
             pending_style_preset: None,
             tool_chest_save_name: String::new(),
             tool_chest_rename: None,
+            inspector_width: 280.0,
+            tool_chest_width: 210.0,
         }
     }
 }
@@ -466,7 +477,8 @@ pub struct RubricApp {
     draw: DrawState,
     /// The last pointer page position (for the status bar).
     last_page_pos: Option<Pt>,
-    comment_text: String,
+    comment_text: String,/// The id of the comment being replied to, if any. UI-only, never serialized.
+pub(crate) comment_reply_target: Option<Uuid>,
     /// Session-only association with a file on disk. Not part of the project
     /// snapshot, so it never undoes/redoes with history.
     current_path: Option<PathBuf>,
@@ -1451,7 +1463,21 @@ impl RubricApp {
         status: String,
     ) {
         self.history = History::new(project);
-        self.ui = UiState::default();
+        // P1-11: restore workspace prefs from loaded preferences instead of
+        // defaulting. This ensures panel visibility, zoom, and page survive
+        // project installs (the audit item).
+        self.ui = UiState {
+            show_markups_list: self.prefs.show_markups_list,
+            show_tool_chest: self.prefs.show_tool_chest,
+            show_pages: self.prefs.show_pages,
+            focus_mode: self.prefs.focus_mode,
+            show_minimap: self.prefs.show_minimap,
+            zoom: self.prefs.zoom,
+            ui_scale: self.prefs.ui_scale,
+            inspector_width: self.prefs.inspector_width,
+            tool_chest_width: self.prefs.tool_chest_width,
+            ..UiState::default()
+        };
         self.draw = DrawState::Idle;
         self.current_path = current_path;
         self.ui.status = status;
@@ -2321,6 +2347,7 @@ impl RubricApp {
             let inspector_response = egui::Panel::right("inspector")
                 .default_size(280.0)
                 .min_size(240.0)
+                .resizable(true)
                 .show(ui, |ui| {
                     inspector_mutated = self.right_panel(ui);
                 })
@@ -2616,13 +2643,13 @@ mod kittest_tests {
 
     #[test]
     fn shell_empty_state_snapshot_matches_baseline() {
-        // Rendered visual evidence (guide II.27.12, G4-2b): the real empty
-        // shell — menu bar, toolbar, inspector empty state, status bar — is
-        // rasterised with kittest's wgpu renderer and compared against the
-        // committed baseline. Rendering needs a wgpu adapter: the CI
-        // `snapshot` job (macos, real GPU) sets RUBRIC_SNAPSHOTS=1; the
-        // Ubuntu test jobs have no adapter, so skip there instead of
-        // panicking inside kittest's adapter selection.
+        // Rendered visual evidence (guide II.27.12, G4-2b): the real empty shell
+        // — menu bar, toolbar, inspector empty state, status bar — is rasterised
+        // with kittest's wgpu renderer and compared against the committed
+        // baseline. Rendering needs a wgpu adapter: the CI `snapshot` job
+        // (macos, real GPU) sets RUBRIC_SNAPSHOTS=1; the Ubuntu test jobs have
+        // no adapter, so skip there instead of panicking inside kittest's adapter
+        // selection.
         if std::env::var_os("RUBRIC_SNAPSHOTS").is_none() {
             eprintln!("skipping: RUBRIC_SNAPSHOTS not set (no wgpu adapter on this runner)");
             return;
@@ -2634,3 +2661,4 @@ mod kittest_tests {
         harness.snapshot("shell_empty_state");
     }
 }
+

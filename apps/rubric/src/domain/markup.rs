@@ -108,35 +108,6 @@ impl MarkupKind {
         }
     }
 
-    /// Short glyph shown on the tool button (keeps the UI font-independent).
-    pub fn glyph(self) -> &'static str {
-        match self {
-            MarkupKind::Highlight => "▀",
-            MarkupKind::Strikeout => "∅",
-            MarkupKind::Underline => "▁",
-            MarkupKind::Squiggly => "≈",
-            MarkupKind::Text => "T",
-            MarkupKind::Callout => "◨",
-            MarkupKind::Note => "▤",
-            MarkupKind::Stamp => "★",
-            MarkupKind::Rectangle => "▭",
-            MarkupKind::Ellipse => "◯",
-            MarkupKind::Cloud => "☁",
-            MarkupKind::Polygon => "⬠",
-            MarkupKind::Polyline => "∿",
-            MarkupKind::Line => "╱",
-            MarkupKind::Arrow => "➤",
-            MarkupKind::Ink => "✎",
-            MarkupKind::MeasureLength => "↔",
-            MarkupKind::MeasurePerimeter => "▢",
-            MarkupKind::MeasureArea => "▣",
-            MarkupKind::MeasureAngle => "∠",
-            MarkupKind::MeasureDiameter => "⌀",
-            MarkupKind::MeasureRadius => "⟶",
-            MarkupKind::MeasureCount => "#",
-        }
-    }
-
     pub fn group(self) -> ToolGroup {
         match self {
             MarkupKind::Highlight
@@ -558,6 +529,8 @@ pub struct Comment {
     pub author: String,
     pub text: String,
     pub created: DateTime<Utc>,
+    /// None for top-level comments; Some(parent) for replies.
+    pub parent_comment_id: Option<Uuid>,
 }
 
 impl Comment {
@@ -567,6 +540,18 @@ impl Comment {
             author: author.into(),
             text: text.into(),
             created: Utc::now(),
+            parent_comment_id: None,
+        }
+    }
+
+    /// Create a reply to another comment.
+    pub fn reply(author: impl Into<String>, text: impl Into<String>, parent: Uuid) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            author: author.into(),
+            text: text.into(),
+            created: Utc::now(),
+            parent_comment_id: Some(parent),
         }
     }
 }
@@ -866,12 +851,13 @@ impl Markup {
         &mut self,
         author: impl Into<String>,
         text: impl Into<String>,
+        parent_comment_id: Option<Uuid>,
     ) -> Option<Uuid> {
         let text = text.into();
         if text.trim().is_empty() {
             return None;
         }
-        let comment = Comment::new(author, text);
+        let comment = Comment::reply(author, text, parent_comment_id.unwrap_or_default());
         let id = comment.id;
         self.comments.push(comment);
         self.touch();

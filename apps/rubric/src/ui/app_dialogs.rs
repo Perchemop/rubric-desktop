@@ -54,33 +54,66 @@ pub(crate) fn draw_keyboard_shortcuts(app: &mut RubricApp, ctx: &egui::Context) 
     egui::Window::new("Keyboard Shortcuts")
         .open(&mut open)
         .resizable(false)
-        .fixed_size(egui::vec2(600.0, 500.0))
+        .fixed_size(egui::vec2(700.0, 600.0))
         .show(ctx, |ui| {
             ui.heading("Rubric Keyboard Shortcuts");
             ui.separator();
+            ui.label("The following shortcuts are defined in the application:");
+            ui.separator();
+
+            // File actions
             ui.label("File:");
-            ui.label("Ctrl+N — New Project        Ctrl+O — Open Project        Ctrl+S — Save Project        Ctrl+Shift+S — Save Project As…");
-            ui.label("Ctrl+I — Import PDF        Ctrl+P — Print        Ctrl+W / Cmd+Q — Quit");
+            ui.label("Ctrl+N — New Project");
+            ui.label("Ctrl+O — Open Project");
+            ui.label("Ctrl+S — Save Project");
+            ui.label("Ctrl+Shift+S — Save Project As…");
             ui.separator();
+
+            // Edit actions
             ui.label("Edit:");
-            ui.label("Ctrl+Z — Undo        Ctrl+Y — Redo        Ctrl+A — Select All        Del / Backspace — Delete");
+            ui.label("Ctrl+Z — Undo");
+            ui.label("Ctrl+Y — Redo");
+            ui.label("Ctrl+A — Select All");
+            ui.label("Del / Backspace — Delete");
             ui.separator();
+
+            // View actions
             ui.label("View:");
-            ui.label("Zoom In / Out / Fit Page        PageUp / PageDown        Grid / Snap to Grid        Full Screen (Esc)");
-            ui.label("Auto-save on/off        Theme cycling");
+            ui.label("Zoom In / Out / Fit Page");
+            ui.label("PageUp / PageDown");
+            ui.label("Grid / Snap to Grid");
+            ui.label("Full Screen (Esc)");
             ui.separator();
+
+            // Tools — all 25 tools from TOOL_METADATA
             ui.label("Tools:");
-            ui.label("Select / Highlight / Rectangle / Ellipse / Line / Arrow / Pen / Text Box");
+            ui.separator();
+            ui.label("Single-key tool shortcuts (press the key to activate):");
+            ui.horizontal_wrapped(|ui| {
+                for meta in crate::domain::project::TOOL_METADATA.iter() {
+                    let shortcut = meta.shortcut.map(|c| c.to_ascii_uppercase()).unwrap_or('_');
+                    if ui.button(format!("{}", shortcut).as_str()).clicked() {
+                        // Activate the tool — could be expanded later
+                    }
+                    ui.label(format!("{} ({})", meta.label, shortcut));
+                }
+            });
+            ui.separator();
+
+            // Calibrate and measurements
             ui.label("Calibrate Scale (click two points on canvas)");
             ui.label("Measurement tools: Length / Diameter / Radius / Perimeter / Area / Angle");
             ui.separator();
+
+            // Markup actions
             ui.label("Markup actions:");
-            ui.label("Ctrl+D — Duplicate        Ctrl+C / Ctrl+V — Copy / Paste Properties");
+            ui.label("Ctrl+D — Duplicate");
             ui.label("Bring Forward / Send Backward / Bring To Front / Send To Back");
             ui.separator();
+
+            // General
             ui.label("General:");
             ui.label("Esc — Close dialog / Cancel operation");
-            ui.label("Ctrl+Shift+S — Save Project As…");
         });
     if !open {
         app.show_keyboard_shortcuts = false;

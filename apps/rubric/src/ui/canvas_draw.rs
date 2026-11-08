@@ -10,11 +10,12 @@ use crate::domain::geom::Pt;
 use crate::domain::markup::Markup;
 use crate::domain::{ruler_ticks, Grid, Page, Rect as DRect, Scale};
 use crate::ui::canvas_geom::{screen_rect, to_screen};
+use crate::ui::theme::TEXT_SIZE_SMALL;
 
 /// Draw a small dark measurement badge with white text at `anchor` (screen
 /// space). Used for measurement labels and the running count total.
 pub(crate) fn draw_measure_badge(painter: &Painter, anchor: Pos2, label: String) {
-    let galley = painter.layout_no_wrap(label, FontId::proportional(12.0), Color32::WHITE);
+    let galley = painter.layout_no_wrap(label, FontId::proportional(TEXT_SIZE_SMALL), Color32::WHITE);
     let text_rect = galley.rect.translate(Vec2::new(anchor.x, anchor.y));
     painter.rect_filled(text_rect.expand(4.0), 4.0, Color32::from_black_alpha(180));
     painter.galley(anchor, galley, Color32::WHITE);
@@ -77,7 +78,7 @@ pub(crate) fn draw_rulers(
         text_c.a().saturating_mul(6) / 10,
     );
     let tick = egui::Stroke::new(1.0, tick_c);
-    let font = FontId::proportional(9.0);
+    let font = FontId::proportional(TEXT_SIZE_SMALL);
     // Aim for labelled ticks at least ~72 px apart.
     let min_step = 72.0 / (zoom as f64).max(1e-3);
 
@@ -195,17 +196,9 @@ pub(crate) fn draw_bates_overlay(
     painter.text(anchor, align, stamp, font, color);
 }
 
-/// Draw a minimap in the bottom-right corner of the canvas showing the full
-/// page with a viewport rectangle indicating the current view area.
-pub(crate) fn draw_minimap(
-    painter: &Painter,
-    page_bounds: DRect,
-    viewport_rect: egui::Rect,
-    zoom: f32,
-    canvas_size: Vec2,
-    origin: Pos2,
-    pan: Vec2,
-) {
+/// Compute the on-canvas rectangle occupied by the minimap for the given
+/// canvas size and page bounds. Shared between drawing and click handling.
+pub(crate) fn minimap_rect(canvas_size: Vec2, page_bounds: DRect) -> egui::Rect {
     const MINIMAP_SIZE: f32 = 140.0;
     let aspect = page_bounds.w / page_bounds.h;
     let minimap_w = MINIMAP_SIZE;
@@ -217,8 +210,24 @@ pub(crate) fn draw_minimap(
     let anchor_y = canvas_size.y - margin - minimap_h;
     let anchor = Pos2::new(anchor_x, anchor_y);
 
-    // Draw minimap background (page bounds)
-    let minimap_rect = egui::Rect::from_min_size(anchor, Vec2::new(minimap_w, minimap_h));
+    egui::Rect::from_min_size(anchor, Vec2::new(minimap_w, minimap_h))
+}
+
+/// Draw a minimap in the bottom-right corner of the canvas showing the full
+/// page with a viewport rectangle indicating the current view area.
+pub(crate) fn draw_minimap(
+    painter: &Painter,
+    page_bounds: DRect,
+    viewport_rect: egui::Rect,
+    zoom: f32,
+    canvas_size: Vec2,
+    origin: Pos2,
+    pan: Vec2,
+) {
+    let minimap_rect = minimap_rect(canvas_size, page_bounds);
+    let minimap_w = minimap_rect.width();
+    let minimap_h = minimap_rect.height();
+    let anchor = minimap_rect.min;
     painter.rect_filled(
         minimap_rect,
         4.0,
@@ -282,7 +291,7 @@ pub(crate) fn draw_minimap(
         anchor + Vec2::new(4.0, -8.0),
         Align2::LEFT_TOP,
         "Overview",
-        FontId::proportional(10.0),
+        FontId::proportional(TEXT_SIZE_SMALL),
         Color32::WHITE,
     );
 }

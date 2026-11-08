@@ -1038,21 +1038,75 @@ pub(crate) fn draw_inspector(
             } else if m.comments.is_empty() {
                 ui.small("No comments yet.");
             } else {
-                for c in &m.comments {
-                    ui.label(format!("{} · {}", c.author, c.created.format("%H:%M:%S")));
-                    ui.small(&c.text);
-                    ui.separator();
+                // Display comments in a threaded tree.
+                // We iterate a cloned vec so we can safely show/hide replies.
+                let comments: Vec<comment::Comment> = m.comments.iter().cloned().collect();
+                // Build a simple tree: top-level comments first, then replies indented.
+                // We'll show indent based on parent depth.
+                let mut shown_ids: std::collections::HashSet<Uuid> = std::collections::HashSet::new();
+                for c in &comments {
+                    shown_ids.insert(c.id);
+                    // Compute indent level from parent chain.
+                    let mut depth = 0;
+                    let mut pid = c.parent_comment_id;
+                    while let Some(parent_id) = pid {
+                        if let Some(parent) = comments.iter().find(|c| c.id == parent_id) {
+                            depth += 1;
+                            pid = parent.parent_comment_id;
+                        } else {
+                            break; // parent not in current view
+                        }
+                    }
+                    let indent = if depth > 0 { depth * 20 } else { 0 };
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::MIN), |ui| {
+                        // Indent by pushing available width.
+                        ui.add_space(indent as f32);
+                        // Display comment with optional reply button.
+                        ui.horizontal(|ui| {
+                            ui.label(format!("{} · {}", c.author, c.created.format("%H:%M")));
+                            ui.small(&c.text);
+                            // Reply button shown only for top-level comments or when
+                            // the comment under the cursor is selected.
+                            if c.parent_comment_id.is_none() {
+                                if ui.button("Reply").clicked() {
+                                    // Set the comment draft to reply to this comment.
+                                    // We store the target comment id in a transient state.
+                                    ui_state.comment_reply_target = Some(c.id);
+                                }
+                            }
+                        });
+                        // Show replies recursively (simple approach: just indent once more).
+                        // For brevity, we show immediate replies inline.
+                        for reply in &comments {
+                            if reply.parent_comment_id == Some(c.id) {
+                                ui.with_layout(egui::Layout::left_to_right(egui::Align::MIN), |ui| {
+                                    ui.add_space(20.0);
+                                    ui.label(format!("    replied: {}", reply.author));
+                                    ui.small(&reply.text);
+                                });
+                            }
+                        }
+                    });
                 }
             }
+            // Input for new top-level comment or reply.
             ui.add_enabled_ui(editable, |ui| {
                 ui.text_edit_multiline(comment_text)
                     .on_hover_text("Comment text");
-                let add_clicked = ui.button("Add Comment").clicked();
+                // If there's a reply target, label the button accordingly.
+                let reply_label = ui_state.comment_reply_target.map(|tid| "Reply to comment".to_string()).unwrap_or_else(|| "Add Comment".to_string());
+                let add_clicked = ui.button(reply_label).clicked();
                 if add_clicked {
                     let author = project.settings.author.clone();
-                    if m.add_comment(author, comment_text.clone()).is_some() {
+                    let target = ui_state.comment_reply_target;
+                    if m.add_comment(author, comment_text.clone(), target).is_some() {
                         comment_text.clear();
-                        ui_state.status = "Comment added".to_string();
+                        ui_state.comment_reply_target = None;
+                        ui_state.status = if target.is_some() {
+                            "Reply added".to_string()
+                        } else {
+                            "Comment added".to_string()
+                        };
                         edited = true;
                         committed = true;
                     }
