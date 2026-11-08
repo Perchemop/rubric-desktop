@@ -357,7 +357,7 @@ fn draw_markup(
 
     /// Commit a pending in-canvas text edit (if any) using focus-loss semantics.
     /// Returns `true` when the text actually changed and was written back.
-    pub(crate) fn commit_text_edit(
+    pub fn commit_text_edit(
         ui_state: &mut super::app::UiState,
         project: &mut Project,
     ) -> bool {
@@ -410,7 +410,7 @@ fn draw_markup(
     // several UI-side caches at once; a bundled context struct is a later
     // refactor if more handles accumulate.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn draw_canvas(
+    pub fn draw_canvas(
         ui: &mut Ui,
         project: &mut Project,
         ui_state: &mut super::app::UiState,
@@ -2142,9 +2142,6 @@ fn draw_markup(
 
         mutated
     }
-
-pub use self::draw_canvas;
-pub use self::commit_text_edit;
 
     #[cfg(test)]
     mod tests {
