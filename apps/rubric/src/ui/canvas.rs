@@ -840,7 +840,7 @@ pub(crate) fn draw_canvas(
             let inner = popover.shrink(8.0);
                 response.widget_info(|| {
                     egui::WidgetInfo::labeled(WidgetType::Button, response.enabled(), "Note popover".to_owned())
-                })
+                });
             let mut cy = inner.min.y;
             let mut next_row = move |h: f32| {
                 let r = egui::Rect::from_min_size(
