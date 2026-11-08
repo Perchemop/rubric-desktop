@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use super::geom::{self, Pt, Rect};
 pub use super::markup_comment::Comment;
-use super::markup_geometry::{self, MarkupGeometry};
+use super::markup_geometry::self;
 use super::markup_measurement::Measurement;
 use super::markup_stamp::StampPreset;
 use super::style::{palette, Color, FillMode, MarkupStyle};

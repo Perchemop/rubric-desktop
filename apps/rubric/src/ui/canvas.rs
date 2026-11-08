@@ -2143,6 +2143,9 @@ fn draw_markup(
         mutated
     }
 
+pub use self::draw_canvas;
+pub use self::commit_text_edit;
+
     #[cfg(test)]
     mod tests {
         use super::*;
