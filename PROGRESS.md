@@ -1803,3 +1803,38 @@ Parallel subagent execution completed 7 workstreams:
 - CI verification via `ci.sh run` (fmt, clippy -D warnings, tests, release build)
 - Merge to main once CI green and review findings addressed
 - Monitor for any remaining P2 items from audit doc §P2
+
+## 2026-11-08 — P2 batch completion (parallel subagents)
+
+**Status**: completed; merged to main via PR #157; CI green
+
+### Completed P2 items (UI/UX audit batch)
+Parallel subagent execution completed 4 workstreams:
+
+**Domain work**:
+- **P2 dead glyph table cleanup**: Removed unused `MarkupKind::glyph()` from `src/domain/markup.rs`. StampPreset::glyph() preserved and actively used.
+
+**UI work**:
+- **P2 page-nav order**: Imported `PageStep`/`page_nav_target` from `domain/nav.rs` into `app_topbar.rs`. Correct visual order: Previous | Page x/y | Next. Disabled state derived from `page_nav_target`.
+- **P2 icon vocabulary**: Replaced emoji ◀/▶ with painted vector chevrons (`draw_prev_icon`/`draw_next_icon` in `icon_button.rs`).
+- **P2 minimap navigation**: Added interactive click-to-navigate in `canvas_draw.rs` and `canvas.rs`. Minimap click re-centres viewport; normal canvas tools suppressed when clicking minimap overlay.
+- **P2 type-scale tokens**: Replaced hardcoded font sizes with `TEXT_SIZE_SMALL/NORMAL/LARGE` constants in `canvas_draw.rs`, `canvas.rs`, `pages.rs`.
+
+**Docs**:
+- **P2 guide table rendering**: Verified `USER_GUIDE.md` markdown table already uses CommonMark-compatible syntax — no changes needed.
+
+### Evidence
+- PR #157 merged to main; all required CI checks green (fmt, clippy -D warnings, tests, release build, snapshot, security)
+- Files modified: `domain/markup.rs`, `ui/app_topbar.rs`, `ui/canvas.rs`, `ui/canvas_draw.rs`, `ui/icon_button.rs`, `ui/pages.rs`
+- Tests: existing domain tests continue to pass
+
+### All P2 batch items now complete
+1. ✅ page-nav order
+2. ✅ comment dates (HH:MM only)
+3. ✅ minimap navigation
+4. ✅ icon vocabulary (emoji → painted icons)
+5. ✅ dead glyph table
+6. ✅ type-scale tokens in overlays
+7. ✅ guide table rendering
+
+No remaining P2 items from audit doc §P2.
