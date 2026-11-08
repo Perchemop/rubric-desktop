@@ -477,8 +477,9 @@ pub struct RubricApp {
     draw: DrawState,
     /// The last pointer page position (for the status bar).
     last_page_pos: Option<Pt>,
-    comment_text: String,/// The id of the comment being replied to, if any. UI-only, never serialized.
-pub(crate) comment_reply_target: Option<Uuid>,
+    comment_text: String,
+    /// The id of the comment being replied to, if any. UI-only, never serialized.
+    pub(crate) comment_reply_target: Option<Uuid>,
     /// Session-only association with a file on disk. Not part of the project
     /// snapshot, so it never undoes/redoes with history.
     current_path: Option<PathBuf>,
