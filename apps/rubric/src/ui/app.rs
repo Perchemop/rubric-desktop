@@ -626,7 +626,13 @@ impl RubricApp {
     /// (which has on-disk caching so re-renders are free). The UI reads the
     /// queue each frame and, once the job completes, creates the egui texture
     /// from the cached file and adds it to `thumb_cache`.
-    pub(crate) fn begin_render_thumb(&mut self, pdf_path: &Path, page_index: usize, thumb_width_px: u32, cache_key: &str) {
+    pub(crate) fn begin_render_thumb(
+        &mut self,
+        pdf_path: &Path,
+        page_index: usize,
+        thumb_width_px: u32,
+        cache_key: &str,
+    ) {
         let mut queue = self.render.lock().unwrap_or_else(|p| p.into_inner());
         if queue.in_flight {
             // Already rendering; don't spawn a second concurrent job.
