@@ -12,13 +12,13 @@ use uuid::Uuid;
 
 use super::geom::{self, Pt, Rect};
 pub use super::markup_comment::Comment;
-use super::markup_geometry::{text_box_rect, text_line_height, MarkupGeometry};
+use super::markup_geometry::{MarkupGeometry, text_box_rect, text_line_height};
 use super::markup_measurement::Measurement;
 use super::markup_stamp::StampPreset;
 use super::style::{palette, Color, FillMode, MarkupStyle};
 use super::units::{self, MeasureKind, Scale};
 
-pub use super::markup_geometry::{text_line_height, text_box_rect, MarkupGeometry};
+pub use super::markup_geometry::{MarkupGeometry, text_line_height, text_box_rect};
 
 /// The tool / shape family of a markup.
 ///
