@@ -384,9 +384,6 @@ pub use self::text_box_rect;
     }
 
 
-pub use self::MarkupGeometry;
-pub use self::text_line_height;
-pub use self::text_box_rect;
 }
 
 }
