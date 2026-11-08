@@ -1864,3 +1864,36 @@ Parallel subagent execution completed 4 workstreams:
 - ui/inspector.rs, ui/app_menu.rs
 - crates/crash-report/Cargo.toml, crash-report/src/lib.rs
 - crates/update-check/Cargo.toml, update-check/src/lib.rs
+
+## 2026-11-08 — Research: async thumbnails + signed releases (parallel subagents)
+
+**Status**: research complete; pending owner approval (guide §2.3/§8.4)
+
+### Completed research (parallel subagents)
+Parallel subagent execution completed 2 research workstreams:
+
+**1. Async page thumbnails** (`docs/research/async-thumbnails.md`)
+- Current: synchronous UI-thread rendering in `pages.rs` and `canvas.rs`
+- P1-2 `RenderQueue` scaffolding exists but is unwired/dead code
+- **Constraint**: PDFium (default) lacks `thread_safe` feature; hayro path is thread-safe
+- **Design**: long-lived render worker thread, mpsc channels, PNG decode in worker, UI only uploads textures, `request_repaint()` on completion
+- **Domain types proposed**: `RenderKey`, `RenderJob`, `RenderOutcome`, `RenderQueueState`, `TextureLru`, `DiskCacheEntry`, `plan_disk_eviction`
+- **Cache eviction**: in-memory LRU (cap 64, protect visible window) + on-disk LRU (512 MiB / 30-day, active PDF protected)
+- **6-slice implementation plan** with file ownership per parallel-agent rules
+- **Gate**: needs owner approval before Slice 1 (domain types + worker)
+
+**2. Signed releases + checksum-verified auto-update** (`docs/research/signed-releases.md`)
+- Current: auto-update checks GitHub Releases but downloads unsigned artifacts
+- **Decision**: minisign (Ed25519) over cosign — zero-dep `minisign-verify` (MIT), proportional for plain zips
+- **Manifest signing**: sign `SHA256SUMS.minisig` (covers all 4 zips), publish `SHA256SUMS.txt` copy
+- **Key management**: private key in Actions secrets (`MINISIGN_SECRET_KEY` + `MINISIGN_PASSWORD`), public key embedded via `include_str!`, rotation via embedded trusted-key list + dual-sign overlap
+- **Verification flow**: signature over manifest → per-artefact SHA-256 → `Untrusted` state (warn, no apply) vs verified state (show key id, enable apply)
+- **Apply phases**: Phase 1 = verify + hand off to OS installer; Phase 2 = portable self-replace (separate slice)
+- **Gate**: needs owner approval + key generation (one-time irreversible step)
+
+### Research gate
+Both notes are in `docs/research/` with status **"Proposed — pending human gate"** in `docs/research/README.md`. Per guide §2.3/§8.4, dependent implementation Tasks cannot start until owner approves and dates the approval block in each note.
+
+### Blocked
+- PR #160 (Issue #29 + god-file splits) — CI failing on formatting check; maintainer must run `cargo fmt --all` locally and push
+- Research notes pending owner approval before implementation Tasks can start
