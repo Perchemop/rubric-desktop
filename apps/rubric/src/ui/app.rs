@@ -103,8 +103,8 @@ pub(crate) enum StatusKind {
 ///
 /// Follows the same `Arc<Mutex>` + worker-thread pattern as `update-check`
 /// (guide §7.2). One render job may be in flight at a time; the UI reads
-/// this state each frame to show a “working” indicator and repaint when
-/// the job completes.
+/// A render queue for off-loading PDF page rendering to a worker thread.
+#[expect(dead_code)]
 #[derive(Default)]
 pub(crate) struct RenderQueue {
     /// True while a render job is in progress; the UI shows a placeholder
@@ -116,8 +116,8 @@ pub(crate) struct RenderQueue {
     completed_key: Option<String>,
 }
 
-/// A render job for off-loading PDF page rendering to a worker thread
-/// (UI audit P1-2: move heavy work off the UI thread).
+/// A render job for off-loading PDF page rendering to a worker thread.
+#[expect(dead_code)]
 #[derive(Debug)]
 pub(crate) struct RenderJob {
     /// Path to the PDF file.
@@ -133,6 +133,7 @@ pub(crate) struct RenderJob {
 }
 
 /// Outcome of a render job, sent back to the UI thread.
+#[expect(dead_code)]
 pub(crate) enum RenderResult {
     /// Success: the page was rendered and the texture is ready.
     Success,
@@ -142,6 +143,7 @@ pub(crate) enum RenderResult {
 
 /// Repaint request signal (UI audit P1-2): posted by worker threads to
 /// notify the UI that a resource has finished loading/rendering.
+#[expect(dead_code)]
 #[derive(Debug)]
 pub(crate) struct RepaintSignal;
 
@@ -473,6 +475,7 @@ pub struct RubricApp {
     update: Arc<Mutex<UpdateCheck>>,
     /// Render queue state, written by the worker thread and read by the
     /// UI each frame (UI audit P1-2: move heavy work off the UI thread).
+    #[allow(dead_code)]
     render: Arc<Mutex<RenderQueue>>,
     /// Repository used for issue URLs and release checks.
     repo: String,
@@ -626,6 +629,7 @@ impl RubricApp {
     /// (which has on-disk caching so re-renders are free). The UI reads the
     /// queue each frame and, once the job completes, creates the egui texture
     /// from the cached file and adds it to `thumb_cache`.
+    #[allow(dead_code)]
     pub(crate) fn begin_render_thumb(
         &mut self,
         pdf_path: &Path,
@@ -647,12 +651,12 @@ impl RubricApp {
         let pdf_path_str = pdf_path.to_string_lossy().to_string();
         let page_index_val = page_index;
         let thumb_width_px_val = thumb_width_px;
-        let cache_key_val = cache_key.to_string();
+        let _cache_key_val = cache_key.to_string();
         std::thread::spawn(move || {
             // Render to the on-disk cache using the existing pdf infrastructure.
             // This is the "heavy" part; subsequent renders will hit the cache.
             if let Ok(_cache_path) = crate::data::pdf::render_page_to_cache(
-                &PathBuf::from(&pdf_path_str),
+                PathBuf::from(&pdf_path_str),
                 page_index_val,
                 thumb_width_px_val,
             ) {
@@ -1372,6 +1376,7 @@ impl RubricApp {
 
     /// Set a transient toast notification (UI audit P1-1): shown briefly with
     /// severity colour then auto-cleared after 3 seconds.
+    #[allow(dead_code)]
     pub(crate) fn set_toast(&mut self, kind: StatusKind, msg: impl Into<String>) {
         self.toast = Some((kind, msg.into(), Instant::now()));
     }
