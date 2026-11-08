@@ -18,6 +18,11 @@ pub const TEXT_SIZE_BODY: f32 = 13.0;
 pub const TEXT_SIZE_BODY_SMALL: f32 = 12.0;
 pub const TEXT_SIZE_SECONDARY: f32 = 11.0;
 
+/// P2 type-scale tokens (small/normal/large) for overlays and chrome.
+pub const TEXT_SIZE_SMALL: f32 = TEXT_SIZE_BODY_SMALL;
+pub const TEXT_SIZE_NORMAL: f32 = TEXT_SIZE_SUBHEADING;
+pub const TEXT_SIZE_LARGE: f32 = TEXT_SIZE_HEADING;
+
 /// Monospace token used for numeric readouts (cursor coordinates, scale, units).
 pub const TEXT_MONOSPACE: FontId = FontId::new(TEXT_SIZE_BODY, FontFamily::Monospace);
 

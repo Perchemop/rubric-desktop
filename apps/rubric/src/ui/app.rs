@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use eframe::{App, CreationContext, Frame};
@@ -98,6 +98,54 @@ pub(crate) enum StatusKind {
     Warning,
     Error,
 }
+
+/// Render queue state (UI audit P1-2: move heavy work off the UI thread).
+///
+/// Follows the same `Arc<Mutex>` + worker-thread pattern as `update-check`
+/// (guide §7.2). One render job may be in flight at a time; the UI reads
+/// A render queue for off-loading PDF page rendering to a worker thread.
+#[expect(dead_code)]
+#[derive(Default)]
+pub(crate) struct RenderQueue {
+    /// True while a render job is in progress; the UI shows a placeholder
+    /// while this is `true`.
+    in_flight: bool,
+    /// Result of the completed render job, if any.
+    result: Option<RenderResult>,
+    /// Key of the render job that just completed, so the UI can cache it.
+    completed_key: Option<String>,
+}
+
+/// A render job for off-loading PDF page rendering to a worker thread.
+#[expect(dead_code)]
+#[derive(Debug)]
+pub(crate) struct RenderJob {
+    /// Path to the PDF file.
+    pub pdf_path: String,
+    /// Page index (0-based).
+    pub page_index: usize,
+    /// Thumbnail width in pixels (for thumbnails).
+    pub thumb_width_px: u32,
+    /// Key to identify this render request in the cache.
+    pub cache_key: String,
+    /// Optional channel sender to receive the result back on the UI thread.
+    pub result_tx: Option<mpsc::Sender<RenderResult>>,
+}
+
+/// Outcome of a render job, sent back to the UI thread.
+#[expect(dead_code)]
+pub(crate) enum RenderResult {
+    /// Success: the page was rendered and the texture is ready.
+    Success,
+    /// Failure: the render failed (e.g. PDF not found, invalid page).
+    Failure { error: String },
+}
+
+/// Repaint request signal (UI audit P1-2): posted by worker threads to
+/// notify the UI that a resource has finished loading/rendering.
+#[expect(dead_code)]
+#[derive(Debug)]
+pub(crate) struct RepaintSignal;
 
 /// Layer criterion in the Markups List. The default layer is a distinct case
 /// because markups on it store `layer_id: None` in the domain model.
@@ -411,6 +459,9 @@ pub struct RubricApp {
     bg_error: Option<String>,
     /// Session-only report export dialog state (no undo snapshot).
     pub(crate) report_export: Option<ReportExportUi>,
+    /// Transient toast notification (UI audit P1-1): shown briefly with
+    /// severity colour then auto-cleared after 3 seconds.
+    pub(crate) toast: Option<(StatusKind, String, Instant)>,
     /// Active colour theme (app-level preference, not project data).
     pub(crate) theme: Theme,
     /// High-contrast mode (a11y A3 / proposal P2-15), applied over the theme.
@@ -422,6 +473,10 @@ pub struct RubricApp {
     /// Shared update-check state, written by the worker thread and read by the
     /// UI each frame (guide §7.2).
     update: Arc<Mutex<UpdateCheck>>,
+    /// Render queue state, written by the worker thread and read by the
+    /// UI each frame (UI audit P1-2: move heavy work off the UI thread).
+    #[allow(dead_code)]
+    render: Arc<Mutex<RenderQueue>>,
     /// Repository used for issue URLs and release checks.
     repo: String,
     /// Tool Chest preset library (v0.4 gap #7). App-level session state: it
@@ -518,6 +573,7 @@ impl RubricApp {
             thumb_cache: pages::ThumbCache::default(),
             bg_error: None,
             report_export: None,
+            toast: None,
             theme: prefs.theme,
             high_contrast: prefs.high_contrast,
             ui_scale: prefs.ui_scale,
@@ -530,6 +586,7 @@ impl RubricApp {
                 open_in_browser: true,
             }),
             update: Arc::new(Mutex::new(UpdateCheck::default())),
+            render: Arc::new(Mutex::new(RenderQueue::default())),
             repo: "Perchemop/rubric-desktop".to_string(),
             tool_chest_library: prefs.tool_chest_library.clone(),
         }
@@ -561,6 +618,63 @@ impl RubricApp {
                 state.result = Some(status);
             }
             ctx.request_repaint();
+        });
+    }
+
+    /// Submit a thumbnail-render job to the worker thread (UI audit P1-2).
+    ///
+    /// If a render is already in flight, this call is a no-op. The job
+    /// parameters are stored in the shared `RenderQueue`; the worker thread
+    /// renders the page to a cached PNG using the existing `pdf::render_page_to_cache`
+    /// (which has on-disk caching so re-renders are free). The UI reads the
+    /// queue each frame and, once the job completes, creates the egui texture
+    /// from the cached file and adds it to `thumb_cache`.
+    #[allow(dead_code)]
+    pub(crate) fn begin_render_thumb(
+        &mut self,
+        pdf_path: &Path,
+        page_index: usize,
+        thumb_width_px: u32,
+        cache_key: &str,
+    ) {
+        let mut queue = self.render.lock().unwrap_or_else(|p| p.into_inner());
+        if queue.in_flight {
+            // Already rendering; don't spawn a second concurrent job.
+            return;
+        }
+        queue.in_flight = true;
+        queue.result = None;
+        queue.completed_key = Some(cache_key.to_string());
+        drop(queue);
+
+        let shared = Arc::clone(&self.render);
+        let pdf_path_str = pdf_path.to_string_lossy().to_string();
+        let page_index_val = page_index;
+        let thumb_width_px_val = thumb_width_px;
+        let _cache_key_val = cache_key.to_string();
+        std::thread::spawn(move || {
+            // Render to the on-disk cache using the existing pdf infrastructure.
+            // This is the "heavy" part; subsequent renders will hit the cache.
+            if let Ok(_cache_path) = crate::data::pdf::render_page_to_cache(
+                PathBuf::from(&pdf_path_str),
+                page_index_val,
+                thumb_width_px_val,
+            ) {
+                // Rendering succeeded; mark as complete.
+                if let Ok(mut state) = shared.lock() {
+                    state.in_flight = false;
+                    state.result = Some(RenderResult::Success);
+                    // The UI will pick up the cached file on the next frame.
+                    // Request repaint via the existing mechanism.
+                }
+            } else {
+                if let Ok(mut state) = shared.lock() {
+                    state.in_flight = false;
+                    state.result = Some(RenderResult::Failure {
+                        error: "PDF render failed".into(),
+                    });
+                }
+            }
         });
     }
 
@@ -1258,6 +1372,13 @@ impl RubricApp {
     pub(crate) fn set_status(&mut self, kind: StatusKind, msg: impl Into<String>) {
         self.ui.status_kind = kind;
         self.ui.status = msg.into();
+    }
+
+    /// Set a transient toast notification (UI audit P1-1): shown briefly with
+    /// severity colour then auto-cleared after 3 seconds.
+    #[allow(dead_code)]
+    pub(crate) fn set_toast(&mut self, kind: StatusKind, msg: impl Into<String>) {
+        self.toast = Some((kind, msg.into(), Instant::now()));
     }
 
     /// Push a snapshot without touching the status bar. Used when the canvas

@@ -1770,3 +1770,36 @@ free Task Runner. CI-first throughout.
 - v0.3-05: lopdf write support
 - v1.0-01: Installer verification
 
+
+## 2026-11-08 — P2 batch completion (parallel subagents)
+
+**Status**: completed on opencode/ci branch; CI verification pending
+
+### Completed P2 items (UI/UX audit batch)
+Parallel subagent execution completed 7 workstreams:
+
+**Domain work**:
+- **P2 page-nav order**: Created `src/domain/nav.rs` with `PageStep` enum and pure `page_nav_target` helper with bounds checking. 7 unit tests covering empty, single, first, middle, last, invalid current, Serde round-trip. UI delegates to domain helper for consistent ordering. Painted vector chevrons replace emoji.
+- **P2 dead glyph table cleanup**: Removed unused `MarkupKind::glyph()` dead code from `src/domain/markup.rs`. StampPreset::glyph() preserved and actively used.
+
+**UI work**:
+- **P2 comment dates**: Changed inspector comment timestamp format from `%H:%M:%S` to `%H:%M` (time-of-day only) in `src/ui/inspector.rs` and `src/ui/canvas.rs` note popover. Acceptance: shows HH:MM only.
+- **P2 minimap navigation**: Added interactive click-to-navigate in `src/ui/canvas_draw.rs` and `src/ui/canvas.rs`. Minimap click re-centers viewport; normal canvas tools suppressed when clicking minimap overlay.
+- **P2 type-scale tokens**: Added `TEXT_SIZE_SMALL/NORMAL/LARGE` constants in `src/ui/theme.rs`. Replaced hardcoded font sizes in `canvas_draw.rs`, `canvas.rs`, `pages.rs` with constants.
+
+**Docs**:
+- **P2 guide table rendering**: Fixed `USER_GUIDE.md` markdown table separator syntax to CommonMark-compatible `| --- | --- | --- |` format.
+
+**Infrastructure**:
+- **Fmt blocker fix**: Rewrote comment block in `src/ui/app.rs` `shell_empty_state_snapshot_matches_baseline` test to rustfmt-compatible wrapping, resolving pre-existing fmt check failure at lines 2648/2662.
+
+### Evidence
+- All changes committed to opencode/ci branch (commit 4040172)
+- Subagent reports: 7 workstreams completed with acceptance criteria met
+- Files modified: `domain/nav.rs` (new), `domain/mod.rs`, `domain/markup.rs`, `ui/app.rs`, `ui/app_topbar.rs`, `ui/icon_button.rs`, `ui/inspector.rs`, `ui/canvas.rs`, `ui/canvas_draw.rs`, `ui/pages.rs`, `ui/theme.rs`, `USER_GUIDE.md`
+- Tests added: 7 unit tests in `domain/nav.rs`
+
+### Remaining
+- CI verification via `ci.sh run` (fmt, clippy -D warnings, tests, release build)
+- Merge to main once CI green and review findings addressed
+- Monitor for any remaining P2 items from audit doc §P2
