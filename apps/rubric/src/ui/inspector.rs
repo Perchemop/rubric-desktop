@@ -414,6 +414,7 @@ pub(crate) fn draw_inspector(
 
     let selected: Vec<Uuid> = ui_state.selected.iter().copied().collect();
     let multi = selected.len() > 1;
+    let editable = !selected.is_empty();
 
     // P1-3: content driven by inspector_mode — tabs are the sole navigator.
     match ui_state.inspector_mode {
@@ -1039,7 +1040,7 @@ pub(crate) fn draw_inspector(
                 ui.small("No comments yet.");
             } else {
                 for c in &m.comments {
-                    ui.label(format!("{} · {}", c.author, c.created.format("%H:%M:%S")));
+                    ui.label(format!("{} · {}", c.author, c.created.format("%H:%M")));
                     ui.small(&c.text);
                     ui.separator();
                 }
