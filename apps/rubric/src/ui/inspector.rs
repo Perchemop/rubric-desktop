@@ -415,305 +415,23 @@ pub(crate) fn draw_inspector(
     let selected: Vec<Uuid> = ui_state.selected.iter().copied().collect();
     let multi = selected.len() > 1;
 
-    // P1-3: content driven by inspector_mode — tabs are the sole navigator.
-    match ui_state.inspector_mode {
-        InspectorMode::Selection => {
-            let selected: Vec<Uuid> = ui_state.selected.iter().copied().collect();
-            let multi = selected.len() > 1;
-            if selected.is_empty() {
-                ui.label("No selection");
-                ui.small("Click a markup on the canvas to edit it.");
-            } else {
-                let first = selected[0];
-                let Some(mut m) = project.active().and_then(|d| d.find_markup(first)).cloned() else {
-                    ui.small("Selected markup no longer exists.");
-                    ui.separator();
-                    ui.collapsing("Project", |ui| {
-                        let mut name = project.name.clone();
-                        let resp = ui.text_edit_singleline(&mut name);
-                        if resp.changed() {
-                            project.rename(name);
-                            if resp.lost_focus() {
-                                committed = true;
-                            }
-                        }
-                        ui.label("Author");
-                        let mut author = project.settings.author.clone();
-                        let resp_a = ui.text_edit_singleline(&mut author);
-                        if resp_a.changed() {
-                            project.settings.author = author;
-                            ui_state.status = "Author updated".to_string();
-                            if resp_a.lost_focus() {
-                                committed = true;
-                            }
-                        }
-                    });
-                    ui.collapsing("Document", |ui| {
-                        if let Some(doc) = project.active_mut() {
-                            let mut title = doc.title.clone();
-                            let resp = ui.text_edit_singleline(&mut title);
-                            if resp.changed() {
-                                doc.title = title;
-                                doc.touch();
-                                if resp.lost_focus() {
-                                    committed = true;
-                                }
-                            }
-                            ui.label(format!("Pages: {}", doc.page_count()));
-                            ui.label(format!("Markups: {}", doc.markups.len()));
-                        }
-                    });
-                    if ui_state.active_tool.to_kind() == Some(MarkupKind::Stamp) {
-                        ui.separator();
-                        ui.label("Stamp preset (tool)");
-                        ComboBox::from_label("Preset")
-                            .selected_text(ui_state.active_stamp.label())
-                            .show_ui(ui, |ui| {
-                                for preset in StampPreset::ALL.iter() {
-                                    if ui
-                                        .selectable_value(
-                                            &mut ui_state.active_stamp,
-                                            *preset,
-                                            preset.label(),
-                                        )
-                                        .clicked()
-                                    {
-                                        ui_state.status = format!("Stamp tool → {}", preset.label());
-                                    }
-                                }
-                            });
-                    }
-                    // Selection properties
-                    ui.separator();
-                    ui.label("Markup properties");
-                    ui.horizontal(|ui| {
-                        ui.label("Kind");
-                        ComboBox::from_label("Kind")
-                            .selected_text(m.kind.label())
-                            .show_ui(ui, |ui| {
-                                for kind in MarkupKind::ALL.iter() {
-                                    if ui
-                                        .selectable_value(
-                                            &mut m.kind,
-                                            *kind,
-                                            kind.label(),
-                                        )
-                                        .changed()
-                                    {
-                                        committed = true;
-                                    }
-                                }
-                            });
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("Status");
-                        ComboBox::from_label("Status")
-                            .selected_text(m.status.label())
-                            .show_ui(ui, |ui| {
-                                for s in ReviewStatus::ALL.iter() {
-                                    if ui.selectable_value(&mut m.status, *s, s.label()).changed()
-                                    {
-                                        committed = true;
-                                    }
-                                }
-                            });
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("Author");
-                        let mut author = m.author.clone();
-                        let resp = ui.text_edit_singleline(&mut author);
-                        if resp.changed() {
-                            m.author = author;
-                            committed = true;
-                        }
-                        ui.label("Layer");
-                        let layer_id = m.layer_id.unwrap_or_default();
-                        if let Some(layer) = project.active().and_then(|d| d.layer(layer_id)) {
-                            let visible = layer.visible;
-                            let eye = if visible { "👁" } else { "·" };
-                            let eye_tip = if visible { "Hide layer" } else { "Show layer" };
-                            if ui.button(eye).on_hover_text(eye_tip).clicked() {
-                                if let Some(doc) = project.active_mut() {
-                                    if doc.set_layer_visible(layer_id, !visible) {
-                                        committed = true;
-                                        ui_state.status = if !visible {
-                                            format!("Layer '{}' visible", layer.name)
-                                        } else {
-                                            format!("Layer '{}' hidden", layer.name)
-                                        };
-                                    }
-                                }
-                            }
-                            let locked = layer.locked;
-                            let padlock = if locked { "🔒" } else { "🔓" };
-                            let padlock_tip = if locked { "Unlock layer" } else { "Lock layer" };
-                            if ui.button(padlock).on_hover_text(padlock_tip).clicked() {
-                                if let Some(doc) = project.active_mut() {
-                                    if doc.set_layer_locked(layer_id, !locked) {
-                                        committed = true;
-                                        ui_state.status = if !locked {
-                                            format!("Layer '{}' locked", layer.name)
-                                        } else {
-                                            format!("Layer '{}' unlocked", layer.name)
-                                        };
-                                    }
-                                }
-                            }
-                        } else {
-                            ui.label("Layer: none");
-                        }
-                    });
-                    if multi {
-                        ui.label(format!("{} selected", selected.len()));
-                        ui.horizontal(|ui| {
-                            ui.label("Batch Status");
-                            ComboBox::from_id_salt("batch_status")
-                                .selected_text("Change status…")
-                                .show_ui(ui, |ui| {
-                                    for s in ReviewStatus::ALL.iter() {
-                                        ui.horizontal(|ui| {
-                                            let (rect, _) = ui.allocate_exact_size(
-                                                egui::vec2(12.0, 12.0),
-                                                egui::Sense::hover(),
-                                            );
-                                            ui.painter().circle_filled(
-                                                rect.center(),
-                                                5.0,
-                                                domain_to_color32(s.color()),
-                                            );
-                                            if ui.selectable_label(false, s.label()).clicked() {
-                                                for id in &selected {
-                                                    let doc = project.active_mut();
-                                                    if let Some(doc) = doc {
-                                                        let editable = doc
-                                                            .find_markup(*id)
-                                                            .map(|m| doc.is_markup_editable(m))
-                                                            .unwrap_or(false);
-                                                        if editable {
-                                                            if let Some(markup) = doc.find_markup_mut(*id) {
-                                                                markup.status = *s;
-                                                                markup.touch();
-                                                        }
-                                                    }
-                                                }
-                                                if let Some(doc) = project.active_mut() {
-                                                    doc.touch();
-                                                }
-                                                ui_state.status = format(
-                                                    "Batch status → {} for {} markup(s)",
-                                                    s.label(),
-                                                    selected.len()
-                                                );
-                                                committed = true;
-                                            }
-                                    }
-                                });
-                        });
-                    }
-                }
-            }
-        }
-        InspectorMode::Properties => {
-            ui.label(format!("ID: {}", m.id));
-            ui.label(format!("Kind: {}", m.kind.label()));
-            ui.label(format!("Page: {}", m.page));
-            ui.add_enabled_ui(editable, |ui| {
-                if !multi {
-                    ui.horizontal(|ui| {
-                        ui.label("Subject");
-                        let mut subj = m.subject.clone();
-                        let resp = ui.text_edit_singleline(&mut subj);
-                        if resp.changed() {
-                            m.subject = subj;
-                            committed = true;
-                        }
-                        ui.label("Author");
-                        let mut author = m.author.clone();
-                        let resp_a = ui.text_edit_singleline(&mut author);
-                        if resp_a.changed() {
-                            m.author = author;
-                            committed = true;
-                        }
-                        if resp_a.lost_focus() {
-                            ui_state.status = "Author updated".to_string();
-                        }
-                    });
-                }
-                ui.horizontal(|ui| {
-                    ui.label("Stroke width");
-                    ui.add(egui::DragValue::new(&mut m.style.stroke.width).range(0.0..=50.0));
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Opacity");
-                    ui.add(egui::DragValue::new(&mut m.style.stroke.opacity).range(0.0..=1.0));
-                });
-                ui.collapsing("Layer", |ui| {
-                    let layer_ids: Vec<Uuid> = project
-                        .active()
-                        .map(|d| d.layers.iter().map(|l| l.id).collect())
-                        .unwrap_or_default();
-                    let default_id = project
-                        .active()
-                        .map(|d| d.default_layer_id())
-                        .unwrap_or_default();
-                    for id in layer_ids {
-                        let layer = project.active().and_then(|d| d.layer(id).cloned());
-                        let Some(layer) = layer else {
-                            continue;
-                        };
-                        let is_default = id == default_id;
-                        ui.horizontal(|ui| {
-                            let visible = layer.visible;
-                            let eye = if visible { "👁" } else { "·" };
-                            let eye_tip = if visible { "Hide layer" } else { "Show layer" };
-                            if ui.button(eye).on_hover_text(eye_tip).clicked() {
-                                if let Some(doc) = project.active_mut() {
-                                    if doc.set_layer_visible(id, !visible) {
-                                        committed = true;
-                                        ui_state.status = if !visible {
-                                            format!("Layer '{}' visible", layer.name)
-                                        } else {
-                                            format!("Layer '{}' hidden", layer.name)
-                                        };
-                                    }
-                                }
-                            }
-                            let locked = layer.locked;
-                            let padlock = if locked { "🔒" } else { "🔓" };
-                            let padlock_tip = if locked { "Unlock layer" } else { "Lock layer" };
-                            if ui.button(padlock).on_hover_text(padlock_tip).clicked() {
-                                if let Some(doc) = project.active_mut() {
-                                    if doc.set_layer_locked(id, !locked) {
-                                        committed = true;
-                                        ui_state.status = if !locked {
-                                            format!("Layer '{}' locked", layer.name)
-                                        } else {
-                                            format!("Layer '{}' unlocked", layer.name)
-                                        };
-                                    }
-                                }
-                            }
-                            if is_default {
-                                ui.small("(default)");
-                            }
-                        });
-                    });
-                });
-            });
-        }
-        InspectorMode::Comments => {
-            ui.label("Comments: (placeholder — F-103 threaded comments)");
-            ui.small("Comments will appear here once threaded comment support is implemented.");
-        }
-        InspectorMode::Measurements => {
-            ui.label("Measurement readout");
-            if let Some(m) = project.active().and_then(|d| d.markups.first()) {
-                ui.label(format!("Length: {}", m.measurement_value()));
-            } else {
-                ui.label("No measurement selected");
-            }
-        }
-        InspectorMode::Settings => {
+    if selected.is_empty() {
+        ui.label("No selection");
+        ui.small("Click a markup on the canvas to edit it.");
+    } else {
+        // Work on a clone of the first selected markup; write it back at the end.
+        let first = selected[0];
+        let Some(mut m) = project.active().and_then(|d| d.find_markup(first)).cloned() else {
+            ui.small("Selected markup no longer exists.");
+            // Skip property editing; Project/Document sections render below.
+            // Jump to them by leaving this block.
+            // (Nothing else to do here.)
+            // We still need to avoid running the property code, so return early
+            // but the common sections below would be skipped. To keep them
+            // reachable, duplicate minimal: actually fall through by not returning.
+            // Rust requires the binding, so handle via a flag instead.
+            ui.separator();
+            // Render common sections then return.
             ui.collapsing("Project", |ui| {
                 let mut name = project.name.clone();
                 let resp = ui.text_edit_singleline(&mut name);
@@ -749,107 +467,97 @@ pub(crate) fn draw_inspector(
                     ui.label(format!("Markups: {}", doc.markups.len()));
                 }
             });
-            ui.collapsing("Scale", |ui| {
-                let page_idx = if let Some(doc) = project.active() {
-                    let count = doc.page_count();
-                    if count == 0 {
-                        0
-                    } else {
-                        ui_state.current_page.min(count - 1)
-                    }
-                } else {
-                    ui_state.current_page
-                };
-                let before = project
-                    .active()
-                    .and_then(|d| d.pages.get(page_idx).copied())
-                    .map(|p| p.scale)
-                    .unwrap_or(Scale::PAPER);
-                let mut scale = before;
-                ui.label("Presets");
-                ui.horizontal_wrapped(|ui| {
-                    let presets: [(&str, Scale); 4] = [
-                        ("1:1", Scale::PAPER),
-                        ("1 in = 1 ft",
-                            Scale::from_ratio(MeasureUnit::Foot, 1.0, 72.0)),
-                        ("1 in = 10 ft",
-                            Scale::from_ratio(MeasureUnit::Foot, 10.0, 72.0)),
-                        ("1 in = 50 ft",
-                            Scale::from_ratio(MeasureUnit::Foot, 50.0, 72.0)),
-                    ];
-                    for (label, sc) in presets.iter() {
-                        if ui.button(*label).clicked() && !same_scale(*sc, before) {
-                            scale = *sc;
-                            if let Some(doc) = project.active_mut() {
-                                if let Some(page) = doc.pages.get_mut(page_idx) {
-                                    page.scale = scale;
-                                }
-                                let s = doc.pages.get(page_idx).map(|p| p.scale).unwrap_or(scale);
-                                for m in doc.markups.iter_mut().filter(|m| m.page == page_idx) {
-                                    m.recompute_measurement(s);
-                                }
-                                doc.touch();
-                            }
-                            committed = true;
-                            ui_state.status = format!("Scale → {}", scale.describe());
-                        }
-                    }
-                });
+            if ui_state.active_tool.to_kind() == Some(MarkupKind::Stamp) {
                 ui.separator();
-                ui.label("Unit");
-                let mut unit_changed = false;
-                ComboBox::from_label("Display unit")
-                    .selected_text(scale.unit.name())
+                ui.label("Stamp preset (tool)");
+                ComboBox::from_label("Preset")
+                    .selected_text(ui_state.active_stamp.label())
                     .show_ui(ui, |ui| {
-                        for u in MeasureUnit::ALL.iter() {
-                            if ui.selectable_value(&mut scale.unit, *u, u.name()).clicked() {
-                                unit_changed = true;
+                        for preset in StampPreset::ALL.iter() {
+                            if ui
+                                .selectable_value(
+                                    &mut ui_state.active_stamp,
+                                    *preset,
+                                    preset.label(),
+                                )
+                                .clicked()
+                            {
+                                ui_state.status = format!("Stamp tool → {}", preset.label());
                             }
                         }
                     });
-                if unit_changed && scale.unit != before.unit {
-                    let new_unit = scale.unit;
-                    scale = before.with_display_unit(new_unit);
-                    if let Some(doc) = project.active_mut() {
-                        if let Some(page) = doc.pages.get_mut(page_idx) {
-                            page.scale = scale;
+            }
+            return committed;
+        };
+
+        let editable = project
+            .active()
+            .map(|d| d.is_markup_editable(&m))
+            .unwrap_or(true);
+
+        if multi {
+            ui.label(format!("{} selected", selected.len()));
+
+            // Batch status change for multi-select (v0.4-02).
+            ui.horizontal(|ui| {
+                ui.label("Batch Status");
+                ComboBox::from_id_salt("batch_status")
+                    .selected_text("Change status…")
+                    .show_ui(ui, |ui| {
+                        for s in ReviewStatus::ALL.iter() {
+                            ui.horizontal(|ui| {
+                                let (rect, _) = ui.allocate_exact_size(
+                                    egui::vec2(12.0, 12.0),
+                                    egui::Sense::hover(),
+                                );
+                                ui.painter().circle_filled(
+                                    rect.center(),
+                                    5.0,
+                                    domain_to_color32(s.color()),
+                                );
+                                if ui.selectable_label(false, s.label()).clicked() {
+                                    for id in &selected {
+                                        let doc = project.active_mut();
+                                        if let Some(doc) = doc {
+                                            // Check editability first (immutable borrow)
+                                            let editable = doc
+                                                .find_markup(*id)
+                                                .map(|m| doc.is_markup_editable(m))
+                                                .unwrap_or(false);
+                                            if editable {
+                                                if let Some(markup) = doc.find_markup_mut(*id) {
+                                                    markup.status = *s;
+                                                    markup.touch();
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if let Some(doc) = project.active_mut() {
+                                        doc.touch();
+                                    }
+                                    ui_state.status = format!(
+                                        "Batch status → {} for {} markup(s)",
+                                        s.label(),
+                                        selected.len()
+                                    );
+                                    committed = true;
+                                }
+                            });
                         }
-                        committed = true;
-                        ui_state.status = format!("Unit → {}", scale.unit.name());
-                    }
-                }
-                ui.separator();
-                ui.label("Precision (decimal places)");
-                let precision_before = project.settings.precision;
-                let mut precision = precision_before;
-                let precision_resp = ui.add(
-                    egui::DragValue::new(&mut precision)
-                        .speed(1.0)
-                        .range(0..=MAX_PRECISION),
-                );
-                if precision_resp.changed() {
-                    project.settings.set_precision(precision);
-                }
-                if project.settings.precision != precision_before
-                    && (precision_resp.drag_stopped() || precision_resp.lost_focus()) {
-                    project.touch();
-                    committed = true;
-                    ui_state.status = format!("Precision → {}", project.settings.precision);
-                }
+                    });
             });
         }
-    }
 
-    let mut edited = false;
+        let mut edited = false;
 
         egui::CollapsingHeader::new("Properties")
             .default_open(true)
             .show(ui, |ui| {
-    // P1-3: show prompt instead of hiding section
-    ui.small("Select the Properties tab to edit stroke, width, layer, status.")
+                if ui_state.inspector_mode != InspectorMode::Properties {
+                    ui.small("Click the Properties tab to edit stroke, width, layer, status.");
                     return;
                 }
-    // no-op: section always visible per P1-3
+
                 ui.label(format!("ID: {}", m.id));
                 ui.label(format!("Kind: {}", m.kind.label()));
                 ui.label(format!("Page: {}", m.page));
@@ -1039,7 +747,7 @@ pub(crate) fn draw_inspector(
                 ui.small("No comments yet.");
             } else {
                 for c in &m.comments {
-                    ui.label(format!("{} · {}", c.author, c.created.format("%H:%M")));
+                    ui.label(format!("{} · {}", c.author, c.created.format("%H:%M:%S")));
                     ui.small(&c.text);
                     ui.separator();
                 }
