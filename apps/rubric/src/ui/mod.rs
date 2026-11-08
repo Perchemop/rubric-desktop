@@ -11,6 +11,7 @@ pub mod app_status;
 pub mod app_tool_chest;
 pub mod app_topbar;
 pub mod canvas;
+pub use canvas::{draw_canvas, commit_text_edit};
 pub mod canvas_draw;
 pub mod canvas_geom;
 pub mod canvas_hit;
