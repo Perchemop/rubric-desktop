@@ -131,6 +131,10 @@ impl MarkupGeometry {
     }
 }
 
+pub use self::MarkupGeometry;
+pub use self::text_line_height;
+pub use self::text_box_rect;
+
 /// Estimated height of one rendered text line, in page points.
 ///
 /// The renderer lays text out at roughly 1.35 × the font size; bounds and hit
@@ -383,4 +387,8 @@ pub use self::text_box_rect;
         }
     }
 }
+
+pub use self::MarkupGeometry;
+pub use self::text_line_height;
+pub use self::text_box_rect;
 }
