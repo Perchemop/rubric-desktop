@@ -3,11 +3,9 @@
 //! Extracted from `ui/app.rs` to reduce the god-file size.
 
 use eframe::egui::{self, Align, Ui};
-use crate::ui::icon_button::{self, draw_prev_icon, draw_next_icon};
 
 use crate::ui::app::{RubricApp, StatusKind};
 use crate::ui::toolbar;
-use crate::domain::{PageStep, page_nav_target};
 
 /// Draw the top bar: toolbar, active-tool chip, status, zoom, page nav.
 pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
@@ -58,36 +56,42 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
 
             ui.label(format!("{:.0}%", app.ui.zoom * 100.0));
             // Page navigation chrome.
-            // The outer layout is right-to-left, so we emit widgets in reverse
-            // visual order to achieve the expected left-to-right reading order:
-            // Previous | Page x/y | Next.
             let count = app.active_doc().map(|d| d.page_count()).unwrap_or(0);
             if count > 0 {
                 let current = app.ui.current_page.min(count - 1);
-                // Next button emitted first → lands rightmost in right-to-left layout.
-                let next_target = page_nav_target(current, count, PageStep::Next);
-                let can_next = next_target.is_some();
                 if ui
-                    .add_enabled(can_next, icon_button(ui, draw_next_icon, "Next page", true))
-                    .on_hover_text("Next page")
-                    .clicked()
-                {
-                    if let Some(target) = next_target {
-                        app.jump_to_page(target);
-                    }
-                }
-                ui.label(format!("Page {}/{}", current + 1, count));
-                // Previous button emitted last → lands leftmost in right-to-left layout.
-                let prev_target = page_nav_target(current, count, PageStep::Previous);
-                let can_prev = prev_target.is_some();
-                if ui
-                    .add_enabled(can_prev, icon_button(ui, draw_prev_icon, "Previous page", true))
+                    .add_enabled(current > 0, egui::Button::new("◀"))
                     .on_hover_text("Previous page")
                     .clicked()
                 {
-                    if let Some(target) = prev_target {
-                        app.jump_to_page(target);
-                    }
+                    app.jump_to_page(current.saturating_sub(1));
+                }
+                ui.label(format!("Page {}/{}", current + 1, count));
+                if ui
+                    .add_enabled(current + 1 < count, egui::Button::new("▶"))
+                    .on_hover_text("Next page")
+                    .clicked()
+                {
+                    app.jump_to_page(current + 1);
+                }
+            }
+
+            // Toast notification (UI audit P1-1-b): transient, auto-clears after 3s.
+            if let Some((kind, msg, instant)) = &app.toast {
+                let age = instant.elapsed().as_sec_f32();
+                let show = age < 3.0;
+                let alpha = if show { 1.0 - (age / 3.0) } else { 0.0 };
+                if alpha > 0.0 {
+                    let toast_color = match kind {
+                        StatusKind::Info => ui.visuals().text_color(),
+                        StatusKind::Success => egui::Color32::from_rgb(76, 175, 80),
+                        StatusKind::Warning => egui::Color32::from_rgb(255, 152, 0),
+                        StatusKind::Error => egui::Color32::from_rgb(229, 57, 53),
+                    };
+                    ui.add(egui::Label::new(
+                        egui::RichText::new(msg.clone()).color(toast_color),
+                    )
+                    .alpha(alpha));
                 }
             }
         });

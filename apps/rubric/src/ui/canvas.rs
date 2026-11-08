@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use eframe::egui::{self, Align2, Color32, FontId, Painter, Pos2, Sense, Ui, Vec2, WidgetType};
+use eframe::egui::{self, Align2, Color32, FontId, Painter, Pos2, Sense, Ui, Vec2};
 use uuid::Uuid;
 
 use crate::data::pdf::find_text_line_at_point;
@@ -14,11 +14,10 @@ use crate::domain::{
     Pt, Rect as DRect, ReviewStatus, Tool,
 };
 
-use super::theme::{TEXT_SIZE_LARGE, TEXT_SIZE_SMALL, to_color32};
+use super::theme::to_color32;
 
 use crate::ui::canvas_draw::{
     draw_bates_overlay, draw_grid, draw_measure_badge, draw_minimap, draw_rulers, draw_selection,
-    minimap_rect,
 };
 use crate::ui::canvas_geom::{screen_rect, to_page, to_screen};
 use crate::ui::canvas_hit::{handle_at, pick_markup_id, point_handle_at};
@@ -297,7 +296,7 @@ fn draw_markup(
                 // Wrap at `wrap` points (scaled to screen) to match the
                 // in-canvas editor; the `bounds()` line count is only an
                 // approximation of the wrapped height.
-                let font = FontId::proportional(TEXT_SIZE_SMALL * zoom.max(0.8));
+                let font = FontId::proportional(11.0 * zoom.max(0.8));
                 let galley =
                     painter.layout(text.as_str().to_string(), font, stroke_c, *wrap * zoom);
                 painter.galley(sa, galley, stroke_c);
@@ -320,7 +319,7 @@ fn draw_markup(
                 sr.min,
                 Align2::LEFT_TOP,
                 text,
-                FontId::proportional(TEXT_SIZE_SMALL * zoom.max(0.7)),
+                FontId::proportional(10.0 * zoom.max(0.7)),
                 stroke_c,
             );
         }
@@ -338,7 +337,7 @@ fn draw_markup(
                     sv + Vec2::new(4.0, 4.0),
                     Align2::LEFT_TOP,
                     ang,
-                    FontId::proportional(TEXT_SIZE_SMALL * zoom.max(0.7)),
+                    FontId::proportional(9.0 * zoom.max(0.7)),
                     stroke_c,
                 );
             }
@@ -353,7 +352,7 @@ fn draw_markup(
                     sa,
                     Align2::CENTER_CENTER,
                     number.to_string(),
-                    FontId::proportional(TEXT_SIZE_SMALL * zoom.max(0.7)),
+                    FontId::proportional(10.0 * zoom.max(0.7)),
                     Color32::WHITE,
                 );
             }
@@ -496,16 +495,6 @@ pub(crate) fn draw_canvas(
     let pan = ui_state.pan;
     let zoom = ui_state.zoom;
 
-    // Minimap rectangle (when shown) — used to keep canvas tool interaction
-    // from firing on clicks that land inside the minimap overlay.
-    let minimap_overlay_rect = if show_minimap && !is_export {
-        Some(minimap_rect(
-            ui.available_size(),
-            page.bounds(),
-        ))
-    } else {
-        None
-    };
     let page_rect = screen_rect(page.bounds(), origin, pan, zoom);
     let source_pdf = project.source_pdf.clone();
     // True when a real PDF backs this project (UI audit P0-2): an empty
@@ -657,14 +646,14 @@ pub(crate) fn draw_canvas(
             card.left_top() + Vec2::new(card.width() / 2.0, 22.0),
             Align2::CENTER_CENTER,
             "Import a PDF to begin",
-            FontId::proportional(TEXT_SIZE_LARGE),
+            FontId::proportional(17.0),
             paper_ink,
         );
         painter.text(
             card.left_top() + Vec2::new(card.width() / 2.0, 46.0),
             Align2::CENTER_CENTER,
             "Drag a PDF file here, or use the button below.\nMarkups are stored separately — the PDF is never modified.",
-            FontId::proportional(TEXT_SIZE_SMALL),
+            FontId::proportional(11.5),
             muted_ink,
         );
         let button_rect = egui::Rect::from_center_size(
@@ -838,9 +827,6 @@ pub(crate) fn draw_canvas(
             let popover_resp =
                 ui.interact(popover, egui::Id::new("note_popover"), egui::Sense::click());
             let inner = popover.shrink(8.0);
-                response.widget_info(|| {
-                    egui::WidgetInfo::labeled(WidgetType::Button, response.enabled(), "Note popover".to_owned())
-                });
             let mut cy = inner.min.y;
             let mut next_row = move |h: f32| {
                 let r = egui::Rect::from_min_size(
@@ -858,7 +844,7 @@ pub(crate) fn draw_canvas(
             if let Some(doc) = project.active() {
                 if let Some(m) = doc.find_markup(note_id) {
                     for c in &m.comments {
-                        let label = format!("{} · {}", c.author, c.created.format("%H:%M"));
+                        let label = format!("{} · {}", c.author, c.created.format("%H:%M:%S"));
                         ui.put(next_row(16.0), egui::Label::new(label));
                         ui.put(
                             next_row(14.0),
@@ -1170,22 +1156,11 @@ pub(crate) fn draw_canvas(
     };
 
     // Click handling. `clicked_by` (not `clicked`) so a focused widget's fake
-    // click cannot place or commit a markup on the canvas. Clicks that land
-    // inside the minimap overlay are handled separately (navigation) and must
-    // not create or select markups.
-    let pointer_in_minimap = minimap_overlay_rect
-        .map(|r| {
-            response
-                .hover_pos()
-                .map(|hp| r.contains(hp))
-                .unwrap_or(false)
-        })
-        .unwrap_or(false);
+    // click cannot place or commit a markup on the canvas.
     if !text_edit_committed_this_frame
         && ui_state.text_edit.is_none()
         && response.clicked_by(egui::PointerButton::Primary)
         && !panning
-        && !pointer_in_minimap
     {
         let modifiers = ui.ctx().input(|i| i.modifiers);
         let shift = modifiers.shift;
@@ -2157,34 +2132,6 @@ pub(crate) fn draw_canvas(
             if let Some(page) = doc.pages.get(ui_state.current_page) {
                 let page_bounds = page.bounds();
                 let viewport_rect = response.rect;
-                let minimap_r = minimap_rect(ui.available_size(), page_bounds);
-
-                // Click-to-navigate: clicking inside the minimap re-centres the
-                // viewport on the corresponding point of the page.
-                if response.clicked_by(egui::PointerButton::Primary) {
-                    let click_pos = response.interact_pos().or_else(|| ui.ctx().pointer_hover_pos());
-                    if let Some(pos) = click_pos {
-                        if minimap_r.contains(pos) {
-                            let scale = minimap_r.width() / page_bounds.w.max(1.0);
-                            let page_height_scaled = page_bounds.h * scale;
-                            let page_rect_top = minimap_r.top() + (minimap_r.height() - page_height_scaled) / 2.0;
-                            let page_x = ((pos.x - minimap_r.left()) / scale)
-                                .clamp(0.0, page_bounds.w);
-                            let page_y = ((pos.y - page_rect_top) / scale)
-                                .clamp(0.0, page_bounds.h);
-                            let canvas_center = response.rect.center();
-                            ui_state.pan = canvas_center - origin
-                                - Vec2::new(page_x * zoom, page_y * zoom);
-                            ui_state.status = format!(
-                                "Navigated to page {} ({:.0}, {:.0})",
-                                ui_state.current_page + 1,
-                                page_x,
-                                page_y
-                            );
-                        }
-                    }
-                }
-
                 draw_minimap(
                     &painter,
                     page_bounds,

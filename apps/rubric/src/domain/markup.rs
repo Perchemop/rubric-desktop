@@ -108,6 +108,35 @@ impl MarkupKind {
         }
     }
 
+    /// Short glyph shown on the tool button (keeps the UI font-independent).
+    pub fn glyph(self) -> &'static str {
+        match self {
+            MarkupKind::Highlight => "▀",
+            MarkupKind::Strikeout => "∅",
+            MarkupKind::Underline => "▁",
+            MarkupKind::Squiggly => "≈",
+            MarkupKind::Text => "T",
+            MarkupKind::Callout => "◨",
+            MarkupKind::Note => "▤",
+            MarkupKind::Stamp => "★",
+            MarkupKind::Rectangle => "▭",
+            MarkupKind::Ellipse => "◯",
+            MarkupKind::Cloud => "☁",
+            MarkupKind::Polygon => "⬠",
+            MarkupKind::Polyline => "∿",
+            MarkupKind::Line => "╱",
+            MarkupKind::Arrow => "➤",
+            MarkupKind::Ink => "✎",
+            MarkupKind::MeasureLength => "↔",
+            MarkupKind::MeasurePerimeter => "▢",
+            MarkupKind::MeasureArea => "▣",
+            MarkupKind::MeasureAngle => "∠",
+            MarkupKind::MeasureDiameter => "⌀",
+            MarkupKind::MeasureRadius => "⟶",
+            MarkupKind::MeasureCount => "#",
+        }
+    }
+
     pub fn group(self) -> ToolGroup {
         match self {
             MarkupKind::Highlight

@@ -99,41 +99,11 @@ pub(crate) enum StatusKind {
     Error,
 }
 
-/// A render job for off-loading PDF page rendering to a worker thread
-/// (UI audit P1-2: move heavy work off the UI thread).
-#[derive(Debug)]
-pub(crate) struct RenderJob {
-    /// Path to the PDF file.
-    pub pdf_path: String,
-    /// Page index (0-based).
-    pub page_index: usize,
-    /// Thumbnail width in pixels (for thumbnails).
-    pub thumb_width_px: u32,
-    /// Key to identify this render request in the cache.
-    pub cache_key: String,
-    /// Optional channel sender to receive the result back on the UI thread.
-    pub result_tx: Option<mpsc::Sender<RenderResult>>,
-}
-
-/// Outcome of a render job, sent back to the UI thread.
-#[derive(Debug)]
-pub(crate) enum RenderResult {
-    /// Success: the page was rendered and the texture is ready.
-    Success { texture: egui::TextureHandle },
-    /// Failure: the render failed (e.g. PDF not found, invalid page).
-    Failure { error: String },
-}
-
-/// Repaint request signal (UI audit P1-2): posted by worker threads to
-/// notify the UI that a resource has finished loading/rendering.
-#[derive(Debug)]
-pub(crate) struct RepaintSignal;
-
 /// Render queue state (UI audit P1-2: move heavy work off the UI thread).
 ///
 /// Follows the same `Arc<Mutex>` + worker-thread pattern as `update-check`
 /// (guide §7.2). One render job may be in flight at a time; the UI reads
-/// this state each frame to show a "working" indicator and repaint when
+/// this state each frame to show a “working” indicator and repaint when
 /// the job completes.
 #[derive(Default)]
 pub(crate) struct RenderQueue {
@@ -175,23 +145,6 @@ pub(crate) enum RenderResult {
 /// notify the UI that a resource has finished loading/rendering.
 #[derive(Debug)]
 pub(crate) struct RepaintSignal;
-
-/// Render queue state (UI audit P1-2: move heavy work off the UI thread).
-///
-/// Follows the same `Arc<Mutex>` + worker-thread pattern as `update-check`
-/// (guide §7.2). One render job may be in flight at a time; the UI reads
-/// this state each frame to show a "working" indicator and repaint when
-/// the job completes.
-#[derive(Default)]
-pub(crate) struct RenderQueue {
-    /// True while a render job is in progress; the UI shows a placeholder
-    /// while this is `true`.
-    in_flight: bool,
-    /// Result of the completed render job, if any.
-    result: Option<RenderResult>,
-    /// Key of the render job that just completed, so the UI can cache it.
-    completed_key: Option<String>,
-}
 
 /// Layer criterion in the Markups List. The default layer is a distinct case
 /// because markups on it store `layer_id: None` in the domain model.
@@ -321,12 +274,6 @@ pub(crate) struct UiState {
     /// Focus/reading mode: hides all side panels so only the canvas is
     /// visible, for distraction-free review (proposal P2-13).
     pub(crate) focus_mode: bool,
-    /// Width of the inspector panel in screen pixels. Persisted across sessions
-    /// via AppPrefs for the resizable inspector (P2).
-    pub(crate) inspector_width: f32,
-    /// Width of the tool chest panel in screen pixels. Persisted across sessions
-    /// via AppPrefs for the resizable tool chest (P2).
-    pub(crate) tool_chest_width: f32,
     /// Show a small minimap in the corner of the canvas showing page overview
     /// with viewport rectangle (proposal P2-16).
     pub(crate) show_minimap: bool,
@@ -398,11 +345,6 @@ pub(crate) struct UiState {
     /// Open Tool Chest rename draft: the preset id plus the editable name, so
     /// the editor survives the per-frame panel rebuild. UI-only.
     pub(crate) tool_chest_rename: Option<(uuid::Uuid, String)>,
-    /// Tool Chest delete confirmation: set when Delete is clicked, cleared when
-    /// confirmed or cancelled. UI-only, never serialized.
-    pub(crate) tool_chest_delete_confirm: Option<(uuid::Uuid, String)>,
-    /// The id of the comment being replied to, if any. UI-only, never serialized.
-    pub(crate) comment_reply_target: Option<Uuid>,
 }
 
 impl Default for UiState {
@@ -467,10 +409,6 @@ impl Default for UiState {
             pending_style_preset: None,
             tool_chest_save_name: String::new(),
             tool_chest_rename: None,
-            tool_chest_delete_confirm: None,
-            comment_reply_target: None,
-            inspector_width: 280.0,
-            tool_chest_width: 210.0,
         }
     }
 }
@@ -520,6 +458,9 @@ pub struct RubricApp {
     bg_error: Option<String>,
     /// Session-only report export dialog state (no undo snapshot).
     pub(crate) report_export: Option<ReportExportUi>,
+    /// Transient toast notification (UI audit P1-1): shown briefly with
+    /// severity colour then auto-cleared after 3 seconds.
+    pub(crate) toast: Option<(StatusKind, String, Instant)>,
     /// Active colour theme (app-level preference, not project data).
     pub(crate) theme: Theme,
     /// High-contrast mode (a11y A3 / proposal P2-15), applied over the theme.
@@ -630,6 +571,7 @@ impl RubricApp {
             thumb_cache: pages::ThumbCache::default(),
             bg_error: None,
             report_export: None,
+            toast: None,
             theme: prefs.theme,
             high_contrast: prefs.high_contrast,
             ui_scale: prefs.ui_scale,
@@ -714,6 +656,7 @@ impl RubricApp {
                     state.in_flight = false;
                     state.result = Some(RenderResult::Success);
                     // The UI will pick up the cached file on the next frame.
+                    // Request repaint via the existing mechanism.
                 }
             } else {
                 if let Ok(mut state) = shared.lock() {
@@ -1422,6 +1365,12 @@ impl RubricApp {
         self.ui.status = msg.into();
     }
 
+    /// Set a transient toast notification (UI audit P1-1): shown briefly with
+    /// severity colour then auto-cleared after 3 seconds.
+    pub(crate) fn set_toast(&mut self, kind: StatusKind, msg: impl Into<String>) {
+        self.toast = Some((kind, msg.into(), Instant::now()));
+    }
+
     /// Push a snapshot without touching the status bar. Used when the canvas
     /// already set a more specific status earlier in the same frame.
     pub(crate) fn push_snapshot_quiet(&mut self) {
@@ -1467,21 +1416,7 @@ impl RubricApp {
         status: String,
     ) {
         self.history = History::new(project);
-        // P1-11: restore workspace prefs from loaded preferences instead of
-        // defaulting. This ensures panel visibility, zoom, and page survive
-        // project installs (the audit item).
-        self.ui = UiState {
-            show_markups_list: self.prefs.show_markups_list,
-            show_tool_chest: self.prefs.show_tool_chest,
-            show_pages: self.prefs.show_pages,
-            focus_mode: self.prefs.focus_mode,
-            show_minimap: self.prefs.show_minimap,
-            zoom: self.prefs.zoom,
-            ui_scale: self.prefs.ui_scale,
-            inspector_width: self.prefs.inspector_width,
-            tool_chest_width: self.prefs.tool_chest_width,
-            ..UiState::default()
-        };
+        self.ui = UiState::default();
         self.draw = DrawState::Idle;
         self.current_path = current_path;
         self.ui.status = status;
@@ -2351,7 +2286,6 @@ impl RubricApp {
             let inspector_response = egui::Panel::right("inspector")
                 .default_size(280.0)
                 .min_size(240.0)
-                .resizable(true)
                 .show(ui, |ui| {
                     inspector_mutated = self.right_panel(ui);
                 })
@@ -2647,13 +2581,13 @@ mod kittest_tests {
 
     #[test]
     fn shell_empty_state_snapshot_matches_baseline() {
-        // Rendered visual evidence (guide II.27.12, G4-2b): the real empty shell
-        // — menu bar, toolbar, inspector empty state, status bar — is rasterised
-        // with kittest's wgpu renderer and compared against the committed
-        // baseline. Rendering needs a wgpu adapter: the CI `snapshot` job
-        // (macos, real GPU) sets RUBRIC_SNAPSHOTS=1; the Ubuntu test jobs have
-        // no adapter, so skip there instead of panicking inside kittest's adapter
-        // selection.
+        // Rendered visual evidence (guide II.27.12, G4-2b): the real empty
+        // shell — menu bar, toolbar, inspector empty state, status bar — is
+        // rasterised with kittest's wgpu renderer and compared against the
+        // committed baseline. Rendering needs a wgpu adapter: the CI
+        // `snapshot` job (macos, real GPU) sets RUBRIC_SNAPSHOTS=1; the
+        // Ubuntu test jobs have no adapter, so skip there instead of
+        // panicking inside kittest's adapter selection.
         if std::env::var_os("RUBRIC_SNAPSHOTS").is_none() {
             eprintln!("skipping: RUBRIC_SNAPSHOTS not set (no wgpu adapter on this runner)");
             return;
@@ -2665,4 +2599,3 @@ mod kittest_tests {
         harness.snapshot("shell_empty_state");
     }
 }
-

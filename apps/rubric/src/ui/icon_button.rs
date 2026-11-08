@@ -437,29 +437,4 @@ pub(crate) fn draw_calibrate_icon(painter: &Painter, rect: Rect, stroke_color: C
     ] {
         painter.line_segment([Pos2::new(x, y - 6.0), Pos2::new(x, y + 6.0)], stroke);
     }
-
-
-// P2: Navigation arrow icons replacing emoji ▶ and ◀
-/// Left navigation arrow icon – clean symmetric chevron pointing left.
-pub(crate) fn draw_prev_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
-    let stroke = Stroke::new(1.5, stroke_color);
-    // Tip on the left side of the square.
-    let tip = Pos2::new(rect.left() + rect.width() * 0.3, rect.center().y);
-    let upper = Pos2::new(rect.right() - rect.width() * 0.2, rect.top() + rect.height() * 0.2);
-    let lower = Pos2::new(rect.right() - rect.width() * 0.2, rect.bottom() - rect.height() * 0.2);
-    painter.line_segment([tip, upper], stroke);
-    painter.line_segment([tip, lower], stroke);
-}
-
-/// Right navigation arrow icon – clean symmetric chevron pointing right.
-pub(crate) fn draw_next_icon(painter: &Painter, rect: Rect, stroke_color: Color32) {
-    let stroke = Stroke::new(1.5, stroke_color);
-    // Tip on the right side of the square.
-    let tip = Pos2::new(rect.right() - rect.width() * 0.3, rect.center().y);
-    let upper = Pos2::new(rect.left() + rect.width() * 0.2, rect.top() + rect.height() * 0.2);
-    let lower = Pos2::new(rect.left() + rect.width() * 0.2, rect.bottom() - rect.height() * 0.2);
-    painter.line_segment([tip, upper], stroke);
-    painter.line_segment([tip, lower], stroke);
-}
-
 }

@@ -7,7 +7,6 @@ use eframe::egui::{self, Color32, FontId, Rect, Sense, StrokeKind, TextureHandle
 
 use crate::data::pdf;
 use crate::domain::thumb_layout;
-use crate::ui::theme::TEXT_SIZE_SMALL;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -123,7 +122,7 @@ pub(crate) fn draw_pages(
                         caption_rect.center(),
                         egui::Align2::CENTER_CENTER,
                         format!("{}", index + 1),
-                        FontId::proportional(TEXT_SIZE_SMALL),
+                        FontId::proportional(11.0),
                         caption_colour,
                     );
                     if response.clicked() && !is_current {

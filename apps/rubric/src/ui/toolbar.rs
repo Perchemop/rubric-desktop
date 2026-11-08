@@ -104,12 +104,13 @@ const TOOL_FAMILIES: &[(&str, &[Tool])] = &[
 pub(crate) fn draw_toolbar(ui: &mut Ui, active: &mut Tool, _status: &mut String) {
     ui.horizontal_wrapped(|ui| {
         ui.label("Tools:");
-        // Use TOOL_METADATA as the single source of truth for tool order/labels
-        for meta in crate::domain::project::TOOL_METADATA.iter() {
-            tool_button(ui, active, meta.tool, &meta.label);
-            // Show shortcut if different from label
-            if let Some(key) = meta.shortcut {
-                // Shortcut already included in label per TOOL_METADATA convention
+        for (family_index, (_name, tools)) in TOOL_FAMILIES.iter().enumerate() {
+            // small gap between families so the strip stays scannable
+            if family_index > 0 {
+                ui.add_space(6.0);
+            }
+            for tool in tools.iter() {
+                tool_button(ui, active, *tool, tool.label());
             }
         }
     });
