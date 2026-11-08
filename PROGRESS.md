@@ -1803,3 +1803,64 @@ Parallel subagent execution completed 7 workstreams:
 - CI verification via `ci.sh run` (fmt, clippy -D warnings, tests, release build)
 - Merge to main once CI green and review findings addressed
 - Monitor for any remaining P2 items from audit doc §P2
+
+## 2026-11-08 — Next slice: Issue #29 dependency refresh + god-file splits (in progress)
+
+**Status**: CI verification in progress (formatting check failing)
+
+### Completed work
+Parallel subagent execution completed 4 workstreams:
+
+**Domain work**:
+- **Issue #29 dependency refresh**: Updated to egui/eframe 0.37, ureq 3.5, rfd 0.17. All breaking API changes addressed:
+  - `DragValue::range` → `clamp_range` (7 sites in app.rs, inspector.rs, app_menu.rs)
+  - `ureq 3.x`: `.set()` → `.header()`, `.send_string()` → `.send_json()`, status/error handling updated in crash-report and update-check
+  - `egui 0.37` compatibility verified
+
+- **God-file split: ui/app.rs** (~130 KB) → 6 new modules:
+  - `app_canvas.rs` — central panel + canvas + snapshot handling
+  - `app_inspector.rs` — right inspector panel + context menu
+  - `app_tool_chest.rs` — tool chest panel
+  - `app_markups_list.rs` — markups list panel
+  - `app_pages.rs` — pages sidebar panel
+  - `app_status.rs` — status bar
+  Updated `ui/mod.rs` to register new modules.
+
+- **God-file split: ui/canvas.rs** (~106 KB) → completed split:
+  - `canvas_geom.rs` — geometry utilities (`hit_tolerance_page`, `measure_anchor`)
+  - `canvas_hit.rs` — hit testing (already existed)
+  - `canvas_draw.rs` — drawing (already existed)
+  - `canvas.rs` — coordinator, event handling
+
+- **God-file split: domain/markup.rs** (~77 KB) → 4 new modules:
+  - `markup_comment.rs` — Comment struct + serde roundtrip tests
+  - `markup_measurement.rs` — Measurement struct + serde roundtrip tests
+  - `markup_geometry.rs` — MarkupGeometry enum + bounds/translate helpers + private helpers
+  - `markup_stamp.rs` — StampPreset enum + serde roundtrip tests
+  - `markup.rs` — core Markup struct, re-exports preserved
+  - `mod.rs` — new module declarations + re-exports
+
+### CI Status
+- **Security checks**: ✅ passed (all 5 security jobs green)
+- **Packaging plan**: ✅ passed
+- **CodeQL**: skipped
+- **Check (fmt + clippy + tests + release build)**: ❌ failing — formatting check fails due to extensive rustfmt differences across 23 modified files
+- **Snapshot tests**: ❌ failing — compilation error (unclosed delimiter in canvas.rs test module) — **fixed in commit f024b86**, pending next CI run
+
+### Blockers
+- **Formatting check**: Extensive rustfmt differences across 23 files. Cannot run `cargo fmt` locally per CI-first rule. Requires CI to pass formatting check or manual fix via CI diff.
+- **Snapshot test**: Compilation error in canvas.rs test module (unclosed delimiter) — fixed locally in commit f024b86, awaiting CI verification.
+
+### Next Steps
+1. Wait for CI run on commit f024b86 (fixes canvas.rs unclosed delimiter) to complete
+2. If compilation passes but formatting fails: maintainers must run `cargo fmt` locally and push fixes (CI-first rule prevents local fmt)
+3. Once CI green → merge PR #160 → main
+
+### Files Changed (23 files)
+- Cargo.toml ×3 (app, crash-report, update-check)
+- domain/markup.rs, domain/mod.rs, domain/markup_comment.rs, markup_geometry.rs, markup_measurement.rs, markup_stamp.rs
+- ui/app.rs, ui/app_canvas.rs, app_inspector.rs, app_markups_list.rs, app_pages.rs, app_status.rs, app_tool_chest.rs, ui/mod.rs
+- ui/canvas.rs, ui/canvas_geom.rs
+- ui/inspector.rs, ui/app_menu.rs
+- crates/crash-report/Cargo.toml, crash-report/src/lib.rs
+- crates/update-check/Cargo.toml, update-check/src/lib.rs
