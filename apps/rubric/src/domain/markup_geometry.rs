@@ -237,6 +237,9 @@ fn polyline_hit(p: Pt, points: &[Pt], closed: bool, tol: f32) -> bool {
         }
     }
 
+pub use self::MarkupGeometry;
+pub use self::text_line_height;
+pub use self::text_box_rect;
 
     #[cfg(test)]
     mod tests {
