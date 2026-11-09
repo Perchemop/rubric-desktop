@@ -53,7 +53,7 @@ update-check = { path = "../../crates/update-check", version = "0.3.0" }
 
 [dev-dependencies]
 image = { version = "0.25", default-features = false, features = ["png"] }
-egui_kittest = { version = "0.36.2", features = ["wgpu", "snapshot"] }
+egui_kittest = { version = "0.37.0", features = ["wgpu", "snapshot"] }
 
 [features]
 default = []
