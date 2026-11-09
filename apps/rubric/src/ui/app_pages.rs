@@ -12,6 +12,12 @@ pub(crate) fn draw_pages_panel(app: &mut RubricApp, ui: &mut Ui) {
         return;
     }
     let source_pdf = app.history.current().source_pdf.clone();
+
+    // Lazily spawn the render worker on first pages-sidebar open.
+    if app.render_worker.is_none() {
+        app.render_worker = Some(crate::data::render_worker::RenderWorker::spawn(ui.ctx()));
+    }
+
     egui::Panel::left("pages")
         .default_size(168.0)
         .min_size(120.0)
@@ -24,6 +30,7 @@ pub(crate) fn draw_pages_panel(app: &mut RubricApp, ui: &mut Ui) {
                 app.ui.current_page.min(page_count - 1),
                 source_pdf.as_deref().map(std::path::Path::new),
                 &mut app.thumb_cache,
+                app.render_worker.as_ref().unwrap(),
             ) {
                 app.jump_to_page(index);
             }

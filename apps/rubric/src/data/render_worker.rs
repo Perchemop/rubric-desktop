@@ -4,8 +4,10 @@
 use std::sync::mpsc;
 use std::time::Duration;
 
-use crate::domain::thumb_render::{RenderJob, RenderOutcome, RenderKey, RenderQueueState, TextureLru};
 use crate::data::pdf::render_page_to_cache;
+use crate::domain::thumb_render::{
+    RenderJob, RenderKey, RenderOutcome, RenderQueueState, TextureLru,
+};
 use crate::ui::pages::ThumbCache;
 use egui::Context;
 
@@ -26,15 +28,16 @@ pub struct ThumbPixels {
     pub key: RenderKey,
     pub width: u32,
     pub height: u32,
-    pub rgba: Vec<u8>,            // straight‑alpha, row‑major, size = width*height*4
-    pub cache_path: String,       // path to the on‑disk PNG
+    pub rgba: Vec<u8>,      // straight‑alpha, row‑major, size = width*height*4
+    pub cache_path: String, // path to the on‑disk PNG
     pub outcome: Result<(), String>,
 }
 
 impl RenderWorker {
     /// Spawn a single long‑lived worker thread.
     /// The caller (UI setup) owns the `Sender`; the worker owns the `Receiver`.
-    pub fn spawn(ctx: &'static Context) -> Self {
+    pub fn spawn(ctx: &egui::Context) -> Self {
+        let ctx = ctx.clone();
         let (jobs, job_rx) = mpsc::channel::<RenderJob>(64);
         let (result_tx, results) = mpsc::channel::<ThumbPixels>(64);
 
@@ -45,7 +48,8 @@ impl RenderWorker {
                 // have pending/loaded, so channel depth stays small.
                 if let Ok(job) = job_rx.recv() {
                     // 1️⃣ Render the page to the on‑disk cache.
-                    let cache_path = render_page_to_cache(&job.key.pdf_id, job.key.page, job.key.width_px);
+                    let cache_path =
+                        render_page_to_cache(&job.key.pdf_id, job.key.page, job.key.width_px);
 
                     // 2️⃣ Decode the PNG.
                     let rgba = match std::fs::read(&cache_path) {
@@ -94,10 +98,7 @@ impl RenderWorker {
             }
         });
 
-        RenderWorker {
-            jobs,
-            results,
-        }
+        RenderWorker { jobs, results }
     }
 
     /// UI → worker: enqueue a render job.
@@ -130,10 +131,7 @@ impl RenderWorkerHandle {
     /// Submit a render job for a given key. Idempotent — the domain state
     /// machine in `RenderQueueState` deduplicates across pending/in‑flight/ready/failed.
     pub fn submit(&self, key: RenderKey, priority: i32) {
-        let job = RenderJob {
-            key,
-            priority,
-        };
+        let job = RenderJob { key, priority };
         let _ = self.jobs.send(job);
     }
 }

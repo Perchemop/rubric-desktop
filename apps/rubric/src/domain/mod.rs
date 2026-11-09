@@ -19,6 +19,7 @@ pub mod report;
 pub mod style;
 pub mod style_preset;
 pub mod theme;
+pub mod thumb_render;
 pub mod thumbs;
 pub mod units;
 pub mod view;
@@ -46,6 +47,9 @@ pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCount
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
 pub use style_preset::{StylePreset, StylePresetLibrary};
 pub use theme::{AppPrefs, Theme};
+pub use thumb_render::{
+    plan_disk_eviction, RenderJob, RenderKey, RenderOutcome, RenderQueueState, TextureLru,
+};
 pub use thumbs::{thumb_layout, ThumbLayout};
 pub use units::{
     clamp_precision, format_value, format_value_precise, MeasureKind, MeasureUnit, Scale,

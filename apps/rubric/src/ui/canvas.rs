@@ -2140,7 +2140,7 @@ fn draw_markup(
         mutated
     }
 
-pub use self::commit_text_edit;
+    pub use self::commit_text_edit;
     pub use self::draw_canvas;
 
     #[cfg(test)]
@@ -2199,7 +2199,4 @@ pub use self::commit_text_edit;
                 "the middle of the segment carries no point handle"
             );
         }
-    }
-
-
 }
