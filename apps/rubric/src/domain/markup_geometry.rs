@@ -383,4 +383,4 @@ fn polyline_hit(p: Pt, points: &[Pt], closed: bool, tol: f32) -> bool {
                 assert_eq!(geom, back);
             }
         }
-}
+    }
