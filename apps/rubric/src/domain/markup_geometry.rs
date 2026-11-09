@@ -219,7 +219,7 @@ fn point_in_polygon(points: &[Pt], p: Pt) -> bool {
         }
     }
     inside
-}
+    }
 
 /// Whether `p` is within `tol` of any segment of a polyline.
 ///
