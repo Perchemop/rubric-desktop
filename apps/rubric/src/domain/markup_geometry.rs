@@ -243,144 +243,144 @@ fn polyline_hit(p: Pt, points: &[Pt], closed: bool, tol: f32) -> bool {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
+            use super::*;
 
-        #[test]
-        fn bounds_segment_is_corner_to_corner() {
-            let g = MarkupGeometry::Segment {
-                a: Pt::new(0.0, 0.0),
-                b: Pt::new(100.0, 50.0),
-            };
-            assert_eq!(g.bounds(), Rect::new(0.0, 0.0, 100.0, 50.0));
-        }
-
-        #[test]
-        fn bounds_path_is_tight() {
-            let g = MarkupGeometry::Path {
-                points: vec![
-                    Pt::new(10.0, 10.0),
-                    Pt::new(30.0, 12.0),
-                    Pt::new(20.0, 40.0),
-                ],
-                closed: true,
-            };
-            assert_eq!(g.bounds(), Rect::new(10.0, 10.0, 20.0, 30.0));
-        }
-
-        #[test]
-        fn bounds_text_anchor_covers_drawn_area() {
-            let g = MarkupGeometry::TextAnchor {
-                at: Pt::new(20.0, 30.0),
-                text: "Hello".to_string(),
-                line_height: 14.0,
-                line_count: 1,
-                text_width: 100.0,
-            };
-            assert_eq!(g.bounds(), Rect::new(20.0, 30.0, 100.0, 14.0));
-        }
-
-        #[test]
-        fn bounds_count_is_sixteen_point_dot() {
-            let g = MarkupGeometry::Count {
-                at: Pt::new(10.0, 10.0),
-                number: 1,
-            };
-            assert_eq!(g.bounds(), Rect::new(2.0, 2.0, 16.0, 16.0));
-        }
-
-        #[test]
-        fn translate_moves_all_geometry_variants() {
-            let mut g = MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0));
-            g.translate(5.0, -3.0);
-            assert_eq!(g.bounds(), Rect::new(5.0, -3.0, 10.0, 10.0));
-
-            let mut g = MarkupGeometry::Segment {
-                a: Pt::new(0.0, 0.0),
-                b: Pt::new(10.0, 10.0),
-            };
-            g.translate(1.0, 2.0);
-            match g {
-                MarkupGeometry::Segment { a, b } => {
-                    assert_eq!(a, Pt::new(1.0, 2.0));
-                    assert_eq!(b, Pt::new(11.0, 12.0));
-                }
-                _ => unreachable!(),
+            #[test]
+            fn bounds_segment_is_corner_to_corner() {
+                let g = MarkupGeometry::Segment {
+                    a: Pt::new(0.0, 0.0),
+                    b: Pt::new(100.0, 50.0),
+                };
+                assert_eq!(g.bounds(), Rect::new(0.0, 0.0, 100.0, 50.0));
             }
-        }
 
-        #[test]
-        fn text_box_rect_clamps_wrap_to_at_least_one_pt() {
-            let r = text_box_rect(Pt::new(0.0, 0.0), 0.0, "hi", 12.0);
-            assert_eq!(r.w, 1.0);
-        }
-
-        #[test]
-        fn text_line_height_clamps_to_six_pt_minimum() {
-            assert!((text_line_height(0.0) - 1.35 * 6.0).abs() < f32::EPSILON);
-            assert!((text_line_height(12.0) - 1.35 * 12.0).abs() < f32::EPSILON);
-        }
-
-        #[test]
-        fn distance_to_segment_handles_zero_length() {
-            assert!(
-                (distance_to_segment(Pt::new(3.0, 4.0), Pt::new(0.0, 0.0), Pt::new(0.0, 0.0))
-                    - 5.0)
-                    .abs()
-                    < f32::EPSILON
-            );
-        }
-
-        #[test]
-        fn ellipse_contains_center_and_edge() {
-            let r = Rect::new(0.0, 0.0, 100.0, 100.0);
-            assert!(ellipse_contains(r, Pt::new(50.0, 50.0)));
-            assert!(!ellipse_contains(r, Pt::new(0.0, 0.0)));
-        }
-
-        #[test]
-        fn point_in_polygon_square() {
-            let points = vec![
-                Pt::new(0.0, 0.0),
-                Pt::new(100.0, 0.0),
-                Pt::new(100.0, 100.0),
-                Pt::new(0.0, 100.0),
-            ];
-            assert!(point_in_polygon(&points, Pt::new(50.0, 50.0)));
-            assert!(!point_in_polygon(&points, Pt::new(150.0, 50.0)));
-        }
-
-        #[test]
-        fn polyline_hit_single_point_acts_as_dot() {
-            assert!(polyline_hit(
-                Pt::new(11.0, 10.0),
-                &[Pt::new(10.0, 10.0)],
-                false,
-                2.0
-            ));
-            assert!(!polyline_hit(
-                Pt::new(20.0, 10.0),
-                &[Pt::new(10.0, 10.0)],
-                false,
-                2.0
-            ));
-        }
-
-        #[test]
-        fn markup_geometry_serde_roundtrip() {
-            let geometries = [
-                MarkupGeometry::Ink {
-                    strokes: vec![vec![Pt::new(0.0, 0.0), Pt::new(5.0, 5.0)]],
-                },
-                MarkupGeometry::Path {
-                    points: vec![Pt::new(0.0, 0.0), Pt::new(5.0, 0.0), Pt::new(5.0, 5.0)],
+            #[test]
+            fn bounds_path_is_tight() {
+                let g = MarkupGeometry::Path {
+                    points: vec![
+                        Pt::new(10.0, 10.0),
+                        Pt::new(30.0, 12.0),
+                        Pt::new(20.0, 40.0),
+                    ],
                     closed: true,
-                },
-                MarkupGeometry::Bounds(Rect::new(1.0, 2.0, 3.0, 4.0)),
-            ];
-            for geom in geometries {
-                let json = serde_json::to_string(&geom).expect("serialize");
-                let back: MarkupGeometry = serde_json::from_str(&json).expect("deserialize");
-                assert_eq!(geom, back);
+                };
+                assert_eq!(g.bounds(), Rect::new(10.0, 10.0, 20.0, 30.0));
             }
-        }
+
+            #[test]
+            fn bounds_text_anchor_covers_drawn_area() {
+                let g = MarkupGeometry::TextAnchor {
+                    at: Pt::new(20.0, 30.0),
+                    text: "Hello".to_string(),
+                    line_height: 14.0,
+                    line_count: 1,
+                    text_width: 100.0,
+                };
+                assert_eq!(g.bounds(), Rect::new(20.0, 30.0, 100.0, 14.0));
+            }
+
+            #[test]
+            fn bounds_count_is_sixteen_point_dot() {
+                let g = MarkupGeometry::Count {
+                    at: Pt::new(10.0, 10.0),
+                    number: 1,
+                };
+                assert_eq!(g.bounds(), Rect::new(2.0, 2.0, 16.0, 16.0));
+            }
+
+            #[test]
+            fn translate_moves_all_geometry_variants() {
+                let mut g = MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 10.0, 10.0));
+                g.translate(5.0, -3.0);
+                assert_eq!(g.bounds(), Rect::new(5.0, -3.0, 10.0, 10.0));
+
+                let mut g = MarkupGeometry::Segment {
+                    a: Pt::new(0.0, 0.0),
+                    b: Pt::new(10.0, 10.0),
+                };
+                g.translate(1.0, 2.0);
+                match g {
+                    MarkupGeometry::Segment { a, b } => {
+                        assert_eq!(a, Pt::new(1.0, 2.0));
+                        assert_eq!(b, Pt::new(11.0, 12.0));
+                    }
+                    _ => unreachable!(),
+                }
+            }
+
+            #[test]
+            fn text_box_rect_clamps_wrap_to_at_least_one_pt() {
+                let r = text_box_rect(Pt::new(0.0, 0.0), 0.0, "hi", 12.0);
+                assert_eq!(r.w, 1.0);
+            }
+
+            #[test]
+            fn text_line_height_clamps_to_six_pt_minimum() {
+                assert!((text_line_height(0.0) - 1.35 * 6.0).abs() < f32::EPSILON);
+                assert!((text_line_height(12.0) - 1.35 * 12.0).abs() < f32::EPSILON);
+            }
+
+            #[test]
+            fn distance_to_segment_handles_zero_length() {
+                assert!(
+                    (distance_to_segment(Pt::new(3.0, 4.0), Pt::new(0.0, 0.0), Pt::new(0.0, 0.0))
+                        - 5.0)
+                        .abs()
+                        < f32::EPSILON
+                );
+            }
+
+            #[test]
+            fn ellipse_contains_center_and_edge() {
+                let r = Rect::new(0.0, 0.0, 100.0, 100.0);
+                assert!(ellipse_contains(r, Pt::new(50.0, 50.0)));
+                assert!(!ellipse_contains(r, Pt::new(0.0, 0.0)));
+            }
+
+            #[test]
+            fn point_in_polygon_square() {
+                let points = vec![
+                    Pt::new(0.0, 0.0),
+                    Pt::new(100.0, 0.0),
+                    Pt::new(100.0, 100.0),
+                    Pt::new(0.0, 100.0),
+                ];
+                assert!(point_in_polygon(&points, Pt::new(50.0, 50.0)));
+                assert!(!point_in_polygon(&points, Pt::new(150.0, 50.0)));
+            }
+
+            #[test]
+            fn polyline_hit_single_point_acts_as_dot() {
+                assert!(polyline_hit(
+                    Pt::new(11.0, 10.0),
+                    &[Pt::new(10.0, 10.0)],
+                    false,
+                    2.0
+                ));
+                assert!(!polyline_hit(
+                    Pt::new(20.0, 10.0),
+                    &[Pt::new(10.0, 10.0)],
+                    false,
+                    2.0
+                ));
+            }
+
+            #[test]
+            fn markup_geometry_serde_roundtrip() {
+                let geometries = [
+                    MarkupGeometry::Ink {
+                        strokes: vec![vec![Pt::new(0.0, 0.0), Pt::new(5.0, 5.0)]],
+                    },
+                    MarkupGeometry::Path {
+                        points: vec![Pt::new(0.0, 0.0), Pt::new(5.0, 0.0), Pt::new(5.0, 5.0)],
+                        closed: true,
+                    },
+                    MarkupGeometry::Bounds(Rect::new(1.0, 2.0, 3.0, 4.0)),
+                ];
+                for geom in geometries {
+                    let json = serde_json::to_string(&geom).expect("serialize");
+                    let back: MarkupGeometry = serde_json::from_str(&json).expect("deserialize");
+                    assert_eq!(geom, back);
+                }
+            }
     }
