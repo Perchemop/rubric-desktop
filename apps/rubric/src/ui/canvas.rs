@@ -357,10 +357,7 @@ fn draw_markup(
 
     /// Commit a pending in-canvas text edit (if any) using focus-loss semantics.
     /// Returns `true` when the text actually changed and was written back.
-    pub fn commit_text_edit(
-        ui_state: &mut super::app::UiState,
-        project: &mut Project,
-    ) -> bool {
+    pub fn commit_text_edit(ui_state: &mut super::app::UiState, project: &mut Project) -> bool {
         let Some(edit) = ui_state.text_edit.clone() else {
             return false;
         };
@@ -2143,8 +2140,8 @@ fn draw_markup(
         mutated
     }
 
-pub use self::draw_canvas;
 pub use self::commit_text_edit;
+pub use self::draw_canvas;
 
     #[cfg(test)]
     mod tests {

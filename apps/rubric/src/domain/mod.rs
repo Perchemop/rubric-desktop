@@ -10,7 +10,7 @@ pub mod grid;
 pub mod markup;
 pub mod markup_comment;
 pub mod markup_geometry;
-pub use markup_geometry::{MarkupGeometry, text_line_height, text_box_rect};
+pub use markup_geometry::{text_box_rect, text_line_height, MarkupGeometry};
 pub mod markup_list;
 pub mod markup_measurement;
 pub mod markup_stamp;
