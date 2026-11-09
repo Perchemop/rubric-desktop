@@ -2141,7 +2141,7 @@ fn draw_markup(
     }
 
 pub use self::commit_text_edit;
-pub use self::draw_canvas;
+    pub use self::draw_canvas;
 
     #[cfg(test)]
     mod tests {
