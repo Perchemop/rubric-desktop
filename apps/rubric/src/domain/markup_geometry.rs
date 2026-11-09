@@ -237,13 +237,13 @@ fn polyline_hit(p: Pt, points: &[Pt], closed: bool, tol: f32) -> bool {
         }
     }
 
-pub use self::MarkupGeometry;
-pub use self::text_line_height;
-pub use self::text_box_rect;
+    pub use self::text_box_rect;
+    pub use self::text_line_height;
+    pub use self::MarkupGeometry;
 
     #[cfg(test)]
     mod tests {
-    use super::*;
+        use super::*;
 
     #[test]
     fn bounds_segment_is_corner_to_corner() {
