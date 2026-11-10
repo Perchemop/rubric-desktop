@@ -108,10 +108,7 @@ pub(crate) fn draw_pages(
                             // duplicate submit on every frame while the key is
                             // in flight.
                             cache.pending.insert(key_str.clone());
-                            worker.submit(RenderJob {
-                                key,
-                                priority: 0,
-                            });
+                            worker.submit(RenderJob { key, priority: 0 });
                         }
 
                         match loaded {

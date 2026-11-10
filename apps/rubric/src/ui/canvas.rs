@@ -740,7 +740,7 @@ pub(crate) fn draw_canvas(
             let resp = ui.put(
                 sr,
                 egui::TextEdit::multiline(&mut edit.text)
-                    .id(egui::Id::new(("rubric_text_edit", edit.id))),
+                    .id(egui::Id::unique(("rubric_text_edit", edit.id))),
             );
             if !edit.focus_requested {
                 resp.request_focus();
@@ -797,7 +797,7 @@ pub(crate) fn draw_canvas(
                 egui::StrokeKind::Middle,
             );
             let popover_resp =
-                ui.interact(popover, egui::Id::new("note_popover"), egui::Sense::click());
+                ui.interact(popover, egui::Id::unique("note_popover"), egui::Sense::click());
             let inner = popover.shrink(8.0);
             let mut cy = inner.min.y;
             let mut next_row = move |h: f32| {

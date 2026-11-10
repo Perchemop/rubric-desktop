@@ -34,8 +34,8 @@ impl RenderWorker {
     /// the matching receiver and sender, so there is no second receiver.
     pub fn spawn(ctx: &egui::Context) -> Self {
         let ctx = ctx.clone();
-        let (jobs, job_rx) = mpsc::channel::<RenderJob>(64);
-        let (result_tx, results) = mpsc::channel::<ThumbPixels>(64);
+        let (jobs, job_rx) = mpsc::channel::<RenderJob>();
+        let (result_tx, results) = mpsc::channel::<ThumbPixels>();
 
         // ---- Worker loop ----
         std::thread::spawn(move || {
@@ -92,8 +92,9 @@ fn render_thumb(job: &RenderJob) -> ThumbPixels {
     // 3. Convert to straight-alpha RGBA and send back to the UI. Width and
     //    height are the ACTUAL decoded dimensions; the requested width may
     //    have been clamped by the cache layer.
-    let (width, height) = img.dimensions();
-    let rgba = img.to_rgba8().into_raw();
+    let rgba8 = img.to_rgba8();
+    let (width, height) = rgba8.dimensions();
+    let rgba = rgba8.into_raw();
     ThumbPixels {
         key: job.key.clone(),
         width,

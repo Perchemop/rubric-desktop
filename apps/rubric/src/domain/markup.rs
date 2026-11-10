@@ -12,7 +12,9 @@ use uuid::Uuid;
 
 use super::geom::{self, Pt, Rect};
 pub use super::markup_comment::Comment;
-use super::markup_geometry::{distance_to_segment, ellipse_contains, point_in_polygon, polyline_hit};
+use super::markup_geometry::{
+    distance_to_segment, ellipse_contains, point_in_polygon, polyline_hit,
+};
 pub use super::markup_geometry::{text_box_rect, text_line_height, MarkupGeometry};
 use super::markup_measurement::Measurement;
 use super::markup_stamp::StampPreset;

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 /// Identity of one thumbnail render: enough to dedup, cache and poison.
 /// Display form is stable and matches the existing UI key
 /// `"<pdf path>:<page>:<width px>"`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RenderKey {
     pub pdf_id: String,
     pub page: usize,

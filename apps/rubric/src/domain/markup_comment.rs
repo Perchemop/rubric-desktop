@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn comment_partial_eq_ignores_id_order() {
-        let mut a = Comment::new("Ann", "looks good");
+        let a = Comment::new("Ann", "looks good");
         let mut b = Comment::new("Ann", "looks good");
         b.id = a.id;
         b.created = a.created;

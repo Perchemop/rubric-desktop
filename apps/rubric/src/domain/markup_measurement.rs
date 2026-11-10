@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::units::{self, MeasureKind, MeasureUnit};
+use super::units::{self, MeasureKind};
 
 /// A measurement result attached to a measure markup.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

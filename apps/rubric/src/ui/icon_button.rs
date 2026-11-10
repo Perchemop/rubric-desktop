@@ -3,8 +3,8 @@
 //! Rubric's brand (spec F-603 context menu, toolbar tool buttons).
 
 use eframe::egui::{
-    Align2, Color32, FontFamily, FontId, Painter, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, Vec2,
-    WidgetType,
+    Align2, Color32, FontFamily, FontId, Painter, Pos2, Rect, Role, Sense, Stroke, StrokeKind, Ui,
+    Vec2,
 };
 
 /// Draw a small geometric icon to the left of a text label inside `ui`.
@@ -58,7 +58,7 @@ pub(crate) fn icon_button(
     // the tree, and AccessKit consumers (including kittest) panic while
     // resolving the dangling id.
     response.widget_info(|| {
-        egui::WidgetInfo::labeled(WidgetType::Button, response.enabled(), label.to_owned())
+        egui::WidgetInfo::labeled(Role::Button, response.enabled(), label.to_owned())
     });
     if response.hovered() {
         ui.painter()
