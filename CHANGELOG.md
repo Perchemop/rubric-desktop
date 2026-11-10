@@ -4,6 +4,24 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ## [Unreleased]
 
+### Added
+
+- **Async page thumbnails** (UI audit P1-2, PR #160; approved design in
+  `docs/research/async-thumbnails.md`): Pages sidebar thumbnails now render
+  and decode off the UI thread via a long-lived worker
+  (`apps/rubric/src/data/render_worker.rs`), driven by pure, headless-tested
+  domain types in `apps/rubric/src/domain/thumb_render.rs` (`RenderKey`,
+  `RenderJob`, `RenderOutcome`, `RenderQueueState`, `TextureLru`).
+  `ui/pages.rs` submits one job per visible page and drains results per
+  frame, dedupes in-flight keys (`ThumbCache.pending`) and poisons failures
+  so a broken page is not retried every frame; the old dormant
+  `RenderQueue`/`RenderResult`/`RepaintSignal`/`begin_render_thumb`
+  scaffolding and the synchronous `load_thumb` were removed. Scope is the
+  Pages sidebar only — the canvas page-background path stays synchronous
+  (explicit follow-up slice). PDFium calls remain mutex-serialised
+  (`thread_safe` is a default feature of the pinned `pdfium-render` 0.9.4,
+  so no Cargo change was needed).
+
 ### Fixed
 
 - **UI/UX audit P0 round** (2026-11-07, PR #148; findings in
@@ -26,6 +44,29 @@ All notable changes to this project will be documented here. Format: semantic-is
 - Import pipeline unified: `import_pdf_from_path` / `import_pdf_dialog`
   behind File ▸ Import PDF…, Ctrl+I, drag-and-drop and the canvas CTA
   (previously three inline copies).
+
+- **Dependency refresh** (issue #29, PR #160): `eframe`/`egui`/`egui_extras`
+  0.36 → 0.37 (dev-dep `egui_kittest` 0.36.2 → 0.37), `rfd` 0.15 → 0.17, and
+  `ureq` 2 → 3 in `crates/crash-report` and `crates/update-check`, adapted to
+  the ureq 3 API (`.header()`, `send_json`, `into_body().read_json()`,
+  `Error::StatusCode` handling).
+
+- **God-file splits** (PR #160, no behaviour change intended):
+  `apps/rubric/src/ui/app.rs` panel orchestration extracted into
+  `ui/app_canvas.rs`, `ui/app_inspector.rs`, `ui/app_markups_list.rs`,
+  `ui/app_pages.rs`, `ui/app_status.rs` and `ui/app_tool_chest.rs`;
+  `domain/markup.rs` split into `domain/markup_comment.rs`,
+  `domain/markup_geometry.rs`, `domain/markup_measurement.rs` and
+  `domain/markup_stamp.rs` (geometry and hit-test helpers now owned by
+  `markup_geometry`; `hit_tolerance_page`/`measure_anchor` moved to
+  `ui/canvas_geom.rs`).
+
+### Docs
+
+- Research notes for async page thumbnails and signed releases recorded as
+  approved 2026-11-09 in `docs/research/README.md`; stray tracked
+  `apps/rubric/src/ui/inspector.rs.orig` merge artifact removed and
+  `*.orig`/`*.bak`/`*.rej` ignored (PR #160).
 
 ## [0.3.0] - 2026-11-06
 

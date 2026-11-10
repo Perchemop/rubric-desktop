@@ -20,6 +20,11 @@ secrets/
 **/*.rs.bk
 *.profraw
 
+# Editor / merge artifacts (never commit: use the editor's undo, not backups)
+*.orig
+*.bak
+*.rej
+
 # OS / editor
 .DS_Store
 Thumbs.db

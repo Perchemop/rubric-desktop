@@ -1,11 +1,13 @@
 # Design note — async page thumbnails (worker thread + on-disk cache)
 
-Status: **engineering design note, not yet approved for implementation.**
-Internal design written for Rubric; the only external sources are the public
-API docs of crates already in the tree (linked below). No third-party source,
-layout, icon or algorithm is reproduced. Per `docs/research/README.md`, a note
-of this kind needs explicit owner approval *before* the dependent implementation
-Task (guide §2.3, §8.4) — this note is the artefact to approve.
+Status: **approved 2026-11-09 (approver initials `ld`)** — recorded in
+`docs/research/README.md`. Internal design written for Rubric; the only
+external sources are the public API docs of crates already in the tree
+(linked below). No third-party source, layout, icon or algorithm is
+reproduced. Per `docs/research/README.md`, a note of this kind needs explicit
+owner approval *before* the dependent implementation Task (guide §2.3, §8.4) —
+this note is an implementation input **only** because that human gate is
+recorded.
 
 Scope: move PDF page-thumbnail rasterisation **and decode** off the UI thread in
 the Pages sidebar (spec F-404), reusing the existing on-disk render cache, and

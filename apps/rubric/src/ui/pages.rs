@@ -13,11 +13,14 @@ use std::path::Path;
 
 /// State owned by the app for the sidebar: uploaded page thumbnails plus the
 /// pages whose render already failed, so a broken page is not retried every
-/// frame (same poisoning rule the main canvas uses).
+/// frame (same poisoning rule the main canvas uses). `pending` holds the keys
+/// submitted to the worker and not yet drained, so a render in flight is not
+/// re-submitted every frame.
 #[derive(Default)]
 pub(crate) struct ThumbCache {
     textures: HashMap<String, TextureHandle>,
     failed: std::collections::HashSet<String>,
+    pending: std::collections::HashSet<String>,
 }
 
 /// Minimum width of one thumbnail cell, and the gutter between cells.
@@ -98,10 +101,15 @@ pub(crate) fn draw_pages(
                         // Check cache first.
                         if let Some(texture) = cache.textures.get(&key_str) {
                             loaded = Some(texture.clone());
-                        } else if !cache.failed.contains(&key_str) {
-                            // Enqueue for async render (idempotent — duplicates are dropped).
+                        } else if !cache.failed.contains(&key_str)
+                            && !cache.pending.contains(&key_str)
+                        {
+                            // Enqueue for async render; `pending` stops a
+                            // duplicate submit on every frame while the key is
+                            // in flight.
+                            cache.pending.insert(key_str.clone());
                             worker.submit(RenderJob {
-                                key: key.clone(),
+                                key,
                                 priority: 0,
                             });
                         }
@@ -151,20 +159,22 @@ pub(crate) fn draw_pages(
             ui.add_space(GAP as f32);
         }
 
-        // Drain completed render results and upload textures.
+        // Drain completed render results and upload textures. Every result
+        // leaves `pending`; failures additionally poison the key.
         for pixels in worker.try_drain() {
+            let key_str = pixels.key.to_string();
+            cache.pending.remove(&key_str);
             if pixels.outcome.is_ok() {
-                let key_str = pixels.key.to_string();
                 let image = egui::ColorImage::from_rgba_unmultiplied(
                     [pixels.width as usize, pixels.height as usize],
-                    pixels.rgba,
+                    &pixels.rgba,
                 );
                 let t = ui
                     .ctx()
                     .load_texture(key_str.clone(), image, egui::TextureOptions::LINEAR);
                 cache.textures.insert(key_str, t);
             } else {
-                cache.failed.insert(pixels.key.to_string());
+                cache.failed.insert(key_str);
             }
         }
     });

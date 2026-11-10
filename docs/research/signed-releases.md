@@ -1,9 +1,10 @@
 # Research note — signed releases + checksum-verified auto-update
 
-Status: **proposed — pending human approval (guide §2.3, §8.4)**. The
-implementation plan at the end is an input to a dependent Task **only** once
-that approval is recorded (with a date and initials) here and in
-`docs/research/README.md`. Until then this is research, not a licence to build.
+Status: **approved 2026-11-09 (approver initials `ld`)**, recorded in
+`docs/research/README.md` (guide §2.3, §8.4). The implementation plan at the
+end is an input to a dependent Task **only** because that approval is recorded
+(with a date and initials) here and in the index. Implementation remains
+queued as its own future slices — nothing has been built yet.
 
 - Scope: how Rubric signs its release artefacts and how the app verifies a
   downloaded update before applying it.
@@ -475,12 +476,13 @@ irreversible, owner-only step.
 
 ## 14. Approval
 
-This note needs explicit human approval (guide §2.3, §8.4) before Slice A/B/C
-implementation Tasks can depend on it.
+Approval is recorded (guide §2.3, §8.4); the checklist below tracks the
+decisions still open before Slice A/B/C implementation Tasks may depend on it.
 
-- [ ] Approved — date: ______  approver initials: ______
+- [x] Approved — date: 2026-11-09  approver initials: ld
 - [ ] Decision on the tool: **minisign** (recommended) · cosign · other: ______
 - [ ] Commitment to create the Actions secrets + offline key backup (owner-only)
 
-When approved, add a row to the index in `docs/research/README.md` and record
-the dated approval here, then proceed with Slice A.
+The index row in `docs/research/README.md` and the dated approval above are
+recorded; proceed with Slice A once the tool decision and the key-backup
+commitment are made.

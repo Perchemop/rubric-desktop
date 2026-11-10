@@ -12,13 +12,12 @@ use uuid::Uuid;
 
 use super::geom::{self, Pt, Rect};
 pub use super::markup_comment::Comment;
-use super::markup_geometry::{text_box_rect, text_line_height, MarkupGeometry};
+use super::markup_geometry::{distance_to_segment, ellipse_contains, point_in_polygon, polyline_hit};
+pub use super::markup_geometry::{text_box_rect, text_line_height, MarkupGeometry};
 use super::markup_measurement::Measurement;
 use super::markup_stamp::StampPreset;
 use super::style::{palette, Color, FillMode, MarkupStyle};
 use super::units::{self, MeasureKind, Scale};
-
-pub use super::markup_geometry::{text_box_rect, text_line_height, MarkupGeometry};
 
 /// The tool / shape family of a markup.
 ///
@@ -776,32 +775,6 @@ impl MarkupStyle {
     }
 }
 
-/// Perpendicular distance from `p` to the segment `a`-`b`.
-pub(crate) fn distance_to_segment(p: Pt, a: Pt, b: Pt) -> f32 {
-    let dx = b.x - a.x;
-    let dy = b.y - a.y;
-    let len_sq = dx * dx + dy * dy;
-    if len_sq <= f32::EPSILON {
-        return p.distance(a);
-    }
-    let t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / len_sq).clamp(0.0, 1.0);
-    let proj = Pt::new(a.x + t * dx, a.y + t * dy);
-    p.distance(proj)
-}
-
-/// Whether `p` lies inside the axis-aligned ellipse inscribed in `r`.
-fn ellipse_contains(r: Rect, p: Pt) -> bool {
-    let a = r.w / 2.0;
-    let b = r.h / 2.0;
-    if a <= 0.0 || b <= 0.0 {
-        return false;
-    }
-    let c = r.center();
-    let nx = (p.x - c.x) / a;
-    let ny = (p.y - c.y) / b;
-    nx * nx + ny * ny <= 1.0
-}
-
 /// Minimum distance from `p` to the four edges of `r` (its border).
 fn distance_to_rect_border(r: Rect, p: Pt) -> f32 {
     let tl = Pt::new(r.x, r.y);
@@ -812,45 +785,6 @@ fn distance_to_rect_border(r: Rect, p: Pt) -> f32 {
         .min(distance_to_segment(p, tr, br))
         .min(distance_to_segment(p, br, bl))
         .min(distance_to_segment(p, bl, tl))
-}
-
-/// Even-odd (ray casting) point-in-polygon test.
-///
-/// Boundary results are implementation-defined, so callers should also accept
-/// a near-edge hit (see [`polyline_hit`]).
-fn point_in_polygon(points: &[Pt], p: Pt) -> bool {
-    if points.len() < 3 {
-        return false;
-    }
-    let n = points.len();
-    let mut inside = false;
-    for (i, a) in points.iter().enumerate() {
-        let b = points[(i + n - 1) % n];
-        if (a.y > p.y) != (b.y > p.y) {
-            let x = a.x + (p.y - a.y) / (b.y - a.y) * (b.x - a.x);
-            if p.x < x {
-                inside = !inside;
-            }
-        }
-    }
-    inside
-}
-
-/// Whether `p` is within `tol` of any segment of a polyline.
-///
-/// A closed path also tests the closing segment; a single-point stroke acts as
-/// a dot. Used by ink, polyline and closed path hit testing.
-fn polyline_hit(p: Pt, points: &[Pt], closed: bool, tol: f32) -> bool {
-    match points.len() {
-        0 => false,
-        1 => p.distance(points[0]) <= tol,
-        n => {
-            points
-                .windows(2)
-                .any(|w| distance_to_segment(p, w[0], w[1]) <= tol)
-                || (closed && distance_to_segment(p, points[n - 1], points[0]) <= tol)
-        }
-    }
 }
 
 #[cfg(test)]
@@ -1280,25 +1214,6 @@ mod tests {
         );
         assert!(m.hit_test(Pt::new(11.0, 10.0), 2.0));
         assert!(!m.hit_test(Pt::new(20.0, 10.0), 2.0));
-    }
-
-    #[test]
-    fn measurement_labels_honour_precision_and_default() {
-        let m = Measurement {
-            kind: MeasureKind::Length,
-            value: 12.3456,
-            value_points: 12.3456,
-        };
-        assert_eq!(m.label(units::MeasureUnit::Foot), "12.346 ft");
-        assert_eq!(m.label_with(units::MeasureUnit::Foot, 0), "12 ft");
-        assert_eq!(m.label_with(units::MeasureUnit::Foot, 1), "12.3 ft");
-
-        let angle = Measurement {
-            kind: MeasureKind::Angle,
-            value: 90.0,
-            value_points: 90.0,
-        };
-        assert_eq!(angle.label_with(units::MeasureUnit::Point, 6), "90.00°");
     }
 
     #[test]

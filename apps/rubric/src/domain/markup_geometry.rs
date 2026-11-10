@@ -7,7 +7,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::geom::{self, Pt, Rect};
+use super::geom::{Pt, Rect};
 
 /// Geometry of a markup, in page points.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -175,7 +175,7 @@ pub(crate) fn distance_to_segment(p: Pt, a: Pt, b: Pt) -> f32 {
 }
 
 /// Whether `p` lies inside the axis-aligned ellipse inscribed in `r`.
-fn ellipse_contains(r: Rect, p: Pt) -> bool {
+pub(crate) fn ellipse_contains(r: Rect, p: Pt) -> bool {
     let a = r.w / 2.0;
     let b = r.h / 2.0;
     if a <= 0.0 || b <= 0.0 {
@@ -187,23 +187,11 @@ fn ellipse_contains(r: Rect, p: Pt) -> bool {
     nx * nx + ny * ny <= 1.0
 }
 
-/// Minimum distance from `p` to the four edges of `r` (its border).
-fn distance_to_rect_border(r: Rect, p: Pt) -> f32 {
-    let tl = Pt::new(r.x, r.y);
-    let tr = Pt::new(r.right(), r.y);
-    let br = Pt::new(r.right(), r.bottom());
-    let bl = Pt::new(r.x, r.bottom());
-    distance_to_segment(p, tl, tr)
-        .min(distance_to_segment(p, tr, br))
-        .min(distance_to_segment(p, br, bl))
-        .min(distance_to_segment(p, bl, tl))
-}
-
 /// Even-odd (ray casting) point-in-polygon test.
 ///
 /// Boundary results are implementation-defined, so callers should also accept
 /// a near-edge hit (see [`polyline_hit`]).
-fn point_in_polygon(points: &[Pt], p: Pt) -> bool {
+pub(crate) fn point_in_polygon(points: &[Pt], p: Pt) -> bool {
     if points.len() < 3 {
         return false;
     }
@@ -225,7 +213,7 @@ fn point_in_polygon(points: &[Pt], p: Pt) -> bool {
 ///
 /// A closed path also tests the closing segment; a single-point stroke acts as
 /// a dot. Used by ink, polyline and closed path hit testing.
-fn polyline_hit(p: Pt, points: &[Pt], closed: bool, tol: f32) -> bool {
+pub(crate) fn polyline_hit(p: Pt, points: &[Pt], closed: bool, tol: f32) -> bool {
     match points.len() {
         0 => false,
         1 => p.distance(points[0]) <= tol,
@@ -236,13 +224,10 @@ fn polyline_hit(p: Pt, points: &[Pt], closed: bool, tol: f32) -> bool {
                 || (closed && distance_to_segment(p, points[n - 1], points[0]) <= tol)
         }
     }
+}
 
-pub use self::MarkupGeometry;
-pub use self::text_line_height;
-pub use self::text_box_rect;
-
-    #[cfg(test)]
-    mod tests {
+#[cfg(test)]
+mod tests {
     use super::*;
 
     #[test]
@@ -382,8 +367,4 @@ pub use self::text_box_rect;
             assert_eq!(geom, back);
         }
     }
-
-
-}
-
 }
