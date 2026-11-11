@@ -10,14 +10,11 @@ use super::style::{palette, Color};
 
 /// Built-in stamp presets (spec F-111).
 ///
-/// Stamps convey a review verdict from a fixed library rather than free text.
-/// The set mixes status marks (`Approved`, `Rejected`, `Draft`), which draw
-/// their word, with utility marks (`Check`, `Cross`), which draw a glyph.
-///
 /// Colours are grouped by meaning rather than being pairwise-distinct:
 /// affirmative marks are green, negative marks red, and in-progress marks
 /// amber. This mirrors the visual convention of check/cross marks and does
-/// not try to give every preset a unique hue (contrast [`crate::domain::ReviewStatus`]).
+/// not try to give every preset a unique hue (contrast
+/// [`crate::domain::ReviewStatus`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StampPreset {

@@ -475,7 +475,10 @@ pub(crate) fn draw_canvas(
     // Paint the PDF page as a background texture when available; otherwise
     // keep the existing flat white fill. NOTE: first paint of a page may hitch
     // while PDFium rasterises + writes the cache PNG; the cache makes it
-    // one-time. No background threads this slice (pdfium is not thread-safe).
+    // one-time. This canvas path intentionally stays synchronous on the UI
+    // thread; the Pages sidebar renders its thumbnails on a worker thread,
+    // and PDFium FFI calls are mutex-serialised by pdfium-render's
+    // default-on `thread_safe` feature (Slice 5 may move this path too).
     let mut painted_texture = false;
     if let Some(pdf_path) = source_pdf {
         // Track the page's on-screen device width so text stays sharp at high
@@ -796,8 +799,11 @@ pub(crate) fn draw_canvas(
                 egui::Stroke::new(1.0, Color32::from_gray(150)),
                 egui::StrokeKind::Middle,
             );
-            let popover_resp =
-                ui.interact(popover, egui::Id::unique("note_popover"), egui::Sense::click());
+            let popover_resp = ui.interact(
+                popover,
+                egui::Id::unique("note_popover"),
+                egui::Sense::click(),
+            );
             let inner = popover.shrink(8.0);
             let mut cy = inner.min.y;
             let mut next_row = move |h: f32| {

@@ -86,31 +86,26 @@ global bindings behind a mutex so every call is serialised; without it `Pdfium`
 is neither `Send` nor `Sync`.
 Source: <https://docs.rs/pdfium-render/latest/pdfium_render/> (public API docs).
 
-Rubric's `apps/rubric/Cargo.toml` currently pulls `pdfium-render = "0.9"` with
-**default features and no `thread_safe`** (line 37). Consequence: the current
-"no background threads" caution on the canvas is correct, and a naive
-worker-thread render would be a data race against any UI-thread PDFium call
-(import/probe paths also initialise the global bindings).
-
-Two safe options, both adopted in the design:
-
-1. **One dedicated render worker thread**, long-lived, owning *all*
-   `render_page_to_cache` calls. Even without the `thread_safe` feature, a
-   single thread that never overlaps another PDFium caller is safe. This is what
-   "parallel processing, not multi-threading" means: one serialised renderer.
-2. **Enable `pdfium-render`'s `thread_safe` feature** in `apps/rubric/Cargo.toml`
-   as defence-in-depth, so an accidental call from another thread cannot crash.
-   It gives no speed-up (it mutex-serialises), but the goal here is *off the UI
-   thread*, not parallel throughput — so that is acceptable. This is a one-line
-   Cargo change and a `deny.toml`/`ATTRIBUTION.md` no-op (same crate, same
-   version, feature only).
+Rubric's `apps/rubric/Cargo.toml` pulls `pdfium-render = "0.9"` with default
+features (line 37), and in 0.9.x **`thread_safe` is itself a default feature**
+(defaults: `image_latest`, `pdfium_latest`, `thread_safe`). The global bindings
+are therefore already wrapped behind a mutex, so every PDFium FFI call is
+serialised whatever thread it comes from — **no Cargo change is needed or
+made**, and `deny.toml`/`ATTRIBUTION.md` are unaffected (same crate, same
+version). The mutex, not the single-thread argument, is the safety guarantee.
+There are in fact two sanctioned callers: the long-lived render worker, and
+the canvas page-background path, which still rasterises on the UI thread until
+Slice 5 moves it onto the same worker. One dedicated worker is kept for
+ordering, backpressure and a single owner of the engine — not because a single
+thread were the only safe shape.
 
 ### 3.2 hayro is already thread-safe
 
 When the `hayro` feature is enabled, `render_page_to_cache` dispatches to
 `hayro_pages::render_page_hayro` — pure Rust, no global mutable bindings, `Send`
 friendly (`data/pdf.rs:438-448`). The worker design is therefore correct with
-either engine; the `thread_safe` change is only needed for the PDFium default.
+either engine; the PDFium default is already serialised by its default-on
+`thread_safe` feature (§3.1).
 
 ### 3.3 egui threading
 
@@ -435,9 +430,10 @@ plus review:
    finished thumbnail appears on the next frame without a manual interaction.
 8. **Staleness.** Switching the open document while renders are queued drops the
    stale jobs (`retain_document`), so no wrong-page image is painted.
-9. **Thread safety.** All engine calls are serialised on the single worker; if
-   kept on PDFium, the `thread_safe` cargo feature is enabled (or the async path
-   is gated to the `hayro` feature). Recorded in `DECISIONS.md`.
+9. **Thread safety.** All engine calls are mutex-serialised: PDFium calls run
+   through the bindings wrapped by `thread_safe` — verify it is active (it is a
+   default feature of 0.9.x; no change needed), or gate the async path to the
+   `hayro` feature. Recorded in `DECISIONS.md`.
 10. **Quality gates green:** fmt, `clippy -- -D warnings`, tests, release build.
 
 ## 7. Implementation plan (vertical slices)
@@ -450,10 +446,11 @@ partitioned so parallel work never collides.
   `DiskCacheEntry`, `plan_disk_eviction`. No UI, no I/O. All unit tests + serde
   roundtrips from §6.2–6.5. Registers the module in `domain/mod.rs`.
 - **Slice 2 — worker (owner: `fixer`/tooling).** New
-  `src/data/render_worker.rs`; enable `pdfium-render` `thread_safe` feature in
-  `apps/rubric/Cargo.toml` (or gate to `hayro`); unit-test the pure parts and an
-  integration test that renders one page of a tiny fixture PDF through the
-  worker and asserts non-empty pixels (headless, no display).
+  `src/data/render_worker.rs`; verify `pdfium-render` `thread_safe` is active
+  (it is a default feature of 0.9.x; no change needed) or gate to `hayro`;
+  unit-test the pure parts and an integration test that renders one page of a
+  tiny fixture PDF through the worker and asserts non-empty pixels (headless,
+  no display).
 - **Slice 3 — UI wiring (owner: `ui-dev`).** Rewrite `ui/pages.rs::load_thumb`
   into the async request/drain loop; extend `ThumbCache`; thread the
   `RenderWorker` through `app_pages.rs`; remove the dead `RenderQueue`/`RenderJob`
@@ -472,17 +469,16 @@ partitioned so parallel work never collides.
 
 ## 8. Risks and open questions
 
-- **PDFium `thread_safe` enablement** changes a dependency feature; CI
-  `cargo-deny`/SBOM should be unaffected (same crate/version) but the reviewer
-  must confirm. Alternative: gate async thumbnails to the `hayro` feature until
-  hayro becomes the default engine — safe but leaves the PDFium default
-  synchronous.
+- **PDFium `thread_safe`**: no dependency feature changes — it is a default
+  feature of 0.9.x (§3.1), so CI `cargo-deny`/SBOM see the same crate/version.
+  Fallback if it were ever absent: gate async thumbnails to the `hayro` feature
+  until hayro becomes the default engine.
 - **`render_page_to_cache` binds PDFium per call** (`data/pdf.rs:356`); on the
   dedicated worker that is one bind on the worker thread, which is exactly the
   serialised model. If the UI thread has already initialised the global
   bindings (import path), the worker's `bind_pdfium()` takes the
-  `PdfiumLibraryBindingsAlreadyInitialized` branch and reuses them — hence the
-  `thread_safe` recommendation as the hard guarantee.
+  `PdfiumLibraryBindingsAlreadyInitialized` branch and reuses them — the mutex
+  behind `thread_safe` is the hard guarantee (§3.1).
 - **Immediate vs delayed first paint.** Keeping the very first thumbnail
   synchronous would avoid a blank placeholder on open, but reintroduces the
   freeze. Recommendation: always async, with an honest numbered placeholder

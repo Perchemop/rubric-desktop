@@ -117,3 +117,36 @@ fn failed_pixels(job: &RenderJob, msg: String) -> ThumbPixels {
         outcome: Err(msg),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A zero render width is rejected by `render_page_to_cache` before any
+    /// PDFium binding or filesystem access, so this failure path is fully
+    /// deterministic and headless. Every field of the returned payload must
+    /// be shaped for the UI: the original key echoed back, no pixels, no
+    /// cache path, a zero height and an honest non-empty error message.
+    #[test]
+    fn render_thumb_maps_failures_to_shaped_err_payload() {
+        let job = RenderJob {
+            key: RenderKey {
+                pdf_id: "/nonexistent/definitely-missing.pdf".into(),
+                page: 0,
+                width_px: 0,
+            },
+            priority: 0,
+        };
+
+        let pixels = render_thumb(&job);
+
+        assert!(pixels.outcome.is_err(), "zero width must fail the render");
+        let message = pixels.outcome.unwrap_err();
+        assert!(!message.is_empty(), "failure payload must carry a message");
+        assert_eq!(pixels.key, job.key);
+        assert_eq!(pixels.width, 0);
+        assert_eq!(pixels.height, 0);
+        assert!(pixels.rgba.is_empty());
+        assert!(pixels.cache_path.is_empty());
+    }
+}

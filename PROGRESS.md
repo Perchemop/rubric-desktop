@@ -1865,6 +1865,20 @@ Parallel subagent execution completed 4 workstreams:
 - crates/crash-report/Cargo.toml, crash-report/src/lib.rs
 - crates/update-check/Cargo.toml, update-check/src/lib.rs
 
+### Correction (2026-11-11, PR #160 repair)
+
+- "`DragValue::range` → `clamp_range` (7 sites in app.rs, inspector.rs,
+  app_menu.rs)" is wrong: egui 0.36 already used `.range(...)` (verified on
+  `main`); no such adaptation exists or is needed for 0.37.
+- The file list above names `ui/inspector.rs` and `ui/app_menu.rs`.
+  `ui/app_menu.rs` is unchanged by PR #160; `ui/inspector.rs` is changed, but
+  for the painter-drawn layer controls (font-glyph replacement, see the
+  CHANGELOG), not for any `clamp_range` adaptation.
+- The research notes are no longer "pending owner approval": both were
+  approved 2026-11-09 and recorded in `docs/research/README.md`, and both
+  notes were backfilled in this PR (supersedes the status in the adjacent
+  2026-11-08 research entry below).
+
 ## 2026-11-08 — Research: async thumbnails + signed releases (parallel subagents)
 
 **Status**: research complete; pending owner approval (guide §2.3/§8.4)

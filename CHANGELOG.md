@@ -12,9 +12,11 @@ All notable changes to this project will be documented here. Format: semantic-is
   (`apps/rubric/src/data/render_worker.rs`), driven by pure, headless-tested
   domain types in `apps/rubric/src/domain/thumb_render.rs` (`RenderKey`,
   `RenderJob`, `RenderOutcome`, `RenderQueueState`, `TextureLru`).
-  `ui/pages.rs` submits one job per visible page and drains results per
-  frame, dedupes in-flight keys (`ThumbCache.pending`) and poisons failures
-  so a broken page is not retried every frame; the old dormant
+  `ui/pages.rs` lays out every page and submits one deduped job per page of
+  the document (no scroll culling yet), drains results per frame and poisons
+  failures so a broken page is not retried every frame; the
+  textures/pending/failed sets are bounded by the page count and reset on the
+  next document switch. The old dormant
   `RenderQueue`/`RenderResult`/`RepaintSignal`/`begin_render_thumb`
   scaffolding and the synchronous `load_thumb` were removed. Scope is the
   Pages sidebar only — the canvas page-background path stays synchronous
@@ -38,6 +40,13 @@ All notable changes to this project will be documented here. Format: semantic-is
   Esc-fullscreen) were removed and Export PDF / Export Page Image / Print are
   gated with honest hover text; the About window no longer overwrites the
   status line every frame.
+
+- **Icon controls replace font glyphs** (PR #160): the top-bar page-navigation
+  arrows and the Layers inspector's visibility/lock/reorder buttons now use
+  painter-drawn icons (triangle / eye / padlock) instead of `◀ ▶ ▲ ▼ 👁 🔒 🔓`
+  font glyphs, which the bundled fonts do not cover — the egui 0.37 test
+  harness (`MissingGlyphPolicy::Panic`) surfaced them. The controls carry
+  their tooltip text as AccessKit labels.
 
 ### Changed
 

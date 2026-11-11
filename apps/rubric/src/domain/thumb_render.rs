@@ -151,14 +151,18 @@ impl TextureLru {
     }
 
     pub fn insert(&mut self, key: RenderKey) -> Option<RenderKey> {
-        if self.order.len() >= self.capacity {
-            let evicted = self.order.pop_front().unwrap();
-            self.order.push_back(key);
-            Some(evicted)
-        } else {
-            self.order.push_back(key);
-            None
+        if self.capacity == 0 {
+            // Nothing can be retained: report the incoming key as evicted
+            // instead of panicking on the empty order queue.
+            return Some(key);
         }
+        let evicted = if self.order.len() >= self.capacity {
+            self.order.pop_front()
+        } else {
+            None
+        };
+        self.order.push_back(key);
+        evicted
     }
 
     pub fn len(&self) -> usize {
@@ -255,6 +259,18 @@ mod tests {
         assert!(!lru.order.iter().any(|k| k.pdf_id == "a"));
         assert!(lru.order.iter().any(|k| k.pdf_id == "b"));
         assert!(lru.order.iter().any(|k| k.pdf_id == "c"));
+    }
+
+    #[test]
+    fn texture_lru_zero_capacity_never_panics() {
+        let mut lru = TextureLru::new(0);
+        let evicted = lru.insert(RenderKey {
+            pdf_id: "a".into(),
+            page: 0,
+            width_px: 64,
+        });
+        assert!(evicted.is_some(), "a zero-capacity LRU evicts everything");
+        assert_eq!(lru.len(), 0);
     }
 
     #[test]
