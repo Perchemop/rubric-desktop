@@ -144,10 +144,16 @@ impl TextureLru {
     }
 
     pub fn touch(&mut self, key: RenderKey) {
+        if self.capacity == 0 {
+            return;
+        }
         if let Some(pos) = self.order.iter().position(|k| k == &key) {
             self.order.remove(pos);
         }
         self.order.push_back(key);
+        while self.order.len() > self.capacity {
+            let _ = self.order.pop_front();
+        }
     }
 
     pub fn insert(&mut self, key: RenderKey) -> Option<RenderKey> {
