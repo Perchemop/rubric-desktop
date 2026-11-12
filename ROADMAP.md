@@ -200,16 +200,17 @@ unchanged by this work.
 
 ### Post-v0.3.0 audit queue (2026-11-07)
 
-Open items from the documentation/readiness audit, in its priority order. None
-are marked done; each needs its own slice and evidence.
+Open items from the documentation/readiness audit, in its priority order.
+Ticked items carry their merge evidence; the rest need their own slice and
+evidence.
 
 - [ ] Hands-on macOS + Windows installer smoke (install → import → mark → export → print) — v1.0 gate, needs machines
-- [ ] Issue #29 dependency refresh (egui/eframe 0.37, ureq 3.x, rfd 0.17)
-- [ ] Split god files: `ui/app.rs` (~130 KB), `ui/canvas.rs` (~106 KB), `domain/markup.rs` (~77 KB)
-- [ ] Async page thumbnails (thumbnails currently render on the UI thread)
+- [x] Issue #29 dependency refresh (egui/eframe 0.37, ureq 3.x, rfd 0.17) — PR #160 (code + lock; 3-OS `Package` validation and run IDs recorded in `PROGRESS.md`)
+- [x] Split god files: `ui/app.rs` (~130 KB), `ui/canvas.rs` (~106 KB), `domain/markup.rs` (~77 KB) — PR #160 (app.rs → app_{canvas,inspector,markups_list,pages,status,tool_chest}.rs; markup.rs → markup_{comment,geometry,measurement,stamp}.rs; canvas.rs helpers → canvas_geom.rs; no behaviour change intended)
+- [x] Async page thumbnails (thumbnails currently render on the UI thread) — PR #160, async-thumbnails Slices 1–3 (worker thread + pages sidebar; Slice 4 disk eviction and Slice 5 canvas background queued — brief: `docs/tasks/async-thumbnails-slice5-canvas-background.md`)
 - [ ] Glyph-range (not whole-line) text anchoring for highlight/strikeout; rotated-page text-anchor fidelity (documented limitation)
 - [ ] Signed releases + checksum-verified auto-update install (guide §12.1)
-- [ ] Optional: minimap
+- [x] Optional: minimap — shipped in the P2 batch (PR #157, merge commit `76309b0`, 2026-11-08; overlay originally P2-16/PR #119)
 
 ### UI/UX audit queue (2026-11-07, [`docs/audit-ui-2026-11-07.md`](docs/audit-ui-2026-11-07.md))
 
@@ -229,7 +230,7 @@ Ctrl+Shift+S, honest menus). The remaining queue, in priority order:
 - [ ] P1-10 Unify the two tool pickers (one grouping, one source of truth)
 - [ ] P1-11 Workspace prefs survive project installs; restore show_pages/focus_mode; expose ui_scale; surface prefs parse failures
 - [ ] P1-12 Rewrite the Keyboard Shortcuts dialog + USER_GUIDE.md against the real input map
-- [ ] P2 batch (see audit doc §P2): page-nav order, resizable Inspector/Tools, comment dates, minimap navigation, icon vocabulary, dead glyph table, type-scale tokens in overlays, Delete confirmation, guide table rendering
+- [ ] P2 batch (see audit doc §P2): page-nav order, resizable Inspector/Tools, comment dates, minimap navigation (shipped, PR #157), icon vocabulary, dead glyph table, type-scale tokens in overlays, Delete confirmation, guide table rendering
 
 ---
 

@@ -499,3 +499,10 @@ partitioned so parallel work never collides.
 - In-repo evidence: `ui/pages.rs`, `ui/canvas.rs`, `ui/app.rs`,
   `data/pdf.rs`, `data/render.rs`, `domain/thumbs.rs`,
   `docs/audit-ui-2026-11-07.md` (P1-2), `docs/audits/design-gui-2026-11.md`.
+
+## Status log
+
+- 2026-11-11 — Slices 1-3 implemented in PR #160 (domain types, worker,
+  pages-sidebar wiring; disk eviction Slice 4 and canvas background Slice 5
+  remain queued). Slice 5 task brief drafted at
+  `docs/tasks/async-thumbnails-slice5-canvas-background.md`.

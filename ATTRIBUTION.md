@@ -7,9 +7,9 @@ tests, docs, and branding assets are original work.
 
 | Crate | Version | Licence | Use |
 |---|---|---|---|
-| `eframe` | 0.36 | MIT OR Apache-2.0 | App framework / windowing |
-| `egui` | 0.36 | MIT OR Apache-2.0 | Immediate-mode UI |
-| `egui_extras` | 0.36 | MIT OR Apache-2.0 | UI table/layout helpers |
+| `eframe` | 0.37 | MIT OR Apache-2.0 | App framework / windowing |
+| `egui` | 0.37 | MIT OR Apache-2.0 | Immediate-mode UI |
+| `egui_extras` | 0.37 | MIT OR Apache-2.0 | UI table/layout helpers |
 | `image` | 0.25 | MIT OR Apache-2.0 | PNG encode/decode (page render cache, export) |
 | `serde` / `serde_json` | 1.x | MIT OR Apache-2.0 | `.rubric.json` persistence |
 | `uuid` | 1.x | MIT OR Apache-2.0 | Markup/layer identifiers (v4) |
@@ -17,8 +17,8 @@ tests, docs, and branding assets are original work.
 | `thiserror` | 2.x | MIT OR Apache-2.0 | Domain/data error types |
 | `tracing` / `tracing-subscriber` | 0.1 / 0.3 | MIT OR Apache-2.0 | Diagnostics |
 | `directories` | 6.x | MIT OR Apache-2.0 | OS config/data directories |
-| `ureq` | 2.x | MIT OR Apache-2.0 | HTTP client for update checks (sync) |
-| `rfd` | 0.15 | MIT | Native file dialogs (xdg-portal backend on Linux) |
+| `ureq` | 3.x | MIT OR Apache-2.0 | HTTP client for update checks (sync) |
+| `rfd` | 0.17 | MIT | Native file dialogs (xdg-portal backend on Linux) |
 | `pdfium-render` | 0.9 | MIT OR Apache-2.0 | Rust bindings to PDFium (runtime binding only) |
 | `hayro` | 0.8 | MIT OR Apache-2.0 | Pure-Rust PDF rendering (optional, `--features hayro`) |
 

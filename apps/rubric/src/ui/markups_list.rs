@@ -168,7 +168,7 @@ pub(crate) fn draw_markups_list(
                 .desired_width(170.0),
         );
 
-        ComboBox::from_id_salt("markup_status_filter")
+        let response = ComboBox::from_id_salt("markup_status_filter")
             .selected_text(
                 state
                     .markup_status
@@ -180,9 +180,17 @@ pub(crate) fn draw_markups_list(
                 for status in ReviewStatus::ALL {
                     ui.selectable_value(&mut state.markup_status, Some(status), status.label());
                 }
-            });
+            })
+            .response;
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(
+                egui::Role::ComboBox,
+                response.enabled(),
+                "Filter by status".to_owned(),
+            )
+        });
 
-        ComboBox::from_id_salt("markup_author_filter")
+        let response = ComboBox::from_id_salt("markup_author_filter")
             .selected_text(state.markup_author.as_deref().unwrap_or("All authors"))
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut state.markup_author, None, "All authors");
@@ -193,9 +201,17 @@ pub(crate) fn draw_markups_list(
                         author.as_str(),
                     );
                 }
-            });
+            })
+            .response;
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(
+                egui::Role::ComboBox,
+                response.enabled(),
+                "Filter by author".to_owned(),
+            )
+        });
 
-        ComboBox::from_id_salt("markup_subject_filter")
+        let response = ComboBox::from_id_salt("markup_subject_filter")
             .selected_text(state.markup_subject.as_deref().unwrap_or("All subjects"))
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut state.markup_subject, None, "All subjects");
@@ -206,18 +222,34 @@ pub(crate) fn draw_markups_list(
                         subject.as_str(),
                     );
                 }
-            });
+            })
+            .response;
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(
+                egui::Role::ComboBox,
+                response.enabled(),
+                "Filter by subject".to_owned(),
+            )
+        });
 
-        ComboBox::from_id_salt("markup_kind_filter")
+        let response = ComboBox::from_id_salt("markup_kind_filter")
             .selected_text(state.markup_kind.map(|k| k.label()).unwrap_or("All kinds"))
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut state.markup_kind, None, "All kinds");
                 for kind in MarkupKind::ALL {
                     ui.selectable_value(&mut state.markup_kind, Some(kind), kind.label());
                 }
-            });
+            })
+            .response;
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(
+                egui::Role::ComboBox,
+                response.enabled(),
+                "Filter by kind".to_owned(),
+            )
+        });
 
-        ComboBox::from_id_salt("markup_page_filter")
+        let response = ComboBox::from_id_salt("markup_page_filter")
             .selected_text(match state.markup_page {
                 Some(p) => format!("Page {}", p + 1),
                 None => "All pages".to_string(),
@@ -231,9 +263,17 @@ pub(crate) fn draw_markups_list(
                         format!("Page {}", page + 1),
                     );
                 }
-            });
+            })
+            .response;
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(
+                egui::Role::ComboBox,
+                response.enabled(),
+                "Filter by page".to_owned(),
+            )
+        });
 
-        ComboBox::from_id_salt("markup_layer_filter")
+        let response = ComboBox::from_id_salt("markup_layer_filter")
             .selected_text(match state.markup_layer {
                 MarkupLayerFilter::All => "All layers".to_string(),
                 MarkupLayerFilter::DefaultLayer => {
@@ -259,24 +299,48 @@ pub(crate) fn draw_markups_list(
                         layer.name.as_str(),
                     );
                 }
-            });
+            })
+            .response;
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(
+                egui::Role::ComboBox,
+                response.enabled(),
+                "Filter by layer".to_owned(),
+            )
+        });
 
-        ComboBox::from_id_salt("markup_sort_filter")
+        let response = ComboBox::from_id_salt("markup_sort_filter")
             .selected_text(state.markup_sort.label())
             .show_ui(ui, |ui| {
                 for sort in MarkupListSort::ALL {
                     ui.selectable_value(&mut state.markup_sort, sort, sort.label());
                 }
-            });
+            })
+            .response;
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(
+                egui::Role::ComboBox,
+                response.enabled(),
+                "Sort markups by".to_owned(),
+            )
+        });
 
-        ComboBox::from_id_salt("markup_group_filter")
+        let response = ComboBox::from_id_salt("markup_group_filter")
             .selected_text(state.markup_group.map(|key| key.label()).unwrap_or("None"))
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut state.markup_group, None, "None");
                 for key in MarkupGroupKey::ALL {
                     ui.selectable_value(&mut state.markup_group, Some(key), key.label());
                 }
-            });
+            })
+            .response;
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(
+                egui::Role::ComboBox,
+                response.enabled(),
+                "Group markups by".to_owned(),
+            )
+        });
     });
     ui.separator();
 
@@ -303,7 +367,7 @@ pub(crate) fn draw_markups_list(
     if selected_count > 1 {
         ui.horizontal(|ui| {
             ui.label(format!("{} selected:", selected_count));
-            ComboBox::from_id_salt("batch_status_list")
+            let response = ComboBox::from_id_salt("batch_status_list")
                 .selected_text("Change status…")
                 .show_ui(ui, |ui| {
                     for s in ReviewStatus::ALL.iter() {
@@ -341,7 +405,15 @@ pub(crate) fn draw_markups_list(
                             }
                         });
                     }
-                });
+                })
+                .response;
+            response.widget_info(|| {
+                egui::WidgetInfo::labeled(
+                    egui::Role::ComboBox,
+                    response.enabled(),
+                    "Change status of selected markups".to_owned(),
+                )
+            });
         });
         ui.separator();
     }
@@ -470,7 +542,7 @@ fn render_rows(
                     .unwrap_or(false);
                 if editable {
                     let mut new_status = row.status;
-                    ComboBox::from_id_salt(format!("markup-row-status-{}", row.id))
+                    let response = ComboBox::from_id_salt(format!("markup-row-status-{}", row.id))
                         .selected_text(row.status.label())
                         .show_ui(ui, |ui| {
                             for s in ReviewStatus::ALL.iter() {
@@ -489,7 +561,15 @@ fn render_rows(
                                     }
                                 });
                             }
-                        });
+                        })
+                        .response;
+                    response.widget_info(|| {
+                        egui::WidgetInfo::labeled(
+                            egui::Role::ComboBox,
+                            response.enabled(),
+                            "Change status of this markup".to_owned(),
+                        )
+                    });
                     if new_status != row.status {
                         if let Some(doc) = project.active_mut() {
                             doc.apply_status_to(&[row.id], new_status);

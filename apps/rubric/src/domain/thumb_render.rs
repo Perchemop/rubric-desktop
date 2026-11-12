@@ -296,6 +296,22 @@ mod tests {
     }
 
     #[test]
+    fn serde_roundtrip_texture_lru_zero_capacity() {
+        let mut lru = TextureLru::new(0);
+        let evicted = lru.insert(RenderKey {
+            pdf_id: "a".into(),
+            page: 0,
+            width_px: 64,
+        });
+        assert!(evicted.is_some(), "a zero-capacity LRU evicts everything");
+
+        let json = serde_json::to_string(&lru).unwrap();
+        let back: TextureLru = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.len(), 0);
+        assert_eq!(lru, back);
+    }
+
+    #[test]
     fn render_queue_state_request_idempotent() {
         let mut sq = RenderQueueState::default();
         let job1 = RenderJob {
@@ -404,5 +420,33 @@ mod tests {
             page: 0,
             width_px: 128,
         }));
+    }
+
+    #[test]
+    fn serde_roundtrip_render_queue_state() {
+        let mut sq = RenderQueueState::default();
+        sq.request(RenderJob {
+            key: RenderKey {
+                pdf_id: "p".into(),
+                page: 0,
+                width_px: 128,
+            },
+            priority: 0,
+        });
+        sq.request(RenderJob {
+            key: RenderKey {
+                pdf_id: "q".into(),
+                page: 0,
+                width_px: 128,
+            },
+            priority: 1,
+        });
+        // Higher priority wins: "q" moves to in_flight, "p" stays pending.
+        let taken = sq.take_next().unwrap();
+        assert_eq!(taken.key.pdf_id, "q");
+
+        let json = serde_json::to_string(&sq).unwrap();
+        let back: RenderQueueState = serde_json::from_str(&json).unwrap();
+        assert_eq!(sq, back);
     }
 }

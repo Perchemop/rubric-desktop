@@ -492,7 +492,11 @@ pub(crate) fn triangle_button(ui: &mut Ui, dir: TriangleDir, enabled: bool, hove
         let a = center - d * 3.5 + perp * 4.5;
         let b = center - d * 3.5 - perp * 4.5;
         let painter = ui.painter();
-        painter.add(egui::Shape::convex_polygon(vec![tip, a, b], color, egui::Stroke::NONE));
+        painter.add(egui::Shape::convex_polygon(
+            vec![tip, a, b],
+            color,
+            egui::Stroke::NONE,
+        ));
         response
     });
     inner.inner.on_hover_text(hover).clicked()
@@ -505,12 +509,19 @@ pub(crate) fn eye_button(ui: &mut Ui, visible: bool, hover: &str) -> bool {
     let color = paint_icon_button(ui, rect, &response, hover);
     let center = rect.center();
     let painter = ui.painter();
-    painter.add(egui::Shape::ellipse_stroke(center, Vec2::new(7.0, 4.5), Stroke::new(1.4, color)));
+    painter.add(egui::Shape::ellipse_stroke(
+        center,
+        Vec2::new(7.0, 4.5),
+        Stroke::new(1.4, color),
+    ));
     painter.circle_filled(center, 2.0, color);
     if !visible {
         let slash_start = center + Vec2::new(-6.0, -5.0);
         let slash_end = center + Vec2::new(6.0, 5.0);
-        painter.add(egui::Shape::line(vec![slash_start, slash_end], Stroke::new(1.4, color)));
+        painter.add(egui::Shape::line(
+            vec![slash_start, slash_end],
+            Stroke::new(1.4, color),
+        ));
     }
     response.on_hover_text(hover).clicked()
 }

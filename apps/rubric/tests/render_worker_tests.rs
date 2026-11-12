@@ -148,20 +148,38 @@ fn worker_renders_one_fixture_page_and_returns_non_empty_pixels() {
     let worker = RenderWorker::spawn(&ctx);
     worker.submit(job);
 
-    let pixels = wait_for_result(&worker, &key).expect("worker result within timeout");
-
-    assert!(pixels.outcome.is_ok(), "fixture render failed: {:?}", pixels.outcome);
-    assert!(pixels.width > 0, "rendered width must be positive");
-    assert!(pixels.height > 0, "rendered height must be positive");
-    assert_eq!(
-        pixels.rgba.len(),
-        (pixels.width * pixels.height * 4) as usize,
-        "RGBA payload must be width*height*4 straight-alpha bytes"
+    // Capture the result before any cleanup so the timeout path still
+    // removes the fixture instead of leaking it to a panic.
+    let result = wait_for_result(&worker, &key);
+    match result {
+        Some(pixels) => {
+            assert!(
+        pixels.outcome.is_ok(),
+        "fixture render failed: {:?}",
+        pixels.outcome
     );
-    assert!(pixels.rgba.iter().any(|byte| *byte != 0), "page must have non-zero pixels");
-    assert!(!pixels.cache_path.is_empty());
-
-    cleanup(&pdf_path, Path::new(&pixels.cache_path));
+            assert!(pixels.width > 0, "rendered width must be positive");
+            assert!(pixels.height > 0, "rendered height must be positive");
+            assert_eq!(
+                pixels.rgba.len(),
+                (pixels.width * pixels.height * 4) as usize,
+                "RGBA payload must be width*height*4 straight-alpha bytes"
+            );
+            assert!(
+        pixels.rgba.iter().any(|byte| *byte != 0),
+        "page must have non-zero pixels"
+    );
+            assert!(!pixels.cache_path.is_empty());
+            cleanup(&pdf_path, Path::new(&pixels.cache_path));
+        }
+        None => {
+            // No result within the timeout: remove the fixture PDF before
+            // panicking. Any cached PNG is keyed under the temp path and is
+            // harmless (the OS temp-dir hygiene drops it).
+            let _ = fs::remove_file(&pdf_path);
+            panic!("worker result within timeout");
+        }
+    }
 }
 
 #[test]
@@ -182,10 +200,14 @@ fn worker_reports_failure_payload_for_missing_pdf() {
 
     let pixels = wait_for_result(&worker, &key).expect("worker failure within timeout");
 
-    assert!(pixels.outcome.is_err(), "a missing PDF must fail the render");
+    assert!(
+        pixels.outcome.is_err(),
+        "a missing PDF must fail the render"
+    );
     let message = pixels.outcome.unwrap_err();
     assert!(!message.is_empty(), "failure payload must carry a message");
     assert_eq!(pixels.key, key);
+    assert_eq!(pixels.width, 0, "failure payload echoes no dimensions");
     assert_eq!(pixels.height, 0);
     assert!(pixels.rgba.is_empty());
     assert!(pixels.cache_path.is_empty());

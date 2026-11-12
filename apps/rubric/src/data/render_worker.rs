@@ -105,12 +105,14 @@ fn render_thumb(job: &RenderJob) -> ThumbPixels {
     }
 }
 
-/// Build a failure payload: empty pixels, a zero height and the render error.
-/// On failure the usable cache path is unknown, so it stays empty.
+/// Build a failure payload: all-empty/zero. The payload echoes nothing
+/// usable back to the UI (empty pixels, zero width and height, no cache
+/// path) plus the render error so the key can be poisoned instead of
+/// retried forever.
 fn failed_pixels(job: &RenderJob, msg: String) -> ThumbPixels {
     ThumbPixels {
         key: job.key.clone(),
-        width: job.key.width_px,
+        width: 0,
         height: 0,
         rgba: Vec::new(),
         cache_path: String::new(),
@@ -126,7 +128,8 @@ mod tests {
     /// PDFium binding or filesystem access, so this failure path is fully
     /// deterministic and headless. Every field of the returned payload must
     /// be shaped for the UI: the original key echoed back, no pixels, no
-    /// cache path, a zero height and an honest non-empty error message.
+    /// cache path, zero width and height and an honest non-empty error
+    /// message.
     #[test]
     fn render_thumb_maps_failures_to_shaped_err_payload() {
         let job = RenderJob {
@@ -144,6 +147,8 @@ mod tests {
         let message = pixels.outcome.unwrap_err();
         assert!(!message.is_empty(), "failure payload must carry a message");
         assert_eq!(pixels.key, job.key);
+        // The failure payload zeroes both dimensions regardless of the
+        // requested width, echoing nothing usable back to the UI.
         assert_eq!(pixels.width, 0);
         assert_eq!(pixels.height, 0);
         assert!(pixels.rgba.is_empty());
