@@ -512,10 +512,7 @@ pub(crate) fn draw_canvas(
             painter.image(
                 tex.id(),
                 page_rect,
-                egui::Rect::from_min_max(
-                    egui::Pos2::new(0.0, 0.0),
-                    egui::Pos2::new(1.0, 1.0),
-                ),
+                egui::Rect::from_min_max(egui::Pos2::new(0.0, 0.0), egui::Pos2::new(1.0, 1.0)),
                 egui::Color32::WHITE,
             );
             painted_texture = true;

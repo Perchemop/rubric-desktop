@@ -552,10 +552,10 @@ impl RubricApp {
     /// **field** (not `&mut self`) so call sites can borrow other fields of
     /// `RubricApp` disjointly while holding the returned worker reference
     /// (Slice 5: one worker shared by the pages sidebar and the canvas).
-    pub(crate) fn ensure_render_worker(
-        slot: &mut Option<crate::data::render_worker::RenderWorker>,
-        ctx: &egui::Context,
-    ) -> &crate::data::render_worker::RenderWorker {
+    pub(crate) fn ensure_render_worker<'a>(
+        slot: &'a mut Option<crate::data::render_worker::RenderWorker>,
+        ctx: &'a egui::Context,
+    ) -> &'a crate::data::render_worker::RenderWorker {
         if slot.is_none() {
             *slot = Some(crate::data::render_worker::RenderWorker::spawn(ctx));
         }
@@ -581,7 +581,12 @@ impl RubricApp {
         ctx: &egui::Context,
     ) {
         // Staleness guard first: only the active document's results matter.
-        let active = self.history.current().source_pdf.clone().unwrap_or_default();
+        let active = self
+            .history
+            .current()
+            .source_pdf
+            .clone()
+            .unwrap_or_default();
         if pixels.key.pdf_id != active {
             return;
         }
@@ -599,11 +604,8 @@ impl RubricApp {
                     [pixels.width as usize, pixels.height as usize],
                     &pixels.rgba,
                 );
-                let texture = ctx.load_texture(
-                    key_str.clone(),
-                    image,
-                    egui::TextureOptions::LINEAR,
-                );
+                let texture =
+                    ctx.load_texture(key_str.clone(), image, egui::TextureOptions::LINEAR);
                 self.page_textures.insert(key_str, texture);
             }
             Err(msg) => {

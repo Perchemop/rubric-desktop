@@ -329,7 +329,7 @@ pub(crate) fn render_page_to_png_bytes(
                 bg_error,
                 None, // worker: the export harness keeps the synchronous raster
                 &mut std::collections::HashSet::new(), // canvas bg pending (unused here)
-                true,  // is_export: suppress chrome (grid, rulers, backdrop)
+                true, // is_export: suppress chrome (grid, rulers, backdrop)
                 false, // show_minimap: minimap not used in export
             );
         });
