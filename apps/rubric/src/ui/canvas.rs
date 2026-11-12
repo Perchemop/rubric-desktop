@@ -423,6 +423,8 @@ pub(crate) fn draw_canvas(
     page_textures: &mut std::collections::HashMap<String, egui::TextureHandle>,
     failed_page_textures: &mut std::collections::HashSet<String>,
     bg_error: &mut Option<String>,
+    worker: Option<&crate::data::render_worker::RenderWorker>,
+    canvas_bg_pending: &mut std::collections::HashSet<String>,
     is_export: bool,
     show_minimap: bool,
 ) -> bool {
@@ -473,13 +475,14 @@ pub(crate) fn draw_canvas(
     // string behaves like no source at all.
     let has_pdf = source_pdf.as_ref().is_some_and(|p| !p.is_empty());
     // Paint the PDF page as a background texture when available; otherwise
-    // keep the existing flat white fill. NOTE: first paint of a page may hitch
-    // while PDFium rasterises + writes the cache PNG; the cache makes it
-    // one-time. This canvas path intentionally stays synchronous on the UI
-    // thread; the Pages sidebar renders its thumbnails on a worker thread,
-    // and PDFium FFI calls are mutex-serialised by pdfium-render's
-    // default-on `thread_safe` feature (Slice 5 may move this path too).
+    // keep the existing flat white fill. On the live path (worker present,
+    // not exporting) the raster runs on the shared RenderWorker and this
+    // function only requests it, painting an honest "Rendering page…"
+    // placeholder while it is in flight. The off-screen export harness
+    // (worker == None) keeps the legacy synchronous raster so print/export
+    // stays self-contained.
     let mut painted_texture = false;
+    let mut show_pending_hint = false;
     if let Some(pdf_path) = source_pdf {
         // Track the page's on-screen device width so text stays sharp at high
         // zoom. Oversample slightly and quantise to coarse 256-px steps so
@@ -498,11 +501,38 @@ pub(crate) fn draw_canvas(
         // would re-rasterise (and re-report its error) on every repaint frame.
         let page_no = page.index;
         let attempt_key = format!("{pdf_path}:{page_no}:{target_width}");
-        if !failed_page_textures.contains(&attempt_key) {
+        let render_key = crate::domain::thumb_render::RenderKey {
+            pdf_id: pdf_path.clone(),
+            page: page_no,
+            width_px: target_width,
+        };
+        if failed_page_textures.contains(&attempt_key) {
+            // Already poisoned; nothing to paint here (white fill below).
+        } else if let Some(tex) = page_textures.get(&attempt_key) {
+            painter.image(
+                tex.id(),
+                page_rect,
+                egui::Rect::from_min_max(egui::Pos2::new(0.0, 0.0), egui::Pos2::new(1.0, 1.0)),
+                egui::Color32::WHITE,
+            );
+            painted_texture = true;
+        } else if let Some(w) = worker {
+            if !is_export {
+                if !canvas_bg_pending.contains(&attempt_key) {
+                    canvas_bg_pending.insert(attempt_key.clone());
+                    w.submit(crate::domain::thumb_render::RenderJob {
+                        key: render_key,
+                        priority: 0,
+                    });
+                }
+                show_pending_hint = true;
+            }
+        } else {
+            // Synchronous fallback (export harness / no worker).
             match crate::data::pdf::render_page_to_cache(&pdf_path, page.index, target_width) {
                 Ok(cache_path) => {
-                    let key = cache_path.to_string_lossy().to_string();
-                    if !page_textures.contains_key(&key) {
+                    let tex_key = attempt_key.clone();
+                    if !page_textures.contains_key(&tex_key) {
                         match std::fs::read(&cache_path) {
                             Ok(bytes) => match image::load_from_memory(&bytes) {
                                 Ok(img) => {
@@ -513,14 +543,14 @@ pub(crate) fn draw_canvas(
                                         rgba.as_raw(),
                                     );
                                     let tex = ui.ctx().load_texture(
-                                        key.clone(),
+                                        tex_key.clone(),
                                         color_image,
                                         egui::TextureOptions::LINEAR,
                                     );
-                                    page_textures.insert(key.clone(), tex);
+                                    page_textures.insert(tex_key.clone(), tex);
                                 }
                                 Err(e) => {
-                                    failed_page_textures.insert(attempt_key);
+                                    failed_page_textures.insert(attempt_key.clone());
                                     let msg = format!("PDF background unavailable: {e}");
                                     if bg_error.as_ref() != Some(&msg) {
                                         ui_state.status = msg.clone();
@@ -529,7 +559,7 @@ pub(crate) fn draw_canvas(
                                 }
                             },
                             Err(e) => {
-                                failed_page_textures.insert(attempt_key);
+                                failed_page_textures.insert(attempt_key.clone());
                                 let msg = format!("PDF background unavailable: {e}");
                                 if bg_error.as_ref() != Some(&msg) {
                                     ui_state.status = msg.clone();
@@ -538,7 +568,7 @@ pub(crate) fn draw_canvas(
                             }
                         }
                     }
-                    if let Some(tex) = page_textures.get(&key) {
+                    if let Some(tex) = page_textures.get(&tex_key) {
                         painter.image(
                             tex.id(),
                             page_rect,
@@ -552,7 +582,7 @@ pub(crate) fn draw_canvas(
                     }
                 }
                 Err(e) => {
-                    failed_page_textures.insert(attempt_key);
+                    failed_page_textures.insert(attempt_key.clone());
                     let msg = format!("PDF background unavailable: {e}");
                     if bg_error.as_ref() != Some(&msg) {
                         ui_state.status = msg.clone();
@@ -564,6 +594,16 @@ pub(crate) fn draw_canvas(
     }
     if !painted_texture {
         painter.rect_filled(page_rect, egui::CornerRadius::same(12), Color32::WHITE);
+    }
+    if show_pending_hint {
+        let muted = ui.visuals().weak_text_color();
+        painter.text(
+            page_rect.center(),
+            Align2::CENTER_CENTER,
+            "Rendering page…",
+            FontId::proportional(12.0),
+            muted,
+        );
     }
     if !is_export {
         painter.rect_stroke(

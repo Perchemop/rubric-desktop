@@ -212,3 +212,125 @@ fn worker_reports_failure_payload_for_missing_pdf() {
     assert!(pixels.rgba.is_empty());
     assert!(pixels.cache_path.is_empty());
 }
+
+/// Slice 5: canvas page backgrounds now flow through the same shared worker
+/// as the pages sidebar, so one worker thread serves two logical consumers
+/// over one results channel. Submit two jobs for the same fixture page at
+/// the sidebar width (192) and a canvas background width (256), then poll
+/// `try_drain` and collect into a map keyed by `RenderKey` until both keys
+/// are present. The map matters: `wait_for_result` discards non-matching
+/// payloads, which would starve the second consumer, so this poll keeps
+/// every drained result.
+#[test]
+fn worker_serves_two_consumers_with_distinct_widths() {
+    use std::collections::BTreeMap;
+
+    if !pdfium_available() {
+        return;
+    }
+
+    let pdf_path = write_fixture_pdf();
+    let thumb_key = RenderKey {
+        pdf_id: pdf_path.display().to_string(),
+        page: 0,
+        width_px: 192,
+    };
+    let canvas_key = RenderKey {
+        pdf_id: pdf_path.display().to_string(),
+        page: 0,
+        width_px: 256,
+    };
+
+    let ctx = egui::Context::default();
+    let worker = RenderWorker::spawn(&ctx);
+    worker.submit(RenderJob {
+        key: thumb_key.clone(),
+        priority: 0,
+    });
+    worker.submit(RenderJob {
+        key: canvas_key.clone(),
+        priority: 0,
+    });
+
+    let mut results: BTreeMap<RenderKey, ThumbPixels> = BTreeMap::new();
+    let deadline = Instant::now() + RESULT_TIMEOUT;
+    while Instant::now() < deadline && results.len() < 2 {
+        for pixels in worker.try_drain() {
+            results.insert(pixels.key.clone(), pixels);
+        }
+        if results.len() < 2 {
+            std::thread::sleep(POLL_INTERVAL);
+        }
+    }
+
+    if results.len() < 2 {
+        // Timeout: clean up whatever did arrive so neither the fixture PDF
+        // nor any cached PNG leaks, then fail.
+        for pixels in results.values() {
+            if !pixels.cache_path.is_empty() {
+                cleanup(&pdf_path, Path::new(&pixels.cache_path));
+            }
+        }
+        let _ = fs::remove_file(&pdf_path);
+        panic!(
+            "both render results within timeout: drained {} of 2 keys",
+            results.len()
+        );
+    }
+
+    assert!(results.contains_key(&thumb_key), "sidebar key drained");
+    assert!(results.contains_key(&canvas_key), "canvas key drained");
+
+    for (key, pixels) in &results {
+        assert!(
+            pixels.outcome.is_ok(),
+            "render for {} failed: {:?}",
+            key,
+            pixels.outcome
+        );
+        assert!(pixels.width > 0, "rendered width must be positive");
+        assert!(pixels.height > 0, "rendered height must be positive");
+        assert_eq!(
+            pixels.rgba.len(),
+            (pixels.width * pixels.height * 4) as usize,
+            "RGBA payload must be width*height*4 straight-alpha bytes"
+        );
+        assert!(!pixels.cache_path.is_empty());
+    }
+
+    let thumb = results.get(&thumb_key).expect("sidebar result present");
+    let canvas = results.get(&canvas_key).expect("canvas result present");
+    assert!(
+        thumb.width != canvas.width,
+        "distinct requested widths must give distinct renders"
+    );
+
+    cleanup(&pdf_path, Path::new(&thumb.cache_path));
+    cleanup(&pdf_path, Path::new(&canvas.cache_path));
+}
+
+/// Slice 5 routing-contract pin (no engine, no worker thread): the drain
+/// that routes worker results in `RubricApp` drops a payload as stale when
+/// its `RenderKey.pdf_id` differs from the active `source_pdf`. Integration
+/// tests cannot construct `RubricApp` headlessly (it needs a full app
+/// context), so this pins the exact field that comparison reads: identical
+/// page and width, distinct `pdf_id`; only the document identity separates
+/// fresh from stale. The routing itself is covered by the app's own headless
+/// tests.
+#[test]
+fn stale_results_are_identifiable_by_pdf_id() {
+    let active = "active.pdf";
+    let key_active = RenderKey {
+        pdf_id: active.into(),
+        page: 0,
+        width_px: 256,
+    };
+    let key_old = RenderKey {
+        pdf_id: "old.pdf".into(),
+        page: 0,
+        width_px: 256,
+    };
+
+    assert_eq!(key_active.pdf_id, active, "matching pdf_id is fresh");
+    assert_ne!(key_old.pdf_id, active, "other pdf_id is stale");
+}

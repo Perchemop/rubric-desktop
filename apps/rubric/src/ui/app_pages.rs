@@ -13,10 +13,9 @@ pub(crate) fn draw_pages_panel(app: &mut RubricApp, ui: &mut Ui) {
     }
     let source_pdf = app.history.current().source_pdf.clone();
 
-    // Lazily spawn the render worker on first pages-sidebar open.
-    if app.render_worker.is_none() {
-        app.render_worker = Some(crate::data::render_worker::RenderWorker::spawn(ui.ctx()));
-    }
+    // Lazily spawn the shared render worker on first use (pages sidebar or
+    // canvas); ownership is hoisted to `RubricApp` (Slice 5).
+    RubricApp::ensure_render_worker(&mut app.render_worker, ui.ctx());
 
     egui::Panel::left("pages")
         .default_size(168.0)

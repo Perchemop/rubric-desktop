@@ -405,6 +405,10 @@ pub struct RubricApp {
     pub(crate) failed_page_textures: HashSet<String>,
     /// Page-thumbnail textures for the pages sidebar (spec F-404).
     pub(crate) thumb_cache: pages::ThumbCache,
+    /// Canvas page-background render attempts submitted to the shared worker
+    /// and not yet drained (Slice 5). Keys are `RenderKey` Display strings,
+    /// so a queued or in-flight background is not re-submitted every frame.
+    pub(crate) canvas_bg_pending: std::collections::HashSet<String>,
     /// Last PDF background error shown, to avoid spamming status every frame.
     pub(crate) bg_error: Option<String>,
     /// Session-only report export dialog state (no undo snapshot).
@@ -423,8 +427,10 @@ pub struct RubricApp {
     /// Shared update-check state, written by the worker thread and read by the
     /// UI each frame (guide §7.2).
     pub(crate) update: Arc<Mutex<UpdateCheck>>,
-    /// Async thumbnail render worker, lazily spawned on first pages-sidebar
-    /// open (UI audit P1-2: move heavy work off the UI thread).
+    /// Shared async render worker for page thumbnails and canvas page
+    /// backgrounds, lazily spawned on first use (UI audit P1-2: move heavy
+    /// work off the UI thread; Slice 5). Long-lived: it survives project
+    /// switches because it is stateless across documents.
     pub(crate) render_worker: Option<crate::data::render_worker::RenderWorker>,
     /// Repository used for issue URLs and release checks.
     pub(crate) repo: String,
@@ -520,6 +526,7 @@ impl RubricApp {
             page_textures: HashMap::new(),
             failed_page_textures: HashSet::new(),
             thumb_cache: pages::ThumbCache::default(),
+            canvas_bg_pending: Default::default(),
             bg_error: None,
             report_export: None,
             toast: None,
@@ -538,6 +545,77 @@ impl RubricApp {
             render_worker: None,
             repo: "Perchemop/rubric-desktop".to_string(),
             tool_chest_library: prefs.tool_chest_library.clone(),
+        }
+    }
+
+    /// Ensure the shared async render worker exists and return it. Takes the
+    /// **field** (not `&mut self`) so call sites can borrow other fields of
+    /// `RubricApp` disjointly while holding the returned worker reference
+    /// (Slice 5: one worker shared by the pages sidebar and the canvas).
+    pub(crate) fn ensure_render_worker<'a>(
+        slot: &'a mut Option<crate::data::render_worker::RenderWorker>,
+        ctx: &'a egui::Context,
+    ) -> &'a crate::data::render_worker::RenderWorker {
+        if slot.is_none() {
+            *slot = Some(crate::data::render_worker::RenderWorker::spawn(ctx));
+        }
+        slot.as_ref().expect("worker just spawned")
+    }
+
+    /// Width the pages sidebar rasterises thumbnails at. Drained worker
+    /// results at this width belong to the sidebar cache; every other width
+    /// is a canvas page-background attempt (see
+    /// [`Self::route_render_result`]).
+    pub(crate) fn page_thumb_width() -> u32 {
+        pages::THUMB_WIDTH_PX
+    }
+
+    /// Single drain destination for completed worker results: route each
+    /// `ThumbPixels` payload to the pages-sidebar cache or the canvas
+    /// page-background cache. Results whose `pdf_id` is not the active
+    /// document's source PDF are dropped (staleness rule, research §6.8) so
+    /// a project switch cannot upload a stale texture.
+    pub(crate) fn route_render_result(
+        &mut self,
+        pixels: crate::data::render_worker::ThumbPixels,
+        ctx: &egui::Context,
+    ) {
+        // Staleness guard first: only the active document's results matter.
+        let active = self
+            .history
+            .current()
+            .source_pdf
+            .clone()
+            .unwrap_or_default();
+        if pixels.key.pdf_id != active {
+            return;
+        }
+        let key_str = pixels.key.to_string();
+        if pixels.key.width_px == Self::page_thumb_width() {
+            // Pages-sidebar thumbnail: the sidebar cache owns the upload.
+            self.thumb_cache.absorb_result(&key_str, &pixels, ctx);
+            return;
+        }
+        // Canvas page-background attempt: its pending marker is satisfied.
+        self.canvas_bg_pending.remove(&key_str);
+        match pixels.outcome {
+            Ok(()) => {
+                let image = egui::ColorImage::from_rgba_unmultiplied(
+                    [pixels.width as usize, pixels.height as usize],
+                    &pixels.rgba,
+                );
+                let texture =
+                    ctx.load_texture(key_str.clone(), image, egui::TextureOptions::LINEAR);
+                self.page_textures.insert(key_str, texture);
+            }
+            Err(msg) => {
+                self.failed_page_textures.insert(key_str);
+                // Same wording as the legacy synchronous fallback in
+                // `ui/canvas.rs` so the status surface stays consistent.
+                self.ui.status = format!("PDF background unavailable: {msg}");
+                self.ui.status_kind = StatusKind::Error;
+                self.bg_error = Some(msg);
+            }
         }
     }
 
@@ -1328,7 +1406,10 @@ impl RubricApp {
         self.page_textures.clear();
         self.failed_page_textures.clear();
         self.thumb_cache = pages::ThumbCache::default();
-        self.render_worker = None;
+        self.canvas_bg_pending.clear();
+        // The render worker is long-lived and stateless across projects
+        // (per-document state lives in the caches above), so it survives the
+        // install; stale drained results are dropped by the pdf_id guard.
         self.bg_error = None;
         self.report_export = None;
         if let Some(doc) = self.active_doc() {
