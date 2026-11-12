@@ -296,7 +296,7 @@ pub fn submit(repo: &str, issue: &Issue, token: Option<&str>) -> Result<(), Stri
         .header("Authorization", &format!("Bearer {token}"))
         .header("User-Agent", "rubric-crash-report")
         .header("Accept", "application/vnd.github+json")
-        .send_json(&issue)
+        .send_json(issue)
     {
         Ok(_) => Ok(()),
         // ureq 3.x treats non-2xx status codes as errors by default, so a
