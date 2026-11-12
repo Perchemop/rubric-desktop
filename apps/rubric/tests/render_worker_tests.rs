@@ -154,10 +154,10 @@ fn worker_renders_one_fixture_page_and_returns_non_empty_pixels() {
     match result {
         Some(pixels) => {
             assert!(
-        pixels.outcome.is_ok(),
-        "fixture render failed: {:?}",
-        pixels.outcome
-    );
+                pixels.outcome.is_ok(),
+                "fixture render failed: {:?}",
+                pixels.outcome
+            );
             assert!(pixels.width > 0, "rendered width must be positive");
             assert!(pixels.height > 0, "rendered height must be positive");
             assert_eq!(
@@ -166,9 +166,9 @@ fn worker_renders_one_fixture_page_and_returns_non_empty_pixels() {
                 "RGBA payload must be width*height*4 straight-alpha bytes"
             );
             assert!(
-        pixels.rgba.iter().any(|byte| *byte != 0),
-        "page must have non-zero pixels"
-    );
+                pixels.rgba.iter().any(|byte| *byte != 0),
+                "page must have non-zero pixels"
+            );
             assert!(!pixels.cache_path.is_empty());
             cleanup(&pdf_path, Path::new(&pixels.cache_path));
         }
