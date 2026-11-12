@@ -10,6 +10,8 @@ pub(crate) fn draw_canvas_panel(app: &mut RubricApp, ui: &mut Ui) {
     let prior_status = app.ui.status.clone();
     let show_minimap = app.ui.show_minimap;
     let mut need_snapshot = false;
+    // Ensure the shared render worker exists (hoisted to RubricApp).
+    RubricApp::ensure_render_worker(&mut app.render_worker, ui.ctx());
     egui::CentralPanel::default().show(ui, |ui| {
         app.ui.canvas_size = ui.available_size();
         need_snapshot = crate::ui::canvas::draw_canvas(
@@ -21,10 +23,21 @@ pub(crate) fn draw_canvas_panel(app: &mut RubricApp, ui: &mut Ui) {
             &mut app.page_textures,
             &mut app.failed_page_textures,
             &mut app.bg_error,
+            app.render_worker.as_ref(),
+            &mut app.canvas_bg_pending,
             false, // is_export: show chrome in live editor
             show_minimap,
         );
     });
+    // Drain completed background renders once per frame, after the panel closure.
+    let drained = app
+        .render_worker
+        .as_ref()
+        .map(|w| w.try_drain())
+        .unwrap_or_default();
+    for pixels in drained {
+        app.route_render_result(pixels, ui.ctx());
+    }
     if need_snapshot {
         if app.ui.status != prior_status {
             app.push_snapshot_quiet();

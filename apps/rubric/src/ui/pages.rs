@@ -23,11 +23,41 @@ pub(crate) struct ThumbCache {
     pending: std::collections::HashSet<String>,
 }
 
+impl ThumbCache {
+    /// Absorb one drained worker result for `key_str`: clear the pending
+    /// marker, then upload the texture on success or poison the key on
+    /// failure (same rule the main canvas uses for its background cache).
+    /// Called from the central drain in
+    /// [`crate::ui::app::RubricApp::route_render_result`].
+    pub(crate) fn absorb_result(
+        &mut self,
+        key_str: &str,
+        pixels: &crate::data::render_worker::ThumbPixels,
+        ctx: &egui::Context,
+    ) {
+        self.pending.remove(key_str);
+        if pixels.outcome.is_ok() {
+            let image = egui::ColorImage::from_rgba_unmultiplied(
+                [pixels.width as usize, pixels.height as usize],
+                &pixels.rgba,
+            );
+            let texture = ctx.load_texture(key_str.to_owned(), image, egui::TextureOptions::LINEAR);
+            self.textures.insert(key_str.to_owned(), texture);
+        } else {
+            self.failed.insert(key_str.to_owned());
+        }
+    }
+}
+
 /// Minimum width of one thumbnail cell, and the gutter between cells.
 const MIN_CELL: f64 = 96.0;
 const GAP: f64 = 8.0;
 /// Width thumbnails are rasterised at. Fixed so a resize re-uses the cache.
-const THUMB_WIDTH_PX: u32 = 192;
+/// Also the routing discriminator in
+/// [`crate::ui::app::RubricApp::route_render_result`]: drained results at
+/// this width are sidebar thumbnails, any other width is a canvas
+/// page-background attempt.
+pub(crate) const THUMB_WIDTH_PX: u32 = 192;
 
 /// Draw the sidebar and return the page the user jumped to, if any.
 ///
@@ -154,25 +184,6 @@ pub(crate) fn draw_pages(
                 }
             });
             ui.add_space(GAP as f32);
-        }
-
-        // Drain completed render results and upload textures. Every result
-        // leaves `pending`; failures additionally poison the key.
-        for pixels in worker.try_drain() {
-            let key_str = pixels.key.to_string();
-            cache.pending.remove(&key_str);
-            if pixels.outcome.is_ok() {
-                let image = egui::ColorImage::from_rgba_unmultiplied(
-                    [pixels.width as usize, pixels.height as usize],
-                    &pixels.rgba,
-                );
-                let t = ui
-                    .ctx()
-                    .load_texture(key_str.clone(), image, egui::TextureOptions::LINEAR);
-                cache.textures.insert(key_str, t);
-            } else {
-                cache.failed.insert(key_str);
-            }
         }
     });
     jumped
