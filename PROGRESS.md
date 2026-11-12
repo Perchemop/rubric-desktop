@@ -1,5 +1,43 @@
 # PROGRESS.md
 
+## 2026-11-12 — PR #167 merged: async-thumbnails Slice 5 (canvas background on the worker)
+**Status**: merged to `main` (merge commit `3271524`); CI green on the branch head and the
+post-merge main run recorded below.
+
+### Landed
+- **Canvas page background moved off the UI thread** (async-thumbnails Slice 5; UI audit
+  P1-2): `draw_canvas` now submits the active page's PDF raster to the shared
+  `RenderWorker` (`RenderKey` Display = the previous `attempt_key`), deduped by a
+  `canvas_bg_pending` set, and drains results once per frame via
+  `RubricApp::route_render_result` — the single drain destination that routes by key width
+  (pages thumbnails vs canvas backgrounds), drops stale results after a document switch
+  (research §6.8), uploads textures on the UI thread keyed by the attempt key, and keeps
+  the verbatim failure poisoning (`failed_page_textures` + `bg_error` + status).
+- **Honest pending state**: while a background renders, the canvas shows paper-white plus a
+  muted centred "Rendering page…" label (suppressed in export); markups stay interactive.
+  Documented in `docs/a11y.md`.
+- **Worker ownership hoisted**: one long-lived `RenderWorker` shared by the Pages sidebar
+  and the canvas via `RubricApp::ensure_render_worker` (slot-taking accessor for disjoint
+  borrows); the per-document reset no longer tears the worker down.
+- **Export path unchanged**: the off-screen export harness (`data/render.rs`) passes
+  `worker: None` and keeps the synchronous raster (explicit scope-out).
+- **Tests**: shared-channel multi-consumer test (`worker_serves_two_consumers_with_
+  distinct_widths`, 192 + 256 widths through one worker), staleness-contract pin, plus the
+  existing worker suite. A11y note added for the pending state.
+
+### Verification (exact runs)
+- Branch head `f66f4a0`: CI run `43210490614` ✅ (fmt, clippy ×2, tests ×2, release build,
+  snapshot), Security run `43210490581` ✅.
+- Post-merge `main` @ `3271524`: CI run `43211868703` ✅, Security run ✅.
+
+### Follow-up queue
+- Async-thumbnails Slice 4 (disk eviction: `plan_disk_eviction` + scan) — the last piece of
+  the approved design.
+- `corpus_fidelity.rs` dead-code warnings cleanup; topbar RTL page-nav order; stamp
+  `✓`/`✗` glyphs rely on system fonts (all pre-existing, non-blocking).
+- pdfium-render 0.9.5 dependabot PR #163 (verify the text-extraction test against 0.9.5);
+  lopdf 0.47 (#162) needs a real migration slice; hayro 0.9 (#161) needs clippy fixes.
+
 ## 2026-11-12 — PR #160 merged: dependency refresh + god-file splits + async thumbnails (Slices 1–3)
 **Status**: merged to `main` (merge commit `832d0db`); all quality gates green on the merge commit.
 
