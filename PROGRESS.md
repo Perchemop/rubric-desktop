@@ -1,5 +1,62 @@
 # PROGRESS.md
 
+## 2026-11-12 — PR #160 merged: dependency refresh + god-file splits + async thumbnails (Slices 1–3)
+**Status**: merged to `main` (merge commit `832d0db`); all quality gates green on the merge commit.
+
+### Landed
+- **Issue #29 dependency refresh**: eframe/egui/egui_extras/egui_kittest 0.37, rfd 0.17, ureq 3
+  (crash-report + update-check migrated). egui 0.37 API adaptations (`Id::unique`, `Role`,
+  kittest's missing-glyph panic). `Cargo.lock` regenerated via the `lock-update` workflow.
+- **God-file splits** (no behaviour change intended): `ui/app.rs` →
+  `app_{canvas,inspector,markups_list,pages,status,tool_chest}.rs`; `domain/markup.rs` →
+  `markup_{comment,geometry,measurement,stamp}.rs` (geometry/hit-test helpers owned by
+  `markup_geometry`; `hit_tolerance_page`/`measure_anchor` → `ui/canvas_geom.rs`).
+- **Async page thumbnails, Slices 1–3** (UI audit P1-2; design approved 2026-11-09): worker
+  thread (`data/render_worker.rs`) + domain queue/LRU types (`domain/thumb_render.rs`) +
+  pages-sidebar submit/drain with in-flight dedup and failure poisoning. The canvas
+  background path stays synchronous (Slice 5; brief at
+  `docs/tasks/async-thumbnails-slice5-canvas-background.md`).
+- **Icon controls**: page-nav arrows and the Layers eye/lock/reorder controls converted to
+  painter-drawn icons (egui 0.37 dropped the bundled emoji-icon font; several of the old
+  glyphs were tofu even in 0.36). Markups-List filter/row combos carry AccessKit labels
+  (`widget_info`), satisfying egui_kittest 0.37's new accessibility check.
+- **Records**: research notes backfilled (approved 2026-11-09); CHANGELOG `[Unreleased]`;
+  `ATTRIBUTION.md` version table refreshed; ROADMAP audit-queue ticks; stray
+  `inspector.rs.orig` removed; `TextureLru` hardened (`insert`/`touch` capacity handling).
+
+### Verification (exact runs)
+- Branch head `5050bd5`: CI run `43196029422` ✅ (fmt, clippy ×2, tests ×2, release build,
+  snapshot), Security run `43196029439` ✅ (secret scan, personal-data scan, cargo-deny,
+  SBOM, dependency review).
+- Post-merge `main` @ `832d0db`: CI run `43198085385` ✅ (11m28s), Security run `43198085381` ✅
+  (incl. CodeQL).
+- **Package (issue #29 criterion 3)**: run `43198264917` ✅ — Linux/Windows/macOS installer
+  jobs all green with artefacts (rfd 0.17 validated on all three platforms).
+- Re-baselined `tests/snapshots/shell_empty_state.png` for egui 0.37 rendering via the
+  documented macOS artifact round-trip.
+
+### Repair rounds (recorded for process honesty)
+The branch needed several CI-guided rounds: two structural fmt repairs (bogus nesting and
+junk imports left by the original split), the egui 0.37 API migrations, the worker's
+`mpsc::channel`/image-decode fixes, `RenderKey: Ord`, the painter icon controls, AccessKit
+combo labels, `TextureLru` capacity bugs (both `insert` and `touch`), a stale-lock
+regeneration, and one GitHub runner glitch (two runs stuck `queued` ~11 h with zero jobs;
+fixed by close/reopen of the PR — `gh run rerun` was refused).
+
+### Follow-up queue (from review + CI, non-blocking)
+- `corpus_fidelity.rs` carries pre-existing dead-code warnings in its test binary (clippy
+  does not lint test targets) — cleanup pass.
+- Topbar page-nav renders in right-to-left order inside `Layout::right_to_left`
+  (pre-existing visual quirk); `Shape::rotated_triangle` is available for the triangles.
+- Stamp `✓`/`✗` glyphs drawn on canvas rely on system fonts (eframe 0.37 system-font
+  provider) — painter-drawn alternatives if a platform lacks them.
+- Async-thumbnails Slice 4 (disk eviction) + Slice 5 (canvas background; brief drafted).
+
+### Next slice
+Slice 5 per the queue (canvas page background through the shared worker; brief drafted),
+then Slice 4 (disk eviction), then the pdfium-render 0.9.5 dependabot PR (#163 — verify the
+text-extraction test against 0.9.5 before merging).
+
 ## 2026-11-07 — UI/UX audit + P0 remediation (PR #148)
 **Status**: merged to main; CI green (check, snapshot, packaging-plan + all
 Security checks).
