@@ -1,10 +1,23 @@
 //! Markup entities: what a user draws on a page.
+//!
+//! Core types: [`MarkupKind`], [`ToolGroup`], [`Markup`], [`MarkupGeometry`],
+//! [`ReviewStatus`] and [`Corner`]. Comments, measurements and stamp presets
+//! live in their own modules ([`crate::domain::markup_comment`],
+//! [`crate::domain::markup_measurement`], [`crate::domain::markup_stamp`]) and
+//! are re-exported through [`crate::domain::mod`].
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::geom::{self, Pt, Rect};
+pub use super::markup_comment::Comment;
+use super::markup_geometry::{
+    distance_to_segment, ellipse_contains, point_in_polygon, polyline_hit,
+};
+pub use super::markup_geometry::{text_box_rect, text_line_height, MarkupGeometry};
+use super::markup_measurement::Measurement;
+use super::markup_stamp::StampPreset;
 use super::style::{palette, Color, FillMode, MarkupStyle};
 use super::units::{self, MeasureKind, Scale};
 
@@ -220,195 +233,6 @@ impl MarkupStyle {
     }
 }
 
-/// Geometry of a markup, in page points.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum MarkupGeometry {
-    /// Rectangular/elliptical/cloud family; the shape kind decides rendering.
-    Bounds(Rect),
-    /// A single straight segment (line, arrow, length/diameter/radius measure).
-    Segment { a: Pt, b: Pt },
-    /// An open or closed path (polyline, polygon, perimeter, area).
-    Path { points: Vec<Pt>, closed: bool },
-    /// Freehand pen strokes.
-    ///
-    /// The model holds any number of strokes in one markup, but the canvas
-    /// currently commits exactly one stroke per drag gesture; a multi-stroke
-    /// pen tool would append to `strokes` rather than produce a new markup.
-    /// Importers and other producers may supply more than one.
-    Ink { strokes: Vec<Vec<Pt>> },
-    /// A text box anchored at `at`, wrapping within `wrap` points.
-    Text { at: Pt, wrap: f32, text: String },
-    /// A callout: text box plus a tail pointing at something.
-    Callout { rect: Rect, tail: Pt, text: String },
-    /// Text-anchored markup (highlight/strikeout/underline/squiggly) anchored
-    /// to a specific text line. `at` is the text baseline start point, `text`
-    /// is the marked-up text, `line_height` is the per-line height in points,
-    /// `line_count` is the number of text lines covered, and `text_width` is
-    /// the text width in page points.
-    TextAnchor {
-        at: Pt,
-        text: String,
-        line_height: f32,
-        line_count: usize,
-        text_width: f32,
-    },
-    /// A three-point angle measurement (vertex is the middle point).
-    Angle { a: Pt, vertex: Pt, b: Pt },
-    /// A count marker (a numbered dot).
-    Count { at: Pt, number: u32 },
-}
-
-impl MarkupGeometry {
-    /// Tight bounding box in page space.
-    pub fn bounds(&self) -> Rect {
-        match self {
-            MarkupGeometry::Bounds(r) => *r,
-            MarkupGeometry::Segment { a, b } => Rect::from_corners(*a, *b),
-            MarkupGeometry::Path { points, .. } => {
-                Rect::from_bounds(points).unwrap_or(Rect::new(0.0, 0.0, 0.0, 0.0))
-            }
-            MarkupGeometry::Ink { strokes } => {
-                let all: Vec<Pt> = strokes.iter().flatten().copied().collect();
-                Rect::from_bounds(&all).unwrap_or(Rect::new(0.0, 0.0, 0.0, 0.0))
-            }
-            MarkupGeometry::Text { at, wrap, text } => {
-                text_box_rect(*at, *wrap, text, MarkupStyle::default().font_size)
-            }
-            MarkupGeometry::TextAnchor {
-                at,
-                line_height,
-                line_count,
-                text_width,
-                ..
-            } => {
-                // The renderer draws from `at` downward for
-                // `line_height * line_count` points and `text_width` to the
-                // right, so the bounding box covers exactly that area (and
-                // hit-testing / page-crop checks agree with what is drawn).
-                Rect::new(
-                    at.x,
-                    at.y,
-                    text_width.max(1.0),
-                    (line_height * (*line_count).max(1) as f32).max(1.0),
-                )
-            }
-            MarkupGeometry::Callout { rect, tail, .. } => {
-                rect.union(&Rect::new(tail.x, tail.y, 0.0, 0.0))
-            }
-            MarkupGeometry::Angle { a, vertex, b } => {
-                Rect::from_bounds(&[*a, *vertex, *b]).unwrap_or(Rect::new(0.0, 0.0, 0.0, 0.0))
-            }
-            MarkupGeometry::Count { at, .. } => Rect::new(at.x - 8.0, at.y - 8.0, 16.0, 16.0),
-        }
-    }
-
-    /// Move the geometry by a delta.
-    pub fn translate(&mut self, dx: f32, dy: f32) {
-        let t = |p: &mut Pt| {
-            p.x += dx;
-            p.y += dy;
-        };
-        match self {
-            MarkupGeometry::Bounds(r) => {
-                r.x += dx;
-                r.y += dy;
-            }
-            MarkupGeometry::Segment { a, b } => {
-                t(a);
-                t(b);
-            }
-            MarkupGeometry::Path { points, .. } => points.iter_mut().for_each(t),
-            MarkupGeometry::Ink { strokes } => {
-                strokes.iter_mut().flatten().for_each(t);
-            }
-            MarkupGeometry::Text { at, .. } => t(at),
-            MarkupGeometry::TextAnchor { at, .. } => t(at),
-            MarkupGeometry::Callout { rect, tail, .. } => {
-                rect.x += dx;
-                rect.y += dy;
-                t(tail);
-            }
-            MarkupGeometry::Angle { a, vertex, b } => {
-                t(a);
-                t(vertex);
-                t(b);
-            }
-            MarkupGeometry::Count { at, .. } => t(at),
-        }
-    }
-}
-
-/// Estimated height of one rendered text line, in page points.
-///
-/// The renderer lays text out at roughly 1.35 × the font size; bounds and hit
-/// testing must use the same factor so a markup is hittable everywhere it is
-/// drawn.
-const TEXT_LINE_HEIGHT_FACTOR: f32 = 1.35;
-
-/// Line height for `font_size`, clamped to the style's 6 pt minimum so a
-/// degenerate deserialised font size can never collapse the box.
-///
-/// Public so the canvas text editor sizes its overlay with the exact same
-/// metrics the domain uses for bounds and hit testing.
-pub fn text_line_height(font_size: f32) -> f32 {
-    TEXT_LINE_HEIGHT_FACTOR * font_size.max(6.0)
-}
-
-/// The on-page rectangle of a text box anchored at `at`, wrapping within
-/// `wrap` points: one [`text_line_height`] per line, with the wrap width
-/// clamped to at least 1 pt so a degenerate stored wrap cannot make the box
-/// unhittable.
-fn text_box_rect(at: Pt, wrap: f32, text: &str, font_size: f32) -> Rect {
-    let lines = text.lines().count().max(1) as f32;
-    Rect::new(
-        at.x,
-        at.y,
-        wrap.max(1.0),
-        lines * text_line_height(font_size),
-    )
-}
-
-/// How many [`MarkupKind::MeasureCount`] markers lie on `page`.
-///
-/// Used for the page's running count total; this counts markers independently
-/// of the numbers stored on them.
-pub fn count_markers_on_page<'a>(
-    markups: impl IntoIterator<Item = &'a Markup>,
-    page: usize,
-) -> u32 {
-    markups
-        .into_iter()
-        .filter(|m| m.page == page && m.kind == MarkupKind::MeasureCount)
-        .count() as u32
-}
-
-/// The number for the next count marker placed on `page`.
-///
-/// One more than the highest number already on the page, so deleting a marker
-/// never reissues its number. Numbering restarts at `1` on each page.
-pub fn next_count_number<'a>(markups: impl IntoIterator<Item = &'a Markup>, page: usize) -> u32 {
-    markups
-        .into_iter()
-        .filter(|m| m.page == page && m.kind == MarkupKind::MeasureCount)
-        .filter_map(|m| match &m.geometry {
-            MarkupGeometry::Count { number, .. } => Some(*number),
-            _ => None,
-        })
-        .max()
-        .map_or(1, |n| n.saturating_add(1))
-}
-
-/// Human-readable running-total label for `total` count markers, e.g.
-/// `3 count`.
-pub fn count_total_label(total: u32) -> String {
-    units::format_value(
-        MeasureKind::Count,
-        units::MeasureUnit::Point,
-        f64::from(total),
-    )
-}
-
 /// Review workflow status (spec F-301).
 ///
 /// The four-state set is `Open` / `In review` / `Approved` / `Rejected`. It
@@ -475,125 +299,15 @@ impl ReviewStatus {
     }
 }
 
-/// Built-in stamp presets (spec F-111).
-///
-/// Stamps convey a review verdict from a fixed library rather than free text.
-/// The set mixes status marks (`Approved`, `Rejected`, `Draft`), which draw
-/// their word, with utility marks (`Check`, `Cross`), which draw a glyph.
-///
-/// Colours are grouped by meaning rather than being pairwise-distinct:
-/// affirmative marks are green, negative marks red, and in-progress marks
-/// amber. This mirrors the visual convention of check/cross marks and does
-/// not try to give every preset a unique hue (contrast [`ReviewStatus`]).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum StampPreset {
-    /// Signed-off status mark; draws its word.
-    Approved,
-    /// Not-accepted status mark; draws its word.
-    Rejected,
-    /// Work-in-progress status mark; draws its word.
-    Draft,
-    /// Affirmative utility mark; draws a tick glyph.
-    Check,
-    /// Negative utility mark; draws a cross glyph.
-    Cross,
-}
-
-impl StampPreset {
-    /// All presets in display order (stamp picker).
-    pub const ALL: [StampPreset; 5] = [
-        StampPreset::Approved,
-        StampPreset::Rejected,
-        StampPreset::Draft,
-        StampPreset::Check,
-        StampPreset::Cross,
-    ];
-
-    /// Word label used in menus, pickers and accessibility text.
-    ///
-    /// Always a word, even for [`StampPreset::Check`] and
-    /// [`StampPreset::Cross`], so UI controls stay readable. Use
-    /// [`StampPreset::glyph`] for the content a renderer draws.
-    pub fn label(self) -> &'static str {
-        match self {
-            StampPreset::Approved => "APPROVED",
-            StampPreset::Rejected => "REJECTED",
-            StampPreset::Draft => "DRAFT",
-            StampPreset::Check => "CHECK",
-            StampPreset::Cross => "CROSS",
-        }
-    }
-
-    /// Content a renderer draws for this preset.
-    ///
-    /// Status marks draw their word; check/cross draw a glyph. Renderers should
-    /// centre this within the stamp's bounds.
-    pub fn glyph(self) -> &'static str {
-        match self {
-            StampPreset::Approved => "APPROVED",
-            StampPreset::Rejected => "REJECTED",
-            StampPreset::Draft => "DRAFT",
-            StampPreset::Check => "✓",
-            StampPreset::Cross => "✗",
-        }
-    }
-
-    /// Stamp colour, grouped by meaning (not pairwise-distinct).
-    pub fn color(self) -> Color {
-        match self {
-            StampPreset::Approved => palette::GREEN,
-            StampPreset::Rejected => palette::RED,
-            StampPreset::Draft => palette::AMBER,
-            StampPreset::Check => palette::GREEN,
-            StampPreset::Cross => palette::RED,
-        }
-    }
-}
-
-/// A threaded comment attached to a markup.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Comment {
-    pub id: Uuid,
-    pub author: String,
-    pub text: String,
-    pub created: DateTime<Utc>,
-}
-
-impl Comment {
-    pub fn new(author: impl Into<String>, text: impl Into<String>) -> Self {
-        Self {
-            id: Uuid::new_v4(),
-            author: author.into(),
-            text: text.into(),
-            created: Utc::now(),
-        }
-    }
-}
-
-/// A measurement result attached to a measure markup.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Measurement {
-    pub kind: MeasureKind,
-    /// Value in the page's scale units.
-    pub value: f64,
-    /// Value in raw PDF points (kept for loss-free re-scaling).
-    pub value_points: f64,
-}
-
-impl Measurement {
-    /// Human-readable label using the default measurement precision.
-    pub fn label(&self, unit: units::MeasureUnit) -> String {
-        self.label_with(unit, units::DEFAULT_PRECISION)
-    }
-
-    /// Human-readable label using `precision` decimal places for linear and
-    /// area values.
-    ///
-    /// See [`units::format_value_precise`] for the angle/count handling rules.
-    pub fn label_with(&self, unit: units::MeasureUnit, precision: u8) -> String {
-        units::format_value_precise(self.kind, unit, self.value, precision)
-    }
+/// A corner of a bounding-box markup that can be dragged to resize it
+/// (v0.4 gap #5: resize grips).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Corner {
+    #[default]
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
 }
 
 /// A single markup on a page.
@@ -1013,15 +727,44 @@ impl Markup {
     }
 }
 
-/// A corner of a bounding-box markup that can be dragged to resize it
-/// (v0.4 gap #5: resize grips).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Corner {
-    #[default]
-    TopLeft,
-    TopRight,
-    BottomLeft,
-    BottomRight,
+/// How many [`MarkupKind::MeasureCount`] markers lie on `page`.
+///
+/// Used for the page's running count total; this counts markers independently
+/// of the numbers stored on them.
+pub fn count_markers_on_page<'a>(
+    markups: impl IntoIterator<Item = &'a Markup>,
+    page: usize,
+) -> u32 {
+    markups
+        .into_iter()
+        .filter(|m| m.page == page && m.kind == MarkupKind::MeasureCount)
+        .count() as u32
+}
+
+/// The number for the next count marker placed on `page`.
+///
+/// One more than the highest number already on the page, so deleting a marker
+/// never reissues its number. Numbering restarts at `1` on each page.
+pub fn next_count_number<'a>(markups: impl IntoIterator<Item = &'a Markup>, page: usize) -> u32 {
+    markups
+        .into_iter()
+        .filter(|m| m.page == page && m.kind == MarkupKind::MeasureCount)
+        .filter_map(|m| match &m.geometry {
+            MarkupGeometry::Count { number, .. } => Some(*number),
+            _ => None,
+        })
+        .max()
+        .map_or(1, |n| n.saturating_add(1))
+}
+
+/// Human-readable running-total label for `total` count markers, e.g.
+/// `3 count`.
+pub fn count_total_label(total: u32) -> String {
+    units::format_value(
+        MeasureKind::Count,
+        units::MeasureUnit::Point,
+        f64::from(total),
+    )
 }
 
 impl MarkupStyle {
@@ -1034,32 +777,6 @@ impl MarkupStyle {
     }
 }
 
-/// Perpendicular distance from `p` to the segment `a`-`b`.
-pub(crate) fn distance_to_segment(p: Pt, a: Pt, b: Pt) -> f32 {
-    let dx = b.x - a.x;
-    let dy = b.y - a.y;
-    let len_sq = dx * dx + dy * dy;
-    if len_sq <= f32::EPSILON {
-        return p.distance(a);
-    }
-    let t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / len_sq).clamp(0.0, 1.0);
-    let proj = Pt::new(a.x + t * dx, a.y + t * dy);
-    p.distance(proj)
-}
-
-/// Whether `p` lies inside the axis-aligned ellipse inscribed in `r`.
-fn ellipse_contains(r: Rect, p: Pt) -> bool {
-    let a = r.w / 2.0;
-    let b = r.h / 2.0;
-    if a <= 0.0 || b <= 0.0 {
-        return false;
-    }
-    let c = r.center();
-    let nx = (p.x - c.x) / a;
-    let ny = (p.y - c.y) / b;
-    nx * nx + ny * ny <= 1.0
-}
-
 /// Minimum distance from `p` to the four edges of `r` (its border).
 fn distance_to_rect_border(r: Rect, p: Pt) -> f32 {
     let tl = Pt::new(r.x, r.y);
@@ -1070,45 +787,6 @@ fn distance_to_rect_border(r: Rect, p: Pt) -> f32 {
         .min(distance_to_segment(p, tr, br))
         .min(distance_to_segment(p, br, bl))
         .min(distance_to_segment(p, bl, tl))
-}
-
-/// Even-odd (ray casting) point-in-polygon test.
-///
-/// Boundary results are implementation-defined, so callers should also accept
-/// a near-edge hit (see [`polyline_hit`]).
-fn point_in_polygon(points: &[Pt], p: Pt) -> bool {
-    if points.len() < 3 {
-        return false;
-    }
-    let n = points.len();
-    let mut inside = false;
-    for (i, a) in points.iter().enumerate() {
-        let b = points[(i + n - 1) % n];
-        if (a.y > p.y) != (b.y > p.y) {
-            let x = a.x + (p.y - a.y) / (b.y - a.y) * (b.x - a.x);
-            if p.x < x {
-                inside = !inside;
-            }
-        }
-    }
-    inside
-}
-
-/// Whether `p` is within `tol` of any segment of a polyline.
-///
-/// A closed path also tests the closing segment; a single-point stroke acts as
-/// a dot. Used by ink, polyline and closed path hit testing.
-fn polyline_hit(p: Pt, points: &[Pt], closed: bool, tol: f32) -> bool {
-    match points.len() {
-        0 => false,
-        1 => p.distance(points[0]) <= tol,
-        n => {
-            points
-                .windows(2)
-                .any(|w| distance_to_segment(p, w[0], w[1]) <= tol)
-                || (closed && distance_to_segment(p, points[n - 1], points[0]) <= tol)
-        }
-    }
 }
 
 #[cfg(test)]
@@ -1541,26 +1219,7 @@ mod tests {
     }
 
     #[test]
-    fn measurement_labels_honour_precision_and_default() {
-        let m = Measurement {
-            kind: MeasureKind::Length,
-            value: 12.3456,
-            value_points: 12.3456,
-        };
-        assert_eq!(m.label(units::MeasureUnit::Foot), "12.346 ft");
-        assert_eq!(m.label_with(units::MeasureUnit::Foot, 0), "12 ft");
-        assert_eq!(m.label_with(units::MeasureUnit::Foot, 1), "12.3 ft");
-
-        let angle = Measurement {
-            kind: MeasureKind::Angle,
-            value: 90.0,
-            value_points: 90.0,
-        };
-        assert_eq!(angle.label_with(units::MeasureUnit::Point, 6), "90.00°");
-    }
-
-    #[test]
-    fn hit_test_geometry_serde_roundtrip() {
+    fn markup_geometry_serde_roundtrip() {
         let geometries = [
             MarkupGeometry::Ink {
                 strokes: vec![vec![Pt::new(0.0, 0.0), Pt::new(5.0, 5.0)]],
@@ -1920,64 +1579,24 @@ mod tests {
     }
 
     #[test]
-    fn stamp_preset_all_matches_spec_set() {
-        assert_eq!(
-            StampPreset::ALL,
-            [
-                StampPreset::Approved,
-                StampPreset::Rejected,
-                StampPreset::Draft,
-                StampPreset::Check,
-                StampPreset::Cross,
-            ]
+    fn add_comment_appends_and_refuses_blank() {
+        let mut m = Markup::new(
+            0,
+            MarkupKind::Note,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 20.0, 20.0)),
+            "tester",
         );
-        assert_eq!(StampPreset::ALL.len(), 5);
-    }
+        let before = m.modified;
+        assert_eq!(m.add_comment("Ann", "   "), None);
+        assert!(m.comments.is_empty());
+        assert_eq!(m.modified, before, "a refused comment must not touch");
 
-    #[test]
-    fn stamp_preset_labels_are_words_glyphs_are_drawn_content() {
-        for preset in StampPreset::ALL {
-            assert!(!preset.label().is_empty());
-            assert!(!preset.glyph().is_empty());
-        }
-        assert_eq!(StampPreset::Approved.label(), "APPROVED");
-        assert_eq!(StampPreset::Rejected.label(), "REJECTED");
-        assert_eq!(StampPreset::Draft.label(), "DRAFT");
-        assert_eq!(StampPreset::Check.label(), "CHECK");
-        assert_eq!(StampPreset::Cross.label(), "CROSS");
-        // Status marks draw their word; utility marks draw a glyph.
-        assert_eq!(StampPreset::Approved.glyph(), "APPROVED");
-        assert_eq!(StampPreset::Rejected.glyph(), "REJECTED");
-        assert_eq!(StampPreset::Draft.glyph(), "DRAFT");
-        assert_eq!(StampPreset::Check.glyph(), "✓");
-        assert_eq!(StampPreset::Cross.glyph(), "✗");
-    }
-
-    #[test]
-    fn stamp_preset_colors_group_by_meaning() {
-        // Affirmative green, negative red, in-progress amber. Unlike
-        // ReviewStatus, stamp presets are intentionally not pairwise-distinct.
-        assert_eq!(StampPreset::Approved.color(), palette::GREEN);
-        assert_eq!(StampPreset::Check.color(), palette::GREEN);
-        assert_eq!(StampPreset::Rejected.color(), palette::RED);
-        assert_eq!(StampPreset::Cross.color(), palette::RED);
-        assert_eq!(StampPreset::Draft.color(), palette::AMBER);
-    }
-
-    #[test]
-    fn stamp_preset_serde_uses_snake_case() {
-        let cases = [
-            (StampPreset::Approved, "\"approved\""),
-            (StampPreset::Rejected, "\"rejected\""),
-            (StampPreset::Draft, "\"draft\""),
-            (StampPreset::Check, "\"check\""),
-            (StampPreset::Cross, "\"cross\""),
-        ];
-        for (preset, json) in cases {
-            assert_eq!(serde_json::to_string(&preset).expect("serialize"), json);
-            let back: StampPreset = serde_json::from_str(json).expect("deserialize");
-            assert_eq!(back, preset);
-        }
+        let id = m.add_comment("Ann", "looks good").expect("comment id");
+        assert_eq!(m.comments.len(), 1);
+        assert_eq!(m.comments[0].id, id);
+        assert_eq!(m.comments[0].author, "Ann");
+        assert_eq!(m.comments[0].text, "looks good");
+        assert!(m.modified >= before);
     }
 
     #[test]
@@ -2023,27 +1642,6 @@ mod tests {
         assert!(json.contains("\"stamp\":\"rejected\""), "json = {json}");
         let back: Markup = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back.stamp, Some(StampPreset::Rejected));
-    }
-
-    #[test]
-    fn add_comment_appends_and_refuses_blank() {
-        let mut m = Markup::new(
-            0,
-            MarkupKind::Note,
-            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 20.0, 20.0)),
-            "tester",
-        );
-        let before = m.modified;
-        assert_eq!(m.add_comment("Ann", "   "), None);
-        assert!(m.comments.is_empty());
-        assert_eq!(m.modified, before, "a refused comment must not touch");
-
-        let id = m.add_comment("Ann", "looks good").expect("comment id");
-        assert_eq!(m.comments.len(), 1);
-        assert_eq!(m.comments[0].id, id);
-        assert_eq!(m.comments[0].author, "Ann");
-        assert_eq!(m.comments[0].text, "looks good");
-        assert!(m.modified >= before);
     }
 
     #[test]

@@ -7,6 +7,7 @@ pub mod prefs;
 pub mod print;
 pub mod recent;
 pub mod render;
+pub mod render_worker;
 pub mod store;
 
 pub use error::DataError;

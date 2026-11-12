@@ -19,7 +19,7 @@ use super::theme::to_color32;
 use crate::ui::canvas_draw::{
     draw_bates_overlay, draw_grid, draw_measure_badge, draw_minimap, draw_rulers, draw_selection,
 };
-use crate::ui::canvas_geom::{screen_rect, to_page, to_screen};
+use crate::ui::canvas_geom::{hit_tolerance_page, measure_anchor, screen_rect, to_page, to_screen};
 use crate::ui::canvas_hit::{handle_at, pick_markup_id, point_handle_at};
 
 /// Refuse to begin a draft when the markup it would create could not be edited.
@@ -44,13 +44,6 @@ fn creation_allowed(project: &Project, ui_state: &mut super::app::UiState) -> bo
 /// repeated clicks produce, do not count.
 fn path_points_ok(points: &[Pt], min: usize, _closed: bool) -> bool {
     points.len() >= min && points.windows(2).any(|w| w[0].distance(w[1]) > 0.5)
-}
-
-/// Hit tolerance expressed in page units for a given zoom, so a fixed screen
-/// pixel budget (~6 px) is used at every zoom level.
-fn hit_tolerance_page(zoom: f32) -> f32 {
-    let z = zoom.max(0.1);
-    (6.0 / z).clamp(0.5, 30.0)
 }
 
 /// Whether an ink stroke is worth committing: it must contain at least two
@@ -91,27 +84,6 @@ const MIN_CALIBRATION_POINTS: f32 = 1.0;
 /// Whether a measured reference segment is long enough to calibrate from.
 fn calibration_segment_ok(points: f32) -> bool {
     points.is_finite() && points >= MIN_CALIBRATION_POINTS
-}
-
-/// Anchor point in page space for a measurement label.
-fn measure_anchor(m: &Markup) -> Pt {
-    match &m.geometry {
-        MarkupGeometry::Segment { a, b } => Pt::new((a.x + b.x) * 0.5, (a.y + b.y) * 0.5),
-        MarkupGeometry::Path { points, .. } => {
-            if points.is_empty() {
-                m.bounds().center()
-            } else {
-                let n = points.len() as f32;
-                let (sx, sy) = points
-                    .iter()
-                    .fold((0.0f32, 0.0f32), |(x, y), p| (x + p.x, y + p.y));
-                Pt::new(sx / n, sy / n)
-            }
-        }
-        MarkupGeometry::Angle { vertex, .. } => *vertex,
-        MarkupGeometry::Count { at, .. } => *at,
-        _ => m.bounds().center(),
-    }
 }
 
 /// Draw a single markup.
@@ -503,7 +475,10 @@ pub(crate) fn draw_canvas(
     // Paint the PDF page as a background texture when available; otherwise
     // keep the existing flat white fill. NOTE: first paint of a page may hitch
     // while PDFium rasterises + writes the cache PNG; the cache makes it
-    // one-time. No background threads this slice (pdfium is not thread-safe).
+    // one-time. This canvas path intentionally stays synchronous on the UI
+    // thread; the Pages sidebar renders its thumbnails on a worker thread,
+    // and PDFium FFI calls are mutex-serialised by pdfium-render's
+    // default-on `thread_safe` feature (Slice 5 may move this path too).
     let mut painted_texture = false;
     if let Some(pdf_path) = source_pdf {
         // Track the page's on-screen device width so text stays sharp at high
@@ -768,7 +743,7 @@ pub(crate) fn draw_canvas(
             let resp = ui.put(
                 sr,
                 egui::TextEdit::multiline(&mut edit.text)
-                    .id(egui::Id::new(("rubric_text_edit", edit.id))),
+                    .id(egui::Id::unique(("rubric_text_edit", edit.id))),
             );
             if !edit.focus_requested {
                 resp.request_focus();
@@ -824,8 +799,11 @@ pub(crate) fn draw_canvas(
                 egui::Stroke::new(1.0, Color32::from_gray(150)),
                 egui::StrokeKind::Middle,
             );
-            let popover_resp =
-                ui.interact(popover, egui::Id::new("note_popover"), egui::Sense::click());
+            let popover_resp = ui.interact(
+                popover,
+                egui::Id::unique("note_popover"),
+                egui::Sense::click(),
+            );
             let inner = popover.shrink(8.0);
             let mut cy = inner.min.y;
             let mut next_row = move |h: f32| {

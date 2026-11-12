@@ -8,12 +8,18 @@ pub mod document;
 pub mod geom;
 pub mod grid;
 pub mod markup;
+pub mod markup_comment;
+pub mod markup_geometry;
+pub use markup_geometry::{text_box_rect, text_line_height, MarkupGeometry};
 pub mod markup_list;
+pub mod markup_measurement;
+pub mod markup_stamp;
 pub mod project;
 pub mod report;
 pub mod style;
 pub mod style_preset;
 pub mod theme;
+pub mod thumb_render;
 pub mod thumbs;
 pub mod units;
 pub mod view;
@@ -28,11 +34,11 @@ pub use diff::{diff_documents, diff_projects, DiffResult, MarkupChange, MarkupSu
 pub use document::{Document, Layer, LayerError, Page};
 pub use geom::{angle_degrees, path_length, polygon_area, Pt, Rect};
 pub use grid::{nice_step, ruler_ticks, Grid};
-pub use markup::{
-    Comment, Corner, Markup, MarkupGeometry, MarkupKind, Measurement, ReviewStatus, StampPreset,
-    ToolGroup,
-};
+pub use markup::{Corner, Markup, MarkupKind, ReviewStatus, ToolGroup};
+pub use markup_comment::Comment;
 pub use markup_list::{MarkupGroupKey, MarkupList, MarkupListFilter, MarkupListSort, MarkupRow};
+pub use markup_measurement::Measurement;
+pub use markup_stamp::StampPreset;
 pub use project::{
     auto_save_interval_label, History, Project, ProjectSnapshot, RecentList, Settings, Tool,
     ToolSet, AUTO_SAVE_INTERVALS, CURRENT_SCHEMA_VERSION, MAX_RECENT, MIN_AUTO_SAVE_INTERVAL_SECS,
@@ -41,6 +47,7 @@ pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCount
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
 pub use style_preset::{StylePreset, StylePresetLibrary};
 pub use theme::{AppPrefs, Theme};
+pub use thumb_render::{RenderJob, RenderKey, RenderOutcome, RenderQueueState, TextureLru};
 pub use thumbs::{thumb_layout, ThumbLayout};
 pub use units::{
     clamp_precision, format_value, format_value_precise, MeasureKind, MeasureUnit, Scale,

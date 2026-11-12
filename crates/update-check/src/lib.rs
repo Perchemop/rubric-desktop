@@ -145,20 +145,16 @@ impl UpdateChecker {
 fn check_now(repo: &str, current: &str) -> UpdateStatus {
     let url = format!("{RELEASES_API}/{repo}/releases/latest");
     let resp = match ureq::get(&url)
-        .set("User-Agent", "rubric-update-check")
-        .set("Accept", "application/vnd.github+json")
+        .header("User-Agent", "rubric-update-check")
+        .header("Accept", "application/vnd.github+json")
         .call()
     {
         Ok(r) => r,
-        // Offline, DNS failure, timeout…: fail soft.
+        // Offline, DNS failure, timeout, or a non-2xx HTTP status: fail soft.
         Err(_) => return UpdateStatus::Unknown,
     };
-    if resp.status() != 200 {
-        // 404 (no releases yet), rate-limited, and other HTTP conditions all
-        // mean the same thing to the user: "could not check".
-        return UpdateStatus::Unknown;
-    }
-    let release: Release = match resp.into_json() {
+    // ureq 3.x treats non-2xx status codes as errors, so a successful call is 2xx.
+    let release: Release = match resp.into_body().read_json() {
         Ok(r) => r,
         Err(_) => return UpdateStatus::Unknown,
     };

@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use eframe::{App, CreationContext, Frame};
@@ -18,9 +18,7 @@ use crate::domain::{
     MarkupKind, MarkupListSort, MarkupStyle, MeasureUnit, Project, Pt, Report, ReportGroupKey,
     ReviewStatus, StampPreset, StylePreset, StylePresetLibrary, Theme, Tool,
 };
-use crate::ui::{
-    app_dialogs, canvas, inspector, markups_list, menu, pages, theme, tool_chest, toolbar,
-};
+use crate::ui::{app_dialogs, canvas, pages, theme, toolbar};
 use uuid::Uuid;
 
 /// Changelog embedded at build time for the in-app release-notes popup
@@ -99,54 +97,6 @@ pub(crate) enum StatusKind {
     Error,
 }
 
-/// Render queue state (UI audit P1-2: move heavy work off the UI thread).
-///
-/// Follows the same `Arc<Mutex>` + worker-thread pattern as `update-check`
-/// (guide §7.2). One render job may be in flight at a time; the UI reads
-/// A render queue for off-loading PDF page rendering to a worker thread.
-#[expect(dead_code)]
-#[derive(Default)]
-pub(crate) struct RenderQueue {
-    /// True while a render job is in progress; the UI shows a placeholder
-    /// while this is `true`.
-    in_flight: bool,
-    /// Result of the completed render job, if any.
-    result: Option<RenderResult>,
-    /// Key of the render job that just completed, so the UI can cache it.
-    completed_key: Option<String>,
-}
-
-/// A render job for off-loading PDF page rendering to a worker thread.
-#[expect(dead_code)]
-#[derive(Debug)]
-pub(crate) struct RenderJob {
-    /// Path to the PDF file.
-    pub pdf_path: String,
-    /// Page index (0-based).
-    pub page_index: usize,
-    /// Thumbnail width in pixels (for thumbnails).
-    pub thumb_width_px: u32,
-    /// Key to identify this render request in the cache.
-    pub cache_key: String,
-    /// Optional channel sender to receive the result back on the UI thread.
-    pub result_tx: Option<mpsc::Sender<RenderResult>>,
-}
-
-/// Outcome of a render job, sent back to the UI thread.
-#[expect(dead_code)]
-pub(crate) enum RenderResult {
-    /// Success: the page was rendered and the texture is ready.
-    Success,
-    /// Failure: the render failed (e.g. PDF not found, invalid page).
-    Failure { error: String },
-}
-
-/// Repaint request signal (UI audit P1-2): posted by worker threads to
-/// notify the UI that a resource has finished loading/rendering.
-#[expect(dead_code)]
-#[derive(Debug)]
-pub(crate) struct RepaintSignal;
-
 /// Layer criterion in the Markups List. The default layer is a distinct case
 /// because markups on it store `layer_id: None` in the domain model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -221,7 +171,7 @@ pub(crate) struct UiState {
     /// inspector's continuous Bates controls, cleared when the single undo
     /// snapshot commits at interaction end.
     pub(crate) bates_dirty: bool,
-    hint: String,
+    pub(crate) hint: String,
     pub(crate) status: String,
     pub(crate) status_kind: StatusKind,
     /// Set when an in-progress draw is cancelled (Esc) so the still-held drag
@@ -417,13 +367,13 @@ impl Default for UiState {
 pub struct RubricApp {
     pub(crate) history: History,
     pub(crate) ui: UiState,
-    draw: DrawState,
+    pub(crate) draw: DrawState,
     /// The last pointer page position (for the status bar).
-    last_page_pos: Option<Pt>,
-    comment_text: String,
+    pub(crate) last_page_pos: Option<Pt>,
+    pub(crate) comment_text: String,
     /// Session-only association with a file on disk. Not part of the project
     /// snapshot, so it never undoes/redoes with history.
-    current_path: Option<PathBuf>,
+    pub(crate) current_path: Option<PathBuf>,
     /// A project install waiting for the user to confirm discarding unsaved
     /// changes (full-app audit B2). `None` when nothing is pending.
     pub(crate) pending_replace: Option<PendingReplace>,
@@ -435,28 +385,28 @@ pub struct RubricApp {
     pub(crate) show_user_guide: bool,
     /// Set when the user closed the update-check window, so it stays closed
     /// until a new check is requested (full-app audit M8).
-    update_dismissed: bool,
+    pub(crate) update_dismissed: bool,
     /// Set by "Quit Anyway" so the close-request veto (audit M1) lets the
     /// explicitly-confirmed close through instead of re-prompting forever.
     pub(crate) force_close: bool,
     /// Set when the window title needs to be re-synced with `current_path`.
-    title_dirty: bool,
+    pub(crate) title_dirty: bool,
     /// Last dirty state reflected in the window title, used to recompute the
     /// dirty marker when the unsaved state changes.
-    title_shown_dirty: bool,
+    pub(crate) title_shown_dirty: bool,
     /// Instant of the most recent autosave **attempt** in this session, or
     /// `None` before the first one. Recording the attempt (even a failed one)
     /// rate-limits retries to one per interval instead of one per frame.
-    last_autosave: Option<Instant>,
+    pub(crate) last_autosave: Option<Instant>,
     /// Cache of rendered PDF page textures, keyed by cache PNG path.
-    page_textures: HashMap<String, TextureHandle>,
+    pub(crate) page_textures: HashMap<String, TextureHandle>,
     /// Cache keys whose page render failed this project session. Poisoned so a
     /// failed background render is not attempted again on every repaint frame.
-    failed_page_textures: HashSet<String>,
+    pub(crate) failed_page_textures: HashSet<String>,
     /// Page-thumbnail textures for the pages sidebar (spec F-404).
-    thumb_cache: pages::ThumbCache,
+    pub(crate) thumb_cache: pages::ThumbCache,
     /// Last PDF background error shown, to avoid spamming status every frame.
-    bg_error: Option<String>,
+    pub(crate) bg_error: Option<String>,
     /// Session-only report export dialog state (no undo snapshot).
     pub(crate) report_export: Option<ReportExportUi>,
     /// Transient toast notification (UI audit P1-1): shown briefly with
@@ -467,24 +417,23 @@ pub struct RubricApp {
     /// High-contrast mode (a11y A3 / proposal P2-15), applied over the theme.
     pub(crate) high_contrast: bool,
     /// UI scale multiplier (app-level preference, not project data).
-    ui_scale: f32,
+    pub(crate) ui_scale: f32,
     /// In-progress bug report the user is reviewing before sending (guide §7.1).
     pub(crate) report: Option<BugReportUi>,
     /// Shared update-check state, written by the worker thread and read by the
     /// UI each frame (guide §7.2).
-    update: Arc<Mutex<UpdateCheck>>,
-    /// Render queue state, written by the worker thread and read by the
-    /// UI each frame (UI audit P1-2: move heavy work off the UI thread).
-    #[allow(dead_code)]
-    render: Arc<Mutex<RenderQueue>>,
+    pub(crate) update: Arc<Mutex<UpdateCheck>>,
+    /// Async thumbnail render worker, lazily spawned on first pages-sidebar
+    /// open (UI audit P1-2: move heavy work off the UI thread).
+    pub(crate) render_worker: Option<crate::data::render_worker::RenderWorker>,
     /// Repository used for issue URLs and release checks.
-    repo: String,
+    pub(crate) repo: String,
     /// Tool Chest preset library (v0.4 gap #7). App-level session state: it
     /// survives project switches (a tool chest belongs to the reviewer, not
     /// the project) and is not written into `.rubric.json` or prefs yet —
     /// `StylePreset`/`StylePresetLibrary` are serde-ready if persistence is
     /// added later. Not part of the undo history.
-    tool_chest_library: StylePresetLibrary,
+    pub(crate) tool_chest_library: StylePresetLibrary,
 }
 
 /// Update-check progress shared between the worker thread and the UI.
@@ -586,7 +535,7 @@ impl RubricApp {
                 open_in_browser: true,
             }),
             update: Arc::new(Mutex::new(UpdateCheck::default())),
-            render: Arc::new(Mutex::new(RenderQueue::default())),
+            render_worker: None,
             repo: "Perchemop/rubric-desktop".to_string(),
             tool_chest_library: prefs.tool_chest_library.clone(),
         }
@@ -618,63 +567,6 @@ impl RubricApp {
                 state.result = Some(status);
             }
             ctx.request_repaint();
-        });
-    }
-
-    /// Submit a thumbnail-render job to the worker thread (UI audit P1-2).
-    ///
-    /// If a render is already in flight, this call is a no-op. The job
-    /// parameters are stored in the shared `RenderQueue`; the worker thread
-    /// renders the page to a cached PNG using the existing `pdf::render_page_to_cache`
-    /// (which has on-disk caching so re-renders are free). The UI reads the
-    /// queue each frame and, once the job completes, creates the egui texture
-    /// from the cached file and adds it to `thumb_cache`.
-    #[allow(dead_code)]
-    pub(crate) fn begin_render_thumb(
-        &mut self,
-        pdf_path: &Path,
-        page_index: usize,
-        thumb_width_px: u32,
-        cache_key: &str,
-    ) {
-        let mut queue = self.render.lock().unwrap_or_else(|p| p.into_inner());
-        if queue.in_flight {
-            // Already rendering; don't spawn a second concurrent job.
-            return;
-        }
-        queue.in_flight = true;
-        queue.result = None;
-        queue.completed_key = Some(cache_key.to_string());
-        drop(queue);
-
-        let shared = Arc::clone(&self.render);
-        let pdf_path_str = pdf_path.to_string_lossy().to_string();
-        let page_index_val = page_index;
-        let thumb_width_px_val = thumb_width_px;
-        let _cache_key_val = cache_key.to_string();
-        std::thread::spawn(move || {
-            // Render to the on-disk cache using the existing pdf infrastructure.
-            // This is the "heavy" part; subsequent renders will hit the cache.
-            if let Ok(_cache_path) = crate::data::pdf::render_page_to_cache(
-                PathBuf::from(&pdf_path_str),
-                page_index_val,
-                thumb_width_px_val,
-            ) {
-                // Rendering succeeded; mark as complete.
-                if let Ok(mut state) = shared.lock() {
-                    state.in_flight = false;
-                    state.result = Some(RenderResult::Success);
-                    // The UI will pick up the cached file on the next frame.
-                    // Request repaint via the existing mechanism.
-                }
-            } else {
-                if let Ok(mut state) = shared.lock() {
-                    state.in_flight = false;
-                    state.result = Some(RenderResult::Failure {
-                        error: "PDF render failed".into(),
-                    });
-                }
-            }
         });
     }
 
@@ -1358,7 +1250,7 @@ impl RubricApp {
         }
     }
 
-    fn push_snapshot(&mut self, _reason: &str) {
+    pub(crate) fn push_snapshot(&mut self, _reason: &str) {
         let proj = self.history.current().clone();
         self.history.push(proj);
         // A committed change is exactly what auto-save should persist.
@@ -1436,6 +1328,7 @@ impl RubricApp {
         self.page_textures.clear();
         self.failed_page_textures.clear();
         self.thumb_cache = pages::ThumbCache::default();
+        self.render_worker = None;
         self.bg_error = None;
         self.report_export = None;
         if let Some(doc) = self.active_doc() {
@@ -1877,42 +1770,6 @@ impl RubricApp {
         );
     }
 
-    fn right_panel(&mut self, ui: &mut Ui) -> bool {
-        inspector::draw_inspector(
-            ui,
-            self.history.current_mut(),
-            &mut self.ui,
-            &mut self.comment_text,
-        )
-    }
-
-    fn bottom_bar(&mut self, ui: &mut Ui) {
-        let doc_title = self.active_doc().map(|d| d.title.clone());
-        let page_count = self.active_doc().map(|d| d.page_count());
-
-        ui.horizontal(|ui| {
-            ui.small(self.ui.hint.clone());
-            if let Some(p) = self.last_page_pos {
-                ui.small(format!("Cursor: {:.1},{:.1} pt", p.x, p.y));
-            }
-            if let (Some(pages), Some(title)) = (page_count, doc_title) {
-                let plural = if pages == 1 { "" } else { "s" };
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    // Version label (guide §9): subtle, non-intrusive, clickable for release notes.
-                    if ui
-                        .small(format!("v{}", env!("CARGO_PKG_VERSION")))
-                        .on_hover_text("Click for release notes")
-                        .clicked()
-                    {
-                        self.ui.show_release_notes = true;
-                    }
-                    ui.small(format!("{pages} page{plural}"));
-                    ui.small(title);
-                });
-            }
-        });
-    }
-
     /// Switch the active tool, abandoning any in-flight draft gesture exactly
     /// like Escape does (but keeping the current selection). Used by the
     /// unmodified-key tool shortcuts.
@@ -2246,26 +2103,7 @@ impl RubricApp {
         egui::Panel::top("toolbar").show(ui, |ui| self.top_bar(ui));
         // Pages sidebar (spec F-404). Only shown when the document has pages
         // and the panel is enabled in the View menu.
-        let page_count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
-        if page_count > 0 && self.ui.show_pages && !self.ui.focus_mode {
-            let source_pdf = self.history.current().source_pdf.clone();
-            egui::Panel::left("pages")
-                .default_size(168.0)
-                .min_size(120.0)
-                .max_size(260.0)
-                .resizable(true)
-                .show(ui, |ui| {
-                    if let Some(index) = pages::draw_pages(
-                        ui,
-                        page_count,
-                        self.ui.current_page.min(page_count - 1),
-                        source_pdf.as_deref().map(std::path::Path::new),
-                        &mut self.thumb_cache,
-                    ) {
-                        self.jump_to_page(index);
-                    }
-                });
-        }
+        crate::ui::app_pages::draw_pages_panel(self, ui);
         egui::Panel::left("tools")
             .default_size(200.0)
             .min_size(180.0)
@@ -2275,54 +2113,16 @@ impl RubricApp {
         // `ui.pending_style_preset`, which `canvas::finish_markup` consumes
         // at creation time; only apply-to-selection mutates the project and
         // asks for a snapshot.
-        let mut chest_mutated = false;
-        if self.ui.show_tool_chest && !self.ui.focus_mode {
-            let library = &mut self.tool_chest_library;
-            let project = self.history.current_mut();
-            let ui_state = &mut self.ui;
-            egui::Panel::left("tool_chest")
-                .default_size(210.0)
-                .min_size(170.0)
-                .resizable(true)
-                .show(ui, |ui| {
-                    chest_mutated = tool_chest::draw_tool_chest(ui, library, project, ui_state);
-                });
-        }
+        let chest_mutated = crate::ui::app_tool_chest::draw_tool_chest_panel(self, ui);
         if chest_mutated {
             self.push_snapshot("tool chest apply");
         }
-        let mut inspector_mutated = false;
-        if !self.ui.focus_mode {
-            let inspector_response = egui::Panel::right("inspector")
-                .default_size(280.0)
-                .min_size(240.0)
-                .show(ui, |ui| {
-                    inspector_mutated = self.right_panel(ui);
-                })
-                .response;
-            // Inspector context menu (spec F-603): the same menu the canvas offers.
-            let _ = inspector_response.context_menu(|ui| {
-                menu::draw_editor_context_menu(ui, &mut self.ui);
-            });
-        }
-        egui::Panel::bottom("status").show(ui, |ui| self.bottom_bar(ui));
+        let inspector_mutated = crate::ui::app_inspector::draw_inspector_panel(self, ui);
+        egui::Panel::bottom("status")
+            .show(ui, |ui| crate::ui::app_status::draw_status_bar(self, ui));
 
-        let mut list_action = None;
-        let mut status_changed = false;
-        if self.ui.show_markups_list && !self.ui.focus_mode {
-            let project = self.history.current_mut();
-            let ui_state = &mut self.ui;
-            egui::Panel::bottom("markups_list")
-                .default_size(190.0)
-                .min_size(110.0)
-                .max_size(420.0)
-                .resizable(true)
-                .show(ui, |ui| {
-                    let (action, sc) = markups_list::draw_markups_list(ui, project, ui_state);
-                    list_action = action;
-                    status_changed = sc;
-                });
-        }
+        let (list_action, status_changed) =
+            crate::ui::app_markups_list::draw_markups_list_panel(self, ui);
         if status_changed {
             self.push_snapshot_quiet();
         }
@@ -2335,35 +2135,7 @@ impl RubricApp {
             }
         }
 
-        let prior_status = self.ui.status.clone();
-        let show_minimap = self.ui.show_minimap;
-        let mut need_snapshot = false;
-        egui::CentralPanel::default().show(ui, |ui| {
-            self.ui.canvas_size = ui.available_size();
-            need_snapshot = canvas::draw_canvas(
-                ui,
-                self.history.current_mut(),
-                &mut self.ui,
-                &mut self.draw,
-                &mut self.last_page_pos,
-                &mut self.page_textures,
-                &mut self.failed_page_textures,
-                &mut self.bg_error,
-                false, // is_export: show chrome in live editor
-                show_minimap,
-            );
-        });
-        if need_snapshot {
-            // The canvas can set a more specific status this frame (e.g.
-            // "Text updated" from a text-edit commit); keep it instead of
-            // overwriting it with the generic snapshot message. Comparing
-            // against the pre-canvas status keeps the check frame-scoped.
-            if self.ui.status != prior_status {
-                self.push_snapshot_quiet();
-            } else {
-                self.push_snapshot("drawing");
-            }
-        }
+        crate::ui::app_canvas::draw_canvas_panel(self, ui);
         if inspector_mutated {
             self.push_snapshot("inspector edit");
         }

@@ -5,18 +5,22 @@
 
 use eframe::egui::{self, Color32, FontId, Rect, Sense, StrokeKind, TextureHandle, Vec2};
 
-use crate::data::pdf;
+use crate::data::render_worker::RenderWorker;
 use crate::domain::thumb_layout;
+use crate::domain::thumb_render::{RenderJob, RenderKey};
 use std::collections::HashMap;
 use std::path::Path;
 
 /// State owned by the app for the sidebar: uploaded page thumbnails plus the
 /// pages whose render already failed, so a broken page is not retried every
-/// frame (same poisoning rule the main canvas uses).
+/// frame (same poisoning rule the main canvas uses). `pending` holds the keys
+/// submitted to the worker and not yet drained, so a render in flight is not
+/// re-submitted every frame.
 #[derive(Default)]
 pub(crate) struct ThumbCache {
     textures: HashMap<String, TextureHandle>,
     failed: std::collections::HashSet<String>,
+    pending: std::collections::HashSet<String>,
 }
 
 /// Minimum width of one thumbnail cell, and the gutter between cells.
@@ -35,6 +39,7 @@ pub(crate) fn draw_pages(
     current_page: usize,
     source_pdf: Option<&Path>,
     cache: &mut ThumbCache,
+    worker: &RenderWorker,
 ) -> Option<usize> {
     let mut jumped = None;
 
@@ -86,26 +91,43 @@ pub(crate) fn draw_pages(
                     // numbered placeholder, which is honest about there being no image.
                     let mut loaded = None;
                     if let Some(path) = source_pdf {
-                        // Rendering a *document* page, not the current one: the id
-                        // encodes that, so the main canvas texture never reuses it.
-                        let key = format!("{}:{index}:{THUMB_WIDTH_PX}", path.display());
-                        loaded = load_thumb(ui, path, index, &key, cache);
-                    }
-                    match loaded {
-                        Some(texture) => {
-                            let uv = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
-                            ui.painter()
-                                .image(texture.id(), thumb_rect, uv, Color32::WHITE);
+                        let key = RenderKey {
+                            pdf_id: path.display().to_string(),
+                            page: index,
+                            width_px: THUMB_WIDTH_PX,
+                        };
+                        let key_str = key.to_string();
+
+                        // Check cache first.
+                        if let Some(texture) = cache.textures.get(&key_str) {
+                            loaded = Some(texture.clone());
+                        } else if !cache.failed.contains(&key_str)
+                            && !cache.pending.contains(&key_str)
+                        {
+                            // Enqueue for async render; `pending` stops a
+                            // duplicate submit on every frame while the key is
+                            // in flight.
+                            cache.pending.insert(key_str.clone());
+                            worker.submit(RenderJob { key, priority: 0 });
                         }
-                        None => {
-                            let centre = thumb_rect.center();
-                            ui.painter().text(
-                                centre,
-                                egui::Align2::CENTER_CENTER,
-                                format!("{}", index + 1),
-                                FontId::proportional(thumb_h * 0.45),
-                                ui.visuals().text_color(),
-                            );
+
+                        match loaded {
+                            Some(texture) => {
+                                let uv =
+                                    Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
+                                ui.painter()
+                                    .image(texture.id(), thumb_rect, uv, Color32::WHITE);
+                            }
+                            None => {
+                                let centre = thumb_rect.center();
+                                ui.painter().text(
+                                    centre,
+                                    egui::Align2::CENTER_CENTER,
+                                    format!("{}", index + 1),
+                                    FontId::proportional(thumb_h * 0.45),
+                                    ui.visuals().text_color(),
+                                );
+                            }
                         }
                     }
 
@@ -133,54 +155,25 @@ pub(crate) fn draw_pages(
             });
             ui.add_space(GAP as f32);
         }
+
+        // Drain completed render results and upload textures. Every result
+        // leaves `pending`; failures additionally poison the key.
+        for pixels in worker.try_drain() {
+            let key_str = pixels.key.to_string();
+            cache.pending.remove(&key_str);
+            if pixels.outcome.is_ok() {
+                let image = egui::ColorImage::from_rgba_unmultiplied(
+                    [pixels.width as usize, pixels.height as usize],
+                    &pixels.rgba,
+                );
+                let t = ui
+                    .ctx()
+                    .load_texture(key_str.clone(), image, egui::TextureOptions::LINEAR);
+                cache.textures.insert(key_str, t);
+            } else {
+                cache.failed.insert(key_str);
+            }
+        }
     });
     jumped
-}
-
-/// Upload (or re-use) the texture for one page thumbnail.
-///
-/// Rasterisation is delegated to `data::pdf`, which keeps a shared on-disk
-/// cache, so a thumbnail that the main canvas already rendered costs nothing.
-fn load_thumb(
-    ui: &egui::Ui,
-    path: &Path,
-    page_index: usize,
-    key: &str,
-    cache: &mut ThumbCache,
-) -> Option<TextureHandle> {
-    if let Some(texture) = cache.textures.get(key) {
-        return Some(texture.clone());
-    }
-    if cache.failed.contains(key) {
-        return None;
-    }
-    let texture = match pdf::render_page_to_cache(path, page_index, THUMB_WIDTH_PX)
-        .map_err(|e| e.to_string())
-        .and_then(|cache_path| std::fs::read(&cache_path).map_err(|e| e.to_string()))
-        .and_then(|bytes| {
-            image::load_from_memory(&bytes)
-                .map(|img| img.to_rgba8())
-                .map_err(|e| e.to_string())
-        }) {
-        Ok(rgba) => {
-            let (w, h) = rgba.dimensions();
-            let image =
-                egui::ColorImage::from_rgba_unmultiplied([w as usize, h as usize], rgba.as_raw());
-            let t = ui
-                .ctx()
-                .load_texture(key.to_string(), image, egui::TextureOptions::LINEAR);
-            Some(t)
-        }
-        Err(_) => None,
-    };
-    match texture {
-        Some(t) => {
-            cache.textures.insert(key.to_string(), t.clone());
-            Some(t)
-        }
-        None => {
-            cache.failed.insert(key.to_string());
-            None
-        }
-    }
 }

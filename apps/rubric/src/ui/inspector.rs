@@ -11,6 +11,7 @@ use crate::domain::{
     MAX_BATES_DIGITS, MAX_BATES_START, MIN_BATES_DIGITS,
 };
 use crate::ui::app::{InspectorMode, UiState};
+use crate::ui::icon_button::{eye_button, lock_button, triangle_button, TriangleDir};
 
 fn color32_to_domain(c: egui::Color32) -> Color {
     let [r, g, b, a] = c.to_array();
@@ -148,9 +149,8 @@ pub(crate) fn draw_inspector(
             let is_default = id == default_id;
             ui.horizontal(|ui| {
                 let visible = layer.visible;
-                let eye = if visible { "👁" } else { "·" };
                 let eye_tip = if visible { "Hide layer" } else { "Show layer" };
-                if ui.button(eye).on_hover_text(eye_tip).clicked() {
+                if eye_button(ui, visible, eye_tip) {
                     if let Some(doc) = project.active_mut() {
                         if doc.set_layer_visible(id, !visible) {
                             committed = true;
@@ -163,9 +163,8 @@ pub(crate) fn draw_inspector(
                     }
                 }
                 let locked = layer.locked;
-                let padlock = if locked { "🔒" } else { "🔓" };
                 let padlock_tip = if locked { "Unlock layer" } else { "Lock layer" };
-                if ui.button(padlock).on_hover_text(padlock_tip).clicked() {
+                if lock_button(ui, locked, padlock_tip) {
                     if let Some(doc) = project.active_mut() {
                         if doc.set_layer_locked(id, !locked) {
                             committed = true;
@@ -205,11 +204,12 @@ pub(crate) fn draw_inspector(
                 if is_default {
                     ui.small("(default)");
                 } else {
-                    if ui
-                        .button("▲")
-                        .on_hover_text("Move layer up (towards the front)")
-                        .clicked()
-                    {
+                    if triangle_button(
+                        ui,
+                        TriangleDir::Up,
+                        true,
+                        "Move layer up (towards the front)",
+                    ) {
                         if let Some(doc) = project.active_mut() {
                             if doc.move_layer_up(id) {
                                 committed = true;
@@ -217,11 +217,12 @@ pub(crate) fn draw_inspector(
                             }
                         }
                     }
-                    if ui
-                        .button("▼")
-                        .on_hover_text("Move layer down (towards the back)")
-                        .clicked()
-                    {
+                    if triangle_button(
+                        ui,
+                        TriangleDir::Down,
+                        true,
+                        "Move layer down (towards the back)",
+                    ) {
                         if let Some(doc) = project.active_mut() {
                             if doc.move_layer_down(id) {
                                 committed = true;

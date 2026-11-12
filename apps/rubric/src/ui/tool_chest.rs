@@ -205,7 +205,7 @@ fn draw_rename_editor(
         ui.add(
             egui::TextEdit::singleline(draft)
                 .desired_width(110.0)
-                .id(egui::Id::new(("tool_chest_rename", preset.id))),
+                .id(egui::Id::unique(("tool_chest_rename", preset.id))),
         );
         if ui.button("Save").clicked() {
             let new_name = draft.trim().to_string();
@@ -253,7 +253,7 @@ fn draw_save_section(
         egui::TextEdit::singleline(&mut ui_state.tool_chest_save_name)
             .hint_text("Style name")
             .desired_width(ui.available_width())
-            .id(egui::Id::new("tool_chest_save_name")),
+            .id(egui::Id::unique("tool_chest_save_name")),
     );
     let draft_name = ui_state.tool_chest_save_name.trim().to_string();
     let name_ok = !draft_name.is_empty();

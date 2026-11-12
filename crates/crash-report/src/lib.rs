@@ -292,19 +292,24 @@ pub fn submit(repo: &str, issue: &Issue, token: Option<&str>) -> Result<(), Stri
         "https://api.github.com/repos/{}/issues",
         repo.trim_end_matches('/')
     );
-    let resp = ureq::post(&url)
-        .set("Authorization", &format!("Bearer {token}"))
-        .set("User-Agent", "rubric-crash-report")
-        .set("Accept", "application/vnd.github+json")
-        .send_string(&issue.to_json())
-        .map_err(|e| format!("network error: {e}"))?;
-    match resp.status() {
-        200..=299 => Ok(()),
-        401 => Err("GitHub rejected the token (401). Check it and retry.".into()),
-        403 => {
-            Err("GitHub refused issue creation (403). The token may lack the `repo` scope.".into())
-        }
-        s => Err(format!("GitHub returned {s}")),
+    match ureq::post(&url)
+        .header("Authorization", &format!("Bearer {token}"))
+        .header("User-Agent", "rubric-crash-report")
+        .header("Accept", "application/vnd.github+json")
+        .send_json(issue)
+    {
+        Ok(_) => Ok(()),
+        // ureq 3.x treats non-2xx status codes as errors by default, so a
+        // successful send is always 2xx. Surface the status code so the caller
+        // can distinguish a bad token (401) from insufficient scope (403).
+        Err(ureq::Error::StatusCode(code)) => match code {
+            401 => Err("GitHub rejected the token (401). Check it and retry.".into()),
+            403 => Err(
+                "GitHub refused issue creation (403). The token may lack the `repo` scope.".into(),
+            ),
+            _ => Err(format!("GitHub returned {code}")),
+        },
+        Err(e) => Err(format!("network error: {e}")),
     }
 }
 

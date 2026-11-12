@@ -3,8 +3,8 @@
 //! Rubric's brand (spec F-603 context menu, toolbar tool buttons).
 
 use eframe::egui::{
-    Align2, Color32, FontFamily, FontId, Painter, Pos2, Rect, Sense, Stroke, StrokeKind, Ui, Vec2,
-    WidgetType,
+    Align2, Color32, FontFamily, FontId, Painter, Pos2, Rect, Role, Sense, Stroke, StrokeKind, Ui,
+    Vec2,
 };
 
 /// Draw a small geometric icon to the left of a text label inside `ui`.
@@ -58,7 +58,7 @@ pub(crate) fn icon_button(
     // the tree, and AccessKit consumers (including kittest) panic while
     // resolving the dangling id.
     response.widget_info(|| {
-        egui::WidgetInfo::labeled(WidgetType::Button, response.enabled(), label.to_owned())
+        egui::WidgetInfo::labeled(Role::Button, response.enabled(), label.to_owned())
     });
     if response.hovered() {
         ui.painter()
@@ -437,4 +437,121 @@ pub(crate) fn draw_calibrate_icon(painter: &Painter, rect: Rect, stroke_color: C
     ] {
         painter.line_segment([Pos2::new(x, y - 6.0), Pos2::new(x, y + 6.0)], stroke);
     }
+}
+
+/// Which way a painter-drawn triangle points.
+#[derive(Clone, Copy)]
+pub(crate) enum TriangleDir {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+/// Shared chrome for the painter-drawn icon buttons: the background pill for
+/// the response's visual state, plus the AccessKit naming an icon-only
+/// control needs. Returns the colour the icon is painted in.
+fn paint_icon_button(
+    ui: &Ui,
+    rect: Rect,
+    response: &eframe::egui::Response,
+    hover: &str,
+) -> Color32 {
+    let visuals = ui.style().interact(response);
+    ui.painter().rect(
+        rect,
+        visuals.corner_radius,
+        visuals.weak_bg_fill,
+        visuals.bg_stroke,
+        StrokeKind::Inside,
+    );
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), hover.to_owned())
+    });
+    visuals.fg_stroke.color
+}
+
+/// Small button whose content is a painter-drawn triangle pointing in `dir`.
+///
+/// Part of the original painter-icon set: no font glyph is involved, so the
+/// control cannot regress into tofu or trip the missing-glyph panic egui's
+/// test harness enables. Returns `true` when clicked.
+pub(crate) fn triangle_button(ui: &mut Ui, dir: TriangleDir, enabled: bool, hover: &str) -> bool {
+    let inner = ui.add_enabled_ui(enabled, |ui| {
+        let (rect, response) = ui.allocate_exact_size(Vec2::new(20.0, 20.0), Sense::click());
+        let color = paint_icon_button(ui, rect, &response, hover);
+        let center = rect.center();
+        let d = match dir {
+            TriangleDir::Up => Vec2::new(0.0, -1.0),
+            TriangleDir::Down => Vec2::new(0.0, 1.0),
+            TriangleDir::Left => Vec2::new(-1.0, 0.0),
+            TriangleDir::Right => Vec2::new(1.0, 0.0),
+        };
+        let perp = Vec2::new(-d.y, d.x);
+        let tip = center + d * 5.0;
+        let a = center - d * 3.5 + perp * 4.5;
+        let b = center - d * 3.5 - perp * 4.5;
+        let painter = ui.painter();
+        painter.add(egui::Shape::convex_polygon(
+            vec![tip, a, b],
+            color,
+            egui::Stroke::NONE,
+        ));
+        response
+    });
+    inner.inner.on_hover_text(hover).clicked()
+}
+
+/// Small button showing a painter-drawn eye; a slash marks a hidden layer.
+/// Returns `true` when clicked.
+pub(crate) fn eye_button(ui: &mut Ui, visible: bool, hover: &str) -> bool {
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(20.0, 20.0), Sense::click());
+    let color = paint_icon_button(ui, rect, &response, hover);
+    let center = rect.center();
+    let painter = ui.painter();
+    painter.add(egui::Shape::ellipse_stroke(
+        center,
+        Vec2::new(7.0, 4.5),
+        Stroke::new(1.4, color),
+    ));
+    painter.circle_filled(center, 2.0, color);
+    if !visible {
+        let slash_start = center + Vec2::new(-6.0, -5.0);
+        let slash_end = center + Vec2::new(6.0, 5.0);
+        painter.add(egui::Shape::line(
+            vec![slash_start, slash_end],
+            Stroke::new(1.4, color),
+        ));
+    }
+    response.on_hover_text(hover).clicked()
+}
+
+/// Small button showing a painter-drawn padlock; an outlined body with an
+/// open shackle marks an unlocked layer. Returns `true` when clicked.
+pub(crate) fn lock_button(ui: &mut Ui, locked: bool, hover: &str) -> bool {
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(20.0, 20.0), Sense::click());
+    let color = paint_icon_button(ui, rect, &response, hover);
+    let center = rect.center();
+    let painter = ui.painter();
+    let body = egui::Rect::from_min_size(center + Vec2::new(-5.0, 0.0), Vec2::new(10.0, 8.0));
+    if locked {
+        painter.rect_filled(body, 2.0, color);
+    } else {
+        painter.rect_stroke(body, 2.0, Stroke::new(1.4, color), StrokeKind::Inside);
+    }
+    let arcs = if locked { 8 } else { 5 };
+    let mut points: Vec<Pos2> = Vec::new();
+    for i in 0..=arcs {
+        let a = std::f32::consts::PI + i as f32 * std::f32::consts::PI / 8.0;
+        let x = center.x + a.cos() * 3.2;
+        let y = body.top() + a.sin() * 3.2;
+        points.push(Pos2::new(x, y));
+    }
+    if !locked {
+        if let Some(end) = points.last().copied() {
+            points.push(end - Vec2::new(0.0, 2.5));
+        }
+    }
+    painter.add(egui::Shape::line(points, Stroke::new(1.4, color)));
+    response.on_hover_text(hover).clicked()
 }
