@@ -153,12 +153,61 @@ jobs:
           for f in $files; do
             (cd "$(dirname "$f")" && sha256sum "$(basename "$f")") >> dist/SHA256SUMS
           done
+          # SHA256SUMS.txt is a byte-identical copy under the guide §12.1
+          # literal name; it is the file the minisign signature covers (see
+          # docs/research/signed-releases.md). SHA256SUMS stays published for
+          # backward compatibility.
+          cp dist/SHA256SUMS dist/SHA256SUMS.txt
           cat dist/SHA256SUMS
           {
             echo "files<<EOF"
-            for f in $files dist/SHA256SUMS; do echo "$f"; done
+            for f in $files dist/SHA256SUMS dist/SHA256SUMS.txt; do echo "$f"; done
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+
+      # Pinned by version only: upstream publishes no stable checksum file,
+      # just .minisig files signed with the author's key, and fetching that
+      # key here would add a bootstrap trust dependency. Add a checksum pin
+      # once upstream publishes stable checksums.
+      - name: Install minisign (pinned)
+        run: |
+          set -euo pipefail
+          # The tarball unpacks to minisign-linux/<arch>/minisign. These
+          # release runners are x86_64 (ubuntu-latest) — unlike the aarch64
+          # machine the key was generated on — so select the x86_64 binary
+          # explicitly.
+          curl --fail --silent --show-error --location \
+            --output /tmp/minisign.tar.gz \
+            https://github.com/jedisct1/minisign/releases/download/0.12/minisign-0.12-linux.tar.gz
+          tar -xzf /tmp/minisign.tar.gz -C /tmp
+          sudo install -m 0755 /tmp/minisign-linux/x86_64/minisign /usr/local/bin/minisign
+          rm -rf /tmp/minisign-linux /tmp/minisign.tar.gz
+          minisign -v
+
+      - name: Sign the checksum manifest
+        env:
+          # The secret holds the whole minisign key FILE (untrusted-comment
+          # line included), not just the base64 body. The password reaches
+          # minisign via the env var and is never echoed.
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # Hard fail: a release without a signature must not ship silently.
+          if [[ -z "${MINISIGN_SECRET_KEY}" || -z "${MINISIGN_PASSWORD}" ]]; then
+            echo "ERROR: release signing secrets are not configured — see docs/research/signed-releases.md" >&2
+            echo "Configure the MINISIGN_SECRET_KEY repository secret (the full minisign key" >&2
+            echo "file, including its untrusted-comment line) and MINISIGN_PASSWORD." >&2
+            exit 1
+          fi
+          printf '%s' "${MINISIGN_SECRET_KEY}" > /tmp/release.key
+          chmod 600 /tmp/release.key
+          trap 'rm -f /tmp/release.key' EXIT
+          # minisign reads the passphrase from MINISIGN_PASSWORD; the stdin
+          # pipe is a fallback for builds that take it from stdin instead.
+          printf '%s' "${MINISIGN_PASSWORD}" | minisign -S -s /tmp/release.key -m dist/SHA256SUMS.txt
+          test -f dist/SHA256SUMS.txt.minisig
+          ls -la dist/SHA256SUMS.txt.minisig
 
       - name: Scan release assets for personal data (guide II.29.3/II.29.6)
         run: bash scripts/scan-release-assets.sh dist
@@ -259,6 +308,10 @@ jobs:
           # --clobber makes re-runs idempotent. Read the artefact list into an
           # array so newline-separated values survive as data, not source.
           mapfile -t artefacts <<< "$ARTEFACTS"
+          # The minisign signature is produced after "Collect artifacts" froze
+          # its list, so add it here. Signing hard-fails when the secrets are
+          # missing, so the file always exists by the time this step runs.
+          artefacts+=("dist/SHA256SUMS.txt.minisig")
           gh release upload "$tag" "${artefacts[@]}" --clobber
           # If the release exists as a draft (e.g. its tag was deleted and the
           # re-created tag made GitHub turn it into one), finalise it so the

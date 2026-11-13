@@ -20,7 +20,8 @@ tests, docs, and branding assets are original work.
 | `ureq` | 3.x | MIT OR Apache-2.0 | HTTP client for update checks (sync) |
 | `rfd` | 0.17 | MIT | Native file dialogs (xdg-portal backend on Linux) |
 | `pdfium-render` | 0.9 | MIT OR Apache-2.0 | Rust bindings to PDFium (runtime binding only) |
-| `hayro` | 0.8 | MIT OR Apache-2.0 | Pure-Rust PDF rendering (optional, `--features hayro`) |
+| `hayro` | 0.9 | MIT OR Apache-2.0 | Pure-Rust PDF rendering (optional, `--features hayro`) |
+| `minisign-verify` | 0.3 | MIT | Release-signature verification (in-app update checks) |
 
 Full transitive tree is resolved in `Cargo.lock`. AGPL/GPL dependencies are
 prohibited (AGENTS.md); all crates above are permissively licensed.
