@@ -2,12 +2,18 @@
 //! PDFium rendering pixel-by-pixel.
 //!
 //! These tests generate representative PDFs, render each page with both
-//! engines, and assert ≥95% pixel match (allowing for minor anti-aliasing
-//! differences between the two rasterisers).
+//! engines, and assert at least 95% pixel match (allowing for minor
+//! anti-aliasing differences between the two rasterisers).
 //!
 //! The test requires both engines:
 //! - hayro: enabled via `--features hayro` (compile-time)
 //! - PDFium: available via `RUBRIC_PDFIUM_PATH` (runtime, provisioned by CI)
+//!
+//! The whole file is gated on the `hayro` feature: every helper in it is
+//! referenced only by the hayro-gated tests below, so building this target
+//! without the feature would otherwise flag each helper as dead code.
+
+#![cfg(feature = "hayro")]
 
 use std::fs;
 use std::path::Path;
@@ -54,7 +60,8 @@ fn build_pdf(
         None => String::new(),
     };
     objects.push(format!(
-        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {width} {height}] /Resources << {resources} >> /Contents 4 0 R{rotate_str} >>"
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {width} {height}] \
+         /Resources << {resources} >> /Contents 4 0 R{rotate_str} >>"
     ));
 
     // Object 4: Content stream
@@ -125,52 +132,39 @@ fn simple_text_content() -> &'static str {
 
 /// Generate the test PDFs in the corpus.
 ///
-/// Returns a vector of (name, pdf_bytes) pairs. Some entries (images, form,
-/// annotations, scan) are structural placeholders that exercise the
-/// corresponding rendering paths with minimal content.
+/// Returns a vector of (name, pdf_bytes) pairs.
 fn corpus_pdfs() -> Vec<(String, Vec<u8>)> {
     vec![
-        // 1. text-heavy.pdf — multi-column text with various fonts
+        // text-heavy.pdf - multi-column text with various fonts
         (
             "text-heavy".to_string(),
             build_text_pdf(612.0, 792.0, multi_line_text_content()),
         ),
-        // 2. images.pdf — embedded image placeholder
-        ("images".to_string(), build_pdf(612.0, 792.0, None, "", "")),
-        // 3. vector.pdf — geometric shapes and lines
+        // vector.pdf - geometric shapes and lines
         (
             "vector".to_string(),
             build_pdf(612.0, 792.0, None, "", vector_content()),
         ),
-        // 4. rotated.pdf — page with 90° rotation
+        // rotated.pdf - page with 90-degree rotation
         (
             "rotated".to_string(),
             build_pdf(612.0, 792.0, Some(90), "", ""),
         ),
-        // 5. form.pdf — form fields placeholder
-        ("form".to_string(), build_pdf(612.0, 792.0, None, "", "")),
-        // 6. complex.pdf — mixed content
+        // complex.pdf - mixed content
         (
             "complex".to_string(),
             build_pdf(612.0, 792.0, None, "", vector_content()),
         ),
-        // 7. simple-letter.pdf — US Letter, simple text
+        // simple-letter.pdf - US Letter, simple text
         (
             "simple-letter".to_string(),
             build_text_pdf(612.0, 792.0, simple_text_content()),
         ),
-        // 8. simple-a4.pdf — A4, simple text
+        // simple-a4.pdf - A4, simple text
         (
             "simple-a4".to_string(),
             build_text_pdf(595.28, 841.89, simple_text_content()),
         ),
-        // 9. annotations.pdf — annotations placeholder
-        (
-            "annotations".to_string(),
-            build_pdf(612.0, 792.0, None, "", ""),
-        ),
-        // 10. scan.pdf — scanned page (image-only) placeholder
-        ("scan".to_string(), build_pdf(612.0, 792.0, None, "", "")),
     ]
 }
 

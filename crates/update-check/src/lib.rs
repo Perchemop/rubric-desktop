@@ -11,9 +11,17 @@
 //!   once per session.
 //! * The comparison is *semantic*, not string ordering, so `0.2.0` correctly
 //!   beats `0.10.0`.
+//! * When a newer release publishes a checksum manifest, its minisign
+//!   signature is verified against the embedded release key and the outcome
+//!   is attached to [`UpdateStatus::Available`]; every signature problem
+//!   fails soft and never breaks the update check itself.
 
 use serde::Deserialize;
 use std::time::{Duration, Instant};
+
+pub mod signature;
+
+pub use signature::SignatureState;
 
 /// How long a successful check stays valid before it may be refreshed.
 pub const CACHE_TTL: Duration = Duration::from_secs(60 * 60);
@@ -21,16 +29,40 @@ pub const CACHE_TTL: Duration = Duration::from_secs(60 * 60);
 /// GitHub API base; overridable in tests.
 pub const RELEASES_API: &str = "https://api.github.com/repos";
 
+/// Release asset holding the checksum manifest the signature covers
+/// (published by the release workflow next to `SHA256SUMS`).
+const MANIFEST_ASSET: &str = "SHA256SUMS.txt";
+
+/// Release asset holding the minisign signature over [`MANIFEST_ASSET`].
+const SIGNATURE_ASSET: &str = "SHA256SUMS.txt.minisig";
+
 /// Outcome of a check. `Unknown` covers every failure mode so the UI can show
 /// one honest "couldn't check" state instead of a stack of error variants.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UpdateStatus {
     /// Running version is the newest published release.
     UpToDate,
-    /// A newer release exists; carries its tag and URL.
-    Available { latest_version: String, url: String },
+    /// A newer release exists; carries its tag, URL and the state of its
+    /// checksum-manifest signature.
+    Available {
+        latest_version: String,
+        url: String,
+        signature: SignatureState,
+    },
     /// The check could not be completed (offline, rate-limited, bad payload…).
     Unknown,
+}
+
+/// One downloadable asset attached to a release (subset of the GitHub
+/// payload).
+#[derive(Debug, Clone, Deserialize)]
+pub struct ReleaseAsset {
+    /// File name, e.g. `SHA256SUMS.txt.minisig`.
+    #[serde(default)]
+    pub name: String,
+    /// Direct download URL for the asset.
+    #[serde(default)]
+    pub browser_download_url: String,
 }
 
 /// The subset of the GitHub release payload this crate needs.
@@ -44,6 +76,9 @@ pub struct Release {
     pub draft: bool,
     #[serde(default)]
     pub prerelease: bool,
+    /// Assets attached to the release; empty when the payload omits them.
+    #[serde(default)]
+    pub assets: Vec<ReleaseAsset>,
 }
 
 /// Parsed semantic version (major.minor.patch, optional pre-release suffix).
@@ -141,7 +176,9 @@ impl UpdateChecker {
     }
 }
 
-/// One network round trip plus the comparison.
+/// One network round trip plus the comparison. When a newer release carries
+/// the checksum manifest and its signature, they are fetched and the
+/// signature verified too; every extra fetch problem fails soft.
 fn check_now(repo: &str, current: &str) -> UpdateStatus {
     let url = format!("{RELEASES_API}/{repo}/releases/latest");
     let resp = match ureq::get(&url)
@@ -158,11 +195,74 @@ fn check_now(repo: &str, current: &str) -> UpdateStatus {
         Ok(r) => r,
         Err(_) => return UpdateStatus::Unknown,
     };
-    finish(repo, current, release)
+    // Keep the checksum-manifest asset URLs before `finish` consumes the
+    // release; they are only fetched when a newer release is offered, and a
+    // fetch failure must never break the update check itself.
+    let checksum_urls = checksum_asset_urls(&release.assets);
+    let status = finish(repo, current, release);
+    match status {
+        UpdateStatus::Available {
+            latest_version,
+            url,
+            ..
+        } => UpdateStatus::Available {
+            latest_version,
+            url,
+            signature: fetch_and_verify_signature(checksum_urls.as_ref()),
+        },
+        other => other,
+    }
+}
+
+/// The browser download URLs of a release's checksum manifest and its
+/// minisign signature, when the release carries both assets.
+fn checksum_asset_urls(assets: &[ReleaseAsset]) -> Option<(String, String)> {
+    let manifest = assets
+        .iter()
+        .find(|a| a.name == MANIFEST_ASSET && !a.browser_download_url.is_empty())?;
+    let signature = assets
+        .iter()
+        .find(|a| a.name == SIGNATURE_ASSET && !a.browser_download_url.is_empty())?;
+    Some((
+        manifest.browser_download_url.clone(),
+        signature.browser_download_url.clone(),
+    ))
+}
+
+/// GET a URL and read the body as text; `None` on any network problem. The
+/// signature fetch must never break the update check, so callers treat every
+/// failure the same as a missing asset.
+fn fetch_text(url: &str) -> Option<String> {
+    ureq::get(url)
+        .header("User-Agent", "rubric-update-check")
+        .call()
+        .ok()?
+        .into_body()
+        .read_to_string()
+        .ok()
+}
+
+/// Fetch the checksum manifest and its signature and verify the signature.
+/// Fail-soft: a missing or unfetchable asset reports
+/// [`SignatureState::Missing`]; a present-but-bad signature reports
+/// [`SignatureState::Failed`].
+fn fetch_and_verify_signature(urls: Option<&(String, String)>) -> SignatureState {
+    let Some((manifest_url, sig_url)) = urls else {
+        return SignatureState::Missing;
+    };
+    let Some(manifest) = fetch_text(manifest_url) else {
+        return SignatureState::Missing;
+    };
+    let Some(sig) = fetch_text(sig_url) else {
+        return SignatureState::Missing;
+    };
+    signature::verify_manifest(&manifest, &sig)
 }
 
 /// The comparison half of a check, split out so it is testable without a
-/// network. `repo` is only used to build the release URL.
+/// network. `repo` is only used to build the release URL. `finish` never
+/// touches the network, so an `Available` result always starts with
+/// [`SignatureState::Missing`]; `check_now` upgrades it after fetching.
 fn finish(_repo: &str, current: &str, release: Release) -> UpdateStatus {
     if release.draft || release.prerelease || release.tag_name.is_empty() {
         // Not a published release: nothing to offer the user.
@@ -178,6 +278,7 @@ fn finish(_repo: &str, current: &str, release: Release) -> UpdateStatus {
         UpdateStatus::Available {
             latest_version: release.tag_name.clone(),
             url: release.html_url.clone(),
+            signature: SignatureState::Missing,
         }
     } else {
         UpdateStatus::UpToDate
@@ -210,6 +311,7 @@ mod tests {
             html_url: format!("https://github.com/x/y/releases/tag/{tag}"),
             draft: false,
             prerelease: false,
+            assets: Vec::new(),
         }
     }
 
@@ -302,9 +404,13 @@ mod tests {
             UpdateStatus::Available {
                 latest_version,
                 url,
+                signature,
             } => {
                 assert_eq!(latest_version, "v0.2.0");
                 assert!(url.contains("/tag/v0.2.0"));
+                // `finish` is pure (no network), so the signature state can
+                // only start as Missing; `check_now` upgrades it.
+                assert_eq!(signature, SignatureState::Missing);
             }
             other => panic!("expected Available, got {other:?}"),
         }

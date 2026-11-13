@@ -60,12 +60,12 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
             let count = app.active_doc().map(|d| d.page_count()).unwrap_or(0);
             if count > 0 {
                 let current = app.ui.current_page.min(count - 1);
-                if triangle_button(ui, TriangleDir::Left, current > 0, "Previous page") {
-                    app.jump_to_page(current.saturating_sub(1));
-                }
-                ui.label(format!("Page {}/{}", current + 1, count));
                 if triangle_button(ui, TriangleDir::Right, current + 1 < count, "Next page") {
                     app.jump_to_page(current + 1);
+                }
+                ui.label(format!("Page {}/{}", current + 1, count));
+                if triangle_button(ui, TriangleDir::Left, current > 0, "Previous page") {
+                    app.jump_to_page(current.saturating_sub(1));
                 }
             }
 

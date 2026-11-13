@@ -1,6 +1,6 @@
 # Research note — signed releases + checksum-verified auto-update
 
-Status: **approved 2026-11-09 (approver initials `ld`)**, recorded in
+Status: **approved 2026-11-09 (approver initials `ld`; tool decided and keys generated 2026-11-14)**, recorded in
 `docs/research/README.md` (guide §2.3, §8.4). The implementation plan at the
 end is an input to a dependent Task **only** because that approval is recorded
 (with a date and initials) here and in the index. Implementation remains
@@ -480,9 +480,29 @@ Approval is recorded (guide §2.3, §8.4); the checklist below tracks the
 decisions still open before Slice A/B/C implementation Tasks may depend on it.
 
 - [x] Approved — date: 2026-11-09  approver initials: ld
-- [ ] Decision on the tool: **minisign** (recommended) · cosign · other: ______
-- [ ] Commitment to create the Actions secrets + offline key backup (owner-only)
+- [x] Decision on the tool: **minisign** (decided 2026-11-14) · cosign · other: —
+- [x] Commitment to create the Actions secrets + offline key backup (owner-only) — done 2026-11-14: MINISIGN_SECRET_KEY + MINISIGN_PASSWORD set via `gh secret set`; offline backup outside the repository (owner's home, 0600).
 
 The index row in `docs/research/README.md` and the dated approval above are
 recorded; proceed with Slice A once the tool decision and the key-backup
 commitment are made.
+
+## 15. Key record (2026-11-14)
+
+- Tool: minisign 0.12 (Ed25519; signature format compatible with
+  `minisign-verify`, the in-app verifier's zero-dependency crate).
+- Key ID: `5DDF86377FAD5DB1`.
+- Public key: committed at `assets/release-signing.pub`; trusted-comment
+  "rubric-desktop release signing key".
+- Private key: password-encrypted; lives ONLY in the repository's Actions
+  secrets (`MINISIGN_SECRET_KEY` = the full key file, `MINISIGN_PASSWORD`)
+  and in the owner's offline backup. Never in the repository, never in logs.
+- Signing recipe (CI / local, password via stdin or the MINISIGN_PASSWORD
+  environment variable):
+  `minisign -S -s release.key -m SHA256SUMS.txt` -> `SHA256SUMS.txt.minisig`.
+- Verification recipe (any user):
+  `minisign -V -p release-signing.pub -m SHA256SUMS.txt`
+  `-x SHA256SUMS.txt.minisig`.
+- Rotation: dual-sign overlap per the key-management section above; publish
+  the new public key alongside the old one for at least one release before
+  the old key stops being trusted.

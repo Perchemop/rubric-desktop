@@ -1005,12 +1005,31 @@ impl RubricApp {
                     Some(update_check::UpdateStatus::Available {
                         latest_version,
                         url,
+                        signature,
                     }) => {
-                        ui.label(format!(
-                            "A newer release is available: {} (running {}).",
+                        // Honest-state rules: a signature that failed to
+                        // verify must be impossible to miss, while a merely
+                        // unavailable one says nothing extra.
+                        let signature_note = match signature {
+                            update_check::SignatureState::Verified { .. } => {
+                                " (release signature verified)"
+                            }
+                            update_check::SignatureState::Failed => {
+                                " (release signature check FAILED - do not trust this download)"
+                            }
+                            update_check::SignatureState::Missing => "",
+                        };
+                        let message = format!(
+                            "A newer release is available: {} (running {}).{}",
                             latest_version,
-                            env!("CARGO_PKG_VERSION")
-                        ));
+                            env!("CARGO_PKG_VERSION"),
+                            signature_note
+                        );
+                        let mut text = egui::RichText::new(message);
+                        if matches!(signature, update_check::SignatureState::Failed) {
+                            text = text.color(ui.visuals().error_fg_color);
+                        }
+                        ui.label(text);
                         if ui.button("Open release page").clicked() {
                             let _ = open_url(url);
                         }
