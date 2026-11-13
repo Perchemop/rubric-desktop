@@ -11,7 +11,7 @@ use crate::domain::markup::{
 };
 use crate::domain::{
     angle_degrees, format_value, Corner, Markup, MarkupGeometry, MarkupKind, MeasureKind, Project,
-    Pt, Rect as DRect, ReviewStatus, Tool,
+    Pt, Rect as DRect, ReviewStatus, StampPreset, Tool,
 };
 
 use super::theme::to_color32;
@@ -337,20 +337,52 @@ fn draw_markup(
             let sr = screen_rect(m.bounds(), origin, pan, zoom);
             if sr.width() >= 12.0 && sr.height() >= 12.0 {
                 let color = to_color32(preset.color());
-                let glyph = preset.glyph();
-                let mut font_size = (sr.height() * 0.4).clamp(8.0, 64.0);
-                for _ in 0..8 {
-                    let fid = FontId::proportional(font_size);
-                    let g = painter.layout_no_wrap(glyph.to_string(), fid, color);
-                    if g.size().x <= sr.width() * 0.9 || font_size <= 6.0 {
-                        break;
+                match preset {
+                    StampPreset::Check => {
+                        // Drawn as strokes: the check glyph is not covered by the
+                        // bundled fonts and would render as tofu on a bare system.
+                        let c = sr.center();
+                        let s = sr.width().min(sr.height()) * 0.5;
+                        let stroke_w = stroke_w.max(1.5);
+                        let stroke = egui::Stroke::new(stroke_w, color);
+                        let pts = vec![
+                            Pos2::new(c.x - s * 0.45, c.y + s * 0.05),
+                            Pos2::new(c.x - s * 0.1, c.y + s * 0.35),
+                            Pos2::new(c.x + s * 0.45, c.y - s * 0.35),
+                        ];
+                        painter.add(egui::Shape::line(pts, stroke));
                     }
-                    font_size *= 0.85;
+                    StampPreset::Cross => {
+                        // Drawn as strokes: the cross glyph is not covered by the
+                        // bundled fonts and would render as tofu on a bare system.
+                        let c = sr.center();
+                        let s = sr.width().min(sr.height()) * 0.5;
+                        let stroke_w = stroke_w.max(1.5);
+                        let stroke = egui::Stroke::new(stroke_w, color);
+                        let a = Pos2::new(c.x - s * 0.35, c.y - s * 0.35);
+                        let b = Pos2::new(c.x + s * 0.35, c.y + s * 0.35);
+                        let c2 = Pos2::new(c.x - s * 0.35, c.y + s * 0.35);
+                        let d = Pos2::new(c.x + s * 0.35, c.y - s * 0.35);
+                        painter.add(egui::Shape::line(vec![a, b], stroke));
+                        painter.add(egui::Shape::line(vec![c2, d], stroke));
+                    }
+                    _ => {
+                        let glyph = preset.glyph();
+                        let mut font_size = (sr.height() * 0.4).clamp(8.0, 64.0);
+                        for _ in 0..8 {
+                            let fid = FontId::proportional(font_size);
+                            let g = painter.layout_no_wrap(glyph.to_string(), fid, color);
+                            if g.size().x <= sr.width() * 0.9 || font_size <= 6.0 {
+                                break;
+                            }
+                            font_size *= 0.85;
+                        }
+                        let fid = FontId::proportional(font_size);
+                        let galley = painter.layout_no_wrap(glyph.to_string(), fid, color);
+                        let pos = sr.center() - galley.size() * 0.5;
+                        painter.galley(pos, galley, color);
+                    }
                 }
-                let fid = FontId::proportional(font_size);
-                let galley = painter.layout_no_wrap(glyph.to_string(), fid, color);
-                let pos = sr.center() - galley.size() * 0.5;
-                painter.galley(pos, galley, color);
             }
         }
     }
