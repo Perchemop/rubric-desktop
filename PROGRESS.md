@@ -1,5 +1,56 @@
 # PROGRESS.md
 
+## 2026-11-14 — PR #175 merged: signed releases (Slice A) + polish batch
+**Status**: merged to `main` (merge commit `a2fe833`); all required checks green on the
+branch head; post-merge main run green.
+
+### Key generation (owner-approved, performed by the agent team)
+- **minisign 0.12 (Ed25519) keypair generated** for release signing: key ID
+  `5DDF86377FAD5DB1`, password-encrypted private key. The OFFICIAL minisign binary
+  (linux/aarch64 build from jedisct1/minisign releases) was downloaded and used locally;
+  the keypair round-trip was verified (sign + verify) before anything shipped.
+- **Custody**: private key + password live in the repository's Actions secrets
+  (`MINISIGN_SECRET_KEY`, `MINISIGN_PASSWORD`, set via `gh secret set`) and in the owner's
+  offline backup (`~/.local/share/rubric-release-keys/`, 0600, with a README covering
+  usage + rotation). They are NEVER in the repository, logs, or tickets. Temp copies wiped.
+- Public key committed at `assets/release-signing.pub`; `docs/research/signed-releases.md`
+  §14 boxes ticked (tool decided, secrets committed) and §15 Key record added.
+
+### Landed (PR #175)
+- **Release signing** (`.github/workflows/release.yml`): pinned minisign install
+  (x86_64 runner selection), sign step hard-fails with an actionable message when the
+  secrets are absent, signs the checksum manifest (`SHA256SUMS.txt` — now published
+  byte-identical alongside the legacy `SHA256SUMS`), publishes `SHA256SUMS.txt.minisig`
+  as a release asset. Password never echoed; key file removed via EXIT trap.
+- **In-app signature verification** (`crates/update-check`): new `signature` module
+  (`minisign-verify` 0.3, MIT) with `SignatureState::{Verified, Failed, Missing}`,
+  fixture-tested (accept/tampered/foreign-key/malformed — 4 tests, no network); the update
+  check fetches `SHA256SUMS.txt` + `SHA256SUMS.txt.minisig` from the release assets
+  (fail-soft: every fetch failure is `Missing`, never breaking the check) and the
+  update-result UI annotates the verdict ("release signature verified" / FAILED in the
+  error colour). Trusted key id: `5DDF86377FAD5DB1`.
+- **Polish**: `tests/corpus_fidelity.rs` is now `#![cfg(feature = "hayro")]`-gated (kills
+  the 16 default-features dead-code warnings without deleting infrastructure); topbar
+  page-nav renders in the conventional [◀ Page n/m ▶] order (was visually inverted by the
+  right-to-left layout — confirmed by the kittest diff: exactly the two triangle buttons,
+  17 pixels); Check/Cross stamps draw painter-drawn marks instead of font glyphs
+  (`✓`/`✗`), keeping Approved/Rejected/Draft as text.
+- **Investigated, no change**: lopdf 0.47 already bounds decompression at load
+  (256 MiB/stream default) — the explicit-option hardening was rejected as strictly worse.
+
+### Verification (exact runs)
+- Branch head `13fc440`: CI run `43519331536` ✅ (fmt, clippy ×2, tests ×2, release build,
+  snapshot), Security run `43519331486` ✅.
+- Post-merge `main` @ `a2fe833`: CI run ✅ / Security run ✅ (see the merge push).
+- The release-signing workflow itself executes only on `v*` tags — its first live run
+  will be the next release; the signing recipe is recorded in the research note §15.
+
+### Remaining queue
+- Owner/machine-gated: macOS/Windows hands-on installer smoke; verifying the signing
+  workflow on the next real release tag.
+- Polish: lopdf `max_decompressed_size` hardening was investigated and rejected (0.47
+  already bounds at 256 MiB/stream by default — recorded in this entry's predecessor).
+
 ## 2026-11-13 — dependency sweep complete: pdfium-render 0.9.5 (API pin), hayro 0.9, lopdf 0.47
 **Status**: all three remaining dependency bumps landed on `main` and verified; every open
 dependabot PR is now closed or superseded.
