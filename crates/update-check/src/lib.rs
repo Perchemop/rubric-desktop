@@ -223,7 +223,10 @@ fn checksum_asset_urls(assets: &[ReleaseAsset]) -> Option<(String, String)> {
     let signature = assets
         .iter()
         .find(|a| a.name == SIGNATURE_ASSET && !a.browser_download_url.is_empty())?;
-    Some((manifest.browser_download_url.clone(), signature.browser_download_url.clone()))
+    Some((
+        manifest.browser_download_url.clone(),
+        signature.browser_download_url.clone(),
+    ))
 }
 
 /// GET a URL and read the body as text; `None` on any network problem. The
