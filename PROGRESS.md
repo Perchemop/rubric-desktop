@@ -1,5 +1,46 @@
 # PROGRESS.md
 
+## 2026-11-13 — dependency sweep complete: pdfium-render 0.9.5 (API pin), hayro 0.9, lopdf 0.47
+**Status**: all three remaining dependency bumps landed on `main` and verified; every open
+dependabot PR is now closed or superseded.
+
+### Landed (three PRs)
+- **pdfium-render 0.9.5 + bindings API pin** (PR #171 pin, PR #163 version bump, merge
+  `d07dea8`): 0.9.5 moved its default `pdfium_latest` feature from API 7881 to 8125, whose
+  symbol set is absent from the pinned chromium/7881 runtime — every PDFium-binding test
+  died at `dlsym` (`FPDF_StructElement_GetRawType`). Fix: `pdfium-render` now uses
+  `default-features = false` with `features = ["pdfium_7881", "image_latest", "thread_safe"]`
+  — bindings always match the PDFium build the app pins and ships, independent of upstream
+  feature drift. Investigated via PR #163's CI logs; the text-extraction test was never
+  implicated. Verified: the previously failing `page_text_lines_extracts_text_with_page_
+  space_geometry` passes on 0.9.5 (370/371 tests, both feature sets).
+- **hayro 0.9.0 + hayro-syntax pin unification** (PR #172, merge `0132f6d`): hayro 0.9
+  depends on hayro-syntax 0.9; the split `=0.8.0` pin put two copies in the graph with
+  incompatible `Page` types (E0308 in `render_page_hayro`). Both pins now `=0.9.0`
+  (single copy); stale `simd`-feature comment corrected; doc links bumped. All hayro-gated
+  clippy/tests green (400/400).
+- **lopdf 0.47.0** (PR #173, merge `a8c5ee2`): v0.44 changed
+  `Document::get_page_content` to return `Vec<u8>` directly (it cannot fail) — 7 test-side
+  call sites updated; production export/Bates code needed no change; content-stream bytes
+  may differ cosmetically (whole-number reals now serialize with a decimal point) but all
+  assertions hold. All 12 export + 12 Bates tests green.
+- **crash-report**: unused `uuid` dependency removed (orphaned by the ureq 3 migration).
+
+### Verification (exact runs)
+- Pin PR #171: CI `43399197195` ✅ / Security `43399197193` ✅.
+- hayro PR #172: CI `43407102714` ✅ / Security `43407102665` ✅ (hayro clippy + tests +
+  release build all ran and passed).
+- lopdf PR #173: CI `43413844457` ✅ / Security `43413844499` ✅ (12 export + 12 Bates tests
+  green; hayro + release build green).
+- Post-merge `main`: CI/Security green on each merge; `main` @ `a8c5ee2`.
+
+### Queue after this sweep
+- Polish (small): `corpus_fidelity.rs` dead-code warnings; topbar RTL page-nav order; stamp
+  `✓`/`✗` glyphs rely on system fonts; lopdf `LoadOptions::max_decompressed_size` hardening
+  for untrusted input (0.44+ capability, optional future slice).
+- Owner-gated: signed releases Slice A (minisign key generation); macOS/Windows hands-on
+  installer smoke.
+
 ## 2026-11-13 — PR #169 merged: async-thumbnails Slice 4 (disk cache eviction) — design complete
 **Status**: merged to `main` (merge commit `c069012`); CI green on the branch head, post-merge
 main runs green.
