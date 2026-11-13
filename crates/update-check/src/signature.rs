@@ -111,7 +111,7 @@ mod tests {
     #[test]
     fn verify_manifest_rejects_a_tampered_manifest() {
         // Flip one byte of the first checksum; the signature no longer fits.
-        let tampered = TEST_MANIFEST.replacen('e', 'f', 1);
+        let tampered = TEST_MANIFEST.replacen('e', "f", 1);
         assert_ne!(tampered, TEST_MANIFEST);
         assert_eq!(
             verify_manifest_with_key(&tampered, TEST_SIGNATURE_FILE, TEST_PUBLIC_KEY),
