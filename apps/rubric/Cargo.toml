@@ -42,15 +42,16 @@ pdfium-render = { version = "0.9", default-features = false, features = [
     "image_latest",
     "thread_safe",
 ] }
-# Optional: pure-Rust PDF syntax parser (hayro-syntax 0.8.x), used by the
+# Optional: pure-Rust PDF syntax parser (hayro-syntax 0.9.x), used by the
 # `hayro` feature for page-size probing. Pinned exact because hayro is pre-1.0
-# and semver drift is not permitted (v0.3-02 task brief).
-hayro-syntax = { version = "=0.8.0", optional = true }
-# Optional: pure-Rust PDF rasterizer (hayro 0.8.x). Default features are kept:
-# `embed-fonts` (base-14 substitutes), `embed-cmaps` (CJK maps) and `simd` are
-# all needed for real-world fidelity; dropping them would silently fail to
-# render standard-font and CJK text.
-hayro = { version = "=0.8.0", optional = true }
+# and semver drift is not permitted (v0.3-02 task brief). Kept in lockstep
+# with `hayro` (hayro 0.9 depends on hayro-syntax 0.9; a split pin would put
+# two copies of the crate in the graph with incompatible `Page` types).
+hayro-syntax = { version = "=0.9.0", optional = true }
+# Optional: pure-Rust PDF rasterizer (hayro 0.9.x). Default features are
+# `embed-fonts` and `embed-cmaps` (both needed for real-world fidelity); the
+# `logging`/`simd` features were removed upstream in 0.9.
+hayro = { version = "=0.9.0", optional = true }
 # PDF writer for Export PDF… (v0.3-05). Used to layer markups over the
 # original page background. Pinned exact because lopdf is pre-1.0 and
 # semver drift is not permitted.

@@ -193,12 +193,12 @@ pub fn read_pdf_info(path: impl AsRef<Path>) -> Result<PdfSourceInfo, DataError>
 }
 
 // --- Hayro support (page-size probing and rendering) ---
-// Pure-Rust PDF implementation using hayro (v0.8.0).
+// Pure-Rust PDF implementation using hayro (v0.9.0).
 // This module is compiled when the `hayro` feature is enabled.
 //
 // hayro renders a page to a `vello_cpu` pixmap of premultiplied RGBA8, which we
 // convert to an `image::RgbaImage` and save as a PNG. API reference:
-// <https://docs.rs/hayro/0.8.0/hayro/>.
+// <https://docs.rs/hayro/0.9.0/hayro/>.
 
 #[cfg(feature = "hayro")]
 mod hayro_pages {
