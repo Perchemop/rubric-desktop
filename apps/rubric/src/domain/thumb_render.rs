@@ -180,6 +180,91 @@ impl TextureLru {
     }
 }
 
+/// Disk render-cache budget: 512 MiB of page PNGs across all cached PDF
+/// revisions (async-thumbnails design §5.2; first estimate, a pure input to
+/// [`plan_disk_eviction`] so tuning never touches logic).
+pub const MAX_DISK_CACHE_BYTES: u64 = 512 * 1024 * 1024;
+
+/// Disk render-cache age cap: 30 days without a served page.
+pub const MAX_DISK_CACHE_AGE_SECS: i64 = 30 * 24 * 60 * 60;
+
+/// One per-PDF cache directory, summarised for the eviction planner.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiskCacheEntry {
+    /// The `<pdf_key>` directory name under the render-cache root.
+    pub pdf_key: String,
+    /// Total bytes of cached files in the directory.
+    pub bytes: u64,
+    /// Directory mtime as unix seconds; refreshed when a page is served.
+    pub last_used_secs: i64,
+}
+
+/// Select whole cache directories to delete. Never returns a protected key.
+/// Expired entries go first (oldest first), then least-recently-used until
+/// the total of the survivors is within `budget_bytes`. Deterministic
+/// (stable sort; ties break by `pdf_key` ascending so identical input yields
+/// identical output).
+///
+/// A key is *expired* when `now_secs - last_used_secs > max_age_secs` (an age
+/// exactly at the cap is not expired). Protected keys are never selected,
+/// however old or however large the cache.
+pub fn plan_disk_eviction(
+    entries: &[DiskCacheEntry],
+    budget_bytes: u64,
+    max_age_secs: i64,
+    now_secs: i64,
+    protected: &[String],
+) -> Vec<String> {
+    let is_protected = |key: &str| protected.iter().any(|p| p == key);
+
+    // Oldest first, ties by pdf_key — one comparator drives both the expired
+    // phase (age order) and the LRU phase (recency order). Non-capturing, so
+    // it is `Copy` and can drive both sorts. The double references match
+    // `sort_by` over a slice of `&DiskCacheEntry`.
+    let oldest_first = |a: &&DiskCacheEntry, b: &&DiskCacheEntry| {
+        (a.last_used_secs, a.pdf_key.as_str()).cmp(&(b.last_used_secs, b.pdf_key.as_str()))
+    };
+
+    let mut expired: Vec<&DiskCacheEntry> = entries
+        .iter()
+        .filter(|e| {
+            !is_protected(&e.pdf_key) && now_secs.saturating_sub(e.last_used_secs) > max_age_secs
+        })
+        .collect();
+    expired.sort_by(oldest_first);
+
+    // Every key that will survive regardless of what is deleted below
+    // (protected keys and fresh keys) seeds the survivor total.
+    let mut survivors: u64 = entries
+        .iter()
+        .filter(|e| {
+            is_protected(&e.pdf_key) || now_secs.saturating_sub(e.last_used_secs) <= max_age_secs
+        })
+        .map(|e| e.bytes)
+        .sum();
+
+    let mut fresh: Vec<&DiskCacheEntry> = entries
+        .iter()
+        .filter(|e| {
+            !is_protected(&e.pdf_key) && now_secs.saturating_sub(e.last_used_secs) <= max_age_secs
+        })
+        .collect();
+    fresh.sort_by(oldest_first);
+
+    let mut selected: Vec<String> = expired.into_iter().map(|e| e.pdf_key.clone()).collect();
+
+    // Least-recently-used fresh keys are deleted while the survivors still
+    // exceed the budget; once the total fits, the remaining (more recent)
+    // keys are all kept.
+    for entry in fresh {
+        if survivors > budget_bytes {
+            survivors = survivors.saturating_sub(entry.bytes);
+            selected.push(entry.pdf_key.clone());
+        }
+    }
+    selected
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -454,5 +539,123 @@ mod tests {
         let json = serde_json::to_string(&sq).unwrap();
         let back: RenderQueueState = serde_json::from_str(&json).unwrap();
         assert_eq!(sq, back);
+    }
+
+    // --- Disk-cache eviction (async-thumbnails Slice 4) --------------------
+
+    /// Synthetic entry helper: real `DiskCacheEntry` values without any I/O,
+    /// so expiry/LRU/budget semantics are fully controlled by the test.
+    fn entry(pdf_key: &str, bytes: u64, last_used_secs: i64) -> DiskCacheEntry {
+        DiskCacheEntry {
+            pdf_key: pdf_key.into(),
+            bytes,
+            last_used_secs,
+        }
+    }
+
+    #[test]
+    fn serde_roundtrip_disk_cache_entry() {
+        let made = entry("abc123", 4096, 1_700_000_000);
+        let json = serde_json::to_string(&made).unwrap();
+        let back: DiskCacheEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(made, back);
+    }
+
+    #[test]
+    fn plan_disk_eviction_empty_input_returns_empty() {
+        let out = plan_disk_eviction(&[], 512, 100, 1_000, &[]);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn plan_disk_eviction_expired_before_fresh() {
+        // "old" is expired (1000 - 800 > 100), "fresh" is not (1000 - 900 =
+        // 100 is exactly the cap, which is NOT expired). The age cap acts
+        // independently of the budget: "old" goes even though nothing else
+        // exists and the budget is far from exhausted.
+        let entries = vec![entry("fresh", 10, 900), entry("old", 10, 800)];
+        let out = plan_disk_eviction(&entries, 1_000, 100, 1_000, &[]);
+        assert_eq!(out, vec!["old".to_string()]);
+    }
+
+    #[test]
+    fn plan_disk_eviction_expired_oldest_first_with_tie_break() {
+        // All three are expired; they are returned oldest first and equal
+        // ages break by pdf_key ascending ("a" before "b").
+        let entries = vec![
+            entry("b", 10, 700),
+            entry("a", 10, 700),
+            entry("c", 10, 600),
+        ];
+        let out = plan_disk_eviction(&entries, 1_000, 100, 1_000, &[]);
+        assert_eq!(out, vec!["c".to_string(), "a".to_string(), "b".to_string()]);
+    }
+
+    #[test]
+    fn plan_disk_eviction_budget_enforced() {
+        // 3 x 10 = 30 bytes total against a 15-byte budget: the two
+        // least-recently-used keys are dropped, the most recent survives and
+        // the survivors' total fits the budget.
+        let entries = vec![
+            entry("recent", 10, 900),
+            entry("mid", 10, 800),
+            entry("old", 10, 700),
+        ];
+        let out = plan_disk_eviction(&entries, 15, 10_000, 1_000, &[]);
+        assert_eq!(out, vec!["old".to_string(), "mid".to_string()]);
+        let survivors: u64 = entries
+            .iter()
+            .filter(|e| !out.iter().any(|k| k == &e.pdf_key))
+            .map(|e| e.bytes)
+            .sum();
+        assert!(survivors <= 15);
+        assert_eq!(survivors, 10);
+    }
+
+    #[test]
+    fn plan_disk_eviction_budget_exact_boundary() {
+        // Survivors exactly at the budget fit: nothing is deleted when the
+        // total equals the budget; one byte over forces the least-recently-
+        // used deletion.
+        let entries = vec![entry("a", 10, 800), entry("b", 10, 900)];
+        assert!(plan_disk_eviction(&entries, 20, 10_000, 1_000, &[]).is_empty());
+        let out = plan_disk_eviction(&entries, 19, 10_000, 1_000, &[]);
+        assert_eq!(out, vec!["a".to_string()]);
+    }
+
+    #[test]
+    fn plan_disk_eviction_protected_never_returned() {
+        // "active" is expired AND alone exceeds the budget, yet it must never
+        // be selected; "old" is still removed.
+        let entries = vec![entry("active", 1_000_000, 100), entry("old", 10, 100)];
+        let out = plan_disk_eviction(&entries, 1, 100, 1_000, &["active".to_string()]);
+        assert_eq!(out, vec!["old".to_string()]);
+        assert!(!out.iter().any(|k| k.as_str() == "active"));
+    }
+
+    #[test]
+    fn plan_disk_eviction_all_expired_returns_all_except_protected() {
+        // "keep_me" is the oldest of all but is protected; the other two are
+        // returned oldest first.
+        let entries = vec![
+            entry("keep_me", 10, 100),
+            entry("gone1", 10, 200),
+            entry("gone2", 10, 300),
+        ];
+        let out = plan_disk_eviction(&entries, 1_000, 100, 1_000, &["keep_me".to_string()]);
+        assert_eq!(out, vec!["gone1".to_string(), "gone2".to_string()]);
+    }
+
+    #[test]
+    fn plan_disk_eviction_tie_breaks_by_pdf_key_deterministically() {
+        // Equal last_used_secs: the tie breaks by pdf_key ascending, so
+        // identical input always yields identical output. The budget (5)
+        // forces BOTH 10-byte entries to be evicted, so the returned order
+        // itself pins the deterministic tie-break ("a" before "b").
+        let entries = vec![entry("b", 10, 700), entry("a", 10, 700)];
+        let first = plan_disk_eviction(&entries, 5, 10_000, 1_000, &[]);
+        let second = plan_disk_eviction(&entries, 5, 10_000, 1_000, &[]);
+        assert_eq!(first, vec!["a".to_string(), "b".to_string()]);
+        assert_eq!(first, second);
     }
 }

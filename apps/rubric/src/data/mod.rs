@@ -1,5 +1,6 @@
 //! Data persistence (project save/load, app data dir, PDF import, errors).
 
+pub mod disk_cache;
 pub mod error;
 pub mod export;
 pub mod pdf;
