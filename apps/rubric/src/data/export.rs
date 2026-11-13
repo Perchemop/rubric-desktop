@@ -304,7 +304,7 @@ mod tests {
 
         // The overlay content stream is stored as plain-text ops, so both the
         // marker string and the rectangle operator must be present.
-        let content_bytes = out.get_page_content(page_id).expect("content");
+        let content_bytes = out.get_page_content(page_id);
         let content = String::from_utf8_lossy(&content_bytes);
         assert!(
             content.contains("PAGE-ZERO-MARKER"),
@@ -344,7 +344,7 @@ mod tests {
         assert!((width - 400.0).abs() < 0.01, "width was {width}");
         assert!((height - 300.0).abs() < 0.01, "height was {height}");
 
-        let content_bytes = out.get_page_content(page_id).expect("content");
+        let content_bytes = out.get_page_content(page_id);
         let content = String::from_utf8_lossy(&content_bytes);
         assert!(content.contains("PAGE-ONE-MARKER"), "content: {content}");
         assert!(!content.contains("PAGE-ZERO-MARKER"), "content: {content}");
@@ -377,7 +377,7 @@ mod tests {
         let page_id = *pages.values().next().expect("one page");
         let (width, height) = page_dimensions(&out, page_id).expect("page dimensions");
         assert!((width - 612.0).abs() < 0.01 && (height - 792.0).abs() < 0.01);
-        let content = out.get_page_content(page_id).unwrap_or_default();
+        let content = out.get_page_content(page_id);
         assert!(
             content.is_empty(),
             "unmarked page must have no overlay: {}",
@@ -413,7 +413,7 @@ mod tests {
         let page_id = *pages.values().next().expect("one page");
         let (width, height) = page_dimensions(&out, page_id).expect("page dimensions");
         assert!((width - 300.0).abs() < 0.01 && (height - 400.0).abs() < 0.01);
-        let content_bytes = out.get_page_content(page_id).expect("content");
+        let content_bytes = out.get_page_content(page_id);
         let content = String::from_utf8_lossy(&content_bytes);
         assert!(content.contains("ONLY-MARKER"), "content: {content}");
 
@@ -439,7 +439,7 @@ mod tests {
         let pages = out.get_pages();
         assert_eq!(pages.len(), 2, "all pages must be kept");
         for (page_num, page_id) in &pages {
-            let content_bytes = out.get_page_content(*page_id).expect("content");
+            let content_bytes = out.get_page_content(*page_id);
             let content = String::from_utf8_lossy(&content_bytes);
             let marker = if *page_num == 1 {
                 "PAGE-ZERO-MARKER"
@@ -479,7 +479,7 @@ mod tests {
         assert_eq!(pages.len(), 2, "all pages must be kept");
         for (page_num, page_id) in &pages {
             let expected = format!("RUB{:03}", page_num);
-            let content_bytes = out.get_page_content(*page_id).expect("content");
+            let content_bytes = out.get_page_content(*page_id);
             let content = String::from_utf8_lossy(&content_bytes);
             assert!(
                 content.contains(expected.as_str()),
@@ -515,7 +515,7 @@ mod tests {
         assert_eq!(pages.len(), 2);
         // Page 1 keeps its overlay; page 2 (no markups) stays content-free.
         let second = *pages.get(&2).expect("second page");
-        let content = out.get_page_content(second).unwrap_or_default();
+        let content = out.get_page_content(second);
         assert!(
             content.is_empty(),
             "unmarked page must pass through unchanged: {}",
