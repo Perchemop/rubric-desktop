@@ -34,7 +34,14 @@ rfd = "0.17"
 # Shared suite crates (guide §7): crash reporting and update checks.
 # Explicit `version` alongside `path`: cargo-deny treats a versionless
 # dependency spec as a wildcard, which the dependency-hygiene gate forbids.
-pdfium-render = "0.9"
+# The bindings API is pinned to `pdfium_7881` — the Chromium build the app
+# pins and ships — because 0.9.5's `pdfium_latest` moved to API 8125, whose
+# symbol set is absent from older PDFium libraries a user may have installed.
+pdfium-render = { version = "0.9", default-features = false, features = [
+    "pdfium_7881",
+    "image_latest",
+    "thread_safe",
+] }
 # Optional: pure-Rust PDF syntax parser (hayro-syntax 0.8.x), used by the
 # `hayro` feature for page-size probing. Pinned exact because hayro is pre-1.0
 # and semver drift is not permitted (v0.3-02 task brief).
