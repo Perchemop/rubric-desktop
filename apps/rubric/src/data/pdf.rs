@@ -1312,7 +1312,11 @@ fn render_cache_page_path(
 /// replaced PDF yields a new directory) but is not a security primitive and is
 /// not guaranteed to be stable across Rust releases; a changed hash only costs
 /// a cache miss.
-fn pdf_cache_key(path: &Path) -> Result<String, DataError> {
+///
+/// `pub(crate)` so the disk-cache eviction (async-thumbnails Slice 4) can
+/// derive the same key for the active document's protection — the derivation
+/// is owned here, not re-implemented elsewhere.
+pub(crate) fn pdf_cache_key(path: &Path) -> Result<String, DataError> {
     let canonical = fs::canonicalize(path)?;
     let metadata = fs::metadata(&canonical)?;
     let modified = metadata

@@ -398,6 +398,15 @@ pub struct RubricApp {
     /// `None` before the first one. Recording the attempt (even a failed one)
     /// rate-limits retries to one per interval instead of one per frame.
     pub(crate) last_autosave: Option<Instant>,
+    /// Instant the app was constructed; the disk-cache eviction (Slice 4)
+    /// schedules its first scan a few seconds after this so it never
+    /// competes with first paint. Session-only, never persisted.
+    pub(crate) started_at: Instant,
+    /// Instant of the last disk-cache eviction scan, or `None` before the
+    /// first one (async-thumbnails Slice 4). Recording the attempt even when
+    /// nothing is removed rate-limits the scan to one per window. Session-
+    /// only, never persisted.
+    pub(crate) last_disk_scan: Option<Instant>,
     /// Cache of rendered PDF page textures, keyed by cache PNG path.
     pub(crate) page_textures: HashMap<String, TextureHandle>,
     /// Cache keys whose page render failed this project session. Poisoned so a
@@ -523,6 +532,8 @@ impl RubricApp {
             title_dirty: true,
             title_shown_dirty: false,
             last_autosave: None,
+            started_at: Instant::now(),
+            last_disk_scan: None,
             page_textures: HashMap::new(),
             failed_page_textures: HashSet::new(),
             thumb_cache: pages::ThumbCache::default(),
@@ -1816,6 +1827,30 @@ impl RubricApp {
         }
     }
 
+    /// Disk-cache eviction (async-thumbnails Slice 4, research note §5.2):
+    /// run once a few seconds after startup — so it never competes with
+    /// first paint — then at most every 10 minutes. The scan is one
+    /// `read_dir` + metadata per cached PDF, cheap enough for the UI tick.
+    /// Silent except a tracing line when directories were actually removed.
+    fn maybe_evict_disk_cache(&mut self) {
+        let scan_due = match self.last_disk_scan {
+            None => self.started_at.elapsed() >= Duration::from_secs(5),
+            Some(last) => last.elapsed() >= Duration::from_secs(600),
+        };
+        if !scan_due {
+            return;
+        }
+        // Record the attempt even if nothing is removed, so a large cache
+        // cannot rescan every frame while its deletes run.
+        self.last_disk_scan = Some(Instant::now());
+        let active = self.history.current().source_pdf.clone();
+        let removed =
+            crate::data::disk_cache::evict_now(active.as_deref().map(std::path::Path::new));
+        if removed > 0 {
+            tracing::info!("disk cache eviction removed {removed} document cache dirs");
+        }
+    }
+
     pub(crate) fn save_project_action(&mut self) {
         if let Some(p) = self.current_path.clone() {
             self.save_project_to(p);
@@ -2328,6 +2363,10 @@ impl RubricApp {
         // Autosave (spec F-502): run at the end of the frame so it sees every
         // committed change from this pass.
         self.maybe_autosave();
+
+        // Disk-cache eviction (async-thumbnails Slice 4): startup-delayed and
+        // rate-limited like the autosave above.
+        self.maybe_evict_disk_cache();
 
         ui.ctx()
             .request_repaint_after(Duration::from_secs_f32(0.25));

@@ -95,6 +95,10 @@ fn render_thumb(job: &RenderJob) -> ThumbPixels {
     let rgba8 = img.to_rgba8();
     let (width, height) = rgba8.dimensions();
     let rgba = rgba8.into_raw();
+    // 4. Refresh the per-PDF cache directory's mtime so the LRU disk
+    //    eviction (async-thumbnails Slice 4) reflects actual serving.
+    //    Best-effort: a failed touch only leaves an older last-used time.
+    crate::data::disk_cache::touch_served(&cache_path);
     ThumbPixels {
         key: job.key.clone(),
         width,

@@ -47,7 +47,10 @@ pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCount
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
 pub use style_preset::{StylePreset, StylePresetLibrary};
 pub use theme::{AppPrefs, Theme};
-pub use thumb_render::{RenderJob, RenderKey, RenderOutcome, RenderQueueState, TextureLru};
+pub use thumb_render::{
+    plan_disk_eviction, DiskCacheEntry, RenderJob, RenderKey, RenderOutcome, RenderQueueState,
+    TextureLru, MAX_DISK_CACHE_AGE_SECS, MAX_DISK_CACHE_BYTES,
+};
 pub use thumbs::{thumb_layout, ThumbLayout};
 pub use units::{
     clamp_precision, format_value, format_value_precise, MeasureKind, MeasureUnit, Scale,
