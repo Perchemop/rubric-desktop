@@ -1,5 +1,38 @@
 # PROGRESS.md
 
+## 2026-11-13 — PR #169 merged: async-thumbnails Slice 4 (disk cache eviction) — design complete
+**Status**: merged to `main` (merge commit `c069012`); CI green on the branch head, post-merge
+main runs green.
+
+### Landed
+- **`plan_disk_eviction` + `DiskCacheEntry`** (pure domain, `domain/thumb_render.rs`):
+  expired-first (oldest-first, `pdf_key` tie-break) then LRU until survivors fit the
+  512 MiB budget; protected keys never selected; deterministic. 9 domain tests + the
+  `DiskCacheEntry` serde round-trip (design-note criteria 4-5).
+- **Data scan + removal** (`data/disk_cache.rs`): `scan_entries` (one `read_dir`, recursive
+  byte totals, dir-mtime `last_used`), `evict_now` (plan → `remove_dir_all` per selected
+  key, active PDF protected via the same cache-key derivation `pdf.rs` uses), and
+  `touch_served` (marker-file recreate to refresh the directory mtime — std cannot set
+  mtimes; failures ignored). The worker touches the served directory after each render.
+- **Trigger**: a few seconds after startup, then at most every 10 minutes from the UI tick
+  (`RubricApp::maybe_evict_disk_cache`, silent except a tracing line).
+- With Slices 1-5 shipped, the approved async-thumbnails design is fully implemented:
+  no UI-thread raster or decode on any live path (pages sidebar + canvas background both
+  run on the shared worker), disk cache bounded by budget and age.
+
+### Verification (exact runs)
+- Branch head `aff191c`: CI run `43389289657` ✅ (fmt, clippy ×2, tests ×2, release build,
+  snapshot — 10m13s), Security run `43389289652` ✅.
+- Post-merge `main` @ `c069012`: CI run ✅ / Security run ✅ (see the merge push).
+
+### Follow-up queue (non-blocking)
+- `crash-report`: `uuid` dependency is now unused (ureq 3 migration removed its last use) —
+  remove it + a `lock-update` round.
+- `corpus_fidelity.rs` dead-code warnings; topbar RTL page-nav order; stamp `✓`/`✗` glyphs
+  rely on system fonts.
+- pdfium-render 0.9.5 (#163 — verify the text-extraction test against 0.9.5); lopdf 0.47
+  (#162 — real migration slice); hayro 0.9 (#161 — clippy fixes + pin alignment).
+
 ## 2026-11-12 — PR #167 merged: async-thumbnails Slice 5 (canvas background on the worker)
 **Status**: merged to `main` (merge commit `3271524`); CI green on the branch head and the
 post-merge main run recorded below.
