@@ -218,8 +218,10 @@ pub fn plan_disk_eviction(
     let is_protected = |key: &str| protected.iter().any(|p| p == key);
 
     // Oldest first, ties by pdf_key — one comparator drives both the expired
-    // phase (age order) and the LRU phase (recency order).
-    let oldest_first = |a: &DiskCacheEntry, b: &DiskCacheEntry| {
+    // phase (age order) and the LRU phase (recency order). Non-capturing, so
+    // it is `Copy` and can drive both sorts. The double references match
+    // `sort_by` over a slice of `&DiskCacheEntry`.
+    let oldest_first = |a: &&DiskCacheEntry, b: &&DiskCacheEntry| {
         (a.last_used_secs, a.pdf_key.as_str()).cmp(&(b.last_used_secs, b.pdf_key.as_str()))
     };
 

@@ -101,7 +101,7 @@ fn dir_bytes(dir: &std::path::Path) -> u64 {
     let Ok(read) = std::fs::read_dir(dir) else {
         return 0;
     };
-    let mut total = 0;
+    let mut total: u64 = 0;
     for item in read.flatten() {
         let Ok(meta) = item.metadata() else {
             continue;
@@ -222,7 +222,7 @@ mod tests {
         let pdf = root.0.join("doc.pdf");
         std::fs::write(&pdf, b"%PDF-1.4 not really").expect("write pdf");
         let key = active_pdf_key(&pdf).expect("key derivable for a real file");
-        assert_eq!(key.len(), 16, "hash format is {:016x}");
+        assert_eq!(key.len(), 16, "hash format is 16 hex chars");
         let again = active_pdf_key(&pdf).expect("stable across calls");
         assert_eq!(key, again, "same file, same key");
         assert!(
