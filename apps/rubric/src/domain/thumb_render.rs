@@ -649,10 +649,12 @@ mod tests {
     #[test]
     fn plan_disk_eviction_tie_breaks_by_pdf_key_deterministically() {
         // Equal last_used_secs: the tie breaks by pdf_key ascending, so
-        // identical input always yields identical output.
+        // identical input always yields identical output. The budget (5)
+        // forces BOTH 10-byte entries to be evicted, so the returned order
+        // itself pins the deterministic tie-break ("a" before "b").
         let entries = vec![entry("b", 10, 700), entry("a", 10, 700)];
-        let first = plan_disk_eviction(&entries, 10, 10_000, 1_000, &[]);
-        let second = plan_disk_eviction(&entries, 10, 10_000, 1_000, &[]);
+        let first = plan_disk_eviction(&entries, 5, 10_000, 1_000, &[]);
+        let second = plan_disk_eviction(&entries, 5, 10_000, 1_000, &[]);
         assert_eq!(first, vec!["a".to_string(), "b".to_string()]);
         assert_eq!(first, second);
     }
