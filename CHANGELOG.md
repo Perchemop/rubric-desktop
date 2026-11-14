@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented here. Format: semantic-ish for this repo (Added/Changed/Fixed/Docs).
 
-## [0.4.5] - 2026-11-15
+## [0.4.6] - 2026-11-15
 
 ### Fixed
 - **Canvas drawing tools** (`ui/canvas.rs`): `creation_allowed()` returned an

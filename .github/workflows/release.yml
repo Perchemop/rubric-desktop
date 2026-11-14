@@ -363,25 +363,9 @@ jobs:
           if [[ -z "${NOTES_BODY//[[:space:]]/}" ]]; then
             NOTES_BODY="Automated release build for Rubric ${tag}."
           fi
-          if ! gh release view "$tag" >/dev/null 2>&1; then
-            if [[ "${#prerelease[@]}" -gt 0 ]]; then
-              # A manual dispatch is not a real release: keep it a pre-release so
-              # "Latest release" on the repo still points at a tagged version.
-              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY" "${prerelease[@]}"
-            else
-              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
-            fi
-          fi
-          # Read the artefact list into an array so newline-separated values
-          # survive as data, not source.
-          mapfile -t artefacts <<< "$ARTEFACTS"
-          # The minisign signature is produced after "Collect artifacts" froze
-          # its list, so add it here. Signing hard-fails when the secrets are
-          # missing, so the file always exists by the time this step runs.
-          artefacts+=("dist/SHA256SUMS.txt.minisig")
-          # If the release already exists (e.g. from a previous failed run),
-          # delete it entirely and recreate so the upload below never hits
-          # "asset under the same name already exists" errors.
+          # Ensure a clean release exists: if one already exists (e.g. from a
+          # prior failed run), delete it and recreate so the upload below never
+          # hits "asset under the same name already exists" errors.
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Deleting existing release $tag and recreating..."
             # Delete all assets via the REST API (more reliable than
@@ -398,11 +382,11 @@ jobs:
             fi
             # Wait for GitHub to fully propagate the deletion before recreating.
             sleep 10
-            if [[ "${#prerelease[@]}" -gt 0 ]]; then
-              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY" "${prerelease[@]}"
-            else
-              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
-            fi
+          fi
+          if [[ "${#prerelease[@]}" -gt 0 ]]; then
+            gh release create "$tag" --title "Rubric ${tag}" --notes "${NOTES_BODY}" "${prerelease[@]}"
+          else
+            gh release create "$tag" --title "Rubric ${tag}" --notes "${NOTES_BODY}"
           fi
           gh release upload "$tag" "${artefacts[@]}" --clobber
           # Finalise the release so uploaded assets are published.
