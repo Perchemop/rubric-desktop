@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented here. Format: semantic-ish for this repo (Added/Changed/Fixed/Docs).
 
+## [0.4.3] - 2026-11-14
+
+### Fixed
+- **Release publishing** (`release.yml`): the publish job now waits for the
+  sibling `package.yml` workflow and attaches its installer artefacts
+  (`.AppImage`/`.tar.gz`, `.dmg`, `.msi`) to the GitHub Release alongside the
+  plain zips and `SHA256SUMS.txt`. Users can now download double-click
+  installers directly from the release page without running any commands.
+
+## [0.4.2] - 2026-11-14
+
+### Fixed
+- **Installer builds** (`package.yml`): removed `--locked` from cargo build so the packaging workflow can regenerate `Cargo.lock` after version bumps. AppImage, DMG, and MSI builds now complete instead of failing at the release build step.
+
 ## [0.4.1] - 2026-11-14
 
 ### Changed
