@@ -1,5 +1,53 @@
 # PROGRESS.md
 
+## 2026-11-14 — PR #178 merged: v0.4.0 release
+**Status**: merged to `main` (merge commit `b638530`); tag `v0.4.0` pushed; all required
+checks green on the post-merge main run.
+
+### Landed
+- **Version bump** to `0.4.0` across `apps/rubric`, `crates/crash-report`,
+  `crates/update-check` (PR #178).
+- **CHANGELOG**: `[Unreleased]` rolled into `[0.4.0] - 2026-11-14`; fresh empty
+  `[Unreleased]` left on top.
+- **Dependency sweep complete**:
+  - `eframe`/`egui`/`egui_extras`/`egui_kittest` 0.36 → 0.37 (PR #160)
+  - `rfd` 0.15 → 0.17 (PR #160)
+  - `ureq` 2 → 3 in `crates/crash-report` + `crates/update-check` (PR #160)
+  - `pdfium-render` 0.9.4 → 0.9.5 with `pdfium_7881` bindings pin (PRs #171/#163)
+  - `hayro`/`hayro-syntax` 0.8.0 → 0.9.0 with unified pin (PR #172)
+  - `lopdf` 0.42.0 → 0.47.0 with `get_page_content` API migration (PR #173)
+  - `crash-report`: unused `uuid` dependency removed (PR #172)
+- **Async-thumbnails design complete** (Slices 1–5):
+  - Slice 1: domain types (`domain/thumb_render.rs`) + serde tests (PR #160)
+  - Slice 2: worker thread (`data/render_worker.rs`) + tests (PR #160)
+  - Slice 3: UI wiring (`ui/pages.rs`, `ui/app_pages.rs`) + tests (PR #160)
+  - Slice 4: disk cache eviction (`data/disk_cache.rs`, `domain/thumb_render.rs`,
+    `ui/app.rs` trigger) (PR #169)
+  - Slice 5: canvas background on worker (`ui/canvas.rs`, `ui/app_canvas.rs`,
+    `ui/app.rs`) + painter-drawn check/cross stamps (PR #175)
+- **Signed releases + checksum-verified auto-update** (PR #175):
+  - minisign 0.12 (Ed25519) keypair generated: key ID `5DDF86377FAD5DB1`
+  - Private key + password in Actions secrets; offline backup offline
+  - Public key at `assets/release-signing.pub`
+  - Release workflow signs `SHA256SUMS.txt`, publishes `.minisig` asset
+  - In-app signature verification via `crates/update-check` `signature` module
+    (`SignatureState::{Verified, Failed, Missing}`, fixture-tested)
+- **Polish**:
+  - `tests/corpus_fidelity.rs` gated with `#![cfg(feature = "hayro")]` — kills
+    16 dead-code warnings under default features (PR #167)
+  - Topbar page-nav order: `◀ Page n/m ▶` instead of reversed in RTL layout
+    (PR #167)
+  - Stamp presets `Check`/`Cross` drawn as painter-drawn icons instead of font
+    glyphs (PR #167)
+
+### Verification (exact runs)
+- Branch head `13fc440`: CI run `43519331536` ✅ (fmt, clippy ×2, tests ×2,
+  release build, snapshot), Security run `43519331486` ✅
+- Post-merge `main` @ `b638530`: CI run `43564978340` ✅,
+  Security run `43564978362` ✅
+- Tag `v0.4.0` pushed: CI run `43564978340` ✅, Security run `43564978362` ✅,
+  Package run `43565006426` ✅ (Linux/macOS/Windows installers)
+
 ## 2026-11-14 — PR #175 merged: signed releases (Slice A) + polish batch
 **Status**: merged to `main` (merge commit `a2fe833`); all required checks green on the
 branch head; post-merge main run green.
