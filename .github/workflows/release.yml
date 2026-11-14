@@ -376,6 +376,6 @@ jobs:
               gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
             fi
           fi
-          gh release upload "$tag" "${artefacts[@]}" --clobber
+          gh release upload "$tag" $ARTEFACTS dist/SHA256SUMS.txt.minisig --clobber
           # Finalise the release so uploaded assets are published.
           gh release edit "$tag" --draft=false
