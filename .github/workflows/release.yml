@@ -386,14 +386,17 @@ jobs:
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Deleting existing release $tag and recreating..."
             gh release delete "$tag" --yes 2>/dev/null || true
-            # Brief pause to let the deletion propagate before recreating.
-            sleep 5
+            # Wait for GitHub to fully propagate the deletion before recreating.
+            sleep 15
             if [[ "${#prerelease[@]}" -gt 0 ]]; then
               gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY" "${prerelease[@]}"
             else
               gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
             fi
           fi
-          gh release upload "$tag" "${artefacts[@]}"
+          # --clobber replaces existing assets with the same name; on a fresh
+          # release all assets are new so this is a no-op, but it guards against
+          # any residual assets from a partially-propagated deletion.
+          gh release upload "$tag" "${artefacts[@]}" --clobber
           # Finalise the release so uploaded assets are published.
           gh release edit "$tag" --draft=false
