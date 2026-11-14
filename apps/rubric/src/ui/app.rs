@@ -1022,8 +1022,7 @@ impl RubricApp {
                         ui.label("Download complete. Ready to install.");
                         if ui.button("Open installer").clicked() {
                             let _ = open_url(path.to_str().unwrap_or(""));
-                            let mut state =
-                                self.update.lock().unwrap_or_else(|p| p.into_inner());
+                            let mut state = self.update.lock().unwrap_or_else(|p| p.into_inner());
                             state.downloaded_path = None;
                         }
                     }
