@@ -41,7 +41,7 @@ jobs:
           echo "/tmp/ld/squashfs-root/usr/bin" >> "$GITHUB_PATH"
 
       - name: Build release binary
-        run: cargo build --release --locked
+        run: cargo build --release
 
       - name: Fetch PDFium runtime (pinned; bundled into the AppImage)
         shell: bash
@@ -149,7 +149,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Build release binary
-        run: cargo build --release --locked
+        run: cargo build --release
       - name: Fetch PDFium runtime (pinned; bundled into the DMG)
         shell: bash
         run: |
@@ -224,7 +224,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - name: Build release binary
         run: |
-          cargo build --release --locked
+          cargo build --release
           copy target\release\rubric.exe .
       - name: Fetch PDFium runtime (pinned; bundled into the MSI and zip)
         shell: bash
