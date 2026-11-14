@@ -1083,7 +1083,9 @@ impl RubricApp {
                                 }
                             }
                         } else if matches!(signature, update_check::SignatureState::Failed) {
-                            ui.label("Signature check failed — download manually from the release page.");
+                            ui.label(
+                                "Signature check failed — download manually from the release page.",
+                            );
                         }
                         if ui.button("Open release page").clicked() {
                             let _ = open_url(url);

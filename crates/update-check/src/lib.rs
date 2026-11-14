@@ -326,9 +326,8 @@ pub fn download_and_verify_asset(
         .ok_or_else(|| format!("cannot derive asset name from URL: {asset_url}"))?;
 
     // Build the checksum-manifest URL on GitHub Releases.
-    let manifest_url = format!(
-        "https://github.com/{repo}/releases/download/{tag}/{MANIFEST_ASSET}"
-    );
+    let manifest_url =
+        format!("https://github.com/{repo}/releases/download/{tag}/{MANIFEST_ASSET}");
 
     // Fetch the manifest text.
     let manifest = fetch_text(&manifest_url)
@@ -369,7 +368,9 @@ pub fn download_and_verify_asset(
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 8192];
     loop {
-        let n = file.read(&mut buf).map_err(|e| format!("read error: {e}"))?;
+        let n = file
+            .read(&mut buf)
+            .map_err(|e| format!("read error: {e}"))?;
         if n == 0 {
             break;
         }
