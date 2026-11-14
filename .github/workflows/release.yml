@@ -171,11 +171,52 @@ jobs:
           path: dist
           merge-multiple: true
 
+      # Wait for the sibling package.yml workflow (installers) for this tag,
+      # then download its artefacts so they ship on the same release.
+      - name: Wait for package workflow (installers)
+        id: package-wait
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            run_id=$(gh run list --workflow package.yml --branch ${{ github.ref_name }} --json databaseId,status,conclusion --jq '[.[] | select(.status == "completed")] | .[0].databaseId // empty' 2>/dev/null || true)
+            if [ -n "$run_id" ]; then
+              conclusion=$(gh run view "$run_id" --json conclusion --jq '.conclusion' 2>/dev/null || true)
+              if [ "$conclusion" = "success" ]; then
+                echo "package workflow $run_id succeeded"
+                echo "package_run_id=$run_id" >> "$GITHUB_OUTPUT"
+                exit 0
+              elif [ "$conclusion" = "failure" ] || [ "$conclusion" = "cancelled" ]; then
+                echo "package workflow $run_id failed with $conclusion" >&2
+                exit 1
+              fi
+            fi
+            echo "waiting for package workflow... ($i/60)"
+            sleep 10
+          done
+          echo "package workflow did not complete in time" >&2
+          exit 1
+
+      - name: Download package artefacts (installers)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          run_id="${{ steps.package-wait.outputs.package_run_id }}"
+          for artifact in linux-packages windows-packages macos-packages; do
+            echo "downloading $artifact..."
+            gh run download "$run_id" --name "$artifact" --dir "dist/packages/$artifact" || echo "WARNING: could not download $artifact"
+          done
+          ls -laR dist/packages/ 2>/dev/null || true
+
       - name: Collect artifacts
         id: collect
         run: |
           set -euo pipefail
-          files=$(find dist -type f \( -name '*.zip' -o -name '*.tar.gz' \) | sort)
+          files=$(find dist -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*.AppImage' -o -name '*.dmg' -o -name '*.msi' \) | sort)
           # Checksums (guide §4, §6.3): one SHA256SUMS file over every archive.
           : > dist/SHA256SUMS
           for f in $files; do
