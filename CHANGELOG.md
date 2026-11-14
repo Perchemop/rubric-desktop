@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented here. Format: semantic-ish for this repo (Added/Changed/Fixed/Docs).
 
+## [0.4.7] - 2026-11-15
+
+### Fixed
+- **Release publishing** (`release.yml`): `gh release upload --clobber` was not
+  reliably replacing assets across `gh` versions, surfacing HTTP 422
+  "ReleaseAsset.name already exists" errors on re-runs. Now deletes existing
+  assets before uploading, so every release run starts clean.
+
 ## [0.4.6] - 2026-11-15
 
 ### Fixed
