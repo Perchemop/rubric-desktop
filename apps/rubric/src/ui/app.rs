@@ -2569,10 +2569,13 @@ mod kittest_tests {
         // requests a periodic repaint for autosave/status — so use steps.)
         harness.run_steps(2);
 
-        // Toolbar buttons are queryable by their visible text labels through
-        // the AccessKit tree. ("Select" is intentionally not queried: at
-        // startup the active-tool chip also reads "Select", so that label
-        // legitimately matches two nodes.)
+        // Open the Tools dropdown so its items are in the AccessKit tree,
+        // then query tool buttons by their visible text labels.
+        // ("Select" is intentionally not queried: at startup the active-tool
+        // chip also reads "Select", so that label legitimately matches two
+        // nodes.)
+        harness.get_by_label("Tools").click();
+        harness.run_steps(1);
         let _highlight = harness.get_by_label("Highlight");
         let _rectangle = harness.get_by_label("Rectangle");
         let _length = harness.get_by_label("Length");
@@ -2585,6 +2588,9 @@ mod kittest_tests {
         let mut harness = shell_harness(&mut app);
         harness.run_steps(2);
 
+        // Open the Tools dropdown, then click Highlight inside it.
+        harness.get_by_label("Tools").click();
+        harness.run_steps(1);
         harness.get_by_label("Highlight").click();
         harness.run_steps(1);
         drop(harness);
