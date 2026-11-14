@@ -92,7 +92,7 @@ jobs:
       # The release build is the same code CI already proved green; this only
       # packages it, so no test re-run is needed here.
       - name: Build release
-        run: cargo build --release --target ${{ matrix.target }} --locked ${{ matrix.features || '' }}
+        run: cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features || '' }}"
 
       - name: Prepare artifact (${{ matrix.name }})
         shell: bash
