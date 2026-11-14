@@ -32,21 +32,18 @@ page. Save a project with **File ▸ Save Project** and reopen it with
 
 ### PDFium (PDF rendering) matrix
 
-PDFium is a run-time dependency, so which download carries it depends on the
-artefact:
+PDFium is a run-time dependency. In v0.4.1+ it is **bundled in all release
+artefacts** (plain zips and package-workflow installers):
 
 | Artefact | PDFium library |
 |---|---|
-| Package-workflow artefacts: Linux AppImage, macOS `.app`/`.dmg` (arm64), Windows MSI and its portable zip | **bundled** — pinned build; the packaging job fails rather than ship a PDF-less installer |
-| Plain release zips (`rubric-<os>-<arch>.zip`) | **not bundled** — the app locates PDFium at run time |
+| Linux x86_64, macOS arm64, Windows x86_64 (plain zips + installers) | **bundled** — pinned build, verified at packaging time |
+| Linux aarch64 (plain zips) | **not needed** — built with the pure-Rust `hayro` engine |
 
-Package-workflow artefacts (AppImage, `.dmg`, MSI, Windows portable zip) carry
-PDFium; the four `rubric-<os>-<arch>.zip` release assets do not. macOS builds
-are arm64 only.
+For v0.4.0 and earlier, the plain zips did not bundle PDFium — see
+`docs/pdfium.md` for the historical discovery order.
 
-For the plain zips, `docs/pdfium.md` covers the download and the discovery
-order: `RUBRIC_PDFIUM_PATH` → the executable's directory → its `lib/`
-subdirectory → the system library.
+For the hayro build (`--features hayro`), no PDFium is required at all.
 
 ## Repository layout
 

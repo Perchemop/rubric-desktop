@@ -134,6 +134,25 @@ clippy (`-D warnings`), full tests, and a release build.
 - Leave a green, review-clean PR unmerged unless the owner asked to review it
   first (owner directive 2026-10-26: agents merge completed PRs).
 
+## Release artifacts must "just work" (2026-11-14 owner directive)
+
+**Every released binary must be self-contained and functional out of the box.**
+
+- No required runtime dependencies that the user must manually install.
+- PDF import (a core feature) must work without user action — the PDFium
+  shared library must be bundled in **all** release artefacts (plain zips
+  and package-workflow installers alike).
+- The packaging workflow must fail if PDFium is absent from any artefact.
+- This applies to all platforms: Linux (x86_64 + aarch64), macOS (arm64),
+  Windows (x86_64). Where PDFium binaries don't exist for a platform,
+  the build must either:
+  a) produce a `--features hayro` pure-Rust variant for that platform, or
+  b) be explicitly documented as unsupported in the release notes.
+- The release checklist in `.github/workflows/release.yml` and
+  `.github/workflows/package.yml` must enforce this.
+- `docs/pdfium.md` and `README.md` must reflect the actual bundling
+  behaviour (no "user must provide PDFium" for release downloads).
+
 ## Completion mandate (mandatory)
 
 Every agent in this repository works **each slice and each step through to

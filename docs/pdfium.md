@@ -2,23 +2,26 @@
 
 Rubric renders PDF pages through a **pluggable PDF engine**:
 
-1. **PDFium** (default) — linked at run time (never at build time — see
-   `Cargo.toml` and DECISIONS.md, 2026-10-20 "PDF crate choice"). The PDFium
-   shared library must be present **next to the executable or on the system**
-   for PDF import to work.
-2. **hayro** (optional, pure Rust) — build with `cargo build --release
-   --features hayro` and no PDFium library is needed at all; hayro-syntax
-   probes page sizes and hayro renders pages. PDFium remains the default
-   until the corpus-fidelity gate (v0.3-02 Phase 3) validates pixel parity.
+1. **PDFium** (default on x86_64 + macOS arm64 + Windows) — linked at run time
+   (never at build time — see `Cargo.toml` and DECISIONS.md, 2026-10-20 "PDF
+   crate choice"). The PDFium shared library is **bundled in all release
+   artefacts** (plain zips and package-workflow installers alike) for these
+   platforms. The packaging job fails if PDFium is missing.
+2. **hayro** (pure Rust, used for Linux aarch64 releases) — build with
+   `cargo build --release --features hayro`; no native library needed at all.
+   hayro-syntax probes page sizes and hayro renders pages. hayro is the default
+   engine for Linux aarch64 because no PDFium pre-built exists for that
+   architecture.
 
 Everything else (markups, measurements, review workflow, `.rubric.json`
 persistence, export and print) works without either engine's library, and
 Rubric reports a clear status message instead of crashing when a PDF cannot
 be opened.
 
-## Where Rubric looks for the PDFium library
+## Where Rubric looks for the PDFium library (fallback)
 
-Position 1 wins; discovery stops at the first match.
+For non-release builds (e.g. `cargo run`), or if the bundled library is
+somehow missing, the app falls back to discovery:
 
 1. `RUBRIC_PDFIUM_PATH` — either the shared library itself or the directory
    containing it (`.../lib/libpdfium.so`, `libpdfium.dylib` or `pdfium.dll`).
@@ -26,7 +29,10 @@ Position 1 wins; discovery stops at the first match.
    subdirectory.
 3. The system library search path.
 
-## Downloading PDFium
+Release downloads (v0.4.1+) **do not need this fallback** — the library is
+already bundled.
+
+## Downloading PDFium (for developers only)
 
 Pre-built binaries are published by the PDFium project (BSD-3-Clause):
 
@@ -36,7 +42,7 @@ Pre-built binaries are published by the PDFium project (BSD-3-Clause):
 Examples:
 
 ```bash
-# Linux — extract next to the executable
+# Linux — extract next to the executable (dev builds only)
 mkdir -p lib && tar -xzf pdfium-linux-x64.tgz -C lib
 
 # Windows — unzip pdfium-win-x64.tgz and keep pdfium.dll beside rubric.exe
@@ -54,11 +60,16 @@ Open a PDF via **File ▸ Import PDF…**. The status bar shows "Importing…",
 "Imported N page(s)" on success, or an explicit error naming what was missing.
 No silent fallback: a failed import is always visible.
 
-## Packaging note
+## Packaging note (v0.4.1+)
 
-The native installers (AppImage / DMG / MSI) **bundle** the PDFium shared
-library produced by the packaging workflow, and the packaging job fails rather
-than silently shipping an installer without PDF support; the BSD-3 licence text
-travels with the library. The plain release zips ship **without** the library —
-drop it beside the executable, point `RUBRIC_PDFIUM_PATH` at it, or use the
-pure-Rust build (`--features hayro`) which needs no native library at all.
+**All release artefacts bundle the required PDF runtime:**
+
+- Plain zips (`rubric-<os>-<arch>.zip`): PDFium bundled for x86_64 Linux,
+  macOS arm64, Windows x86_64; hayro build (no PDFium needed) for Linux
+  aarch64.
+- Package-workflow installers (AppImage, DMG, MSI, Windows portable zip):
+  PDFium bundled inside the installer.
+
+The packaging job **fails** if the required runtime is missing — a PDF-less
+artefact must never ship silently. The BSD-3 licence text travels with the
+bundled library.
