@@ -371,17 +371,6 @@ jobs:
             else
               gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
             fi
-          else
-            # Release already exists (e.g. from a previous failed run). Delete it
-            # and recreate so we upload assets to a clean release, avoiding
-            # --clobber 404 errors on stale asset IDs.
-            echo "Deleting existing release $tag and recreating..."
-            gh release delete "$tag" --yes 2>/dev/null || true
-            if [[ "${#prerelease[@]}" -gt 0 ]]; then
-              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY" "${prerelease[@]}"
-            else
-              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
-            fi
           fi
           # Read the artefact list into an array so newline-separated values
           # survive as data, not source.
@@ -390,6 +379,8 @@ jobs:
           # its list, so add it here. Signing hard-fails when the secrets are
           # missing, so the file always exists by the time this step runs.
           artefacts+=("dist/SHA256SUMS.txt.minisig")
-          gh release upload "$tag" "${artefacts[@]}"
+          # --clobber replaces existing assets with the same name, creates missing
+          # ones. Works correctly on an existing release without needing to delete.
+          gh release upload "$tag" "${artefacts[@]}" --clobber
           # Finalise the release so uploaded assets are published.
           gh release edit "$tag" --draft=false
