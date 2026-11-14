@@ -2569,11 +2569,11 @@ mod kittest_tests {
         // requests a periodic repaint for autosave/status — so use steps.)
         harness.run_steps(2);
 
-        // The Tools dropdown menu button is queryable by its label. Tool
-        // items live inside its popup (not in the flat tree), so they are
-        // not queried here — those are reached through the dropdown in the
-        // live UI.
-        let _tools = harness.get_by_label("Tools");
+        // The active-tool chip ("Select" at startup) is queryable by its
+        // label through the AccessKit tree. Tool items live inside the
+        // Tools dropdown popup (not in the flat tree), so they are not
+        // queried here — those are reached through the dropdown in the live
+        // UI.
         let _select = harness.get_by_label("Select"); // active-tool chip label
     }
 
