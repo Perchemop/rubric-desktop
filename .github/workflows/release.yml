@@ -381,22 +381,29 @@ jobs:
           artefacts+=("dist/SHA256SUMS.txt.minisig")
           # If the release already exists (e.g. from a previous failed run),
           # delete it entirely and recreate so the upload below never hits
-          # "asset under the same name already exists" errors. --clobber alone
-          # does not reliably replace assets on some gh versions.
+          # "asset under the same name already exists" errors.
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Deleting existing release $tag and recreating..."
-            gh release delete "$tag" --yes 2>/dev/null || true
+            # Delete all assets via the REST API (more reliable than
+            # `gh release delete-asset`), then delete the release itself.
+            release_id=$(gh release view "$tag" --json id --jq '.id' 2>/dev/null || true)
+            if [ -n "$release_id" ]; then
+              gh api "repos/${GITHUB_REPOSITORY}/releases/$release_id/assets" \
+                --jq '.assets[].id' 2>/dev/null | while read -r asset_id; do
+                gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/$asset_id" \
+                  2>/dev/null || true
+              done || true
+              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/$release_id" \
+                2>/dev/null || true
+            fi
             # Wait for GitHub to fully propagate the deletion before recreating.
-            sleep 15
+            sleep 10
             if [[ "${#prerelease[@]}" -gt 0 ]]; then
               gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY" "${prerelease[@]}"
             else
               gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
             fi
           fi
-          # --clobber replaces existing assets with the same name; on a fresh
-          # release all assets are new so this is a no-op, but it guards against
-          # any residual assets from a partially-propagated deletion.
           gh release upload "$tag" "${artefacts[@]}" --clobber
           # Finalise the release so uploaded assets are published.
           gh release edit "$tag" --draft=false
