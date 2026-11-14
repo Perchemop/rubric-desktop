@@ -33,24 +33,34 @@ jobs:
             target: x86_64-unknown-linux-gnu
             asset: rubric-linux-x86_64
             archive: zip
+            pdfium_url: "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7881/pdfium-linux-x64.tgz"
+            pdfium_name: "libpdfium.so"
           # ARM Linux (Raspberry Pi OS, ARM Chromebooks, Linux-on-Apple-silicon
           # boxes). GitHub's free ARM runners make this native rather than an
-          # emulated cross-build.
+          # emulated cross-build. No PDFium pre-built for aarch64 → build with
+          # the pure-Rust `hayro` engine instead.
           - name: linux-arm64
             os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             asset: rubric-linux-arm64
             archive: zip
+            features: hayro
+            pdfium_url: ""
+            pdfium_name: ""
           - name: macos-arm64
             os: macos-latest
             target: aarch64-apple-darwin
             asset: rubric-macos-arm64
             archive: zip
+            pdfium_url: "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7881/pdfium-mac-arm64.tgz"
+            pdfium_name: "libpdfium.dylib"
           - name: windows-x86_64
             os: windows-latest
             target: x86_64-pc-windows-msvc
             asset: rubric-windows-x86_64
             archive: zip
+            pdfium_url: "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/7881/pdfium-win-x64.tgz"
+            pdfium_name: "pdfium.dll"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -70,10 +80,19 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
+      - name: Fetch PDFium runtime (pinned; bundled into the zip)
+        if: ${{ matrix.pdfium_url != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/pdfium.tgz "${{ matrix.pdfium_url }}"
+          mkdir -p "$HOME/pdfium"
+          tar -xzf /tmp/pdfium.tgz -C "$HOME/pdfium"
+
       # The release build is the same code CI already proved green; this only
       # packages it, so no test re-run is needed here.
       - name: Build release
-        run: cargo build --release --target ${{ matrix.target }} --locked
+        run: cargo build --release --target ${{ matrix.target }} --locked ${{ matrix.features || '' }}
 
       - name: Prepare artifact (${{ matrix.name }})
         shell: bash
@@ -98,9 +117,18 @@ jobs:
           cp README.md "$STAGE/" 2>/dev/null || true
           cp LICENSE "$STAGE/" 2>/dev/null || true
           cp ATTRIBUTION.md "$STAGE/" 2>/dev/null || true
-          # PDFium is a run-time dependency (see Cargo.toml): ship the doc that
-          # explains discovery instead of a binary blob.
-          cp docs/pdfium.md "$STAGE/" 2>/dev/null || true
+          # Bundle the PDFium runtime for targets that have a pre-built.
+          # For linux-arm64 (built with hayro), no PDFium is needed.
+          if [[ -n "${{ matrix.pdfium_name }}" ]]; then
+            PDFIUM=$(find "$HOME/pdfium" /usr/lib /opt/homebrew/lib /usr/local/lib \
+              -name "${{ matrix.pdfium_name }}*" 2>/dev/null | head -1 || true)
+            test -n "$PDFIUM" || {
+              echo "PDFium library not found for ${{ matrix.name }} (searched for ${{ matrix.pdfium_name }})" >&2
+              exit 1
+            }
+            echo "bundling PDFium: $PDFIUM"
+            cp "$PDFIUM" "$STAGE/"
+          fi
           # Always produce a real .zip named for the asset. `zip` exists on the
           # Unix runners; Windows runners have it in neither bash nor on PATH,
           # so fall back to PowerShell's Compress-Archive. Every branch reports

@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented here. Format: semantic-ish for this repo (Added/Changed/Fixed/Docs).
 
+## [0.4.1] - 2026-11-14
+
+### Changed
+- **Release artifacts now bundle PDFium** (all platforms): Plain zips for
+  Linux x86_64, macOS arm64, and Windows x86_64 now include the pinned PDFium
+  runtime; Linux aarch64 builds with the pure-Rust `hayro` engine (no native
+  library needed). The packaging workflow fails if the required runtime is
+  missing. PDF import works out of the box on all supported platforms.
+- `README.md` and `docs/pdfium.md` updated to reflect the new bundling
+  behaviour.
+
+### Fixed
+- **v0.4.0 plain zips did not bundle PDFium** — users had to manually provide
+  the runtime. This was inconsistent with the "just works" requirement for
+  release artefacts (AGENTS.md, 2026-11-14 owner directive).
+
 ## [0.4.0] - 2026-11-14
 
 ### Added
