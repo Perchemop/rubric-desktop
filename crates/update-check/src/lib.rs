@@ -23,6 +23,7 @@ use std::io::{copy, Read};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+pub mod signature;
 pub use signature::SignatureState;
 
 /// How long a successful check stays valid before it may be refreshed.
@@ -358,7 +359,7 @@ pub fn download_and_verify_asset(
     let mut out = File::create(&temp_path)
         .map_err(|e| format!("could not create temp file {temp_path:?}: {e}"))?;
 
-    copy(&mut resp.into_reader(), &mut out)
+    copy(&mut resp.into_body(), &mut out)
         .map_err(|e| format!("could not write download to {temp_path:?}: {e}"))?;
     drop(out);
 
