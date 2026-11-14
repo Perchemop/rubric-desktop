@@ -374,7 +374,7 @@ jobs:
           else
             # Release already exists (e.g. from a previous failed run). Delete it
             # and recreate so we upload assets to a clean release, avoiding
-            --clobber 404 errors on stale asset IDs.
+            # --clobber 404 errors on stale asset IDs.
             echo "Deleting existing release $tag and recreating..."
             gh release delete "$tag" --yes 2>/dev/null || true
             if [[ "${#prerelease[@]}" -gt 0 ]]; then
