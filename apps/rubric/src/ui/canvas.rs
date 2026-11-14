@@ -25,17 +25,20 @@ use crate::ui::canvas_hit::{handle_at, pick_markup_id, point_handle_at};
 /// Refuse to begin a draft when the markup it would create could not be edited.
 ///
 /// New markups always land on the default layer (`layer_id = None`), so a
-/// locked default layer would commit instantly uneditable markups. Fails open
-/// when no document is open or the document has no layers at all.
+/// locked default layer would commit instantly uneditable markups. Returns
+/// `false` when no document is open (nothing to add markups to) or when the
+/// default layer is locked.
 fn creation_allowed(project: &Project, ui_state: &mut super::app::UiState) -> bool {
+    let has_document = project.active().is_some();
     let locked = project
         .active()
         .and_then(|d| d.default_layer())
         .is_some_and(|l| l.locked);
-    if locked {
+    let allowed = has_document && !locked;
+    if has_document && locked {
         ui_state.status = "Layer locked — new markups cannot be created".to_string();
     }
-    locked
+    allowed
 }
 
 /// Whether a drafted path is worth committing: it must have enough points

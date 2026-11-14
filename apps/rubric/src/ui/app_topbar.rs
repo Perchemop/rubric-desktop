@@ -11,7 +11,14 @@ use crate::ui::toolbar;
 /// Draw the top bar: toolbar, active-tool chip, status, zoom, page nav.
 pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
     ui.horizontal(|ui| {
-        toolbar::draw_toolbar(ui, &mut app.ui.active_tool, &mut app.ui.status);
+        // Tool dropdown (replaces the inline strip that cluttered the top bar).
+        // All 25 tools live inside the menu, grouped by family.
+        if toolbar::draw_tool_dropdown(ui, &mut app.ui.active_tool) {
+            app.ui.status = format!(
+                "Tool: {}",
+                app.ui.active_tool.label()
+            );
+        }
 
         // Active-tool chip (P0-4): a persistent pill showing what tool is
         // currently active, with its shortcut key. Always visible so the

@@ -101,6 +101,10 @@ const TOOL_FAMILIES: &[(&str, &[Tool])] = &[
     ("Calibrate", &[Tool::Calibrate]),
 ];
 
+/// Draw the top-strip toolbar (all tool icons inline).
+///
+/// Kept for backward compatibility but no longer the primary tool selector —
+/// use [`draw_tool_dropdown`] instead to avoid screen-clutter.
 pub(crate) fn draw_toolbar(ui: &mut Ui, active: &mut Tool, _status: &mut String) {
     ui.horizontal_wrapped(|ui| {
         ui.label("Tools:");
@@ -114,6 +118,40 @@ pub(crate) fn draw_toolbar(ui: &mut Ui, active: &mut Tool, _status: &mut String)
             }
         }
     });
+}
+
+/// Draw a single "Tools" drop-down menu button that lists every tool grouped
+/// by family. This replaces the inline toolbar strip so the top bar stays
+/// compact regardless of how many tools exist.
+///
+/// Follows the same pattern as the canvas context-menu tool list
+/// (`ui/menu.rs`): each item is a [`egui::selectable_label`] that shows a
+/// checkmark beside the active tool and the shortcut key (e.g. `"Highlight\tH"`).
+pub(crate) fn draw_tool_dropdown(ui: &mut Ui, active: &mut Tool) -> bool {
+    let mut changed = false;
+    ui.menu_button("Tools", |ui| {
+        // Group tools by family so related tools sit together, mirroring
+        // TOOL_FAMILIES but without the inline icons.
+        for (_family_name, tools) in TOOL_FAMILIES.iter() {
+            if !tools.is_empty() {
+                ui.label((*_family_name).to_string());
+                for tool in tools.iter() {
+                    let selected = *active == *tool;
+                    let text = match tool.shortcut_key() {
+                        Some(key) => format!("{}\t{}", tool.label(), key.to_ascii_uppercase()),
+                        None => tool.label().to_string(),
+                    };
+                    if ui.selectable_label(selected, text).clicked() {
+                        *active = *tool;
+                        changed = true;
+                        ui.close_menu();
+                    }
+                }
+                ui.separator();
+            }
+        }
+    });
+    changed
 }
 
 pub(crate) fn draw_tool_groups(

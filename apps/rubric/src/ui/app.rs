@@ -443,6 +443,9 @@ pub struct RubricApp {
     pub(crate) render_worker: Option<crate::data::render_worker::RenderWorker>,
     /// Repository used for issue URLs and release checks.
     pub(crate) repo: String,
+    /// Latest release tag from the most recent update check, used to
+    /// construct the SHA256SUMS.txt URL when downloading an update.
+    pub(crate) update_check_tag: Option<String>,
     /// Tool Chest preset library (v0.4 gap #7). App-level session state: it
     /// survives project switches (a tool chest belongs to the reviewer, not
     /// the project) and is not written into `.rubric.json` or prefs yet —
@@ -458,6 +461,12 @@ pub(crate) struct UpdateCheck {
     pub(crate) running: bool,
     /// Result of the most recent completed check.
     pub(crate) result: Option<update_check::UpdateStatus>,
+    /// A download of the update installer is in progress.
+    pub(crate) download_in_progress: bool,
+    /// Path to the downloaded installer, ready to open/install.
+    pub(crate) downloaded_path: Option<PathBuf>,
+    /// Error message from a failed download, if any.
+    pub(crate) download_error: Option<String>,
 }
 
 /// A project install waiting on the "replace unsaved project?" confirmation
@@ -555,6 +564,7 @@ impl RubricApp {
             update: Arc::new(Mutex::new(UpdateCheck::default())),
             render_worker: None,
             repo: "Perchemop/rubric-desktop".to_string(),
+            update_check_tag: None,
             tool_chest_library: prefs.tool_chest_library.clone(),
         }
     }
@@ -971,8 +981,9 @@ impl RubricApp {
         }
     }
 
-    /// Update-check status window (guide §7.2). Shows one honest state and a
-    /// link out to the release page; never blocks and never auto-installs.
+    /// Update-check status window (guide §7.2). Shows one honest state, offers
+    /// a verified direct download + install when a platform asset exists, and
+    /// never blocks the UI loop.
     fn draw_update_result(&mut self, ctx: &egui::Context) {
         if self.update_dismissed {
             return; // The user closed the window; keep it closed (audit M8).
@@ -982,7 +993,7 @@ impl RubricApp {
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .clone();
-        if !snapshot.running && snapshot.result.is_none() {
+        if !snapshot.running && snapshot.result.is_none() && !snapshot.download_in_progress {
             return; // Nothing to show until a check has been requested.
         }
         let mut open = true;
@@ -995,6 +1006,29 @@ impl RubricApp {
                     ui.label("Checking GitHub Releases…");
                     return;
                 }
+                if snapshot.download_in_progress {
+                    ui.spinner();
+                    ui.label("Downloading update…");
+                    if let Some(err) = &snapshot.download_error {
+                        ui.colored_label(ui.visuals().error_fg_color, err);
+                        if ui.button("Try again").clicked() {
+                            let mut state = self.update.lock().unwrap_or_else(|p| p.into_inner());
+                            state.download_in_progress = false;
+                            state.download_error = None;
+                            drop(state);
+                            self.begin_update_check(ctx);
+                        }
+                    } else if let Some(path) = &snapshot.downloaded_path {
+                        ui.label("Download complete. Ready to install.");
+                        if ui.button("Open installer").clicked() {
+                            let _ = open_url(path.to_str().unwrap_or(""));
+                            let mut state =
+                                self.update.lock().unwrap_or_else(|p| p.into_inner());
+                            state.downloaded_path = None;
+                        }
+                    }
+                    return;
+                }
                 match snapshot.result.as_ref() {
                     Some(update_check::UpdateStatus::UpToDate) => {
                         ui.label(format!(
@@ -1005,6 +1039,7 @@ impl RubricApp {
                     Some(update_check::UpdateStatus::Available {
                         latest_version,
                         url,
+                        download_url,
                         signature,
                     }) => {
                         // Honest-state rules: a signature that failed to
@@ -1030,6 +1065,26 @@ impl RubricApp {
                             text = text.color(ui.visuals().error_fg_color);
                         }
                         ui.label(text);
+
+                        // Remember the latest tag so the download function can
+                        // construct the SHA256SUMS.txt URL.
+                        self.update_check_tag = Some(latest_version.clone());
+
+                        // Direct download + install: only when we know the
+                        // platform-specific asset URL and the signature
+                        // verified (never on Failed or Missing).
+                        let can_install =
+                            matches!(signature, update_check::SignatureState::Verified { .. })
+                                && download_url.is_some();
+                        if can_install {
+                            if let Some(dl) = download_url {
+                                if ui.button("Download & Install").clicked() {
+                                    self.begin_update_download(ctx, dl);
+                                }
+                            }
+                        } else if matches!(signature, update_check::SignatureState::Failed) {
+                            ui.label("Signature check failed — download manually from the release page.");
+                        }
                         if ui.button("Open release page").clicked() {
                             let _ = open_url(url);
                         }
@@ -1046,10 +1101,49 @@ impl RubricApp {
         if !open {
             let mut state = self.update.lock().unwrap_or_else(|p| p.into_inner());
             state.result.take();
+            state.download_in_progress = false;
+            state.download_error = None;
+            state.downloaded_path = None;
             // Keep the window closed even while the check is still running
             // (audit M8): previously `running` kept re-opening it every frame.
             self.update_dismissed = true;
         }
+    }
+
+    /// Download the platform-specific update asset on a worker thread, verify
+    /// its SHA-256 against the release checksum manifest, and stash the local
+    /// path for the user to open. Never blocks the UI loop.
+    fn begin_update_download(&mut self, ctx: &egui::Context, download_url: String) {
+        {
+            let mut state = self.update.lock().unwrap_or_else(|p| p.into_inner());
+            if state.download_in_progress {
+                return;
+            }
+            state.download_in_progress = true;
+            state.download_error = None;
+            state.downloaded_path = None;
+        }
+        let shared = Arc::clone(&self.update);
+        let ctx = ctx.clone();
+        let repo = self.repo.clone();
+        let tag = self.update_check_tag.clone().unwrap_or_default();
+        if tag.is_empty() {
+            let mut state = self.update.lock().unwrap_or_else(|p| p.into_inner());
+            state.download_in_progress = false;
+            state.download_error = Some("no release tag available".to_string());
+            return;
+        }
+        std::thread::spawn(move || {
+            let result = update_check::download_and_verify_asset(&repo, &tag, &download_url);
+            if let Ok(mut state) = shared.lock() {
+                state.download_in_progress = false;
+                match result {
+                    Ok(path) => state.downloaded_path = Some(path),
+                    Err(err) => state.download_error = Some(err),
+                }
+            }
+            ctx.request_repaint();
+        });
     }
 
     /// Bug report dialog (guide §7.1): review the captured report, add notes,
