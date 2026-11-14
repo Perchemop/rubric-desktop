@@ -17,10 +17,13 @@
 //!   fails soft and never breaks the update check itself.
 
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
+use std::fs::File;
+use std::io::{copy, Read};
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 pub mod signature;
-
 pub use signature::SignatureState;
 
 /// How long a successful check stays valid before it may be refreshed.
@@ -42,11 +45,12 @@ const SIGNATURE_ASSET: &str = "SHA256SUMS.txt.minisig";
 pub enum UpdateStatus {
     /// Running version is the newest published release.
     UpToDate,
-    /// A newer release exists; carries its tag, URL and the state of its
-    /// checksum-manifest signature.
+    /// A newer release exists; carries its tag, URL, the platform-specific
+    /// download URL and the state of its checksum-manifest signature.
     Available {
         latest_version: String,
         url: String,
+        download_url: Option<String>,
         signature: SignatureState,
     },
     /// The check could not be completed (offline, rate-limited, bad payload…).
@@ -79,6 +83,47 @@ pub struct Release {
     /// Assets attached to the release; empty when the payload omits them.
     #[serde(default)]
     pub assets: Vec<ReleaseAsset>,
+}
+
+/// Preferred asset file-name pattern for the current platform, in priority
+/// order. The first matching asset found in the release is used for download.
+///
+/// Platform naming convention (set by `.github/workflows/package.yml`):
+///   - Linux aarch64:   `rubric-linux-arm64.zip`
+///   - Linux x86_64:    `rubric-linux-x86_64.tar.gz`, `rubric-linux-x86_64.zip`
+///   - macOS arm64:     `rubric-macos-arm64.zip`, `rubric-macos.dmg`
+///   - Windows x86_64:  `rubric-windows-x86_64.zip`, `rubric.msi`
+fn preferred_asset_names() -> &'static [&'static str] {
+    let os = std::env::consts::OS;
+    let arch = std::env::consts::ARCH;
+    match (os, arch) {
+        ("linux", "aarch64") => &["rubric-linux-arm64.zip"],
+        ("linux", "x86_64") => &["rubric-linux-x86_64.tar.gz", "rubric-linux-x86_64.zip"],
+        ("macos", "aarch64") => &["rubric-macos-arm64.zip", "rubric-macos.dmg"],
+        ("windows", "x86_64") => &["rubric-windows-x86_64.zip", "rubric.msi"],
+        // Fallback: try any asset whose name contains the OS + arch triplet.
+        _ => &[],
+    }
+}
+
+/// Find the download URL for the asset matching the current platform.
+///
+/// Returns `None` when no asset matches a preferred name and the fallback
+/// list is empty (e.g. an unsupported platform).
+pub fn asset_url_for_platform(assets: &[ReleaseAsset]) -> Option<String> {
+    let patterns = preferred_asset_names();
+    if patterns.is_empty() {
+        return None;
+    }
+    for pattern in patterns {
+        if let Some(asset) = assets
+            .iter()
+            .find(|a| a.name == *pattern && !a.browser_download_url.is_empty())
+        {
+            return Some(asset.browser_download_url.clone());
+        }
+    }
+    None
 }
 
 /// Parsed semantic version (major.minor.patch, optional pre-release suffix).
@@ -199,6 +244,7 @@ fn check_now(repo: &str, current: &str) -> UpdateStatus {
     // release; they are only fetched when a newer release is offered, and a
     // fetch failure must never break the update check itself.
     let checksum_urls = checksum_asset_urls(&release.assets);
+    let download_url = asset_url_for_platform(&release.assets);
     let status = finish(repo, current, release);
     match status {
         UpdateStatus::Available {
@@ -208,6 +254,7 @@ fn check_now(repo: &str, current: &str) -> UpdateStatus {
         } => UpdateStatus::Available {
             latest_version,
             url,
+            download_url,
             signature: fetch_and_verify_signature(checksum_urls.as_ref()),
         },
         other => other,
@@ -259,6 +306,92 @@ fn fetch_and_verify_signature(urls: Option<&(String, String)>) -> SignatureState
     signature::verify_manifest(&manifest, &sig)
 }
 
+/// Download `asset_url` to a temp file, verify its SHA-256 against the
+/// release's `SHA256SUMS.txt` checksum manifest, and return the local path.
+///
+/// Every failure is reported as an `Err(String)`: network problems, missing
+/// manifest, missing entry for the asset, or a checksum mismatch. Callers
+/// decide how to surface the error to the user (never a silent failure).
+///
+/// `tag` is the release tag (e.g. `"v0.4.4"`), used to construct the
+/// `SHA256SUMS.txt` download URL on GitHub Releases.
+pub fn download_and_verify_asset(
+    repo: &str,
+    tag: &str,
+    asset_url: &str,
+) -> Result<PathBuf, String> {
+    // Derive the asset file name from the URL (last path component).
+    let asset_name = Path::new(asset_url)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| format!("cannot derive asset name from URL: {asset_url}"))?;
+
+    // Build the checksum-manifest URL on GitHub Releases.
+    let manifest_url =
+        format!("https://github.com/{repo}/releases/download/{tag}/{MANIFEST_ASSET}");
+
+    // Fetch the manifest text.
+    let manifest = fetch_text(&manifest_url)
+        .ok_or_else(|| format!("could not fetch checksum manifest from {manifest_url}"))?;
+
+    // Find the expected SHA-256 for this asset name in the manifest.
+    // Lines look like: "<64 hex chars>  <asset name>"
+    let expected_hash = manifest
+        .lines()
+        .find_map(|line| {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() == 2 && parts[1] == asset_name {
+                Some(parts[0].to_string())
+            } else {
+                None
+            }
+        })
+        .ok_or_else(|| format!("no checksum entry for {asset_name} in manifest"))?;
+
+    // Download the asset to a temp file.
+    let resp = ureq::get(asset_url)
+        .header("User-Agent", "rubric-update-check")
+        .call()
+        .map_err(|e| format!("download failed for {asset_url}: {e}"))?;
+
+    let temp_dir = std::env::temp_dir();
+    let temp_path = temp_dir.join(format!("rubric-update-{asset_name}"));
+    let mut out = File::create(&temp_path)
+        .map_err(|e| format!("could not create temp file {temp_path:?}: {e}"))?;
+
+    let body = resp.into_body();
+    let mut reader = body.into_reader();
+    copy(&mut reader, &mut out)
+        .map_err(|e| format!("could not write download to {temp_path:?}: {e}"))?;
+    drop(out);
+
+    // Compute SHA-256 of the downloaded file.
+    let mut file = File::open(&temp_path)
+        .map_err(|e| format!("could not open downloaded file {temp_path:?}: {e}"))?;
+    let mut hasher = Sha256::new();
+    let mut buf = [0u8; 8192];
+    loop {
+        let n = file
+            .read(&mut buf)
+            .map_err(|e| format!("read error: {e}"))?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    let actual_hash = format!("{:x}", hasher.finalize());
+
+    // Compare against the manifest.
+    if actual_hash != expected_hash {
+        let _ = std::fs::remove_file(&temp_path);
+        return Err(format!(
+            "checksum mismatch for {asset_name}: expected {expected_hash}, got {actual_hash}"
+        ));
+    }
+
+    Ok(temp_path)
+}
+
 /// The comparison half of a check, split out so it is testable without a
 /// network. `repo` is only used to build the release URL. `finish` never
 /// touches the network, so an `Available` result always starts with
@@ -278,6 +411,7 @@ fn finish(_repo: &str, current: &str, release: Release) -> UpdateStatus {
         UpdateStatus::Available {
             latest_version: release.tag_name.clone(),
             url: release.html_url.clone(),
+            download_url: None,
             signature: SignatureState::Missing,
         }
     } else {
@@ -404,10 +538,14 @@ mod tests {
             UpdateStatus::Available {
                 latest_version,
                 url,
+                download_url,
                 signature,
             } => {
                 assert_eq!(latest_version, "v0.2.0");
                 assert!(url.contains("/tag/v0.2.0"));
+                // `finish` is pure (no network), so no download URL is set yet;
+                // `check_now` fills it in from the release assets.
+                assert_eq!(download_url, None);
                 // `finish` is pure (no network), so the signature state can
                 // only start as Missing; `check_now` upgrades it.
                 assert_eq!(signature, SignatureState::Missing);
