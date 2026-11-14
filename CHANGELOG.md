@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented here. Format: semantic-ish for this repo (Added/Changed/Fixed/Docs).
 
+## [0.4.5] - 2026-11-15
+
+### Fixed
+- **Canvas drawing tools** (`ui/canvas.rs`): `creation_allowed()` returned an
+  inverted boolean — drawing tools only worked on a *locked* default layer.
+  Now returns `true` only when a document is open and the default layer is
+  unlocked. All markup tools (shapes, lines, ink, text, review markups,
+  measurements) now create visible marks on the canvas.
+
+### Changed
+- **Tool selection** (`ui/toolbar.rs`, `ui/app_topbar.rs`): replaced the
+  cluttered inline toolbar strip (all 25 tools side-by-side) with a "Tools"
+  drop-down menu grouped by family (Select, Review, Shapes, Paths, Measure,
+  Calibrate), following the existing context-menu pattern. The active tool
+  remains visible in the top-bar chip.
+
+### Added
+- **In-app update download & install** (`crates/update-check`, `ui/app.rs`):
+  the "Check for Updates" window now offers "Download & Install" when a
+  platform-specific installer exists and its minisign signature is verified.
+  Downloads to a temp file, verifies SHA-256 against `SHA256SUMS.txt`, then
+  offers "Open installer". Never auto-installs; gated on verified signature
+  (never on Failed/Missing). Users can still open the release page in a
+  browser.
+
 ## [0.4.3] - 2026-11-14
 
 ### Fixed
