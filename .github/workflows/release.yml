@@ -374,6 +374,16 @@ jobs:
           else
             echo "release $tag already exists; uploading assets"
           fi
+          # Delete any existing assets from previous (possibly failed) runs so
+          # --clobber never hits a 404 on a stale asset ID from a tag that was
+          # deleted and recreated.
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            echo "Clearing existing release assets for $tag..."
+            gh release view "$tag" --json assets --jq '.assets[].id' 2>/dev/null | \
+              while read -r asset_id; do
+                gh release delete-asset "$tag" "$asset_id" 2>/dev/null || true
+              done
+          fi
           # --clobber makes re-runs idempotent. Read the artefact list into an
           # array so newline-separated values survive as data, not source.
           mapfile -t artefacts <<< "$ARTEFACTS"
