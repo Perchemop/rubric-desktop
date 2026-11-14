@@ -359,7 +359,9 @@ pub fn download_and_verify_asset(
     let mut out = File::create(&temp_path)
         .map_err(|e| format!("could not create temp file {temp_path:?}: {e}"))?;
 
-    copy(&mut resp.into_body(), &mut out)
+    let mut body = resp.into_body();
+    let mut reader = body.into_reader();
+    copy(&mut reader, &mut out)
         .map_err(|e| format!("could not write download to {temp_path:?}: {e}"))?;
     drop(out);
 
