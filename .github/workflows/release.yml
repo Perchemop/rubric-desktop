@@ -388,7 +388,7 @@ jobs:
             echo "Clearing existing assets on release $tag..."
             gh release view "$tag" --json assets --jq '.assets[].id' 2>/dev/null | \
               while read -r asset_id; do
-                gh release delete-asset "$tag" "$asset_id" --yes 2>/dev/null || true
+                gh release delete-asset "$tag" "$asset_id" 2>/dev/null || true
               done || true
           fi
           gh release upload "$tag" "${artefacts[@]}"
