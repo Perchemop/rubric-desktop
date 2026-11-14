@@ -379,8 +379,17 @@ jobs:
           # its list, so add it here. Signing hard-fails when the secrets are
           # missing, so the file always exists by the time this step runs.
           artefacts+=("dist/SHA256SUMS.txt.minisig")
-          # --clobber replaces existing assets with the same name, creates missing
-          # ones. Works correctly on an existing release without needing to delete.
-          gh release upload "$tag" "${artefacts[@]}" --clobber
+          # If the release already exists (e.g. from a previous failed run),
+          # clear its assets first so the upload below never hits
+          # "ReleaseAsset.name already exists". --clobber alone does not
+          # reliably replace assets on some gh versions, so delete then upload.
+          if gh release view "$tag" --json assets -q '.assets | length' 2>/dev/null | grep -qv '^0$'; then
+            echo "Clearing existing assets on release $tag..."
+            gh release view "$tag" --json assets -r '.assets[].id' 2>/dev/null | \
+              while read -r asset_id; do
+                gh release delete-asset "$tag" "$asset_id" 2>/dev/null || true
+              done
+          fi
+          gh release upload "$tag" "${artefacts[@]}"
           # Finalise the release so uploaded assets are published.
           gh release edit "$tag" --draft=false
