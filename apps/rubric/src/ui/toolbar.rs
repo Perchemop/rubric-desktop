@@ -101,25 +101,6 @@ const TOOL_FAMILIES: &[(&str, &[Tool])] = &[
     ("Calibrate", &[Tool::Calibrate]),
 ];
 
-/// Draw the top-strip toolbar (all tool icons inline).
-///
-/// Kept for backward compatibility but no longer the primary tool selector —
-/// use [`draw_tool_dropdown`] instead to avoid screen-clutter.
-pub(crate) fn draw_toolbar(ui: &mut Ui, active: &mut Tool, _status: &mut String) {
-    ui.horizontal_wrapped(|ui| {
-        ui.label("Tools:");
-        for (family_index, (_name, tools)) in TOOL_FAMILIES.iter().enumerate() {
-            // small gap between families so the strip stays scannable
-            if family_index > 0 {
-                ui.add_space(6.0);
-            }
-            for tool in tools.iter() {
-                tool_button(ui, active, *tool, tool.label());
-            }
-        }
-    });
-}
-
 /// Draw a single "Tools" drop-down menu button that lists every tool grouped
 /// by family. This replaces the inline toolbar strip so the top bar stays
 /// compact regardless of how many tools exist.
