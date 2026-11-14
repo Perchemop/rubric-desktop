@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented here. Format: semantic-ish for this repo (Added/Changed/Fixed/Docs).
 
-## [Unreleased]
+## [0.4.0] - 2026-11-14
 
 ### Added
 
@@ -70,12 +70,19 @@ All notable changes to this project will be documented here. Format: semantic-is
   `markup_geometry`; `hit_tolerance_page`/`measure_anchor` moved to
   `ui/canvas_geom.rs`).
 
+- **Signed releases + checksum-verified artefacts** (PR #175): release
+  artefacts are now signed with minisign (Ed25519, key ID
+  `5DDF86377FAD5DB1`); each release publishes `SHA256SUMS.txt.minisig`
+  next to the archives, and the app verifies the signature before applying
+  an update. Public key embedded at `assets/release-signing.pub`.
+
 ### Docs
 
 - Research notes for async page thumbnails and signed releases recorded as
   approved 2026-11-09 in `docs/research/README.md`; stray tracked
   `apps/rubric/src/ui/inspector.rs.orig` merge artifact removed and
   `*.orig`/`*.bak`/`*.rej` ignored (PR #160).
+
 
 ## [0.3.0] - 2026-11-06
 
