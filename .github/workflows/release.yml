@@ -376,7 +376,7 @@ jobs:
               gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
             fi
           fi
-          gh release upload "$tag" \
+          gh release upload "$tag" --clobber \
             dist/packages/linux-packages/rubric-linux-x86_64.tar.gz \
             dist/packages/linux-packages/rubric-x86_64.AppImage \
             dist/packages/macos-packages/rubric-macos.dmg \
@@ -388,7 +388,6 @@ jobs:
             dist/rubric-windows-x86_64.zip \
             dist/SHA256SUMS \
             dist/SHA256SUMS.txt \
-            dist/SHA256SUMS.txt.minisig \
-            --clobber
+            dist/SHA256SUMS.txt.minisig
           # Finalise the release so uploaded assets are published.
           gh release edit "$tag" --draft=false
