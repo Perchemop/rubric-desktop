@@ -1078,7 +1078,7 @@ impl RubricApp {
                         if can_install {
                             if let Some(dl) = download_url {
                                 if ui.button("Download & Install").clicked() {
-                                    self.begin_update_download(ctx, dl);
+                                    self.begin_update_download(ctx, dl.clone());
                                 }
                             }
                         } else if matches!(signature, update_check::SignatureState::Failed) {

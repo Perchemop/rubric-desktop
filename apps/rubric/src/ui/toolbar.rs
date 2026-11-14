@@ -144,7 +144,6 @@ pub(crate) fn draw_tool_dropdown(ui: &mut Ui, active: &mut Tool) -> bool {
                     if ui.selectable_label(selected, text).clicked() {
                         *active = *tool;
                         changed = true;
-                        ui.close_menu();
                     }
                 }
                 ui.separator();
