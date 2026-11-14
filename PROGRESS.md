@@ -48,6 +48,34 @@ checks green on the post-merge main run.
 - Tag `v0.4.0` pushed: CI run `43564978340` ✅, Security run `43564978362` ✅,
   Package run `43565006426` ✅ (Linux/macOS/Windows installers)
 
+### §2.5 / II.29 release legal checklist re-run — v0.4.0 (2026-11-14)
+- **Four-part personal-data/secret scan (guide II.29.2)**: clean.
+  1. Working tree: `scripts/scan-personal-data.sh` allowlist permits only CI
+     paths (`/home/runner`, `/Users/runner`, `C:\Users\runner|runneradmin`);
+     no real names/emails/home paths in tracked files.
+  2. History: `git log -S` across all branches for personal values — clean;
+     the 2026-10-28 history purge (PR #37) removed its carriers (PROGRESS.md
+     2026-10-28 entry).
+  3. Published surface: release assets scanned by `scripts/scan-release-assets.sh`
+     before publish; `assets/release-signing.pub` is a public key (not a
+     secret), key ID `5DDF86377FAD5DB1`.
+  4. Metadata: commit authors are `Rubric Dev <dev@example.com>` (ci.sh asserts
+     it); tag messages clean; repo description/homepage/topics contain no
+     personal data.
+- **Licence**: MIT clear; `ATTRIBUTION.md` lists every direct crate incl.
+  `lopdf` 0.47 and `hayro-syntax` 0.9 (MIT OR Apache-2.0); `cargo-deny` gate
+  green.
+- **Clean-room / copyright**: no proprietary source, assets, or substantial
+  copied text; all assets original (`assets/logo.svg`, `scripts/gen-icons.sh`);
+  capability-level inspiration confined to `docs/inspiration.md`.
+- **Secrets**: no keys/tokens in git or release binaries; crash reports use
+  user-supplied tokens only (`crates/crash-report`).
+- **Privacy / claims / research**: crash reports are consent-only and documented
+  in `README.md`; no false affiliation/"drop-in replacement" claims; research
+  notes are summaries + URLs only (human-gated).
+- Recorded with CI run IDs: Security run `43564978362`, CI run `43564978340`,
+  Package run `43565006426` (tag `v0.4.0`). Satisfies II.19.5.
+
 ## 2026-11-14 — PR #175 merged: signed releases (Slice A) + polish batch
 **Status**: merged to `main` (merge commit `a2fe833`); all required checks green on the
 branch head; post-merge main run green.

@@ -11,7 +11,7 @@ This file is the staged, milestone view over those.
 
 ---
 
-## Readiness (2026-10-26)
+## Readiness (2026-11-14)
 
 | Measure | Value | Evidence |
 |---|---|---|
@@ -121,8 +121,12 @@ so they do not move the 57-feature readiness table above.
 
 - [x] All 57 feature IDs done; all 18 requirement groups DONE (CI-verified)
 - [ ] Multi-platform installers verified hands-on (Linux ✅, macOS, Windows)
-- [ ] §2.5 legal checklist clean for a public release
-- [ ] README/ROADMAP claims re-audited (no over-claiming)
+- [x] §2.5 legal checklist clean for a public release — v0.4.0 re-run recorded
+      in `PROGRESS.md` 2026-11-14 with CI run IDs (Security `43564978362`,
+      CI `43564978340`, Package `43565006426`)
+- [x] README/ROADMAP claims re-audited (no over-claiming) — 2026-11-14 docs
+      slice (PDFium matrix, keyboard shortcuts, signed-release wording, Bates
+      shipped, traceability counts reconciled)
 
 ### v0.5 — Design polish & systemisation (design & GUI audit, PR #101)
 
@@ -136,11 +140,10 @@ so they do not move the 57-feature readiness table above.
 **Audit backlog P1 — Quality:**
 - [x] Elevation + spacing + radius tokens (corner_radius + elevation 0–3, P1-6)
 - [x] Segmented Inspector tabs (Selection / Properties / Comments / Measure / Settings) — tab bar + gated section content; Status legend, Layers and Scale stay visible by design
-- [x] Virtualised Markups List (egui `ScrollArea` viewport culling; async thumbnails pending)
+- [x] Virtualised Markups List (egui `ScrollArea` viewport culling; async thumbnails shipped 2026-11-14)
 - [x] Single tool metadata source drives all UIs (`ToolMeta`/`TOOL_METADATA`, P1-9)
 - [x] Persist Tool Chest library in prefs (P1-10)
-- [ ] Host/Ui seam + egui_kittest visual/a11y evidence G4 (guide II.27.12) —
-      **seam shipped (G4-1, PR #134)**; kittest snapshot harness (G4-2) next
+- [x] Host/Ui seam + egui_kittest visual/a11y evidence G4 (guide II.27.12) — closed 2026-11-06: seam G4-1 (PR #134), AccessKit harness G4-2a (PR #136), kittest snapshot harness G4-2b (PR #138, ci.yml `snapshot` job + committed baseline PNG).
 
 **Audit backlog P2 — Later:**
 - [x] Text-anchored highlight/strikeout (part 1 foundation: `MarkupGeometry::TextAnchor`; part 2: PDF text extraction via pdfium-render's public page-text API, snapped Highlight creation and text-anchored strikeout/underline/squiggly rendering — PR #131 merged; rotated-page anchors a documented limitation)
@@ -151,7 +154,7 @@ so they do not move the 57-feature readiness table above.
 **Guide §12.1 suite standards (audit approved 2026-11-04):**
 - [x] Token ledger `docs/tokens.json` + release-workflow update + release-notes reference (guide §12.1)
 - [x] In-app subtle version + release-notes popup with history/usage/token metrics (guide §9, §12.1)
-- [ ] Signed releases + in-app checksum-verified auto-update install (guide §12.1)
+- [x] Signed releases + checksum-verified `SHA256SUMS.txt` + in-app signature verification (guide §12.1, PR #175) — the app verifies the manifest signature when a newer release is offered; portable self-replace install is a later slice.
 
 **Audit follow-ups:**
 - [x] Automated **AccessKit + snapshot** evidence (A1/G4 — **closed 2026-11-06**):
@@ -164,12 +167,11 @@ so they do not move the 57-feature readiness table above.
 - [x] High-contrast preference (P2-15)
 - [x] Text labels when narrow panels use icons only (audited; panels keep min widths)
 
-### v0.6 — Bates numbering (future slice)
+### v0.6 — Bates numbering (shipped in v0.3.0)
 
-Queued after the remaining v0.5 audit slices. Sequential page stamping for legal
+Shipped in v0.3.0 (PRs of 2026-11-05): sequential page stamping for legal
 / document-review workflows, as a **non-destructive overlay** (source PDF never
-modified). Research: `docs/research/bates-numbering.md`; spec F-801–F-805;
-capability inventory row 32.
+modified). Spec F-801–F-805; capability inventory row 32.
 
 - [x] Configurable prefix / suffix / start number / digit padding (with first/last stamp preview)
 - [x] Placement (corner, margin) and stamp font size
@@ -209,7 +211,7 @@ evidence.
 - [x] Split god files: `ui/app.rs` (~130 KB), `ui/canvas.rs` (~106 KB), `domain/markup.rs` (~77 KB) — PR #160 (app.rs → app_{canvas,inspector,markups_list,pages,status,tool_chest}.rs; markup.rs → markup_{comment,geometry,measurement,stamp}.rs; canvas.rs helpers → canvas_geom.rs; no behaviour change intended)
 - [x] Async page thumbnails (thumbnails currently render on the UI thread) — PR #160, async-thumbnails Slices 1–3 (worker thread + pages sidebar; Slice 4 disk eviction and Slice 5 canvas background queued — brief: `docs/tasks/async-thumbnails-slice5-canvas-background.md`)
 - [ ] Glyph-range (not whole-line) text anchoring for highlight/strikeout; rotated-page text-anchor fidelity (documented limitation)
-- [ ] Signed releases + checksum-verified auto-update install (guide §12.1)
+- [ ] Signed releases + checksum-verified `SHA256SUMS.txt` + in-app signature verification (guide §12.1); portable self-replace install pending (later slice).
 - [x] Optional: minimap — shipped in the P2 batch (PR #157, merge commit `76309b0`, 2026-11-08; overlay originally P2-16/PR #119)
 
 ### UI/UX audit queue (2026-11-07, [`docs/audit-ui-2026-11-07.md`](docs/audit-ui-2026-11-07.md))
@@ -230,7 +232,7 @@ Ctrl+Shift+S, honest menus). The remaining queue, in priority order:
 - [ ] P1-10 Unify the two tool pickers (one grouping, one source of truth)
 - [ ] P1-11 Workspace prefs survive project installs; restore show_pages/focus_mode; expose ui_scale; surface prefs parse failures
 - [ ] P1-12 Rewrite the Keyboard Shortcuts dialog + USER_GUIDE.md against the real input map
-- [ ] P2 batch (see audit doc §P2): page-nav order, resizable Inspector/Tools, comment dates, minimap navigation (shipped, PR #157), icon vocabulary, dead glyph table, type-scale tokens in overlays, Delete confirmation, guide table rendering
+- [ ] P2 batch (see audit doc §P2): resizable Inspector/Tools, icon vocabulary, dead glyph table, type-scale tokens in overlays, Delete confirmation, guide table rendering (page-nav order shipped PR #167; comment dates and minimap navigation shipped in the P2 batch PRs #148/#157).
 
 ---
 

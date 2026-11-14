@@ -73,8 +73,10 @@ All notable changes to this project will be documented here. Format: semantic-is
 - **Signed releases + checksum-verified artefacts** (PR #175): release
   artefacts are now signed with minisign (Ed25519, key ID
   `5DDF86377FAD5DB1`); each release publishes `SHA256SUMS.txt.minisig`
-  next to the archives, and the app verifies the signature before applying
-  an update. Public key embedded at `assets/release-signing.pub`.
+  next to the archives, and the app verifies the checksum-manifest signature
+  when a newer release is offered (it links to the release page to install;
+  portable self-replace is a later slice). Public key embedded at
+  `assets/release-signing.pub`.
 
 ### Docs
 

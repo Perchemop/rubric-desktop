@@ -37,7 +37,7 @@ holds everything unconfirmed.
 
 ## C. Technical preferences
 
-7. **Language/framework**: Pure Rust + egui/eframe (0.36). `[Decision]`
+7. **Language/framework**: Pure Rust + egui/eframe (0.37). `[Decision]`
 8. **Target platforms**: All practical desktop platforms — Windows, macOS,
    Linux (WASM/web evaluated later; mobile only if requested). `[Decision]`
 9. **Offline**: Yes — fully local-first; the app must work with no network.
@@ -56,8 +56,9 @@ holds everything unconfirmed.
     heavy work (test, clippy, check, release build) runs in GitHub Actions.
     `[Fact — user directive 2026-10-19, AGENTS.md "CI-first"]`
 13. **Design system**: Original palette/typography defined in
-    `assets/branding.md`; accessibility review is tracked as F-605 (later).
-    `[Decision]`
+    `assets/branding.md`; accessibility review (F-605) done 2026-10-30
+    (WCAG contrast audit test, audited body-text colours, icon-button
+    tooltips; see `docs/a11y.md`). `[Decision]`
 
 ## E. Name
 
