@@ -349,7 +349,7 @@ pub fn download_and_verify_asset(
         .ok_or_else(|| format!("no checksum entry for {asset_name} in manifest"))?;
 
     // Download the asset to a temp file.
-    let mut resp = ureq::get(asset_url)
+    let resp = ureq::get(asset_url)
         .header("User-Agent", "rubric-update-check")
         .call()
         .map_err(|e| format!("download failed for {asset_url}: {e}"))?;
@@ -359,7 +359,7 @@ pub fn download_and_verify_asset(
     let mut out = File::create(&temp_path)
         .map_err(|e| format!("could not create temp file {temp_path:?}: {e}"))?;
 
-    let mut body = resp.into_body();
+    let body = resp.into_body();
     let mut reader = body.into_reader();
     copy(&mut reader, &mut out)
         .map_err(|e| format!("could not write download to {temp_path:?}: {e}"))?;
