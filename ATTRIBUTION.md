@@ -21,6 +21,8 @@ tests, docs, and branding assets are original work.
 | `rfd` | 0.17 | MIT | Native file dialogs (xdg-portal backend on Linux) |
 | `pdfium-render` | 0.9 | MIT OR Apache-2.0 | Rust bindings to PDFium (runtime binding only) |
 | `hayro` | 0.9 | MIT OR Apache-2.0 | Pure-Rust PDF rendering (optional, `--features hayro`) |
+| `hayro-syntax` | 0.9 | MIT OR Apache-2.0 | Pure-Rust PDF parsing used by the hayro engine |
+| `lopdf` | 0.47 | MIT OR Apache-2.0 | PDF writer used for export/flatten (optional) |
 | `minisign-verify` | 0.3 | MIT | Release-signature verification (in-app update checks) |
 
 Full transitive tree is resolved in `Cargo.lock`. AGPL/GPL dependencies are
@@ -48,8 +50,8 @@ prohibited (AGENTS.md); all crates above are permissively licensed.
 - **Use**: PDF page-size probing and rendering when PDFium is not available
   or when building on platforms where PDFium binaries are difficult to
   distribute.
-- **Status**: v0.3-02 Phase 1 & 2 complete; v0.3-03 Phase 3 pending corpus
-  fidelity validation (≥95% pixel match vs PDFium baseline).
+- **Status**: v0.3-02 Phase 1 & 2 complete; v0.3-03 Phase 3 complete — corpus
+  fidelity ≥95% pixel match vs PDFium baseline validated (PR #74).
 
 ## Fonts and assets
 

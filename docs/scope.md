@@ -27,7 +27,10 @@ Statuses live in `REQUIREMENTS_TRACEABILITY.md`.
 - Digital signatures.
 - Embedding markups back into the PDF file (MVP exports rendered images +
   print; PDF-embedded annotation export is excluded for now).
-- Any network feature: the app is fully offline. `[Fact]`
+- Any network feature: optional and user-initiated only — update check queries
+  the GitHub Releases API on demand (Help ▸ Check for Updates) and crash/bug
+  reports send a user-supplied token only when the user presses Send. No
+  background polling, no cloud, no accounts. `[Fact]`
 
 ## MVP definition
 

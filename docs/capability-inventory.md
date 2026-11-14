@@ -72,6 +72,7 @@ has been implemented and moves out of this section.*
 ## Open process gaps (not product capabilities)
 
 - **G3** — this file (closed by this slice).
-- **G4** — automated `egui_kittest` visual evidence needs a `Host`/plain-`Ui`
-  seam in `RubricApp`; deferred to v0.3 (`docs/guide-compliance.md`). No
-  fabricated harness is used in the meantime.
+- **G4** — automated `egui_kittest` visual evidence: closed 2026-11-06. Host/
+  plain-`Ui` seam (G4-1, PR #134), AccessKit harness (G4-2a, PR #136) and
+  kittest snapshot harness (G4-2b, PR #138, ci.yml `snapshot` job + committed
+  baseline PNG) all shipped. No fabricated harness is used.

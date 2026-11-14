@@ -102,9 +102,9 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 | R-V02-02 | Status workflow audit metadata: reusable style presets (capture/apply + library) and project diff with added/removed/changed by stable id | PARTIAL (domain DONE; preset/diff UI pending) | `src/domain/style_preset.rs`, `src/domain/diff.rs`; `tests/domain_tests.rs::{diff_documents_reports_add_remove_change,style_preset_apply_and_roundtrip}`; CI `40304244261` |
 
 ## Gaps / exclusions
-- Canonical inventory: `docs/spec/README.md` (52 F-IDs across F-1xx…F-7xx), adopted 2026-10-19; see Phase 1 requirement set above.
+- Canonical inventory: `docs/spec/README.md` (57 F-IDs across F-1xx…F-7xx plus F-8xx Bates), adopted 2026-10-19; see Phase 1 requirement set above.
 - PDF import — DONE 2026-10-21 (F-503); report/image export + print — DONE 2026-10-21 (F-505/F-506, F-504 printer dialog pending re-verify on CI artefacts)
-- Open product residuals: none — all 52 spec feature IDs are implemented (see Roadmap).
+- Open product residuals: none — all 57 spec feature IDs are implemented (see Roadmap).
 - Community/security/ops: done as of 2026-10-24 (R-C-001…R-C-012 below); ongoing duties (Dependabot triage, CodeQL findings triage) recorded in GOVERNANCE.md.
 
 ## Verification
@@ -137,10 +137,10 @@ items stay marked LIVE and are re-verified per release (§2.5-style check).
 | R-C-010 | Dependency licence classes + SBOM in CI | DONE/LIVE | deny.toml; security.yml cargo-deny + sbom jobs; ATTRIBUTION.md policy section |
 | R-C-011 | SAST/SCA: CodeQL on schedule+main; Dependabot versions; dependency-review on PRs; branch protection, required check, security updates | DONE/LIVE | security.yml; .github/dependabot.yml; repo settings (branch protection + Dependabot security updates enabled 2026-10-24) |
 | R-C-012 | Launch/name/metrics hygiene: name-conflict check recorded, one home URL, metrics statement | DONE | docs/assumptions-and-questions.md Q28; README links; docs/metrics.md |
-| R-H8-01 | PDFium bundling issue: native library required at runtime, not bundled in releases | IN PROGRESS | PDFium is **not** bundled: user-supplied or distro library by default; the packaging workflow is being fixed to fetch + bundle it and fail rather than ship a PDF-less installer; hayro (v0.3-02) provides a pure-Rust build with no native library |
+| R-H8-01 | PDFium bundling issue: native library required at runtime | DONE | Installers (AppImage, .dmg, MSI, Windows portable zip) fetch + bundle the pinned PDFium and the packaging job fails rather than ship a PDF-less installer; the four plain `rubric-<os>-<arch>.zip` release assets intentionally do not bundle it (user-supplied, see `docs/pdfium.md`); hayro (v0.3-02) provides a pure-Rust build with no native library |
 | R-H8-02 | hayro page-size probing: use hayro-syntax for pure-Rust PDF metadata | DONE | apps/rubric/src/data/pdf.rs::probe_pages_hayro (hayro-syntax v0.8, PR #66 merged) |
 | R-H8-03 | hayro rendering pipeline: render PDF pages to PNG via hayro | DONE | apps/rubric/src/data/pdf.rs::render_page_hayro; PR #67 merged (CI run 41253522725) |
-| R-H8-04 | Corpus fidelity validation: ≥95% pixel match vs PDFium baseline | PENDING | docs/tasks/v0.3-03-corpus-fidelity.md |
+| R-H8-04 | Corpus fidelity validation: ≥95% pixel match vs PDFium baseline | DONE | `apps/rubric/tests/corpus_fidelity.rs` (hayro-gated); PR #74 merged |
 
 Verification evidence for the settings rows: GitHub API read-outs recorded in
 `PROGRESS.md` (2026-10-24).

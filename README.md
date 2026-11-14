@@ -4,8 +4,11 @@
 
 ## Features
 
-- **Original, professionally branded** design (SVG logo, multi-size icons, polished UI skeleton).
-- **Rust only, 100% free/open-source** — no proprietary dependencies; built on egui/eframe.
+- **Original, professionally branded** design (SVG logo, icon assets, polished UI).
+- **Rust implementation, 100% free/open-source** — no proprietary source
+  dependencies; built on egui/eframe. PDF rendering uses the BSD-3-Clause
+  PDFium runtime (bundled in installers, located at run time for plain zips)
+  with an optional pure-Rust `hayro` engine.
 - **Cross-platform desktop** targets: Linux, macOS, Windows (same Rust codebase).
 - **Domain-first architecture**: geometry, markups, measurements, documents, projects and history all pure Rust (easily unit-tested).
 - **Markup tools**: Review (Highlight, Strikeout, Underline, Squiggly, Text, Callout, Note, Stamp), Shapes (Rectangle, Ellipse, Cloud, Polygon, Polyline), Paths (Line, Arrow, Ink) and Measurements (Length, Perimeter, Area, Angle, Diameter, Radius, Count).
@@ -34,8 +37,12 @@ artefact:
 
 | Artefact | PDFium library |
 |---|---|
-| Linux AppImage, macOS `.app`/`.dmg`, Windows MSI and its portable zip | **bundled** — pinned build; the packaging job fails rather than ship an installer without PDF support |
-| Plain release zips (`rubric-<os>-<arch>.zip`) | **not bundled** — the app locates it at run time |
+| Package-workflow artefacts: Linux AppImage, macOS `.app`/`.dmg` (arm64), Windows MSI and its portable zip | **bundled** — pinned build; the packaging job fails rather than ship a PDF-less installer |
+| Plain release zips (`rubric-<os>-<arch>.zip`) | **not bundled** — the app locates PDFium at run time |
+
+Package-workflow artefacts (AppImage, `.dmg`, MSI, Windows portable zip) carry
+PDFium; the four `rubric-<os>-<arch>.zip` release assets do not. macOS builds
+are arm64 only.
 
 For the plain zips, `docs/pdfium.md` covers the download and the discovery
 order: `RUBRIC_PDFIUM_PATH` → the executable's directory → its `lib/`
@@ -79,8 +86,10 @@ Rubric phones home **only when you ask it to**:
   choice: open a pre-filled GitHub issue in your browser (no account needed in
   the app), or paste a **personal** GitHub token, which is used once, kept only
   in memory, and never written to disk or embedded in the app.
-- **Update check** (Help ▸ Check for Updates…): one HTTPS request to the
-  GitHub Releases API, on demand only — never automatic. Offline or
+- **Update check** (Help ▸ Check for Updates…): queries the GitHub Releases API
+  on demand only — never automatic. When a newer release exists it also fetches
+  that release's checksum manifest and minisign signature (up to three HTTPS
+  requests) and verifies the signature before offering to install. Offline or
   rate-limited, the app simply says it could not check.
 
 No telemetry, no analytics, no background polling, no identifiers.
@@ -113,21 +122,21 @@ in `docs/inspiration.md`. Dependency licences are tracked in
 
 | Shortcut | Action |
 |---|---|
-| Ctrl/Cmd + N | New project |
 | Ctrl/Cmd + O | Open project |
 | Ctrl/Cmd + S | Save project |
 | Ctrl/Cmd + Shift + S | Save project as |
 | Ctrl/Cmd + I | Import PDF |
 | Ctrl/Cmd + P | Print |
-| Ctrl/Cmd + W | Quit (Cmd + Q on macOS) |
-| Ctrl + Z / Ctrl + Y | Undo / Redo |
+| Ctrl/Cmd + Z / Ctrl/Cmd + Y | Undo / Redo |
 | Ctrl/Cmd + A | Select all |
 | Ctrl/Cmd + D | Duplicate selection |
-| Ctrl/Cmd + C / Ctrl/Cmd + V | Copy / paste properties |
 | Delete / Backspace | Delete selection |
 | Ctrl/Cmd + + / − / 0 | Zoom in / out / fit page |
 | Page Up / Page Down | Previous / next page |
 | Esc | Cancel current action / close dialog |
+
+New project and Quit are available from the File menu (menu-only — no global
+key binding); Copy / Paste Properties have no keyboard shortcut.
 
 See `ACCESSIBILITY.md` for the full accessibility commitment and `apps/rubric/src/ui/app.rs` for the implementation. In addition to the global shortcuts above, every tool has a single-key shortcut (letter or digit) shown on its toolbar tooltip and in the Tools context menu.
 
