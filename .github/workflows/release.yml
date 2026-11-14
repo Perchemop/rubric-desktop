@@ -363,30 +363,18 @@ jobs:
           if [[ -z "${NOTES_BODY//[[:space:]]/}" ]]; then
             NOTES_BODY="Automated release build for Rubric ${tag}."
           fi
-          # Ensure a clean release exists: if one already exists (e.g. from a
-          # prior failed run), delete it and recreate so the upload below never
-          # hits "asset under the same name already exists" errors.
-          if gh release view "$tag" >/dev/null 2>&1; then
-            echo "Deleting existing release $tag and recreating..."
-            # Delete all assets via the REST API (more reliable than
-            # `gh release delete-asset`), then delete the release itself.
-            release_id=$(gh release view "$tag" --json id --jq '.id' 2>/dev/null || true)
-            if [ -n "$release_id" ]; then
-              gh api "repos/${GITHUB_REPOSITORY}/releases/$release_id/assets" \
-                --jq '.assets[].id' 2>/dev/null | while read -r asset_id; do
-                gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/$asset_id" \
-                  2>/dev/null || true
-              done || true
-              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/$release_id" \
-                2>/dev/null || true
+          # Ensure a release exists for this tag. If one already exists (e.g.
+          # auto-created by GitHub when the tag was pushed, or left over from a
+          # prior failed run), reuse it -- uploading with --clobber will replace
+          # any existing assets with the same names.
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            if [[ "${#prerelease[@]}" -gt 0 ]]; then
+              # A manual dispatch is not a real release: keep it a pre-release so
+              # "Latest release" on the repo still points at a tagged version.
+              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY" "${prerelease[@]}"
+            else
+              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
             fi
-            # Wait for GitHub to fully propagate the deletion before recreating.
-            sleep 10
-          fi
-          if [[ "${#prerelease[@]}" -gt 0 ]]; then
-            gh release create "$tag" --title "Rubric ${tag}" --notes "${NOTES_BODY}" "${prerelease[@]}"
-          else
-            gh release create "$tag" --title "Rubric ${tag}" --notes "${NOTES_BODY}"
           fi
           gh release upload "$tag" "${artefacts[@]}" --clobber
           # Finalise the release so uploaded assets are published.
