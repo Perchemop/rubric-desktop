@@ -380,16 +380,19 @@ jobs:
           # missing, so the file always exists by the time this step runs.
           artefacts+=("dist/SHA256SUMS.txt.minisig")
           # If the release already exists (e.g. from a previous failed run),
-          # clear its assets first so the upload below never hits
-          # "ReleaseAsset.name already exists". --clobber alone does not
-          # reliably replace assets on some gh versions, so delete then upload.
-          asset_count=$(gh release view "$tag" --json assets --jq '.assets | length' 2>/dev/null || echo 0)
-          if [[ "$asset_count" =~ ^[1-9][0-9]*$ ]]; then
-            echo "Clearing existing assets on release $tag..."
-            gh release view "$tag" --json assets --jq '.assets[].id' 2>/dev/null | \
-              while read -r asset_id; do
-                gh release delete-asset "$tag" "$asset_id" 2>/dev/null || true
-              done || true
+          # delete it entirely and recreate so the upload below never hits
+          # "asset under the same name already exists" errors. --clobber alone
+          # does not reliably replace assets on some gh versions.
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Deleting existing release $tag and recreating..."
+            gh release delete "$tag" --yes 2>/dev/null || true
+            # Brief pause to let the deletion propagate before recreating.
+            sleep 5
+            if [[ "${#prerelease[@]}" -gt 0 ]]; then
+              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY" "${prerelease[@]}"
+            else
+              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
+            fi
           fi
           gh release upload "$tag" "${artefacts[@]}"
           # Finalise the release so uploaded assets are published.
