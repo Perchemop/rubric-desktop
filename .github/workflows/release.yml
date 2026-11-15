@@ -363,23 +363,8 @@ jobs:
           if [[ -z "${NOTES_BODY//[[:space:]]/}" ]]; then
             NOTES_BODY="Automated release build for Rubric ${tag}."
           fi
-          # If release already exists (e.g. auto-created by GitHub when the tag
-          # was pushed), delete every existing asset so we start clean.
-          # `gh release upload --clobber` is not reliable across gh versions,
-          # so we delete assets individually via the REST API first.
-          if gh release view "$tag" >/dev/null 2>&1; then
-            echo "Deleting existing assets on release $tag..."
-            release_id=$(gh release view "$tag" --json id --jq '.id' 2>/dev/null || true)
-            if [ -n "$release_id" ]; then
-              gh release view "$tag" --json assets --jq '.assets[].id' 2>/dev/null | \
-                while read -r asset_id; do
-                  gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/$asset_id" 2>/dev/null || true
-                done || true
-            fi
-            sleep 10
-          fi
-
-          # Create release if it doesn't exist yet.
+          # Ensure a release exists for this tag. If one already exists (e.g.
+          # auto-created by GitHub when the tag was pushed), reuse it.
           if ! gh release view "$tag" >/dev/null 2>&1; then
             if [[ "${#prerelease[@]}" -gt 0 ]]; then
               gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY" "${prerelease[@]}"
@@ -388,8 +373,9 @@ jobs:
             fi
           fi
 
-          # Upload assets.
-          gh release upload "$tag" \
+          # Upload assets with --clobber to replace any existing assets with the
+          # same names.
+          gh release upload "$tag" --clobber \
             dist/packages/linux-packages/rubric-linux-x86_64.tar.gz \
             dist/packages/linux-packages/rubric-x86_64.AppImage \
             dist/packages/macos-packages/rubric-macos.dmg \
