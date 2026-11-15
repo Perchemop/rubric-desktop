@@ -8,6 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::geom::{Pt, Rect};
+use super::text_anchor::GlyphLine;
 
 /// Geometry of a markup, in page points.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -93,6 +94,34 @@ impl MarkupGeometry {
             }
             MarkupGeometry::Count { at, .. } => Rect::new(at.x - 8.0, at.y - 8.0, 16.0, 16.0),
         }
+    }
+
+    /// Tight on-page rectangle of a text-anchored markup, using the extracted
+    /// line's glyph boxes when the caller can supply them.
+    ///
+    /// [`Self::bounds`] can only describe the whole stored line, because a
+    /// markup carries an origin, a width and a height and nothing else. When
+    /// the line the text was extracted from is available ([`GlyphLine`]), this
+    /// narrows the rectangle to the glyphs the markup's own `text` actually
+    /// covers — a highlight on two words then draws two words instead of the
+    /// rest of the line, and hit testing agrees with what is drawn.
+    ///
+    /// Falls back to [`Self::bounds`] for every other geometry variant, when no
+    /// line is supplied, and when the stored text cannot be located in the
+    /// line: glyph-tight anchoring is an improvement, never a failure mode.
+    pub fn anchored_bounds(&self, line: Option<&GlyphLine>) -> Rect {
+        self.glyph_range_bounds(line).unwrap_or_else(|| self.bounds())
+    }
+
+    /// Glyph-tight rectangle for a text anchor, when the extractor's line is
+    /// available and the anchor's stored text can be located in it.
+    fn glyph_range_bounds(&self, line: Option<&GlyphLine>) -> Option<Rect> {
+        let MarkupGeometry::TextAnchor { text, .. } = self else {
+            return None;
+        };
+        let line = line?;
+        let range = line.range_of_substring(text, 0)?;
+        line.range_bounds(range)
     }
 
     /// Move the geometry by a delta.
@@ -229,6 +258,17 @@ pub(crate) fn polyline_hit(p: Pt, points: &[Pt], closed: bool, tol: f32) -> bool
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::text_anchor::{GlyphBox, GlyphLine};
+
+    /// The line "alpha beta": ten 10 pt wide characters starting at x = 0.
+    fn alpha_beta_line() -> GlyphLine {
+        let mut glyphs = Vec::new();
+        for (i, ch) in "alpha beta".chars().enumerate() {
+            let x = i as f32 * 10.0;
+            glyphs.push(GlyphBox::new(ch, Rect::new(x, 0.0, 10.0, 12.0)));
+        }
+        GlyphLine::new(glyphs, 12.0)
+    }
 
     #[test]
     fn bounds_segment_is_corner_to_corner() {
@@ -262,6 +302,49 @@ mod tests {
             text_width: 100.0,
         };
         assert_eq!(g.bounds(), Rect::new(20.0, 30.0, 100.0, 14.0));
+    }
+
+    #[test]
+    fn anchored_bounds_narrows_a_text_anchor_to_the_stored_words() {
+        let g = MarkupGeometry::TextAnchor {
+            at: Pt::new(0.0, 0.0),
+            text: "beta".to_string(),
+            line_height: 12.0,
+            line_count: 1,
+            text_width: 100.0,
+        };
+        let line = alpha_beta_line();
+        // "beta" is the last four glyphs, so it covers x = 60..100 only.
+        assert_eq!(
+            g.anchored_bounds(Some(&line)),
+            Rect::new(60.0, 0.0, 40.0, 12.0)
+        );
+        // Without the extracted line the stored whole-line box is used.
+        assert_eq!(g.anchored_bounds(None), Rect::new(0.0, 0.0, 100.0, 12.0));
+    }
+
+    #[test]
+    fn anchored_bounds_falls_back_when_the_text_is_not_in_the_line() {
+        let g = MarkupGeometry::TextAnchor {
+            at: Pt::new(0.0, 0.0),
+            text: "gamma".to_string(),
+            line_height: 12.0,
+            line_count: 1,
+            text_width: 100.0,
+        };
+        assert_eq!(
+            g.anchored_bounds(Some(&alpha_beta_line())),
+            Rect::new(0.0, 0.0, 100.0, 12.0)
+        );
+    }
+
+    #[test]
+    fn anchored_bounds_ignores_the_line_for_other_geometry() {
+        let g = MarkupGeometry::Bounds(Rect::new(1.0, 2.0, 3.0, 4.0));
+        assert_eq!(
+            g.anchored_bounds(Some(&alpha_beta_line())),
+            Rect::new(1.0, 2.0, 3.0, 4.0)
+        );
     }
 
     #[test]

@@ -6,6 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::domain::style::DefaultStyles;
 use crate::domain::style_preset::StylePresetLibrary;
 
 /// Colour theme used by the application shell.
@@ -76,6 +77,10 @@ pub struct AppPrefs {
     /// who need maximum contrast. Missing values fall back to `false`.
     #[serde(default)]
     pub high_contrast: bool,
+    /// Per-kind default style overrides ("Set As Default"). Missing values fall
+    /// back to empty overrides, so new markups use their kind's coded default.
+    #[serde(default)]
+    pub default_styles: DefaultStyles,
 }
 
 fn default_true() -> bool {
@@ -100,6 +105,7 @@ impl Default for AppPrefs {
             focus_mode: false,
             show_minimap: false,
             high_contrast: false,
+            default_styles: DefaultStyles::default(),
         }
     }
 }
@@ -153,6 +159,7 @@ mod tests {
             focus_mode: true,
             show_minimap: false,
             high_contrast: true,
+            default_styles: DefaultStyles::default(),
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");

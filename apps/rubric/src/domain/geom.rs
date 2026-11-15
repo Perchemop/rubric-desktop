@@ -171,6 +171,49 @@ pub fn circle_from_center(center: Pt, edge: Pt) -> Rect {
     Rect::new(center.x - r, center.y - r, 2.0 * r, 2.0 * r)
 }
 
+/// Size of a page once its `/Rotate` value is applied for display.
+///
+/// A quarter turn swaps width and height; half turns and whole turns do not.
+/// `quarter_turns` is taken modulo 4, so any value is accepted.
+pub fn rotated_page_size(page_w: f32, page_h: f32, quarter_turns: u8) -> (f32, f32) {
+    let (w, h) = (page_w.max(0.0), page_h.max(0.0));
+    if quarter_turns % 2 == 1 {
+        (h, w)
+    } else {
+        (w, h)
+    }
+}
+
+/// Map a rectangle from an un-rotated PDF page into the displayed page space.
+///
+/// A PDF `/Rotate` value turns the page **clockwise** for display: a page whose
+/// media box is `w × h` is shown as `h × w` at 90° and 270°. Text extractors
+/// report character boxes in the un-rotated user space, so every such box must
+/// pass through this mapping before it can be drawn, hit-tested, or compared
+/// with a pointer position — otherwise text-anchored markups land offset on
+/// rotated pages.
+///
+/// `quarter_turns` is taken modulo 4, so `0` and `4` are the identity and any
+/// value works. Both corners are mapped and the result normalised, so a
+/// rectangle never comes back with a negative width.
+pub fn rotate_rect_cw(rect: Rect, page_w: f32, page_h: f32, quarter_turns: u8) -> Rect {
+    let w = page_w.max(0.0);
+    let h = page_h.max(0.0);
+    let map = |p: Pt| -> Pt {
+        match quarter_turns % 4 {
+            // Top-left of the source becomes the top-right of the display.
+            1 => Pt::new(h - p.y, p.x),
+            2 => Pt::new(w - p.x, h - p.y),
+            // Top-left of the source becomes the bottom-left of the display.
+            3 => Pt::new(p.y, w - p.x),
+            _ => p,
+        }
+    };
+    let a = map(Pt::new(rect.x, rect.y));
+    let b = map(Pt::new(rect.right(), rect.bottom()));
+    Rect::from_corners(a, b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -211,5 +254,54 @@ mod tests {
         let v = Pt::new(1.0, 0.0);
         let b = Pt::new(1.0, 1.0);
         assert!((angle_degrees(a, v, b) - 90.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn rotated_page_size_swaps_width_and_height_on_quarter_turns() {
+        assert_eq!(rotated_page_size(100.0, 200.0, 0), (100.0, 200.0));
+        assert_eq!(rotated_page_size(100.0, 200.0, 1), (200.0, 100.0));
+        assert_eq!(rotated_page_size(100.0, 200.0, 2), (100.0, 200.0));
+        assert_eq!(rotated_page_size(100.0, 200.0, 3), (200.0, 100.0));
+        // Out-of-range values wrap and negative sizes clamp.
+        assert_eq!(rotated_page_size(100.0, 200.0, 5), (200.0, 100.0));
+        assert_eq!(rotated_page_size(-5.0, -7.0, 0), (0.0, 0.0));
+    }
+
+    #[test]
+    fn rotate_rect_cw_zero_and_full_turns_are_the_identity() {
+        let rect = Rect::new(10.0, 20.0, 30.0, 40.0);
+        assert_eq!(rotate_rect_cw(rect, 100.0, 200.0, 0), rect);
+        assert_eq!(rotate_rect_cw(rect, 100.0, 200.0, 4), rect);
+    }
+
+    #[test]
+    fn rotate_rect_cw_quarter_turn_sends_top_left_to_top_right() {
+        // Page 100 x 200 becomes 200 x 100; the source top-left corner lands on
+        // the display's top-right, which is the clockwise convention.
+        let rect = Rect::new(0.0, 0.0, 10.0, 20.0);
+        assert_eq!(
+            rotate_rect_cw(rect, 100.0, 200.0, 1),
+            Rect::new(180.0, 0.0, 20.0, 10.0)
+        );
+    }
+
+    #[test]
+    fn rotate_rect_cw_half_and_three_quarter_turns() {
+        let rect = Rect::new(0.0, 0.0, 10.0, 20.0);
+        assert_eq!(
+            rotate_rect_cw(rect, 100.0, 200.0, 2),
+            Rect::new(90.0, 180.0, 10.0, 20.0)
+        );
+        // Three quarter turns put the source top-left at the bottom-left.
+        assert_eq!(
+            rotate_rect_cw(rect, 100.0, 200.0, 3),
+            Rect::new(0.0, 90.0, 20.0, 10.0)
+        );
+    }
+
+    #[test]
+    fn rotate_rect_cw_normalises_a_rect_that_spans_the_origin() {
+        let rotated = rotate_rect_cw(Rect::new(0.0, 0.0, 100.0, 200.0), 100.0, 200.0, 1);
+        assert_eq!(rotated, Rect::new(0.0, 0.0, 200.0, 100.0));
     }
 }

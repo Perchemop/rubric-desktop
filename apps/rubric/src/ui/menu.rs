@@ -49,6 +49,8 @@ pub(crate) fn draw_selection_commands(ui: &mut Ui, ui_state: &mut UiState) {
         EditorAction::DeleteSelection,
         EditorAction::Duplicate,
         EditorAction::ClearSelection,
+        EditorAction::ToggleLock,
+        EditorAction::SetAsDefault,
     ] {
         action_button(ui, ui_state, action);
     }

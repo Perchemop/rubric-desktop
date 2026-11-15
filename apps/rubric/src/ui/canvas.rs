@@ -75,8 +75,48 @@ fn finish_markup(m: Markup, ui_state: &super::app::UiState) -> Markup {
         // no review verdict to overwrite at creation time.
         m.with_style(preset.style)
     } else {
+        // Apply per-kind default style override if set (gap #2: Set As Default).
+        // When no override is set, effective_style falls back to
+        // kind.default_style(), making this a no-op and preserving existing behaviour.
+        if !ui_state.default_styles.is_empty() {
+            m.style = ui_state.default_styles.effective_style(m.kind);
+        }
         m
     }
+}
+
+/// Snap a segment's endpoint to the nearest 0°/45°/90° direction from `start`,
+/// keeping the same distance. Used when Shift is held while dragging to draw a
+/// line or arrow (Bluebeam behaviour). Returns `end` unchanged for a
+/// zero-length gesture.
+fn constrain_segment_to_angle(start: Pt, end: Pt) -> Pt {
+    let dx = end.x - start.x;
+    let dy = end.y - start.y;
+    let dist = (dx * dx + dy * dy).sqrt();
+    if dist == 0.0 {
+        return end;
+    }
+    let quarter = std::f32::consts::PI / 4.0;
+    let angle = dy.atan2(dx);
+    let snapped = (angle / quarter).round() * quarter;
+    Pt::new(
+        start.x + dist * snapped.cos(),
+        start.y + dist * snapped.sin(),
+    )
+}
+
+/// Snap a bounds endpoint so the rectangle is a square (width == height),
+/// using the larger of the two extents and preserving the drag direction.
+/// Used when Shift is held while dragging to draw a rectangle or ellipse.
+/// Returns `end` unchanged for a zero-length gesture.
+fn constrain_bounds_to_square(start: Pt, end: Pt) -> Pt {
+    let dx = end.x - start.x;
+    let dy = end.y - start.y;
+    let s = dx.abs().max(dy.abs());
+    if s == 0.0 {
+        return end;
+    }
+    Pt::new(start.x + dx.signum() * s, start.y + dy.signum() * s)
 }
 
 /// Shortest reference segment (page points) accepted for drag calibration
@@ -964,7 +1004,14 @@ pub(crate) fn draw_canvas(
     // `page_pos` additionally honours snap-to-grid (F-405) and drives creation,
     // so new markups land on grid intersections.
     let raw_pos = response.hover_pos().map(|h| to_page(h, pan, zoom, origin));
-    let page_pos = raw_pos.map(|p| ui_state.grid.snap(p));
+    // Read the keyboard modifiers once: Shift constrains drags, Ctrl bypasses
+    // grid snap so the user can draw freely between grid points.
+    let modifiers = ui.ctx().input(|i| i.modifiers);
+    let shift_held = modifiers.shift;
+    let ctrl_held = modifiers.ctrl;
+    // `page_pos` drives creation positions; honour snap-to-grid (F-405) unless
+    // Ctrl is held, in which case the pointer lands exactly where it is.
+    let page_pos = raw_pos.map(|p| if ctrl_held { p } else { ui_state.grid.snap(p) });
     // The status-bar readout reports the *true* pointer (audit M9), matching
     // what hit-testing uses; snapping only affects where new markups land.
     *last_page_pos = raw_pos;
@@ -1810,8 +1857,39 @@ pub(crate) fn draw_canvas(
             // Update in-progress draw.
             if let Some(pp) = page_pos {
                 match draw_state {
-                    super::app::DrawState::Bounds { end, .. } => *end = pp,
-                    super::app::DrawState::Segment { end, .. } => *end = pp,
+                    super::app::DrawState::Bounds { start, end, kind } => {
+                        let start = *start;
+                        let kind = *kind;
+                        if shift_held
+                            && matches!(
+                                kind,
+                                MarkupKind::Rectangle | MarkupKind::Ellipse
+                            )
+                        {
+                            // Shift constrains a rectangle/ellipse drag to a
+                            // square/circle (both sides equal the larger extent).
+                            *end = constrain_bounds_to_square(start, pp);
+                        } else {
+                            *end = pp;
+                        }
+                    }
+                    super::app::DrawState::Segment { start, end, kind } => {
+                        let start = *start;
+                        let kind = *kind;
+                        if shift_held
+                            && matches!(
+                                kind,
+                                MarkupKind::Line | MarkupKind::Arrow
+                            )
+                        {
+                            // Shift constrains a segment drag to the nearest of
+                            // horizontal (0°), vertical (90°) or a 45° diagonal
+                            // from the start point, at the same distance.
+                            *end = constrain_segment_to_angle(start, pp);
+                        } else {
+                            *end = pp;
+                        }
+                    }
                     super::app::DrawState::Ink { current, .. } => {
                         if let Some(last) = current.last().copied() {
                             let dscreen = to_screen(pp, ui_state.pan, ui_state.zoom, origin)
@@ -2255,6 +2333,81 @@ mod tests {
             point_handle_at(&m, Pos2::new(50.0, 50.0), Pos2::ZERO, Vec2::ZERO, 1.0),
             None,
             "the middle of the segment carries no point handle"
+        );
+    }
+
+    #[test]
+    fn constrain_segment_to_angle_snaps_to_nearest_quarter_turn() {
+        let start = Pt::new(0.0, 0.0);
+
+        // Already on a cardinal axis: unchanged.
+        assert_eq!(
+            constrain_segment_to_angle(start, Pt::new(100.0, 0.0)),
+            Pt::new(100.0, 0.0)
+        );
+        assert_eq!(
+            constrain_segment_to_angle(start, Pt::new(0.0, 100.0)),
+            Pt::new(0.0, 100.0)
+        );
+
+        // Already on a 45° diagonal: unchanged.
+        assert_eq!(
+            constrain_segment_to_angle(start, Pt::new(100.0, 100.0)),
+            Pt::new(100.0, 100.0)
+        );
+
+        // Shallow drag (~17°) snaps to horizontal (0°), same distance.
+        let shallow = constrain_segment_to_angle(start, Pt::new(100.0, 30.0));
+        let dist = (100.0_f32).hypot(30.0);
+        assert!((shallow.x - dist).abs() < 0.01);
+        assert!(shallow.y.abs() < 0.01);
+
+        // Mid drag (~31°) snaps to 45° diagonal, same distance.
+        let mid = constrain_segment_to_angle(start, Pt::new(100.0, 60.0));
+        let dist = (100.0_f32).hypot(60.0);
+        let expect = dist / 2.0_f32.sqrt();
+        assert!((mid.x - expect).abs() < 0.01);
+        assert!((mid.y - expect).abs() < 0.01);
+
+        // Zero-length gesture returns the endpoint unchanged.
+        assert_eq!(
+            constrain_segment_to_angle(start, Pt::new(0.0, 0.0)),
+            Pt::new(0.0, 0.0)
+        );
+    }
+
+    #[test]
+    fn constrain_bounds_to_square_makes_sides_equal() {
+        let start = Pt::new(0.0, 0.0);
+
+        // Wider than tall: height grows to match width.
+        assert_eq!(
+            constrain_bounds_to_square(start, Pt::new(100.0, 50.0)),
+            Pt::new(100.0, 100.0)
+        );
+
+        // Taller than wide: width grows to match height.
+        assert_eq!(
+            constrain_bounds_to_square(start, Pt::new(50.0, 100.0)),
+            Pt::new(100.0, 100.0)
+        );
+
+        // Drag up-left preserves direction: both signs negative.
+        assert_eq!(
+            constrain_bounds_to_square(start, Pt::new(-100.0, -50.0)),
+            Pt::new(-100.0, -100.0)
+        );
+
+        // Offset start point is respected.
+        assert_eq!(
+            constrain_bounds_to_square(Pt::new(10.0, 10.0), Pt::new(60.0, 20.0)),
+            Pt::new(60.0, 60.0)
+        );
+
+        // Zero-length gesture returns the endpoint unchanged.
+        assert_eq!(
+            constrain_bounds_to_square(start, Pt::new(0.0, 0.0)),
+            Pt::new(0.0, 0.0)
         );
     }
 }

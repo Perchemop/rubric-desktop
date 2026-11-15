@@ -1,6 +1,10 @@
 //! Colours, strokes and dash patterns for markups.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
+
+use super::markup::MarkupKind;
 
 /// An RGBA colour, stored unmultiplied (matches how designers specify colour).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -149,6 +153,54 @@ impl MarkupStyle {
     }
 }
 
+/// Per-kind default style overrides, persisted app-level.
+///
+/// When a kind has an override, new markups of that kind use `style`
+/// instead of [`MarkupKind::default_style()`]. Keys are the serde names of
+/// [`MarkupKind`] variants so persisted keys never drift from the enum.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct DefaultStyles {
+    overrides: HashMap<String, MarkupStyle>,
+}
+
+impl DefaultStyles {
+    /// Record `style` as the per-kind default for `kind`.
+    pub fn set_default(&mut self, kind: MarkupKind, style: MarkupStyle) {
+        self.overrides.insert(Self::key(kind), style);
+    }
+
+    /// Remove any per-kind default override for `kind`.
+    pub fn clear_default(&mut self, kind: MarkupKind) {
+        self.overrides.remove(&Self::key(kind));
+    }
+
+    /// The per-kind default override for `kind`, if one has been set.
+    pub fn get_default(&self, kind: MarkupKind) -> Option<&MarkupStyle> {
+        self.overrides.get(&Self::key(kind))
+    }
+
+    /// The effective style for `kind`: the per-kind override if set,
+    /// otherwise [`MarkupKind::default_style()`].
+    pub fn effective_style(&self, kind: MarkupKind) -> MarkupStyle {
+        self.get_default(kind)
+            .copied()
+            .unwrap_or_else(|| kind.default_style())
+    }
+
+    /// The serde name of `kind`, used as the map key so persisted keys stay in
+    /// sync with the enum's serialised representation.
+    fn key(kind: MarkupKind) -> String {
+        match serde_json::to_value(kind) {
+            Ok(serde_json::Value::String(s)) => s,
+            _ => kind.label().to_string(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.overrides.is_empty()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -164,5 +216,66 @@ mod tests {
     fn dash_segments_scale_with_width() {
         assert_eq!(DashPattern::Solid.segments(2.0), None);
         assert!(DashPattern::Dashed.segments(2.0).is_some());
+    }
+
+    #[test]
+    fn default_styles_effective_uses_override_when_set() {
+        let mut ds = DefaultStyles::default();
+        assert_eq!(
+            ds.effective_style(MarkupKind::Rectangle),
+            MarkupKind::Rectangle.default_style(),
+            "unset kinds fall back to the coded default"
+        );
+        let custom = MarkupStyle {
+            stroke: palette::BLUE,
+            width: 4.0,
+            ..MarkupStyle::default()
+        };
+        ds.set_default(MarkupKind::Rectangle, custom);
+        assert_eq!(
+            ds.get_default(MarkupKind::Rectangle),
+            Some(&custom),
+            "get_default returns the override"
+        );
+        assert_eq!(ds.effective_style(MarkupKind::Rectangle), custom);
+        // Other kinds keep their coded default.
+        assert_eq!(
+            ds.effective_style(MarkupKind::Ellipse),
+            MarkupKind::Ellipse.default_style()
+        );
+        ds.clear_default(MarkupKind::Rectangle);
+        assert_eq!(ds.get_default(MarkupKind::Rectangle), None);
+        assert_eq!(
+            ds.effective_style(MarkupKind::Rectangle),
+            MarkupKind::Rectangle.default_style(),
+            "clearing restores the coded default"
+        );
+    }
+
+    #[test]
+    fn default_styles_serialise_key_is_serde_name() {
+        let mut ds = DefaultStyles::default();
+        ds.set_default(MarkupKind::Highlight, MarkupStyle::default());
+        let json = serde_json::to_string(&ds).expect("serialize");
+        let key = serde_json::to_value(MarkupKind::Highlight)
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .expect("a kind serialises as a string");
+        assert!(
+            json.contains(&format!("\"{key}\"")),
+            "persisted key must be the serde name: {json}"
+        );
+    }
+
+    #[test]
+    fn default_styles_serde_roundtrip() {
+        let mut ds = DefaultStyles::default();
+        ds.set_default(
+            MarkupKind::Highlight,
+            MarkupStyle::default().with_stroke(palette::YELLOW),
+        );
+        ds.set_default(MarkupKind::Line, MarkupStyle::default().with_width(3.0));
+        let json = serde_json::to_string(&ds).expect("serialize");
+        let back: DefaultStyles = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, ds);
     }
 }

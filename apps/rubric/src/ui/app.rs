@@ -13,6 +13,7 @@ use crate::data::{
     print_image, render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
 use crate::domain::units::calibrate_scale;
+use crate::domain::style::DefaultStyles;
 use crate::domain::{
     view, AppPrefs, Corner, Document, EditorAction, Grid, History, Markup, MarkupGroupKey,
     MarkupKind, MarkupListSort, MarkupStyle, MeasureUnit, Project, Pt, Report, ReportGroupKey,
@@ -203,6 +204,9 @@ pub(crate) struct UiState {
     /// Visual style captured by Copy Properties. Session-only; applying review
     /// status or lock state is deliberately not part of this clipboard.
     pub(crate) style_clipboard: Option<MarkupStyle>,
+    /// Per-kind default style overrides ("Set As Default"). Loaded from prefs at
+    /// startup and written back whenever a default is set or cleared.
+    pub(crate) default_styles: DefaultStyles,
     /// Currently displayed page index (session state; never snapshotted).
     pub(crate) current_page: usize,
     /// True when a committed project change has not reached disk yet (save or
@@ -324,6 +328,7 @@ impl Default for UiState {
             note_draft: String::new(),
             pending_action: None,
             style_clipboard: None,
+            default_styles: DefaultStyles::default(),
             current_page: 0,
             dirty: false,
             scale_paper_inches: 1.0,
@@ -527,6 +532,7 @@ impl RubricApp {
                 show_tool_chest: prefs.show_tool_chest,
                 zoom: prefs.zoom,
                 current_page: prefs.current_page,
+                default_styles: prefs.default_styles.clone(),
                 ..UiState::default()
             },
             draw: DrawState::Idle,
@@ -808,6 +814,8 @@ impl RubricApp {
                 self.ui.pan = Vec2::ZERO;
             }
             EditorAction::BatchStatus(status) => self.apply_batch_status(status),
+            EditorAction::ToggleLock => self.apply_toggle_lock(),
+            EditorAction::SetAsDefault => self.apply_set_as_default(),
         }
     }
 
@@ -860,6 +868,77 @@ impl RubricApp {
                 changed,
                 if changed == 1 { "" } else { "s" }
             );
+        }
+    }
+
+    /// Toggle `Markup.locked` on every selected markup. Lock is the edit gate
+    /// itself, so locked markups are included — they can be unlocked here.
+    fn apply_toggle_lock(&mut self) {
+        let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
+        if ids.is_empty() {
+            self.ui.status = "Select at least one markup to lock or unlock".to_string();
+            return;
+        }
+        let mut changed = 0;
+        let mut now_locked = 0usize;
+        if let Some(doc) = self.active_doc_mut() {
+            for id in &ids {
+                if let Some(m) = doc.find_markup_mut(*id) {
+                    m.locked = !m.locked;
+                    m.touch();
+                    changed += 1;
+                    if m.locked {
+                        now_locked += 1;
+                    }
+                }
+            }
+            if changed > 0 {
+                doc.touch();
+                self.push_snapshot("toggle lock");
+            }
+        }
+        if changed == 0 {
+            self.ui.status = "No markups found".to_string();
+        } else {
+            let unlocked = changed - now_locked;
+            self.ui.status = format!(
+                "Locked {} markup{}, unlocked {}",
+                now_locked,
+                if now_locked == 1 { "" } else { "s" },
+                unlocked,
+            );
+        }
+    }
+
+    /// Set the selected markup's style as the per-kind default ("Set As
+    /// Default"). Future markups of that kind will use this style unless
+    /// overridden per-kind again.
+    fn apply_set_as_default(&mut self) {
+        let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
+        if ids.is_empty() {
+            self.ui.status = "Select at least one markup to set as default".to_string();
+            return;
+        }
+        let mut changed = 0usize;
+        if let Some(doc) = self.active_doc_mut() {
+            for id in &ids {
+                if let Some(m) = doc.find_markup_mut(*id) {
+                    self.ui
+                        .default_styles
+                        .set_default(m.kind(), m.style);
+                    m.touch();
+                    changed += 1;
+                }
+            }
+            if changed > 0 {
+                doc.touch();
+                self.push_snapshot("set as default");
+            }
+        }
+        if changed == 0 {
+            self.ui.status = "No markups found".to_string();
+        } else {
+            self.ui.status = format!("Set as default for {} markup{}", changed, if changed == 1 { "" } else { "s" });
         }
     }
 
@@ -1640,6 +1719,7 @@ impl RubricApp {
             focus_mode: self.ui.focus_mode,
             show_minimap: self.ui.show_minimap,
             high_contrast: self.high_contrast,
+            default_styles: self.ui.default_styles.clone(),
         }
     }
 
