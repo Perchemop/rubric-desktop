@@ -363,20 +363,10 @@ jobs:
           if [[ -z "${NOTES_BODY//[[:space:]]/}" ]]; then
             NOTES_BODY="Automated release build for Rubric ${tag}."
           fi
-          # If release already exists (e.g. auto-created by GitHub when the tag
-          # was pushed, or left over from a prior failed run), delete it
-          # entirely and recreate so we start with no assets. `gh release
-          # delete-asset` silently fails in some gh versions; deleting the whole
-          # release is more reliable.
-          if gh release view "$tag" >/dev/null 2>&1; then
-            echo "Deleting existing release $tag and recreating..."
-            gh release delete "$tag" --yes 2>/dev/null || true
-            # Wait for GitHub to fully propagate the deletion before recreating.
-            sleep 15
-          fi
-
-          # Create release if it doesn't exist yet (e.g. manual dispatch without
-          # a tag, or the delete above removed it).
+          # Ensure a release exists for this tag. If one already exists (e.g.
+          # auto-created by GitHub when the tag was pushed), reuse it --
+          # uploading with --clobber will replace any existing assets with the
+          # same names.
           if ! gh release view "$tag" >/dev/null 2>&1; then
             if [[ "${#prerelease[@]}" -gt 0 ]]; then
               # A manual dispatch is not a real release: keep it a pre-release so
@@ -387,8 +377,8 @@ jobs:
             fi
           fi
 
-          # Upload assets (release was just created or cleared, so no existing
-          # assets to conflict with; --clobber is a safety net).
+          # Upload assets with --clobber to replace any existing assets with the
+          # same names.
           gh release upload "$tag" --clobber \
             dist/packages/linux-packages/rubric-linux-x86_64.tar.gz \
             dist/packages/linux-packages/rubric-x86_64.AppImage \
