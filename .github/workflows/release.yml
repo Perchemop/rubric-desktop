@@ -386,6 +386,12 @@ jobs:
           # Upload assets to the freshly created release. No --clobber: the
           # release is new, so no asset names can collide (and --clobber's
           # internal asset DELETE fails in this environment).
+          #
+          # NOTE: dist/rubric-windows-x86_64.zip (release-build zip) and
+          # dist/packages/windows-packages/rubric-windows-x86_64.zip (package
+          # zip) share the same basename. Uploading both would 422 on the
+          # second one, so only the package zip is uploaded — it bundles
+          # PDFium the same way and is the artifact users download.
           gh release upload "$tag" \
             dist/packages/linux-packages/rubric-linux-x86_64.tar.gz \
             dist/packages/linux-packages/rubric-x86_64.AppImage \
@@ -395,7 +401,6 @@ jobs:
             dist/rubric-linux-arm64.zip \
             dist/rubric-linux-x86_64.zip \
             dist/rubric-macos-arm64.zip \
-            dist/rubric-windows-x86_64.zip \
             dist/SHA256SUMS \
             dist/SHA256SUMS.txt \
             dist/SHA256SUMS.txt.minisig
