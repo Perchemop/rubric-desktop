@@ -363,22 +363,30 @@ jobs:
           if [[ -z "${NOTES_BODY//[[:space:]]/}" ]]; then
             NOTES_BODY="Automated release build for Rubric ${tag}."
           fi
-          # Ensure a release exists for this tag. If one already exists (e.g.
-          # auto-created by GitHub when the tag was pushed), reuse it --
-          # uploading with --clobber will replace any existing assets with the
-          # same names.
-          if ! gh release view "$tag" >/dev/null 2>&1; then
-            if [[ "${#prerelease[@]}" -gt 0 ]]; then
-              # A manual dispatch is not a real release: keep it a pre-release so
-              # "Latest release" on the repo still points at a tagged version.
-              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY" "${prerelease[@]}"
-            else
-              gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
-            fi
+          # Idempotent re-publish: if a release already exists for this tag
+          # (auto-created by GitHub when the tag was pushed, or left over from a
+          # re-run), delete it entirely and create a fresh one. Per-asset
+          # replacement is not reliable here: `gh release upload --clobber` and
+          # `gh release delete-asset` fail in CI (HTTP 422 "ReleaseAsset.name
+          # already exists" / HTTP 404 on the asset DELETE), so the whole
+          # release is replaced instead. The delete is NOT silenced with
+          # `|| true`: with `set -euo pipefail` a failure prints its error and
+          # stops the step, so a stuck release is never shipped silently.
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "release $tag already exists; deleting it for a clean re-publish"
+            gh release delete "$tag" --yes
           fi
-          # Upload assets with --clobber to replace any existing assets with the
-          # same names.
-          gh release upload "$tag" --clobber \
+          if [[ "${#prerelease[@]}" -gt 0 ]]; then
+            # A manual dispatch is not a real release: keep it a pre-release so
+            # "Latest release" on the repo still points at a tagged version.
+            gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY" "${prerelease[@]}"
+          else
+            gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
+          fi
+          # Upload assets to the freshly created release. No --clobber: the
+          # release is new, so no asset names can collide (and --clobber's
+          # internal asset DELETE fails in this environment).
+          gh release upload "$tag" \
             dist/packages/linux-packages/rubric-linux-x86_64.tar.gz \
             dist/packages/linux-packages/rubric-x86_64.AppImage \
             dist/packages/macos-packages/rubric-macos.dmg \

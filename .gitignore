@@ -20,6 +20,11 @@ secrets/
 **/*.rs.bk
 *.profraw
 
+# Downloaded CI release artefacts: `gh run download` unpacks release zips,
+# installers and checksums into dist/ for local inspection; the published
+# copies live on the GitHub Release, never in git.
+dist/
+
 # Editor / merge artifacts (never commit: use the editor's undo, not backups)
 *.orig
 *.bak

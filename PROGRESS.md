@@ -2207,3 +2207,38 @@ Both notes are in `docs/research/` with status **"Proposed — pending human gat
 ### Blocked
 - PR #160 (Issue #29 + god-file splits) — CI failing on formatting check; maintainer must run `cargo fmt --all` locally and push
 - Research notes pending owner approval before implementation Tasks can start
+
+## 2026-11-15 — Canvas drawing fix, tool dropdown menu, in-app update install, release v0.4.7
+
+### Canvas drawing bug fix (PR #195, merged to main)
+- `creation_allowed()` in `ui/canvas.rs` returned an inverted boolean — drawing tools
+  only worked on a *locked* default layer. Now returns `true` only when a document
+  is open and the default layer is unlocked. All markup tools now create visible
+  marks on the canvas.
+
+### Tool dropdown menu (PR #195, merged to main)
+- Replaced the cluttered inline toolbar strip (all 25 tools side-by-side) with a
+  "Tools" drop-down menu grouped by family (Select, Review, Shapes, Paths, Measure,
+  Calibrate), following the existing context-menu pattern. Active tool remains
+  visible in the top-bar chip.
+
+### In-app update download & install (PR #195, merged to main)
+- "Check for Updates" window now offers "Download & Install" when a
+  platform-specific installer exists and its minisign signature is verified.
+  Downloads to temp, verifies SHA-256 against `SHA256SUMS.txt`, offers "Open
+  installer". Gated on verified signature.
+
+### Release publishing workflow fixes (PRs #195–#212, all merged to main)
+- Fixed `gh release upload --clobber` failures (HTTP 422 "ReleaseAsset.name
+  already exists"). Final fix deletes the existing release before uploading, using
+  `gh release delete --yes` + `gh release create` + `gh release upload` (no
+  `--clobber`).
+
+### Release v0.4.7 published
+- 9 assets: rubric-linux-arm64.zip, rubric-linux-x86_64.tar.gz,
+  rubric-macos-arm64.zip, rubric-macos.dmg, rubric-windows-x86_64.zip,
+  rubric-x86_64.AppImage, rubric.msi, SHA256SUMS, SHA256SUMS.txt.
+- Missing: SHA256SUMS.txt.minisig (requires CI minisign key).
+
+### Housekeeping
+- `dist/` added to `.gitignore` to prevent build artifacts from being committed.
