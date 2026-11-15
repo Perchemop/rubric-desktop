@@ -364,17 +364,15 @@ jobs:
             NOTES_BODY="Automated release build for Rubric ${tag}."
           fi
           # If release already exists (e.g. auto-created by GitHub when the tag
-          # was pushed, or left over from a prior failed run), delete every
-          # existing asset so we start clean. `--clobber` alone is not reliable
-          # across gh versions and can surface HTTP 422
-          # "ReleaseAsset.name already exists" errors.
+          # was pushed, or left over from a prior failed run), delete it
+          # entirely and recreate so we start with no assets. `gh release
+          # delete-asset` silently fails in some gh versions; deleting the whole
+          # release is more reliable.
           if gh release view "$tag" >/dev/null 2>&1; then
-            echo "Clearing existing assets on release $tag..."
-            gh release view "$tag" --json assets --jq '.assets[].id' 2>/dev/null | \
-              while read -r asset_id; do
-                gh release delete-asset "$tag" "$asset_id" 2>/dev/null || true
-              done || true
-            sleep 5
+            echo "Deleting existing release $tag and recreating..."
+            gh release delete "$tag" --yes 2>/dev/null || true
+            # Wait for GitHub to fully propagate the deletion before recreating.
+            sleep 15
           fi
 
           # Create release if it doesn't exist yet (e.g. manual dispatch without
@@ -389,9 +387,9 @@ jobs:
             fi
           fi
 
-          # Upload assets (all existing assets were cleared above, so no
-          # --clobber needed).
-          gh release upload "$tag" \
+          # Upload assets (release was just created or cleared, so no existing
+          # assets to conflict with; --clobber is a safety net).
+          gh release upload "$tag" --clobber \
             dist/packages/linux-packages/rubric-linux-x86_64.tar.gz \
             dist/packages/linux-packages/rubric-x86_64.AppImage \
             dist/packages/macos-packages/rubric-macos.dmg \
