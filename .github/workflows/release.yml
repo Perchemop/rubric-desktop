@@ -364,21 +364,21 @@ jobs:
             NOTES_BODY="Automated release build for Rubric ${tag}."
           fi
           # Ensure a release exists for this tag. If one already exists (e.g.
-          # auto-created by GitHub when the tag was pushed), reuse it.
+          # auto-created by GitHub when the tag was pushed), reuse it --
+          # uploading with --clobber will replace any existing assets with the
+          # same names.
           if ! gh release view "$tag" >/dev/null 2>&1; then
             if [[ "${#prerelease[@]}" -gt 0 ]]; then
+              # A manual dispatch is not a real release: keep it a pre-release so
+              # "Latest release" on the repo still points at a tagged version.
               gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY" "${prerelease[@]}"
             else
               gh release create "$tag" --title "Rubric ${tag}" --notes "$NOTES_BODY"
             fi
           fi
-
-          # Upload assets via the GitHub Releases API directly. Using
-          # `gh release upload --clobber` is unreliable across gh versions
-          # (it internally tries to delete existing assets, which can fail with
-          # HTTP 404). Using the uploads.github.com API directly avoids this.
-          release_id=$(gh release view "$tag" --json id --jq '.id')
-          for f in \
+          # Upload assets with --clobber to replace any existing assets with the
+          # same names.
+          gh release upload "$tag" --clobber \
             dist/packages/linux-packages/rubric-linux-x86_64.tar.gz \
             dist/packages/linux-packages/rubric-x86_64.AppImage \
             dist/packages/macos-packages/rubric-macos.dmg \
@@ -390,14 +390,6 @@ jobs:
             dist/rubric-windows-x86_64.zip \
             dist/SHA256SUMS \
             dist/SHA256SUMS.txt \
-            dist/SHA256SUMS.txt.minisig; do
-            echo "Uploading $(basename "$f")..."
-            curl -sS -X POST \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Content-Type: application/octet-stream" \
-              --data-binary @"$f" \
-              "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${release_id}/assets?name=$(basename "$f")" \
-              > /dev/null || { echo "Failed to upload $(basename "$f")" >&2; exit 1; }
-          done
+            dist/SHA256SUMS.txt.minisig
           # Finalise the release so uploaded assets are published.
           gh release edit "$tag" --draft=false
