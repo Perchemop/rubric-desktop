@@ -366,11 +366,14 @@ jobs:
           # If release already exists (e.g. auto-created by GitHub when the tag
           # was pushed, or left over from a prior failed run), delete it
           # entirely and recreate so we start with no assets. `gh release
-          # delete-asset` silently fails in some gh versions; deleting the whole
-          # release is more reliable.
+          # delete-asset` silently fails in some gh versions; use the REST API
+          # directly to delete the whole release.
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Deleting existing release $tag and recreating..."
-            gh release delete "$tag" --yes 2>/dev/null || true
+            release_id=$(gh release view "$tag" --json id --jq '.id' 2>/dev/null || true)
+            if [ -n "$release_id" ]; then
+              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/$release_id" 2>/dev/null || true
+            fi
             # Wait for GitHub to fully propagate the deletion before recreating.
             sleep 15
           fi
