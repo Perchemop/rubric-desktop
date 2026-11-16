@@ -655,13 +655,12 @@ fn render_rows(
                                 .active()
                                 .and_then(|d| {
                                     row.layer_id
-                                        .map(|id| {
+                                        .and_then(|id| {
                                             d.layers
                                                 .iter()
                                                 .find(|l| l.id == id)
                                                 .map(|l| l.name.clone())
                                         })
-                                        .flatten()
                                         .or_else(|| d.default_layer().map(|l| l.name.clone()))
                                 })
                                 .unwrap_or_else(|| "Default".to_string());
