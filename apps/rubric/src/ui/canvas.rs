@@ -98,11 +98,23 @@ fn constrain_segment_to_angle(start: Pt, end: Pt) -> Pt {
     }
     let quarter = std::f32::consts::PI / 4.0;
     let angle = dy.atan2(dx);
-    let snapped = (angle / quarter).round() * quarter;
-    Pt::new(
-        start.x + dist * snapped.cos(),
-        start.y + dist * snapped.sin(),
-    )
+    // Nearest multiple of 45°, as an octant index so the cardinal cases can be
+    // placed exactly: trig at 90° leaves a ~4e-6 f32 drift that would show up
+    // as a wobbly vertical/horizontal constraint while drawing.
+    let octant = (angle / quarter).round() as i32;
+    match octant.rem_euclid(8) {
+        0 => Pt::new(start.x + dist, start.y),
+        2 => Pt::new(start.x, start.y + dist),
+        4 => Pt::new(start.x - dist, start.y),
+        6 => Pt::new(start.x, start.y - dist),
+        _ => {
+            let snapped = octant as f32 * quarter;
+            Pt::new(
+                start.x + dist * snapped.cos(),
+                start.y + dist * snapped.sin(),
+            )
+        }
+    }
 }
 
 /// Snap a bounds endpoint so the rectangle is a square (width == height),
