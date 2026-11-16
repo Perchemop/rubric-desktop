@@ -733,7 +733,10 @@ pub(crate) fn draw_inspector(
                         .selected_text(dash.label())
                         .show_ui(ui, |ui| {
                             for mode in DashPattern::ALL.iter() {
-                                if ui.selectable_value(&mut dash, *mode, mode.label()).clicked() {
+                                if ui
+                                    .selectable_value(&mut dash, *mode, mode.label())
+                                    .clicked()
+                                {
                                     dash_changed = true;
                                 }
                             }
@@ -878,6 +881,12 @@ pub(crate) fn draw_inspector(
             });
         });
 
+        // Capture the lock state and id before `m` is moved into the document
+        // below: the lock write-back must still work when style edits are
+        // disabled.
+        let lock_state = m.locked;
+        let markup_id = m.id;
+
         if edited && editable {
             m.touch();
             if let Some(doc) = project.active_mut() {
@@ -897,13 +906,13 @@ pub(crate) fn draw_inspector(
                 if multi {
                     for id in &selected {
                         if let Some(markup) = doc.find_markup_mut(*id) {
-                            markup.locked = m.locked;
+                            markup.locked = lock_state;
                             markup.touch();
                         }
                     }
                     doc.touch();
-                } else if let Some(slot) = doc.markups.iter().position(|x| x.id == m.id) {
-                    doc.markups[slot].locked = m.locked;
+                } else if let Some(slot) = doc.markups.iter().position(|x| x.id == markup_id) {
+                    doc.markups[slot].locked = lock_state;
                     doc.markups[slot].touch();
                     doc.touch();
                 }

@@ -915,35 +915,38 @@ impl RubricApp {
 
     /// Set the selected markup's style as the per-kind default ("Set As
     /// Default"). Future markups of that kind will use this style unless
-    /// overridden per-kind again.
+    /// overridden per-kind again. This is an app-preference change, not a
+    /// document change: no undo snapshot and no document dirty flag.
     fn apply_set_as_default(&mut self) {
         let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
         if ids.is_empty() {
             self.ui.status = "Select at least one markup to set as default".to_string();
             return;
         }
-        let mut changed = 0usize;
+        // Collect the styles first: the document lookup and the prefs write are
+        // both mutable borrows of `self` and cannot overlap.
+        let mut defaults: Vec<(MarkupKind, MarkupStyle)> = Vec::new();
         if let Some(doc) = self.active_doc_mut() {
             for id in &ids {
                 if let Some(m) = doc.find_markup_mut(*id) {
-                    self.ui.default_styles.set_default(m.kind, m.style);
-                    m.touch();
-                    changed += 1;
+                    defaults.push((m.kind, m.style));
                 }
             }
-            if changed > 0 {
-                doc.touch();
-                self.push_snapshot("set as default");
-            }
         }
-        if changed == 0 {
+        if defaults.is_empty() {
             self.ui.status = "No markups found".to_string();
+            return;
+        }
+        let count = defaults.len();
+        let first_kind = defaults[0].0;
+        for (kind, style) in &defaults {
+            self.ui.default_styles.set_default(*kind, *style);
+        }
+        self.save_app_prefs();
+        if count == 1 {
+            self.ui.status = format!("Default style set for {}", first_kind.label());
         } else {
-            self.ui.status = format!(
-                "Set as default for {} markup{}",
-                changed,
-                if changed == 1 { "" } else { "s" }
-            );
+            self.ui.status = format!("Default styles set from {} markups", count);
         }
     }
 

@@ -76,7 +76,7 @@ mod tests {
     use super::*;
     use crate::domain::{
         markup::MarkupKind,
-        style::{DefaultStyles, MarkupStyle, palette},
+        style::{palette, DefaultStyles, MarkupStyle},
         style_preset::StylePresetLibrary,
         Theme,
     };
