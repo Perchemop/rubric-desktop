@@ -63,7 +63,7 @@ fn ink_stroke_ok(strokes: &[Vec<Pt>]) -> bool {
 
 /// Apply the active stamp preset to a freshly created stamp markup. Non-stamp
 /// markups pass through untouched.
-fn finish_markup(m: Markup, ui_state: &super::app::UiState) -> Markup {
+fn finish_markup(mut m: Markup, ui_state: &super::app::UiState) -> Markup {
     if m.kind == MarkupKind::Stamp {
         let preset = ui_state.active_stamp;
         let mut m = m.with_stamp(preset);
@@ -1860,11 +1860,7 @@ pub(crate) fn draw_canvas(
                     super::app::DrawState::Bounds { start, end, kind } => {
                         let start = *start;
                         let kind = *kind;
-                        if shift_held
-                            && matches!(
-                                kind,
-                                MarkupKind::Rectangle | MarkupKind::Ellipse
-                            )
+                        if shift_held && matches!(kind, MarkupKind::Rectangle | MarkupKind::Ellipse)
                         {
                             // Shift constrains a rectangle/ellipse drag to a
                             // square/circle (both sides equal the larger extent).
@@ -1876,12 +1872,7 @@ pub(crate) fn draw_canvas(
                     super::app::DrawState::Segment { start, end, kind } => {
                         let start = *start;
                         let kind = *kind;
-                        if shift_held
-                            && matches!(
-                                kind,
-                                MarkupKind::Line | MarkupKind::Arrow
-                            )
-                        {
+                        if shift_held && matches!(kind, MarkupKind::Line | MarkupKind::Arrow) {
                             // Shift constrains a segment drag to the nearest of
                             // horizontal (0°), vertical (90°) or a 45° diagonal
                             // from the start point, at the same distance.

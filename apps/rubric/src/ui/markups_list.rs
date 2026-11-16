@@ -60,7 +60,7 @@ impl MarkupListColumn {
 }
 
 /// Default visible set: the six current columns plus Date.
-const DEFAULT_VISIBLE_COLUMNS: [MarkupListColumn; 7] = [
+pub(crate) const DEFAULT_VISIBLE_COLUMNS: [MarkupListColumn; 7] = [
     MarkupListColumn::Page,
     MarkupListColumn::Type,
     MarkupListColumn::Author,
@@ -69,44 +69,6 @@ const DEFAULT_VISIBLE_COLUMNS: [MarkupListColumn; 7] = [
     MarkupListColumn::Status,
     MarkupListColumn::Date,
 ];
-
-/// Read the session-local column-visibility set from egui's persistent data.
-fn visible_columns(ctx: &eframe::egui::Context) -> Vec<MarkupListColumn> {
-    ctx.data_mut_persistent(|d| {
-        d.get_temp::<Vec<MarkupListColumn>>(egui::Id::new("markup_list_column_visibility"))
-            .cloned()
-            .unwrap_or(DEFAULT_VISIBLE_COLUMNS.to_vec())
-    })
-}
-
-/// Persist the session-local column-visibility set to egui's persistent data.
-fn set_visible_columns(ctx: &eframe::egui::Context, cols: Vec<MarkupListColumn>) {
-    ctx.data_mut_persistent(|d| {
-        d.insert_temp(
-            egui::Id::new("markup_list_column_visibility"),
-            cols,
-        );
-    })
-}
-
-/// Read the session-local custom status names (names the user has defined
-/// beyond the four built-ins). Stored only in egui memory for this session;
-/// not yet persisted to prefs.json nor assignable to markups — see the
-/// follow-up wiring note at the end of this module.
-fn custom_statuses(ctx: &eframe::egui::Context) -> Vec<String> {
-    ctx.data_mut_persistent(|d| {
-        d.get_temp::<Vec<String>>(egui::Id::new("markup_list_custom_statuses"))
-            .cloned()
-            .unwrap_or_default()
-    })
-}
-
-/// Persist the session-local custom status names to egui's persistent data.
-fn set_custom_statuses(ctx: &eframe::egui::Context, names: Vec<String>) {
-    ctx.data_mut_persistent(|d| {
-        d.insert_temp(egui::Id::new("markup_list_custom_statuses"), names);
-    })
-}
 
 /// A request from the list to the app: select `id` and show its page.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -255,92 +217,25 @@ pub(crate) fn draw_markups_list(
                 state.status = "Markup filters cleared".to_string();
             }
             ui.separator();
-            let columns_id = egui::Id::new("markup_list_columns_popup");
-            let mut columns_open =
-                ui.ctx().data_mut_persistent(|d| {
-                    d.get_temp::<bool>(columns_id).copied().unwrap_or(false)
-                });
-            if ui.button("Columns…").clicked() {
-                columns_open = !columns_open;
-                ui.ctx().data_mut_persistent(|d| d.insert_temp(columns_id, columns_open));
-            }
-            egui::Popup::new(columns_id)
-                .open(columns_open)
-                .show_ui(ui, |ui| {
-                    ui.label("Visible columns");
-                    let mut visible = visible_columns(ui.ctx());
-                    for col in MarkupListColumn::ALL {
-                        let mut on = visible.contains(&col);
-                        if ui.checkbox(&mut on, col.label()).changed() {
-                            if on {
-                                if !visible.contains(&col) {
-                                    visible.push(col);
-                                }
-                            } else {
-                                visible.retain(|c| *c != col);
-                                // Always keep at least one column visible.
-                                if visible.is_empty() {
-                                    visible.push(MarkupListColumn::Status);
-                                }
+            ui.menu_button("Columns…", |ui| {
+                ui.label("Visible columns");
+                for col in MarkupListColumn::ALL {
+                    let mut on = state.markup_list_columns.contains(&col);
+                    if ui.checkbox(&mut on, col.label()).changed() {
+                        if on {
+                            if !state.markup_list_columns.contains(&col) {
+                                state.markup_list_columns.push(col);
+                            }
+                        } else {
+                            state.markup_list_columns.retain(|c| *c != col);
+                            // Always keep at least one column visible.
+                            if state.markup_list_columns.is_empty() {
+                                state.markup_list_columns.push(MarkupListColumn::Status);
                             }
                         }
                     }
-                    set_visible_columns(ui.ctx(), visible);
-                });
-            ui.separator();
-            let statuses_id = egui::Id::new("markup_list_manage_statuses_popup");
-            let mut statuses_open =
-                ui.ctx().data_mut_persistent(|d| {
-                    d.get_temp::<bool>(statuses_id).copied().unwrap_or(false)
-                });
-            if ui.button("Manage statuses…").clicked() {
-                statuses_open = !statuses_open;
-                ui.ctx().data_mut_persistent(|d| d.insert_temp(statuses_id, statuses_open));
-            }
-            egui::Popup::new(statuses_id)
-                .open(statuses_open)
-                .show_ui(ui, |ui| {
-                    ui.label("Custom status names");
-                    ui.small(
-                        "Session-only names shown beside the four built-in statuses.\n\
-                         Assigning them to markups is wired in a follow-up slice.",
-                    );
-                    let mut names = custom_statuses(ui.ctx());
-                    let mut new_name = String::new();
-                    ui.horizontal(|ui| {
-                        let text_edit =
-                            egui::TextEdit::singleline(&mut new_name).desired_width(120.0);
-                        let response = ui.add(text_edit);
-                        if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                            let trimmed = new_name.trim().to_string();
-                            if !trimmed.is_empty() && !names.iter().any(|n| n.eq_ignore_ascii_case(&trimmed)) {
-                                names.push(trimmed);
-                                new_name.clear();
-                            }
-                        }
-                        if ui.button("Add").clicked() {
-                            let trimmed = new_name.trim().to_string();
-                            if !trimmed.is_empty() && !names.iter().any(|n| n.eq_ignore_ascii_case(&trimmed)) {
-                                names.push(trimmed);
-                                new_name.clear();
-                            }
-                        }
-                    });
-                    ui.separator();
-                    let mut remove_at: Option<usize> = None;
-                    for (i, name) in names.iter().enumerate() {
-                        ui.horizontal(|ui| {
-                            ui.label(name);
-                            if ui.button("✕").clicked() {
-                                remove_at = Some(i);
-                            }
-                        });
-                    }
-                    if let Some(i) = remove_at {
-                        names.remove(i);
-                    }
-                    set_custom_statuses(ui.ctx(), names);
-                });
+                }
+            });
         });
     });
     ui.separator();
@@ -678,7 +573,7 @@ fn render_rows(
 ) -> Option<MarkupListAction> {
     let mut action = None;
     let dark = ui.visuals().dark_mode;
-    let visible = visible_columns(ui.ctx());
+    let visible: Vec<MarkupListColumn> = state.markup_list_columns.clone();
 
     egui::Grid::new(format!("markups-grid-{id_salt}"))
         .num_columns(visible.len())
@@ -734,9 +629,8 @@ fn render_rows(
                                 .and_then(|d| d.markups.iter().find(|m| m.id == row.id))
                                 .map(|m| m.style.stroke)
                                 .unwrap_or_else(|| row.kind.default_style().stroke);
-                            let rect = ui
-                                .allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::hover())
-                                .0;
+                            let (rect, resp) = ui
+                                .allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::hover());
                             ui.painter().rect_filled(
                                 rect,
                                 2.0,
@@ -748,8 +642,9 @@ fn render_rows(
                                 rect,
                                 2.0,
                                 egui::Stroke::new(1.0, egui::Color32::from_black_alpha(80)),
+                                egui::StrokeKind::Middle,
                             );
-                            ui.tooltip_text(format!(
+                            resp.on_hover_text(format!(
                                 "#{:02X}{:02X}{:02X}",
                                 colour.r, colour.g, colour.b
                             ));
@@ -1079,24 +974,5 @@ mod tests {
         use chrono::TimeZone;
         let created = chrono::Utc.with_ymd_and_hms(2026, 3, 5, 14, 30, 0).unwrap();
         assert_eq!(format_date(created), "2026-03-05");
-    }
-
-    #[test]
-    fn custom_statuses_roundtrip_through_egui_memory() {
-        let ctx = egui::Context::default();
-        set_custom_statuses(&ctx, vec!["Field verify".to_string()]);
-        assert_eq!(custom_statuses(&ctx), vec!["Field verify".to_string()]);
-
-        // Adding a case-duplicate is a no-op; distinct names are kept.
-        let mut names = custom_statuses(&ctx);
-        names.push("field VERIFY".to_string());
-        names.push("Site visit".to_string());
-        names.sort();
-        names.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
-        set_custom_statuses(&ctx, names);
-        assert_eq!(
-            custom_statuses(&ctx),
-            vec!["Field verify".to_string(), "Site visit".to_string()]
-        );
     }
 }

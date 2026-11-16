@@ -684,29 +684,24 @@ pub(crate) fn draw_inspector(
                     // Fill mode: None / Solid / Highlight.
                     ui.label("Fill mode");
                     let mut fill_mode = m.style.fill_mode;
-                    let fill_mode_changed = egui::ComboBox::from_id_salt("fill_mode")
+                    let mut fill_mode_changed = false;
+                    egui::ComboBox::from_id_salt("fill_mode")
                         .selected_text(match fill_mode {
                             FillMode::None => "None",
                             FillMode::Solid => "Solid",
                             FillMode::Highlight => "Highlight",
                         })
                         .show_ui(ui, |ui| {
-                            let mut changed = false;
                             for (mode, label) in [
                                 (FillMode::None, "None"),
                                 (FillMode::Solid, "Solid"),
                                 (FillMode::Highlight, "Highlight"),
                             ] {
-                                if ui
-                                    .selectable_value(&mut fill_mode, mode, label)
-                                    .clicked()
-                                {
-                                    changed = true;
+                                if ui.selectable_value(&mut fill_mode, mode, label).clicked() {
+                                    fill_mode_changed = true;
                                 }
                             }
-                            changed
-                        })
-                        .inner;
+                        });
                     if fill_mode_changed {
                         m.style.fill_mode = fill_mode;
                         edited = true;
@@ -719,9 +714,10 @@ pub(crate) fn draw_inspector(
                         let mut opacity = (m.style.fill.a as f32 / 255.0 * 100.0).round() as i32;
                         let resp = ui.add(egui::Slider::new(&mut opacity, 0..=100).suffix("%"));
                         if resp.changed() {
-                            m.style.fill = m.style.fill.with_alpha(
-                                (opacity as f32 / 100.0 * 255.0).round() as u8,
-                            );
+                            m.style.fill = m
+                                .style
+                                .fill
+                                .with_alpha((opacity as f32 / 100.0 * 255.0).round() as u8);
                             edited = true;
                             if resp.drag_stopped() || resp.lost_focus() {
                                 committed = true;
@@ -732,18 +728,16 @@ pub(crate) fn draw_inspector(
                     // Dash pattern: Solid / Dashed / Dotted.
                     ui.label("Dash pattern");
                     let mut dash = m.style.dash;
-                    let dash_changed = egui::ComboBox::from_id_salt("dash_pattern")
+                    let mut dash_changed = false;
+                    egui::ComboBox::from_id_salt("dash_pattern")
                         .selected_text(dash.label())
                         .show_ui(ui, |ui| {
-                            let mut changed = false;
                             for mode in DashPattern::ALL.iter() {
                                 if ui.selectable_value(&mut dash, *mode, mode.label()).clicked() {
-                                    changed = true;
+                                    dash_changed = true;
                                 }
                             }
-                            changed
-                        })
-                        .inner;
+                        });
                     if dash_changed {
                         m.style.dash = dash;
                         edited = true;
@@ -795,7 +789,11 @@ pub(crate) fn draw_inspector(
                 // itself: you must be able to unlock a locked markup even when
                 // `is_markup_editable` is false.
                 ui.horizontal(|ui| {
-                    let label = if m.locked { "Unlock markup" } else { "Lock markup" };
+                    let label = if m.locked {
+                        "Unlock markup"
+                    } else {
+                        "Lock markup"
+                    };
                     if ui.checkbox(&mut m.locked, label).changed() {
                         lock_changed = true;
                         edited = true;
@@ -815,9 +813,7 @@ pub(crate) fn draw_inspector(
                         edited = true;
                         committed = true;
                         ui_state.status = "Style set as default for markup kind".to_string();
-                        ui_state
-                            .default_styles
-                            .set_default(m.kind(), m.style);
+                        ui_state.default_styles.set_default(m.kind, m.style);
                     }
                 });
 

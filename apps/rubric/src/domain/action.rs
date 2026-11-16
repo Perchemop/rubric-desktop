@@ -229,7 +229,10 @@ mod tests {
         assert!(!EditorAction::SetAsDefault.is_enabled(0, false));
         assert!(!EditorAction::SetAsDefault.is_enabled(0, true));
         assert!(EditorAction::SetAsDefault.is_enabled(1, false));
-        assert!(!EditorAction::SetAsDefault.is_enabled(2, false), "one markup only");
+        assert!(
+            !EditorAction::SetAsDefault.is_enabled(2, false),
+            "one markup only"
+        );
         assert!(EditorAction::SetAsDefault.is_enabled(1, true));
     }
 

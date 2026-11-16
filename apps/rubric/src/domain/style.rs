@@ -258,6 +258,7 @@ mod tests {
         ds.set_default(MarkupKind::Highlight, MarkupStyle::default());
         let json = serde_json::to_string(&ds).expect("serialize");
         let key = serde_json::to_value(MarkupKind::Highlight)
+            .ok()
             .and_then(|v| v.as_str().map(|s| s.to_string()))
             .expect("a kind serialises as a string");
         assert!(

@@ -12,8 +12,8 @@ use crate::data::{
     autosave, autosave_due, load_prefs, load_project, load_recent, normalise_project_filename,
     print_image, render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
-use crate::domain::units::calibrate_scale;
 use crate::domain::style::DefaultStyles;
+use crate::domain::units::calibrate_scale;
 use crate::domain::{
     view, AppPrefs, Corner, Document, EditorAction, Grid, History, Markup, MarkupGroupKey,
     MarkupKind, MarkupListSort, MarkupStyle, MeasureUnit, Project, Pt, Report, ReportGroupKey,
@@ -207,6 +207,8 @@ pub(crate) struct UiState {
     /// Per-kind default style overrides ("Set As Default"). Loaded from prefs at
     /// startup and written back whenever a default is set or cleared.
     pub(crate) default_styles: DefaultStyles,
+    /// Visible columns for the Markups List (session-local, gap #5).
+    pub(crate) markup_list_columns: Vec<crate::ui::markups_list::MarkupListColumn>,
     /// Currently displayed page index (session state; never snapshotted).
     pub(crate) current_page: usize,
     /// True when a committed project change has not reached disk yet (save or
@@ -329,6 +331,7 @@ impl Default for UiState {
             pending_action: None,
             style_clipboard: None,
             default_styles: DefaultStyles::default(),
+            markup_list_columns: crate::ui::markups_list::DEFAULT_VISIBLE_COLUMNS.to_vec(),
             current_page: 0,
             dirty: false,
             scale_paper_inches: 1.0,
@@ -923,9 +926,7 @@ impl RubricApp {
         if let Some(doc) = self.active_doc_mut() {
             for id in &ids {
                 if let Some(m) = doc.find_markup_mut(*id) {
-                    self.ui
-                        .default_styles
-                        .set_default(m.kind(), m.style);
+                    self.ui.default_styles.set_default(m.kind, m.style);
                     m.touch();
                     changed += 1;
                 }
@@ -938,7 +939,11 @@ impl RubricApp {
         if changed == 0 {
             self.ui.status = "No markups found".to_string();
         } else {
-            self.ui.status = format!("Set as default for {} markup{}", changed, if changed == 1 { "" } else { "s" });
+            self.ui.status = format!(
+                "Set as default for {} markup{}",
+                changed,
+                if changed == 1 { "" } else { "s" }
+            );
         }
     }
 

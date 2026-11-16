@@ -110,7 +110,8 @@ impl MarkupGeometry {
     /// line is supplied, and when the stored text cannot be located in the
     /// line: glyph-tight anchoring is an improvement, never a failure mode.
     pub fn anchored_bounds(&self, line: Option<&GlyphLine>) -> Rect {
-        self.glyph_range_bounds(line).unwrap_or_else(|| self.bounds())
+        self.glyph_range_bounds(line)
+            .unwrap_or_else(|| self.bounds())
     }
 
     /// Glyph-tight rectangle for a text anchor, when the extractor's line is
