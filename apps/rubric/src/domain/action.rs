@@ -18,6 +18,9 @@ pub enum EditorAction {
     ClearSelection,
     CopyProperties,
     PasteProperties,
+    /// Store the selected markup's style as the per-kind default ("Set As
+    /// Default").
+    SetAsDefault,
     BringForward,
     SendBackward,
     BringToFront,
@@ -26,11 +29,13 @@ pub enum EditorAction {
     ZoomOut,
     FitPage,
     BatchStatus(ReviewStatus),
+    /// Toggle `Markup.locked` on every selected editable markup.
+    ToggleLock,
 }
 
 impl EditorAction {
     /// Every action, in menu order.
-    pub const ALL: [EditorAction; 15] = [
+    pub const ALL: [EditorAction; 17] = [
         EditorAction::Undo,
         EditorAction::Redo,
         EditorAction::DeleteSelection,
@@ -38,6 +43,7 @@ impl EditorAction {
         EditorAction::ClearSelection,
         EditorAction::CopyProperties,
         EditorAction::PasteProperties,
+        EditorAction::SetAsDefault,
         EditorAction::BringForward,
         EditorAction::SendBackward,
         EditorAction::BringToFront,
@@ -46,6 +52,7 @@ impl EditorAction {
         EditorAction::ZoomOut,
         EditorAction::FitPage,
         EditorAction::BatchStatus(ReviewStatus::Open),
+        EditorAction::ToggleLock,
     ];
 
     /// Human-readable menu label.
@@ -58,6 +65,7 @@ impl EditorAction {
             EditorAction::ClearSelection => "Clear Selection",
             EditorAction::CopyProperties => "Copy Properties",
             EditorAction::PasteProperties => "Paste Properties",
+            EditorAction::SetAsDefault => "Set As Default",
             EditorAction::BringForward => "Bring Forward",
             EditorAction::SendBackward => "Send Backward",
             EditorAction::BringToFront => "Bring to Front",
@@ -66,6 +74,7 @@ impl EditorAction {
             EditorAction::ZoomOut => "Zoom Out",
             EditorAction::FitPage => "Fit Page",
             EditorAction::BatchStatus(status) => status.label(),
+            EditorAction::ToggleLock => "Lock / Unlock",
         }
     }
 
@@ -95,12 +104,14 @@ impl EditorAction {
             | EditorAction::Duplicate
             | EditorAction::ClearSelection => selection_count > 0,
             EditorAction::CopyProperties
+            | EditorAction::SetAsDefault
             | EditorAction::BringForward
             | EditorAction::SendBackward
             | EditorAction::BringToFront
             | EditorAction::SendToBack => selection_count == 1,
             EditorAction::PasteProperties => selection_count > 0 && has_style_clipboard,
             EditorAction::BatchStatus(_) => selection_count > 0,
+            EditorAction::ToggleLock => selection_count > 0,
             _ => true,
         }
     }
@@ -113,7 +124,7 @@ mod tests {
 
     #[test]
     fn all_contains_every_variant_exactly_once() {
-        assert_eq!(EditorAction::ALL.len(), 15);
+        assert_eq!(EditorAction::ALL.len(), 17);
         for (i, a) in EditorAction::ALL.iter().enumerate() {
             for b in EditorAction::ALL.iter().skip(i + 1) {
                 assert_ne!(a, b, "duplicate action in ALL: {a:?}");
@@ -209,6 +220,20 @@ mod tests {
         assert!(!paste.is_enabled(0, true), "nothing is selected");
         assert!(paste.is_enabled(1, true));
         assert!(paste.is_enabled(3, true));
+    }
+
+    #[test]
+    fn set_as_default_requires_exactly_one_selection() {
+        assert_eq!(EditorAction::SetAsDefault.label(), "Set As Default");
+        assert_eq!(EditorAction::SetAsDefault.shortcut_hint(), None);
+        assert!(!EditorAction::SetAsDefault.is_enabled(0, false));
+        assert!(!EditorAction::SetAsDefault.is_enabled(0, true));
+        assert!(EditorAction::SetAsDefault.is_enabled(1, false));
+        assert!(
+            !EditorAction::SetAsDefault.is_enabled(2, false),
+            "one markup only"
+        );
+        assert!(EditorAction::SetAsDefault.is_enabled(1, true));
     }
 
     #[test]

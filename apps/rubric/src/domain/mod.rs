@@ -18,6 +18,7 @@ pub mod project;
 pub mod report;
 pub mod style;
 pub mod style_preset;
+pub mod text_anchor;
 pub mod theme;
 pub mod thumb_render;
 pub mod thumbs;
@@ -32,7 +33,9 @@ pub use bates::{
 };
 pub use diff::{diff_documents, diff_projects, DiffResult, MarkupChange, MarkupSummaryRow};
 pub use document::{Document, Layer, LayerError, Page};
-pub use geom::{angle_degrees, path_length, polygon_area, Pt, Rect};
+pub use geom::{
+    angle_degrees, path_length, polygon_area, rotate_rect_cw, rotated_page_size, Pt, Rect,
+};
 pub use grid::{nice_step, ruler_ticks, Grid};
 pub use markup::{Corner, Markup, MarkupKind, ReviewStatus, ToolGroup};
 pub use markup_comment::Comment;
@@ -46,6 +49,7 @@ pub use project::{
 pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCounts, NONE_LABEL};
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
 pub use style_preset::{StylePreset, StylePresetLibrary};
+pub use text_anchor::{GlyphBox, GlyphLine, GlyphRange};
 pub use theme::{AppPrefs, Theme};
 pub use thumb_render::{
     plan_disk_eviction, DiskCacheEntry, RenderJob, RenderKey, RenderOutcome, RenderQueueState,

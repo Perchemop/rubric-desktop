@@ -74,8 +74,12 @@ pub fn save_prefs_to<P: AsRef<Path>>(path: P, prefs: &AppPrefs) -> Result<(), Da
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::style_preset::StylePresetLibrary;
-    use crate::domain::Theme;
+    use crate::domain::{
+        markup::MarkupKind,
+        style::{palette, DefaultStyles, MarkupStyle},
+        style_preset::StylePresetLibrary,
+        Theme,
+    };
 
     fn temp_prefs_path(tag: &str) -> PathBuf {
         std::env::temp_dir().join(format!(
@@ -117,11 +121,35 @@ mod tests {
             focus_mode: true,
             show_minimap: false,
             high_contrast: false,
+            default_styles: DefaultStyles::default(),
         };
         save_prefs_to(&path, &prefs).expect("save");
         assert_eq!(load_prefs_from(&path), prefs);
         let raw = std::fs::read_to_string(&path).expect("read");
         assert!(raw.contains("dark"), "theme must be persisted: {raw}");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn default_styles_persist_through_prefs() {
+        let path = temp_prefs_path("default_styles");
+        let mut prefs = AppPrefs::default();
+        let custom = MarkupStyle::default().with_stroke(palette::BLUE);
+        prefs
+            .default_styles
+            .set_default(MarkupKind::Rectangle, custom);
+        save_prefs_to(&path, &prefs).expect("save");
+        let back = load_prefs_from(&path);
+        assert_eq!(
+            back.default_styles.get_default(MarkupKind::Rectangle),
+            Some(&custom),
+            "per-kind default survives a prefs round trip"
+        );
+        assert_eq!(
+            back.default_styles.get_default(MarkupKind::Ellipse),
+            None,
+            "kinds without an override stay empty"
+        );
         let _ = std::fs::remove_file(&path);
     }
 }

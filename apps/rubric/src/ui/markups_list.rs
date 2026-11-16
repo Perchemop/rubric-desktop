@@ -16,6 +16,60 @@ use crate::domain::{
 };
 use crate::ui::app::{MarkupLayerFilter, UiState};
 
+/// A column shown in the Markups List table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub(crate) enum MarkupListColumn {
+    Page,
+    Type,
+    Author,
+    Subject,
+    Summary,
+    #[default]
+    Status,
+    Date,
+    Colour,
+    Layer,
+}
+
+impl MarkupListColumn {
+    pub const ALL: [MarkupListColumn; 9] = [
+        MarkupListColumn::Page,
+        MarkupListColumn::Type,
+        MarkupListColumn::Author,
+        MarkupListColumn::Subject,
+        MarkupListColumn::Summary,
+        MarkupListColumn::Status,
+        MarkupListColumn::Date,
+        MarkupListColumn::Colour,
+        MarkupListColumn::Layer,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            MarkupListColumn::Page => "Page",
+            MarkupListColumn::Type => "Type",
+            MarkupListColumn::Author => "Author",
+            MarkupListColumn::Subject => "Subject",
+            MarkupListColumn::Summary => "Summary",
+            MarkupListColumn::Status => "Status",
+            MarkupListColumn::Date => "Date",
+            MarkupListColumn::Colour => "Colour",
+            MarkupListColumn::Layer => "Layer",
+        }
+    }
+}
+
+/// Default visible set: the six current columns plus Date.
+pub(crate) const DEFAULT_VISIBLE_COLUMNS: [MarkupListColumn; 7] = [
+    MarkupListColumn::Page,
+    MarkupListColumn::Type,
+    MarkupListColumn::Author,
+    MarkupListColumn::Subject,
+    MarkupListColumn::Summary,
+    MarkupListColumn::Status,
+    MarkupListColumn::Date,
+];
+
 /// A request from the list to the app: select `id` and show its page.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct MarkupListAction {
@@ -109,6 +163,11 @@ fn truncate(value: &str, max_chars: usize) -> String {
     out
 }
 
+/// Format a markup's creation date as YYYY-MM-DD.
+fn format_date(created: chrono::DateTime<chrono::Utc>) -> String {
+    created.format("%Y-%m-%d").to_string()
+}
+
 /// Draw the Markups List panel. Returns a selection request when a row is
 /// clicked; the app owns selection/page changes and their snapshot policy.
 pub(crate) fn draw_markups_list(
@@ -157,6 +216,26 @@ pub(crate) fn draw_markups_list(
                 state.markup_layer = MarkupLayerFilter::All;
                 state.status = "Markup filters cleared".to_string();
             }
+            ui.separator();
+            ui.menu_button("Columns…", |ui| {
+                ui.label("Visible columns");
+                for col in MarkupListColumn::ALL {
+                    let mut on = state.markup_list_columns.contains(&col);
+                    if ui.checkbox(&mut on, col.label()).changed() {
+                        if on {
+                            if !state.markup_list_columns.contains(&col) {
+                                state.markup_list_columns.push(col);
+                            }
+                        } else {
+                            state.markup_list_columns.retain(|c| *c != col);
+                            // Always keep at least one column visible.
+                            if state.markup_list_columns.is_empty() {
+                                state.markup_list_columns.push(MarkupListColumn::Status);
+                            }
+                        }
+                    }
+                }
+            });
         });
     });
     ui.separator();
@@ -494,96 +573,175 @@ fn render_rows(
 ) -> Option<MarkupListAction> {
     let mut action = None;
     let dark = ui.visuals().dark_mode;
+    let visible: Vec<MarkupListColumn> = state.markup_list_columns.clone();
+
     egui::Grid::new(format!("markups-grid-{id_salt}"))
-        .num_columns(6)
+        .num_columns(visible.len())
         .striped(true)
         .spacing(egui::vec2(12.0, 3.0))
         .show(ui, |ui| {
-            for header in ["Page", "Type", "Author", "Subject", "Summary", "Status"] {
-                ui.label(RichText::new(header).strong());
+            for col in &visible {
+                ui.label(RichText::new(col.label()).strong());
             }
             ui.end_row();
 
             for row in list.rows() {
                 let selected = state.selected.contains(&row.id);
                 let mut clicked = false;
-                clicked |= ui
-                    .selectable_label(selected, (row.page + 1).to_string())
-                    .on_hover_text(format!("Page {}", row.page + 1))
-                    .clicked();
-                clicked |= ui
-                    .selectable_label(selected, row.kind.label())
-                    .on_hover_text(row.kind.label())
-                    .clicked();
-                clicked |= ui
-                    .selectable_label(selected, truncate(row.author.as_str(), 24))
-                    .on_hover_text(row.author.as_str())
-                    .clicked();
-                clicked |= ui
-                    .selectable_label(selected, truncate(row.subject.as_str(), 24))
-                    .on_hover_text(row.subject.as_str())
-                    .clicked();
-                clicked |= ui
-                    .selectable_label(selected, truncate(row.summary.as_str(), 40))
-                    .on_hover_text(row.summary.as_str())
-                    .clicked();
 
-                // Inline status editor. Locked (or otherwise non-editable)
-                // markups show a dimmed, read-only label.
-                let editable = project
-                    .active()
-                    .and_then(|d| d.find_markup(row.id))
-                    .map(|m| {
-                        project
-                            .active()
-                            .map(|d| d.is_markup_editable(m))
-                            .unwrap_or(false)
-                    })
-                    .unwrap_or(false);
-                if editable {
-                    let mut new_status = row.status;
-                    let response = ComboBox::from_id_salt(format!("markup-row-status-{}", row.id))
-                        .selected_text(row.status.label())
-                        .show_ui(ui, |ui| {
-                            for s in ReviewStatus::ALL.iter() {
-                                ui.horizontal(|ui| {
-                                    let (rect, _) = ui.allocate_exact_size(
-                                        egui::vec2(12.0, 12.0),
-                                        egui::Sense::hover(),
-                                    );
-                                    ui.painter().circle_filled(
-                                        rect.center(),
-                                        5.0,
-                                        status_color(*s),
-                                    );
-                                    if ui.selectable_label(row.status == *s, s.label()).clicked() {
-                                        new_status = *s;
-                                    }
-                                });
-                            }
-                        })
-                        .response;
-                    response.widget_info(|| {
-                        egui::WidgetInfo::labeled(
-                            egui::Role::ComboBox,
-                            response.enabled(),
-                            "Change status of this markup".to_owned(),
-                        )
-                    });
-                    if new_status != row.status {
-                        if let Some(doc) = project.active_mut() {
-                            doc.apply_status_to(&[row.id], new_status);
+                for col in &visible {
+                    let cell_clicked: Option<bool> = match col {
+                        MarkupListColumn::Page => Some(
+                            ui.selectable_label(selected, (row.page + 1).to_string())
+                                .on_hover_text(format!("Page {}", row.page + 1))
+                                .clicked(),
+                        ),
+                        MarkupListColumn::Type => Some(
+                            ui.selectable_label(selected, row.kind.label())
+                                .on_hover_text(row.kind.label())
+                                .clicked(),
+                        ),
+                        MarkupListColumn::Author => Some(
+                            ui.selectable_label(selected, truncate(row.author.as_str(), 24))
+                                .on_hover_text(row.author.as_str())
+                                .clicked(),
+                        ),
+                        MarkupListColumn::Subject => Some(
+                            ui.selectable_label(selected, truncate(row.subject.as_str(), 24))
+                                .on_hover_text(row.subject.as_str())
+                                .clicked(),
+                        ),
+                        MarkupListColumn::Summary => Some(
+                            ui.selectable_label(selected, truncate(row.summary.as_str(), 40))
+                                .on_hover_text(row.summary.as_str())
+                                .clicked(),
+                        ),
+                        MarkupListColumn::Date => Some(
+                            ui.selectable_label(selected, format_date(row.created))
+                                .on_hover_text(format_date(row.created).as_str())
+                                .clicked(),
+                        ),
+                        MarkupListColumn::Colour => {
+                            // Colour swatch: the markup's stroke colour, or the
+                            // kind default when the markup is not in the doc.
+                            let colour = project
+                                .active()
+                                .and_then(|d| d.markups.iter().find(|m| m.id == row.id))
+                                .map(|m| m.style.stroke)
+                                .unwrap_or_else(|| row.kind.default_style().stroke);
+                            let (rect, resp) = ui
+                                .allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::hover());
+                            ui.painter().rect_filled(
+                                rect,
+                                2.0,
+                                egui::Color32::from_rgba_unmultiplied(
+                                    colour.r, colour.g, colour.b, colour.a,
+                                ),
+                            );
+                            ui.painter().rect_stroke(
+                                rect,
+                                2.0,
+                                egui::Stroke::new(1.0, egui::Color32::from_black_alpha(80)),
+                                egui::StrokeKind::Middle,
+                            );
+                            resp.on_hover_text(format!(
+                                "#{:02X}{:02X}{:02X}",
+                                colour.r, colour.g, colour.b
+                            ));
+                            None
                         }
-                        *status_changed = true;
-                        state.status = format!("Status → {} for 1 markup", new_status.label());
+                        MarkupListColumn::Layer => {
+                            let layer_label = project
+                                .active()
+                                .and_then(|d| {
+                                    row.layer_id
+                                        .and_then(|id| {
+                                            d.layers
+                                                .iter()
+                                                .find(|l| l.id == id)
+                                                .map(|l| l.name.clone())
+                                        })
+                                        .or_else(|| d.default_layer().map(|l| l.name.clone()))
+                                })
+                                .unwrap_or_else(|| "Default".to_string());
+                            Some(
+                                ui.selectable_label(selected, &layer_label)
+                                    .on_hover_text(&layer_label)
+                                    .clicked(),
+                            )
+                        }
+                        MarkupListColumn::Status => {
+                            // Inline status editor. Locked (or otherwise
+                            // non-editable) markups show a dimmed label.
+                            let editable = project
+                                .active()
+                                .and_then(|d| d.find_markup(row.id))
+                                .map(|m| {
+                                    project
+                                        .active()
+                                        .map(|d| d.is_markup_editable(m))
+                                        .unwrap_or(false)
+                                })
+                                .unwrap_or(false);
+                            if editable {
+                                let mut new_status = row.status;
+                                let response = ComboBox::from_id_salt(format!(
+                                    "markup-row-status-{}-{id_salt}",
+                                    row.id
+                                ))
+                                .selected_text(row.status.label())
+                                .show_ui(ui, |ui| {
+                                    for s in ReviewStatus::ALL.iter() {
+                                        ui.horizontal(|ui| {
+                                            let (rect, _) = ui.allocate_exact_size(
+                                                egui::vec2(12.0, 12.0),
+                                                egui::Sense::hover(),
+                                            );
+                                            ui.painter().circle_filled(
+                                                rect.center(),
+                                                5.0,
+                                                status_color(*s),
+                                            );
+                                            if ui
+                                                .selectable_label(row.status == *s, s.label())
+                                                .clicked()
+                                            {
+                                                new_status = *s;
+                                            }
+                                        });
+                                    }
+                                })
+                                .response;
+                                response.widget_info(|| {
+                                    egui::WidgetInfo::labeled(
+                                        egui::Role::ComboBox,
+                                        response.enabled(),
+                                        "Change status of this markup".to_owned(),
+                                    )
+                                });
+                                if new_status != row.status {
+                                    if let Some(doc) = project.active_mut() {
+                                        doc.apply_status_to(&[row.id], new_status);
+                                    }
+                                    *status_changed = true;
+                                    state.status =
+                                        format!("Status → {} for 1 markup", new_status.label());
+                                }
+                            } else {
+                                ui.label(
+                                    RichText::new(row.status.label())
+                                        .color(status_text_color(row.status, dark))
+                                        .weak(),
+                                );
+                            }
+                            None
+                        }
+                    };
+                    if let Some(cell_clicked) = cell_clicked {
+                        clicked |= cell_clicked;
                     }
-                } else {
-                    ui.label(
-                        RichText::new(row.status.label())
-                            .color(status_text_color(row.status, dark))
-                            .weak(),
-                    );
                 }
+
                 ui.end_row();
 
                 if clicked {
@@ -782,5 +940,38 @@ mod tests {
     fn truncate_preserves_short_values_and_marks_long_ones() {
         assert_eq!(truncate("short", 10), "short");
         assert_eq!(truncate("abcdefghij", 5), "abcd…");
+    }
+
+    #[test]
+    fn default_visible_columns_are_the_six_current_plus_date() {
+        assert_eq!(
+            DEFAULT_VISIBLE_COLUMNS,
+            [
+                MarkupListColumn::Page,
+                MarkupListColumn::Type,
+                MarkupListColumn::Author,
+                MarkupListColumn::Subject,
+                MarkupListColumn::Summary,
+                MarkupListColumn::Status,
+                MarkupListColumn::Date,
+            ]
+        );
+        assert!(!DEFAULT_VISIBLE_COLUMNS.contains(&MarkupListColumn::Colour));
+        assert!(!DEFAULT_VISIBLE_COLUMNS.contains(&MarkupListColumn::Layer));
+    }
+
+    #[test]
+    fn all_columns_has_nine_entries_and_labels() {
+        assert_eq!(MarkupListColumn::ALL.len(), 9);
+        assert_eq!(MarkupListColumn::Date.label(), "Date");
+        assert_eq!(MarkupListColumn::Colour.label(), "Colour");
+        assert_eq!(MarkupListColumn::Layer.label(), "Layer");
+    }
+
+    #[test]
+    fn format_date_is_iso() {
+        use chrono::TimeZone;
+        let created = chrono::Utc.with_ymd_and_hms(2026, 3, 5, 14, 30, 0).unwrap();
+        assert_eq!(format_date(created), "2026-03-05");
     }
 }

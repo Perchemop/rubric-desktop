@@ -5,7 +5,7 @@ use uuid::Uuid;
 use eframe::egui::{self, ComboBox, Ui};
 
 use crate::domain::{
-    style::Color,
+    style::{Color, DashPattern, FillMode},
     units::{MeasureUnit, MAX_PRECISION},
     BatesCorner, LayerError, MarkupKind, Project, ReviewStatus, Scale, StampPreset,
     MAX_BATES_DIGITS, MAX_BATES_START, MIN_BATES_DIGITS,
@@ -550,6 +550,7 @@ pub(crate) fn draw_inspector(
         }
 
         let mut edited = false;
+        let mut lock_changed = false;
 
         egui::CollapsingHeader::new("Properties")
             .default_open(true)
@@ -667,6 +668,85 @@ pub(crate) fn draw_inspector(
                             });
                     }
 
+                    // Fill colour.
+                    ui.label("Fill colour");
+                    let mut fc = domain_to_color32(m.style.fill);
+                    let fill_resp = ui
+                        .color_edit_button_srgba(&mut fc)
+                        .on_hover_text("Fill colour");
+                    let fill_colour_changed = fill_resp.changed();
+                    if fill_colour_changed {
+                        m.style.fill = color32_to_domain(fc);
+                        edited = true;
+                        committed = true;
+                    }
+
+                    // Fill mode: None / Solid / Highlight.
+                    ui.label("Fill mode");
+                    let mut fill_mode = m.style.fill_mode;
+                    let mut fill_mode_changed = false;
+                    egui::ComboBox::from_id_salt("fill_mode")
+                        .selected_text(match fill_mode {
+                            FillMode::None => "None",
+                            FillMode::Solid => "Solid",
+                            FillMode::Highlight => "Highlight",
+                        })
+                        .show_ui(ui, |ui| {
+                            for (mode, label) in [
+                                (FillMode::None, "None"),
+                                (FillMode::Solid, "Solid"),
+                                (FillMode::Highlight, "Highlight"),
+                            ] {
+                                if ui.selectable_value(&mut fill_mode, mode, label).clicked() {
+                                    fill_mode_changed = true;
+                                }
+                            }
+                        });
+                    if fill_mode_changed {
+                        m.style.fill_mode = fill_mode;
+                        edited = true;
+                        committed = true;
+                    }
+
+                    // Opacity: slider on the fill alpha channel (0–100%).
+                    ui.horizontal(|ui| {
+                        ui.label("Opacity");
+                        let mut opacity = (m.style.fill.a as f32 / 255.0 * 100.0).round() as i32;
+                        let resp = ui.add(egui::Slider::new(&mut opacity, 0..=100).suffix("%"));
+                        if resp.changed() {
+                            m.style.fill = m
+                                .style
+                                .fill
+                                .with_alpha((opacity as f32 / 100.0 * 255.0).round() as u8);
+                            edited = true;
+                            if resp.drag_stopped() || resp.lost_focus() {
+                                committed = true;
+                            }
+                        }
+                    });
+
+                    // Dash pattern: Solid / Dashed / Dotted.
+                    ui.label("Dash pattern");
+                    let mut dash = m.style.dash;
+                    let mut dash_changed = false;
+                    egui::ComboBox::from_id_salt("dash_pattern")
+                        .selected_text(dash.label())
+                        .show_ui(ui, |ui| {
+                            for mode in DashPattern::ALL.iter() {
+                                if ui
+                                    .selectable_value(&mut dash, *mode, mode.label())
+                                    .clicked()
+                                {
+                                    dash_changed = true;
+                                }
+                            }
+                        });
+                    if dash_changed {
+                        m.style.dash = dash;
+                        edited = true;
+                        committed = true;
+                    }
+
                     ui.label("Stroke colour");
                     let mut sc = domain_to_color32(m.style.stroke);
                     let colour_changed = ui
@@ -706,6 +786,38 @@ pub(crate) fn draw_inspector(
                             }
                         }
                     });
+                });
+
+                // Lock toggle — always reachable since lock is the edit gate
+                // itself: you must be able to unlock a locked markup even when
+                // `is_markup_editable` is false.
+                ui.horizontal(|ui| {
+                    let label = if m.locked {
+                        "Unlock markup"
+                    } else {
+                        "Lock markup"
+                    };
+                    if ui.checkbox(&mut m.locked, label).changed() {
+                        lock_changed = true;
+                        edited = true;
+                        committed = true;
+                        ui_state.status = if m.locked {
+                            "Markup locked".to_string()
+                        } else {
+                            "Markup unlocked".to_string()
+                        };
+                    }
+                });
+
+                // Set As Default button
+                ui.horizontal(|ui| {
+                    if ui.button("Set As Default").clicked() {
+                        m.touch();
+                        edited = true;
+                        committed = true;
+                        ui_state.status = "Style set as default for markup kind".to_string();
+                        ui_state.default_styles.set_default(m.kind, m.style);
+                    }
                 });
 
                 if !editable {
@@ -769,6 +881,12 @@ pub(crate) fn draw_inspector(
             });
         });
 
+        // Capture the lock state and id before `m` is moved into the document
+        // below: the lock write-back must still work when style edits are
+        // disabled.
+        let lock_state = m.locked;
+        let markup_id = m.id;
+
         if edited && editable {
             m.touch();
             if let Some(doc) = project.active_mut() {
@@ -776,6 +894,26 @@ pub(crate) fn draw_inspector(
                     doc.apply_style_to(&selected, m.style);
                 } else if let Some(slot) = doc.markups.iter().position(|x| x.id == m.id) {
                     doc.markups[slot] = m;
+                    doc.touch();
+                }
+            }
+        }
+
+        // Lock write-back — always allowed since lock is the edit gate itself:
+        // a locked markup must still be unlockable from the Inspector.
+        if lock_changed {
+            if let Some(doc) = project.active_mut() {
+                if multi {
+                    for id in &selected {
+                        if let Some(markup) = doc.find_markup_mut(*id) {
+                            markup.locked = lock_state;
+                            markup.touch();
+                        }
+                    }
+                    doc.touch();
+                } else if let Some(slot) = doc.markups.iter().position(|x| x.id == markup_id) {
+                    doc.markups[slot].locked = lock_state;
+                    doc.markups[slot].touch();
                     doc.touch();
                 }
             }
