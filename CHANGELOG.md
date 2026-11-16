@@ -2,6 +2,63 @@
 
 All notable changes to this project will be documented here. Format: semantic-ish for this repo (Added/Changed/Fixed/Docs).
 
+## [0.4.10] - 2026-11-16
+
+### Added
+- **Inspector depth** (`ui/inspector.rs`): the Properties tab now exposes the
+  full markup style — fill colour picker, fill mode (None / Solid /
+  Highlight), opacity slider (0–100 % on the fill alpha channel) and dash
+  pattern (Solid / Dashed / Dotted) — alongside the existing stroke colour
+  and width controls.
+- **Per-markup lock** (`ui/inspector.rs`, `ui/menu.rs`, `domain/action.rs`,
+  `ui/app.rs`): the Inspector gains a "Lock markup" checkbox (reachable even
+  for locked markups, since lock is the edit gate itself) and the shared
+  context menu gains a Lock/Unlock action that toggles `Markup.locked` on
+  every selected editable markup.
+- **Set As Default + dynamic defaults** (`domain/style.rs`, `domain/theme.rs`,
+  `data/prefs.rs`, `ui/app.rs`, `ui/menu.rs`, `ui/inspector.rs`,
+  `ui/canvas.rs`): "Set As Default" (context menu entry + Inspector button)
+  stores the selected markup's style as a per-`MarkupKind` override
+  (`DefaultStyles`), persisted app-level in `prefs.json`. New markups of that
+  kind are created with the override instead of the coded default; clearing
+  the override restores the coded default. This is an app-preference change:
+  no undo snapshot, no document dirty flag.
+- **Markups list columns** (`ui/markups_list.rs`, `ui/app.rs`): new Date
+  (YYYY-MM-DD), Colour (swatch with a hex tooltip) and Layer columns; a
+  "Columns…" menu toggles which of the nine columns are visible
+  (session-local; default is the previous six plus Date; at least one column
+  always stays visible).
+- **Modifier drawing** (`ui/canvas.rs`): Shift constrains line/arrow drags to
+  the nearest 0°/45°/90° direction from the start point (cardinal cases are
+  placed exactly), Shift constrains rectangle/ellipse drags to a
+  square/circle (larger extent, drag direction preserved), and Ctrl
+  overrides grid snap so creation points land exactly under the pointer.
+- **Domain groundwork** (no UI wiring yet): glyph-tight text anchoring model
+  (`domain/text_anchor.rs` — `GlyphBox`/`GlyphLine`/`GlyphRange`,
+  `anchored_bounds` narrows a text anchor to the stored words when the
+  extractor's line is available) and page-rotation maths
+  (`domain/geom.rs` — `rotate_rect_cw`, `rotated_page_size`), both fully
+  unit-tested.
+
+### Fixed
+- `constrain_segment_to_angle` exactness: cardinal snaps (0°/90°) now use an
+  octant index instead of trig at 90°, which left a ~4e-6 f32 drift that
+  failed the snap test.
+- Markups list layer resolution uses `and_then` instead of `map(..).flatten()`
+  (clippy `map_flatten`).
+- egui 0.37 API alignment for the new slices: `Popup`/`data_mut_persistent`/
+  `tooltip_text` usages replaced with the codebase's `menu_button` +
+  `on_hover_text` idioms; `ComboBox::show_ui` change detection restructured
+  (no `.inner` extraction); `rect_stroke` gains the required `StrokeKind`.
+
+### Known limitations
+- Markups-list column visibility is session-local (not yet persisted to
+  prefs).
+- Custom review statuses are deferred: `ReviewStatus` is a fixed 4-variant
+  enum; user-defined status names need a domain slice of their own and are
+  tracked in `ROADMAP.md`.
+- The text-anchor/rotation groundwork has no UI surface yet.
+
 ## [0.4.7] - 2026-11-15
 
 ### Fixed

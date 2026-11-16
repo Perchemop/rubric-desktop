@@ -142,3 +142,16 @@ redistribution terms stay auditable:
 - **Rule in force:** model outputs whose terms forbid redistribution are
   never committed; anything committed must satisfy the clean-room review
   bar regardless of who (or what) authored the first draft.
+
+## Guide synchronization record (§12.3)
+
+- **2026-11-16:** guide.md (dated 2026-11-16, 1557 lines, 114397 bytes) read in
+  full — Part I §0–18, Part II II.18–II.30, §19 (skills + dead-code rule),
+  §20 (design anti-patterns), §21 (high-quality UI patterns), §22 (pstack —
+  new). Global ruleset (`~/.config/opencode/AGENTS.md`) synchronized: §22
+  pstack added verbatim with the four binding usage rules (rigor mode for
+  substantial tasks; verification posture complementary to clean-room /
+  never-crash / CI-only; HARD BUILD RULE unaffected; stricter rule wins on
+  conflict), design-guidelines canonical source re-pointed from the deprecated
+  standalone file to guide §20/§21, dead-code rule pointer added to §19.
+  No Rubric-repo rule changes required (house-rules block unchanged).
