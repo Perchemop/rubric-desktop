@@ -2242,3 +2242,26 @@ Both notes are in `docs/research/` with status **"Proposed — pending human gat
 
 ### Housekeeping
 - `dist/` added to `.gitignore` to prevent build artifacts from being committed.
+
+### Bluebeam audit priority gaps — v0.4.10 (PR #216, merged to main 2026-11-16)
+- Implemented six priority gaps from `docs/research/bluebeam-vs-rubric-audit.md`
+  (research approved 2026-11-15, PR #215): Inspector depth (fill colour /
+  fill mode / opacity / dash + per-markup Lock toggle), Set As Default with
+  per-`MarkupKind` dynamic defaults persisted in `prefs.json`, Markups list
+  Date/Colour/Layer columns with toggleable visibility, and modifier drawing
+  (Shift 0/45/90° constrain, Shift square/circle, Ctrl snap override).
+- Custom review statuses deliberately deferred (fixed 4-variant
+  `ReviewStatus` enum needs its own domain slice); the half-wired
+  "Manage statuses" mock was removed rather than shipped (dead-code rule).
+- egui 0.37 API alignment for all new UI (menu_button, on_hover_text,
+  StrokeKind, ComboBox change detection); pre-existing installer artefacts
+  carrying third-party upstream emails removed from the tree (personal-data
+  scan gate).
+- CI evidence: PR #216 required checks green — check (fmt, clippy -D
+  warnings, 406 tests incl. new `constrain_*` and `default_styles` tests),
+  snapshot (shell empty-state baseline updated for the intentional header
+  change), Secret scan, Personal data scan, Dependency review, Cargo deny,
+  SBOM, packaging-plan (runs 43833034321 → afebd4a green; main runs
+  43838935919/43838935943 green).
+- Guide §12.3 sync recorded in `docs/current-model-map.md` (guide 2026-11-16
+  read in full; §22 pstack added to the global ruleset).
