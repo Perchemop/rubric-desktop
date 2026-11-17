@@ -1546,7 +1546,10 @@ mod tests {
         assert_eq!(doc2.page_count(), 3, "should have 3 pages");
         assert_eq!(doc2.pages[0].index, 0, "page 0 index should be 0");
         assert_eq!(doc2.pages[1].index, 1, "new page index should be 1");
-        assert_eq!(doc2.pages[2].index, 2, "original page 1 should shift to index 2");
+        assert_eq!(
+            doc2.pages[2].index, 2,
+            "original page 1 should shift to index 2"
+        );
     }
 
     #[test]

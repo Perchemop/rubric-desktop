@@ -88,7 +88,15 @@ fn line_at(project: &Project, page_index: usize, pp: Pt) -> Option<GlyphLine> {
         .into_iter()
         .enumerate()
         .map(|(i, ch)| {
-            GlyphBox::new(ch, DRect::new(line.at.x + i as f32 * char_w, line.at.y, char_w, line.line_height))
+            GlyphBox::new(
+                ch,
+                DRect::new(
+                    line.at.x + i as f32 * char_w,
+                    line.at.y,
+                    char_w,
+                    line.line_height,
+                ),
+            )
         })
         .collect();
     Some(GlyphLine::new(glyphs, line.line_height))
@@ -1880,10 +1888,8 @@ pub(crate) fn draw_canvas(
                             | MarkupKind::Strikeout
                             | MarkupKind::Underline
                             | MarkupKind::Squiggly => {
-                                *draw_state = super::app::DrawState::TextRange {
-                                    start: pp,
-                                    end: pp,
-                                };
+                                *draw_state =
+                                    super::app::DrawState::TextRange { start: pp, end: pp };
                             }
                             _ => {
                                 *draw_state = super::app::DrawState::Bounds {
@@ -2030,7 +2036,8 @@ pub(crate) fn draw_canvas(
                             .active_tool
                             .to_kind()
                             .unwrap_or(MarkupKind::Highlight);
-                        let m = finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
+                        let m =
+                            finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
                         if let Some(doc) = project.active_mut() {
                             doc.add_markup(m);
                         }

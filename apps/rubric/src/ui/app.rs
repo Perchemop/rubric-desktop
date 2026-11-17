@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use eframe::{App, CreationContext, Frame};
-use egui::{Align, Layout, Pos2, TextureHandle, Ui, Vec2};
+use egui::{Pos2, TextureHandle, Ui, Vec2};
 
 use crate::data::{
     autosave, autosave_due, load_prefs, load_project, load_recent, normalise_project_filename,
@@ -681,13 +681,19 @@ impl RubricApp {
                 state.running = false;
                 state.result = Some(status);
                 // Record the time we offered an update for anti-loop protection.
-                if let Some(update_check::UpdateStatus::Available { latest_version, .. }) =
-                    &state.result
-                {
+                // The version is cloned first so the immutable borrow of
+                // `state.result` ends before `state` is mutated again.
+                let offered_tag = match &state.result {
+                    Some(update_check::UpdateStatus::Available { latest_version, .. }) => {
+                        Some(latest_version.clone())
+                    }
+                    _ => None,
+                };
+                if let Some(tag) = offered_tag {
                     state.last_update_offered = Some(Instant::now());
-                    // When an update is offered, record the tag for remediation if
-                    // the user later chooses to install it.
-                    state.self_update_tag = Some(latest_version.clone());
+                    // When an update is offered, record the tag for remediation
+                    // if the user later chooses to install it.
+                    state.self_update_tag = Some(tag);
                 }
                 // When a check fails after a previous self-update attempt, retain
                 // the error so the UI can show it; otherwise clear it.
