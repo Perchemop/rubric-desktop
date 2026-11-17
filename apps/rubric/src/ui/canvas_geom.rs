@@ -117,7 +117,15 @@ pub fn screen_rect_page_rotated(
     page_h: f32,
     rotation: i32,
 ) -> egui::Rect {
-    let min = to_screen_rotated(Pt::new(r.x, r.y), pan, zoom, origin, page_w, page_h, rotation);
+    let min = to_screen_rotated(
+        Pt::new(r.x, r.y),
+        pan,
+        zoom,
+        origin,
+        page_w,
+        page_h,
+        rotation,
+    );
     let max = to_screen_rotated(
         Pt::new(r.right(), r.bottom()),
         pan,

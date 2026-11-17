@@ -58,10 +58,8 @@ pub(crate) fn point_handle_at(
     rotation: i32,
 ) -> Option<usize> {
     let radius = 8.0_f32.max(4.5 * zoom.max(0.7));
-    m.draggable_points()
-        .iter()
-        .position(|p| {
-            let screen_p = to_screen_rotated(*p, pan, zoom, origin, page_w, page_h, rotation);
-            (screen_p - pp).length() <= radius
-        })
+    m.draggable_points().iter().position(|p| {
+        let screen_p = to_screen_rotated(*p, pan, zoom, origin, page_w, page_h, rotation);
+        (screen_p - pp).length() <= radius
+    })
 }

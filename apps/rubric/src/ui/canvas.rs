@@ -620,7 +620,15 @@ pub(crate) fn draw_canvas(
     let pan = ui_state.pan;
     let zoom = ui_state.zoom;
 
-    let page_rect = screen_rect_rotated(page.bounds(), origin, pan, zoom, page.rotation);
+    let page_rect = screen_rect_page_rotated(
+        page.bounds(),
+        origin,
+        pan,
+        zoom,
+        page.width,
+        page.height,
+        page.rotation,
+    );
     let source_pdf = project.source_pdf.clone();
     // True when a real PDF backs this project (UI audit P0-2): an empty
     // string behaves like no source at all.
@@ -1310,7 +1318,15 @@ pub(crate) fn draw_canvas(
     match &*draw_state {
         super::app::DrawState::Bounds { start, end, .. } => {
             let r = DRect::from_corners(*start, *end);
-            let sr = screen_rect_page_rotated(r, origin, pan, ui_state.zoom, page.width, page.height, page.rotation);
+            let sr = screen_rect_page_rotated(
+                r,
+                origin,
+                pan,
+                ui_state.zoom,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.rect_stroke(
                 sr,
                 egui::CornerRadius::ZERO,
@@ -1319,8 +1335,24 @@ pub(crate) fn draw_canvas(
             );
         }
         super::app::DrawState::Segment { start, end, .. } => {
-            let sa = to_screen_rotated(*start, ui_state.pan, ui_state.zoom, origin, page.width, page.height, page.rotation);
-            let sb = to_screen_rotated(*end, ui_state.pan, ui_state.zoom, origin, page.width, page.height, page.rotation);
+            let sa = to_screen_rotated(
+                *start,
+                ui_state.pan,
+                ui_state.zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
+            let sb = to_screen_rotated(
+                *end,
+                ui_state.pan,
+                ui_state.zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.line_segment([sa, sb], egui::Stroke::new(1.5, preview_color));
         }
         super::app::DrawState::Ink { strokes, current } => {
@@ -1328,7 +1360,17 @@ pub(crate) fn draw_canvas(
             for s in strokes.iter().chain(std::iter::once(current)) {
                 let pts: Vec<Pos2> = s
                     .iter()
-                    .map(|p| to_screen_rotated(*p, ui_state.pan, ui_state.zoom, origin, page.width, page.height, page.rotation))
+                    .map(|p| {
+                        to_screen_rotated(
+                            *p,
+                            ui_state.pan,
+                            ui_state.zoom,
+                            origin,
+                            page.width,
+                            page.height,
+                            page.rotation,
+                        )
+                    })
                     .collect();
                 if pts.len() >= 2 {
                     painter.add(egui::Shape::line(pts, stroke));
@@ -1339,11 +1381,29 @@ pub(crate) fn draw_canvas(
             let stroke = egui::Stroke::new(1.5, preview_color);
             let mut pts: Vec<Pos2> = points
                 .iter()
-                .map(|p| to_screen_rotated(*p, ui_state.pan, ui_state.zoom, origin, page.width, page.height, page.rotation))
+                .map(|p| {
+                    to_screen_rotated(
+                        *p,
+                        ui_state.pan,
+                        ui_state.zoom,
+                        origin,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    )
+                })
                 .collect();
             // Rubber-band segment from the last committed point to the cursor.
             if let Some(cursor) = page_pos {
-                let sc = to_screen_rotated(cursor, ui_state.pan, ui_state.zoom, origin, page.width, page.height, page.rotation);
+                let sc = to_screen_rotated(
+                    cursor,
+                    ui_state.pan,
+                    ui_state.zoom,
+                    origin,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                );
                 if !pts.is_empty() {
                     if let Some(last) = pts.last().copied() {
                         painter.line_segment([last, sc], stroke);
@@ -1367,16 +1427,48 @@ pub(crate) fn draw_canvas(
         }
         super::app::DrawState::Angle { a, vertex, .. } => {
             let stroke = egui::Stroke::new(1.5, preview_color);
-            let sa = to_screen_rotated(*a, ui_state.pan, ui_state.zoom, origin, page.width, page.height, page.rotation);
+            let sa = to_screen_rotated(
+                *a,
+                ui_state.pan,
+                ui_state.zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             if let Some(v) = vertex {
-                let sv = to_screen_rotated(*v, ui_state.pan, ui_state.zoom, origin, page.width, page.height, page.rotation);
+                let sv = to_screen_rotated(
+                    *v,
+                    ui_state.pan,
+                    ui_state.zoom,
+                    origin,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                );
                 painter.line_segment([sv, sa], stroke);
                 if let Some(cursor) = page_pos {
-                    let sc = to_screen_rotated(cursor, ui_state.pan, ui_state.zoom, origin, page.width, page.height, page.rotation);
+                    let sc = to_screen_rotated(
+                        cursor,
+                        ui_state.pan,
+                        ui_state.zoom,
+                        origin,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    );
                     painter.line_segment([sv, sc], stroke);
                 }
             } else if let Some(cursor) = page_pos {
-                let sc = to_screen_rotated(cursor, ui_state.pan, ui_state.zoom, origin, page.width, page.height, page.rotation);
+                let sc = to_screen_rotated(
+                    cursor,
+                    ui_state.pan,
+                    ui_state.zoom,
+                    origin,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                );
                 painter.line_segment([sa, sc], stroke);
             }
         }
@@ -1389,8 +1481,24 @@ pub(crate) fn draw_canvas(
             // display unit so the user can aim at the known feature before
             // committing the second click.
             let stroke = egui::Stroke::new(1.5, preview_color);
-            let sa = to_screen_rotated(*start, ui_state.pan, ui_state.zoom, origin, page.width, page.height, page.rotation);
-            let sb = to_screen_rotated(*end, ui_state.pan, ui_state.zoom, origin, page.width, page.height, page.rotation);
+            let sa = to_screen_rotated(
+                *start,
+                ui_state.pan,
+                ui_state.zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
+            let sb = to_screen_rotated(
+                *end,
+                ui_state.pan,
+                ui_state.zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.line_segment([sa, sb], stroke);
             painter.circle_filled(sa, 3.0, preview_color);
             let len = start.distance(*end);
@@ -1555,7 +1663,15 @@ pub(crate) fn draw_canvas(
 
                     if let Some(doc) = project.active() {
                         for m in doc.markups_in_paint_order(page.index) {
-                            let mr = screen_rect_page_rotated(m.bounds(), origin, pan, zoom, page.width, page.height, page.rotation);
+                            let mr = screen_rect_page_rotated(
+                                m.bounds(),
+                                origin,
+                                pan,
+                                zoom,
+                                page.width,
+                                page.height,
+                                page.rotation,
+                            );
                             if rect.intersects(mr) {
                                 ui_state.selected.insert(m.id);
                             }
@@ -2040,8 +2156,24 @@ pub(crate) fn draw_canvas(
                     }
                     super::app::DrawState::Ink { current, .. } => {
                         if let Some(last) = current.last().copied() {
-                            let dscreen = to_screen_rotated(pp, ui_state.pan, ui_state.zoom, origin, page.width, page.height, page.rotation)
-                                .distance(to_screen_rotated(last, ui_state.pan, ui_state.zoom, origin, page.width, page.height, page.rotation));
+                            let dscreen = to_screen_rotated(
+                                pp,
+                                ui_state.pan,
+                                ui_state.zoom,
+                                origin,
+                                page.width,
+                                page.height,
+                                page.rotation,
+                            )
+                            .distance(to_screen_rotated(
+                                last,
+                                ui_state.pan,
+                                ui_state.zoom,
+                                origin,
+                                page.width,
+                                page.height,
+                                page.rotation,
+                            ));
                             if dscreen >= 2.0 {
                                 current.push(pp);
                             }
@@ -2195,7 +2327,15 @@ pub(crate) fn draw_canvas(
         if response.drag_started() {
             if let Some(pp) = raw_pos {
                 if let Some(doc) = project.active() {
-                    let screen_pp = to_screen_rotated(pp, pan, zoom, origin, page.width, page.height, page.rotation);
+                    let screen_pp = to_screen_rotated(
+                        pp,
+                        pan,
+                        zoom,
+                        origin,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    );
                     let mut picked_point = None;
                     let mut picked_corner = None;
                     for id in &ui_state.selected {
@@ -2211,12 +2351,29 @@ pub(crate) fn draw_canvas(
                         };
                         // Point handles first: an endpoint/vertex grab is more
                         // specific than a bounding-box corner grab.
-                        if let Some(idx) = point_handle_at(m, screen_pp, origin, pan, zoom, page.width, page.height, page.rotation) {
+                        if let Some(idx) = point_handle_at(
+                            m,
+                            screen_pp,
+                            origin,
+                            pan,
+                            zoom,
+                            page.width,
+                            page.height,
+                            page.rotation,
+                        ) {
                             picked_point = Some(idx);
                             break;
                         }
                         if matches!(m.geometry, MarkupGeometry::Bounds(_)) {
-                            let b = screen_rect_page_rotated(m.bounds(), origin, pan, zoom, page.width, page.height, page.rotation);
+                            let b = screen_rect_page_rotated(
+                                m.bounds(),
+                                origin,
+                                pan,
+                                zoom,
+                                page.width,
+                                page.height,
+                                page.rotation,
+                            );
                             if let Some(c) = handle_at(b, screen_pp, ui_state.zoom) {
                                 picked_corner = Some(c);
                                 break;
@@ -2569,15 +2726,42 @@ mod tests {
         // Identity transform: page points land on the same screen coords.
         // Rotation=0 gives identity mapping; page dims use the test's default size.
         assert_eq!(
-            point_handle_at(&m, Pos2::new(0.0, 0.0), Pos2::ZERO, Vec2::ZERO, 1.0, 612.0, 792.0, 0),
+            point_handle_at(
+                &m,
+                Pos2::new(0.0, 0.0),
+                Pos2::ZERO,
+                Vec2::ZERO,
+                1.0,
+                612.0,
+                792.0,
+                0
+            ),
             Some(0)
         );
         assert_eq!(
-            point_handle_at(&m, Pos2::new(100.0, 100.0), Pos2::ZERO, Vec2::ZERO, 1.0, 612.0, 792.0, 0),
+            point_handle_at(
+                &m,
+                Pos2::new(100.0, 100.0),
+                Pos2::ZERO,
+                Vec2::ZERO,
+                1.0,
+                612.0,
+                792.0,
+                0
+            ),
             Some(1)
         );
         assert_eq!(
-            point_handle_at(&m, Pos2::new(50.0, 50.0), Pos2::ZERO, Vec2::ZERO, 1.0, 612.0, 792.0, 0),
+            point_handle_at(
+                &m,
+                Pos2::new(50.0, 50.0),
+                Pos2::ZERO,
+                Vec2::ZERO,
+                1.0,
+                612.0,
+                792.0,
+                0
+            ),
             None,
             "the middle of the segment carries no point handle"
         );
