@@ -960,6 +960,18 @@ pub(crate) fn draw_inspector(
             }
         });
 
+        ui.collapsing("Measurement", |ui| {
+            ui.label("Default unit (app)");
+            let _ = ComboBox::from_id_salt("default_measure_unit")
+                .selected_text(ui_state.unit.name())
+                .show_ui(ui, |ui| {
+                    for u in MeasureUnit::ALL.iter() {
+                        ui.selectable_value(&mut ui_state.unit, *u, u.name());
+                    }
+                })
+                .response
+                .on_hover_text("App default for new measurements; persisted in preferences.");
+        });
         // Bates numbering (spec F-801–F-803): the configuration UI. The stamp
         // is a non-destructive overlay applied at export/print time; this
         // section only edits the persisted configuration and previews the

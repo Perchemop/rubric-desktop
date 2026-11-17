@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented here. Format: semantic-ish for this repo (Added/Changed/Fixed/Docs).
 
-## [Unreleased] - 2026-11-17
+## [0.4.11] - 2026-11-17
 
 ### Added
 - **Text-markup grounding** (`ui/canvas.rs`, `ui/app.rs`): Highlight,

@@ -202,6 +202,9 @@ pub(crate) struct UiState {
     /// Per-kind default style overrides ("Set As Default"). Loaded from prefs at
     /// startup and written back whenever a default is set or cleared.
     pub(crate) default_styles: DefaultStyles,
+    /// Display unit used for new measurements (gap #8: app default), seeded from
+    /// prefs and persisted back on save.
+    pub(crate) unit: MeasureUnit,
     /// Visible columns for the Markups List (session-local, gap #5).
     pub(crate) markup_list_columns: Vec<crate::ui::markups_list::MarkupListColumn>,
     /// Currently displayed page index (session state; never snapshotted).
@@ -326,6 +329,7 @@ impl Default for UiState {
             pending_action: None,
             style_clipboard: None,
             default_styles: DefaultStyles::default(),
+            unit: MeasureUnit::default(),
             markup_list_columns: crate::ui::markups_list::DEFAULT_VISIBLE_COLUMNS.to_vec(),
             current_page: 0,
             dirty: false,
@@ -542,6 +546,7 @@ impl RubricApp {
                 zoom: prefs.zoom,
                 current_page: prefs.current_page,
                 default_styles: prefs.default_styles.clone(),
+                unit: prefs.default_measure_unit,
                 ..UiState::default()
             },
             draw: DrawState::Idle,
@@ -1715,6 +1720,7 @@ impl RubricApp {
             show_minimap: self.ui.show_minimap,
             high_contrast: self.high_contrast,
             default_styles: self.ui.default_styles.clone(),
+            default_measure_unit: self.ui.unit,
         }
     }
 

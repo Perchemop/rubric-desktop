@@ -9,7 +9,7 @@ use crate::domain::bates::BatesConfig;
 use crate::domain::geom::Pt;
 use crate::domain::markup::Markup;
 use crate::domain::{ruler_ticks, Grid, Page, Rect as DRect, Scale};
-use crate::ui::canvas_geom::{screen_rect, to_screen};
+use crate::ui::canvas_geom::{screen_rect_page_rotated, to_screen, to_screen_rotated};
 
 /// Draw a small dark measurement badge with white text at `anchor` (screen
 /// space). Used for measurement labels and the running count total.
@@ -180,11 +180,14 @@ pub(crate) fn draw_bates_overlay(
         (false, false) => Align2::LEFT_BOTTOM,
         (true, false) => Align2::RIGHT_BOTTOM,
     };
-    let anchor = to_screen(
+    let anchor = crate::ui::canvas_geom::to_screen_rotated(
         bates.anchor_point(page.width, page.height),
         pan,
         zoom,
         origin,
+        page.width,
+        page.height,
+        page.rotation,
     );
     let font = FontId::proportional((bates.font_size.max(4.0) * zoom).max(4.0));
     let color = if is_export {
@@ -294,8 +297,17 @@ pub(crate) fn draw_minimap(
 /// follow-up). Everything else keeps the bounding-box corner handles plus a
 /// centre grab dot; only `Bounds` geometry actually resizes from a corner.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn draw_selection(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f32, m: &Markup) {
-    let b = screen_rect(m.bounds(), origin, pan, zoom);
+pub(crate) fn draw_selection(
+    painter: &Painter,
+    origin: Pos2,
+    pan: Vec2,
+    zoom: f32,
+    m: &Markup,
+    page_w: f32,
+    page_h: f32,
+    rotation: i32,
+) {
+    let b = screen_rect_page_rotated(m.bounds(), origin, pan, zoom, page_w, page_h, rotation);
     let stroke = egui::Stroke::new(1.0, Color32::from_rgb(30, 144, 255));
     let points = m.draggable_points();
     if points.is_empty() {
@@ -307,7 +319,7 @@ pub(crate) fn draw_selection(painter: &Painter, origin: Pos2, pan: Vec2, zoom: f
         handle(b.center());
     } else {
         for p in points {
-            let sp = to_screen(p, pan, zoom, origin);
+            let sp = to_screen_rotated(p, pan, zoom, origin, page_w, page_h, rotation);
             painter.circle(sp, 4.0 * zoom.max(0.7), Color32::WHITE, stroke);
         }
     }

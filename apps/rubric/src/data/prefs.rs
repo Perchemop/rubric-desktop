@@ -79,6 +79,7 @@ mod tests {
         style::{palette, DefaultStyles, MarkupStyle},
         style_preset::StylePresetLibrary,
         Theme,
+        MeasureUnit,
     };
 
     fn temp_prefs_path(tag: &str) -> PathBuf {
@@ -122,6 +123,7 @@ mod tests {
             show_minimap: false,
             high_contrast: false,
             default_styles: DefaultStyles::default(),
+            default_measure_unit: MeasureUnit::Inch,
         };
         save_prefs_to(&path, &prefs).expect("save");
         assert_eq!(load_prefs_from(&path), prefs);
