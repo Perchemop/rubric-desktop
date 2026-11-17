@@ -37,6 +37,12 @@ wildcards = "deny"
 unmaintained = "workspace"
 unsound = "workspace"
 yanked = "deny"
+# RUSTSEC-2026-0543: chrono is unmaintained; no safe upgrade is available.
+# Our own direct uses (timestamps, formatting) are slated for a jiff/time
+# migration, but lopdf and pdfium-render pull chrono transitively, so the
+# dependency cannot be removed from the tree today. Revisit this ignore when
+# lopdf/pdfium-render drop chrono (tracked in ROADMAP dependency hygiene).
+ignore = ["RUSTSEC-2026-0543"]
 
 [sources]
 unknown-registry = "deny"
