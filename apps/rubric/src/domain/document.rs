@@ -1418,7 +1418,7 @@ mod tests {
     #[test]
     fn duplicate_page_clones_markups_with_fresh_ids_and_inserts_after() {
         let mut doc = Document::empty("Doc");
-        doc.add_page(Page::a4(0));
+        // `empty` seeds page 0; one more page makes two before the duplicate.
         doc.add_page(Page::a4(1));
         let mut src = markup();
         src.page = 0;
@@ -1463,7 +1463,7 @@ mod tests {
     #[test]
     fn move_page_reorders_and_keeps_markups_with_their_page() {
         let mut doc = Document::empty("Doc");
-        doc.add_page(Page::a4(0));
+        // `empty` seeds page 0; two more make the three pages under test.
         doc.add_page(Page::a4(1));
         doc.add_page(Page::a4(2));
         let mut m0 = markup();
@@ -1537,8 +1537,8 @@ mod tests {
         assert_eq!(doc.pages[1].index, 1, "original page should have index 1");
 
         // Inserting after a specific index places the new page directly after it.
+        // `empty` seeds page 0; one more makes two pages before the insert.
         let mut doc2 = Document::empty("Doc");
-        doc2.add_page(Page::a4(0));
         doc2.add_page(Page::a4(1));
         // Insert after index 0 → new page at index 1, original page 1 shifts to index 2.
         let new_idx2 = doc2.insert_blank_page(Some(0));
@@ -1593,7 +1593,6 @@ mod tests {
     #[test]
     fn page_operations_ignore_out_of_range_indices() {
         let mut doc = Document::empty("Doc");
-        doc.add_page(Page::a4(0));
 
         // duplicate_page with out-of-range index should return None.
         let result = doc.duplicate_page(5);

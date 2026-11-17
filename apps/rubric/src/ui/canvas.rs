@@ -2369,7 +2369,9 @@ mod tests {
         }
         let line = GlyphLine::new(glyphs, 12.0);
         // Drag rect covering the first two glyphs.
-        let geom = text_anchor_from_line(&line, Pt::new(0.0, 0.0), Pt::new(20.0, 12.0));
+        // End just inside glyph 1's box: range_for_rect is edge-inclusive,
+        // so a rect ending exactly at 20.0 would also select glyph 2.
+        let geom = text_anchor_from_line(&line, Pt::new(0.0, 0.0), Pt::new(19.0, 12.0));
         match geom {
             MarkupGeometry::TextAnchor {
                 text, text_width, ..
