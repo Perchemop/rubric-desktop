@@ -89,8 +89,9 @@ pub fn screen_rect_rotated(
     zoom: f32,
     rotation: i32,
 ) -> egui::Rect {
-    let (w, h) = geom::rotated_page_size(r.w, r.h, quarter_turns(rotation));
-    // Build a rect in display space by rotating the corners.
+    // Build a rect in display space by rotating the corners, then normalise:
+    // a 90° turn swaps the corner order, so min/max must be re-sorted or the
+    // rect comes back with a negative width.
     let min = to_screen_rotated(Pt::new(r.x, r.y), pan, zoom, origin, r.w, r.h, rotation);
     let max = to_screen_rotated(
         Pt::new(r.right(), r.bottom()),
@@ -101,8 +102,7 @@ pub fn screen_rect_rotated(
         r.h,
         rotation,
     );
-    let _ = (w, h);
-    egui::Rect::from_min_max(min, max)
+    egui::Rect::from_two_points(min, max)
 }
 
 /// Map a domain [`Rect`] to screen space, honouring page rotation using the
@@ -135,7 +135,8 @@ pub fn screen_rect_page_rotated(
         page_h,
         rotation,
     );
-    egui::Rect::from_min_max(min, max)
+    // Normalise: a 90° turn swaps the corner order (negative width otherwise).
+    egui::Rect::from_two_points(min, max)
 }
 
 /// Hit tolerance expressed in page units for a given zoom.
