@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented here. Format: semantic-ish for this repo (Added/Changed/Fixed/Docs).
 
+## [Unreleased] - 2026-11-17
+
+### Added
+- **Text-markup grounding** (`ui/canvas.rs`, `ui/app.rs`): Highlight,
+  Strikeout, Underline and Squiggly markups now anchor to the real text line
+  extracted from the source PDF; a drag across the line covers exactly the
+  glyphs dragged (glyph-tight `TextRange` draw state), and a click anchors the
+  single glyph under the pointer. Without a source PDF the previous fallback
+  box is kept. Closes the v0.4.10 known limitation "glyph-range text
+  anchoring; no UI surface yet".
+- **Page-operations coverage** (`domain/document.rs`): unit tests for the
+  page-operations API (duplicate / move / insert-blank / rotate-cw), covering
+  fresh markup ids on duplication, markups staying with their page on moves,
+  A4 insertion at the front and after an index, rotation cycling 0→90→180→270
+  with geometry remapped about the page centre, and out-of-range no-ops.
+- **In-app update & release notes** (`ui/app.rs`, `ui/app_status.rs`,
+  `ui/release_notes.rs`, `crates/update-check`): the update path now verifies
+  SHA-256 + minisign, offers one-click download, records stale-version
+  remediation inputs (app-drawer path detection), gates re-offers behind the
+  24-hour anti-loop marker, and surfaces self-update errors on the next
+  launch; the status-bar version is a button opening the release-notes popup
+  with the token ledger (guide §7.2, §9.4).
+
+### Fixed
+- `rotate_page_cw` previously called a `rotate_geometry_cw` helper that was
+  never defined; the helper now exists and rotates every geometry variant
+  (rectangles via `geom::rotate_rect_cw`, positioned points via the clockwise
+  map) about the page centre.
+- The `insert_blank_page` test called the method twice and asserted the wrong
+  count; rewritten to a single call with exact assertions.
+
 ## [0.4.10] - 2026-11-16
 
 ### Added

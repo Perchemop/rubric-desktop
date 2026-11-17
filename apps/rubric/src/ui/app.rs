@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use eframe::{App, CreationContext, Frame};
-use egui::{Align, Layout, Pos2, TextureHandle, Ui, Vec2};
+use egui::{Pos2, TextureHandle, Ui, Vec2};
 
 use crate::data::{
     autosave, autosave_due, load_prefs, load_project, load_recent, normalise_project_filename,
@@ -21,15 +21,6 @@ use crate::domain::{
 };
 use crate::ui::{app_dialogs, canvas, pages, theme, toolbar};
 use uuid::Uuid;
-
-/// Changelog embedded at build time for the in-app release-notes popup
-/// (guide §9, §12.1). Baking it in means the popup works in a packaged binary,
-/// where a source-checkout relative path would not resolve.
-const EMBEDDED_CHANGELOG: &str = include_str!("../../../../CHANGELOG.md");
-
-/// CI-managed token ledger embedded at build time (guide §12.1): cumulative
-/// tokens since project start plus per-release token metrics.
-const EMBEDDED_TOKENS: &str = include_str!("../../../../docs/tokens.json");
 
 /// User guide embedded at build time for Help ▸ User Guide. Baking it in
 /// means the guide works in a packaged binary, where a source-checkout
@@ -58,6 +49,10 @@ pub(crate) enum DrawState {
         end: Pt,
         kind: MarkupKind,
     },
+    /// Dragging a text-anchored markup (highlight, strikeout, underline,
+    /// squiggly) across a text line. The anchored line is re-extracted at
+    /// commit time from `start`, so no per-frame PDF work is done.
+    TextRange { start: Pt, end: Pt },
     /// Drawing a path (polyline, polygon, measure perimeter/area).
     Path {
         points: Vec<Pt>,
@@ -444,6 +439,9 @@ pub struct RubricApp {
     /// Shared update-check state, written by the worker thread and read by the
     /// UI each frame (guide §7.2).
     pub(crate) update: Arc<Mutex<UpdateCheck>>,
+    /// Path to the app-drawer/start-menu directory containing previous installs,
+    /// used for stale-version remediation (guide §7.2).
+    pub(crate) app_drawer_path: Option<PathBuf>,
     /// Shared async render worker for page thumbnails and canvas page
     /// backgrounds, lazily spawned on first use (UI audit P1-2: move heavy
     /// work off the UI thread; Slice 5). Long-lived: it survives project
@@ -475,6 +473,14 @@ pub(crate) struct UpdateCheck {
     pub(crate) downloaded_path: Option<PathBuf>,
     /// Error message from a failed download, if any.
     pub(crate) download_error: Option<String>,
+    /// Timestamp of the last update offered, used for anti-loop protection.
+    /// If an update was offered within the last 24 hours, it will not be
+    /// re-offered unless the user explicitly requests a check.
+    pub(crate) last_update_offered: Option<std::time::Instant>,
+    /// Error from a failed self-update, shown once at next app start.
+    pub(crate) self_update_error: Option<String>,
+    /// The tag of the update that was offered, for stale-version remediation.
+    pub(crate) self_update_tag: Option<String>,
 }
 
 /// A project install waiting on the "replace unsaved project?" confirmation
@@ -575,6 +581,7 @@ impl RubricApp {
             repo: "Perchemop/rubric-desktop".to_string(),
             update_check_tag: None,
             tool_chest_library: prefs.tool_chest_library.clone(),
+            app_drawer_path: Self::get_app_drawer_path(),
         }
     }
 
@@ -673,6 +680,29 @@ impl RubricApp {
             if let Ok(mut state) = shared.lock() {
                 state.running = false;
                 state.result = Some(status);
+                // Record the time we offered an update for anti-loop protection.
+                // The version is cloned first so the immutable borrow of
+                // `state.result` ends before `state` is mutated again.
+                let offered_tag = match &state.result {
+                    Some(update_check::UpdateStatus::Available { latest_version, .. }) => {
+                        Some(latest_version.clone())
+                    }
+                    _ => None,
+                };
+                if let Some(tag) = offered_tag {
+                    state.last_update_offered = Some(Instant::now());
+                    // When an update is offered, record the tag for remediation
+                    // if the user later chooses to install it.
+                    state.self_update_tag = Some(tag);
+                }
+                // When a check fails after a previous self-update attempt, retain
+                // the error so the UI can show it; otherwise clear it.
+                if !matches!(
+                    state.result,
+                    Some(update_check::UpdateStatus::Available { .. })
+                ) {
+                    state.self_update_error = None;
+                }
             }
             ctx.request_repaint();
         });
@@ -1088,6 +1118,12 @@ impl RubricApp {
             .open(&mut open)
             .resizable(false)
             .show(ctx, |ui| {
+                // Show self-update error from a previous failed install, if any.
+                if let Some(err) = &snapshot.self_update_error {
+                    ui.colored_label(ui.visuals().error_fg_color, err);
+                    ui.label("The update will be retried on next launch.");
+                    ui.separator();
+                }
                 if snapshot.running {
                     ui.spinner();
                     ui.label("Checking GitHub Releases…");
@@ -1128,6 +1164,19 @@ impl RubricApp {
                         download_url,
                         signature,
                     }) => {
+                        // Anti-loop: if an update was offered in the last 24 hours,
+                        // don't re-offer unless the user explicitly checks again.
+                        let too_soon = snapshot.last_update_offered.is_some_and(|instant| {
+                            instant.elapsed() < std::time::Duration::from_secs(24 * 60 * 60)
+                        });
+                        if too_soon && !snapshot.running {
+                            ui.label(
+                                "You just checked for updates recently; \
+                                 no newer release is available yet.",
+                            );
+                            return;
+                        }
+
                         // Honest-state rules: a signature that failed to
                         // verify must be impossible to miss, while a merely
                         // unavailable one says nothing extra.
@@ -1165,6 +1214,10 @@ impl RubricApp {
                         if can_install {
                             if let Some(dl) = download_url {
                                 if ui.button("Download & Install").clicked() {
+                                    // Record that we offered this update for anti-loop protection.
+                                    if let Ok(mut state) = self.update.lock() {
+                                        state.last_update_offered = Some(Instant::now());
+                                    }
                                     self.begin_update_download(ctx, dl.clone());
                                 }
                             }
@@ -1192,6 +1245,8 @@ impl RubricApp {
             state.download_in_progress = false;
             state.download_error = None;
             state.downloaded_path = None;
+            // Clear self-update error when the user dismisses the window.
+            state.self_update_error = None;
             // Keep the window closed even while the check is still running
             // (audit M8): previously `running` kept re-opening it every frame.
             self.update_dismissed = true;
@@ -1214,6 +1269,7 @@ impl RubricApp {
         let shared = Arc::clone(&self.update);
         let ctx = ctx.clone();
         let repo = self.repo.clone();
+        let app_drawer = self.app_drawer_path.clone();
         let tag = self.update_check_tag.clone().unwrap_or_default();
         if tag.is_empty() {
             let mut state = self.update.lock().unwrap_or_else(|p| p.into_inner());
@@ -1226,12 +1282,47 @@ impl RubricApp {
             if let Ok(mut state) = shared.lock() {
                 state.download_in_progress = false;
                 match result {
-                    Ok(path) => state.downloaded_path = Some(path),
-                    Err(err) => state.download_error = Some(err),
+                    Ok(path) => {
+                        state.downloaded_path = Some(path);
+                        // Stale-version remediation: remove previous installers
+                        // from the app-drawer before activating the new version.
+                        if let Some(ref drawer) = app_drawer {
+                            // Remove any .deb, .dmg, .msi, or .AppImage files
+                            // that match the old version pattern.
+                            if let Ok(entries) = std::fs::read_dir(drawer) {
+                                for entry in entries.flatten() {
+                                    let path = entry.path();
+                                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                                        // Remove old installer files
+                                        if name.ends_with(".deb")
+                                            || name.ends_with(".dmg")
+                                            || name.ends_with(".msi")
+                                            || name.ends_with(".AppImage")
+                                            || name.ends_with(".zip")
+                                        {
+                                            let _ = std::fs::remove_file(&path);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        // Record the failure so the UI can show it on next launch.
+                        state.self_update_error = Some(format!("Update download failed: {err}"));
+                        state.download_error = Some(err);
+                    }
                 }
             }
             ctx.request_repaint();
         });
+    }
+
+    /// Return the platform-specific app-drawer/start-menu directory path for
+    /// stale-version remediation. Returns `None` if the path cannot be determined.
+    fn get_app_drawer_path() -> Option<PathBuf> {
+        // Use the same pattern as the rest of the codebase (main.rs, prefs.rs).
+        directories::ProjectDirs::from("", "", "Rubric").map(|proj| proj.data_dir().to_path_buf())
     }
 
     /// Bug report dialog (guide §7.1): review the captured report, add notes,
@@ -1331,110 +1422,6 @@ impl RubricApp {
                 }
             }
             None => {}
-        }
-    }
-
-    /// Release-notes popup (guide §9, §12.1): version history, detailed app
-    /// usage per release, and token usage totals / per-release metrics. The
-    /// changelog and the CI-managed token ledger are **embedded at build time**
-    /// ([`EMBEDDED_CHANGELOG`] / [`EMBEDDED_TOKENS`]) so the popup works in a
-    /// packaged binary, not only in a source checkout.
-    fn draw_release_notes(&mut self, ctx: &egui::Context) {
-        if !self.ui.show_release_notes {
-            return;
-        }
-        let mut open = true;
-        egui::Window::new("Release Notes")
-            .open(&mut open)
-            .resizable(true)
-            .default_width(700.0)
-            .default_height(520.0)
-            .show(ctx, |ui| {
-                ui.heading("Rubric Release Notes");
-                ui.separator();
-
-                let current_version = env!("CARGO_PKG_VERSION");
-                let ledger: serde_json::Value =
-                    serde_json::from_str(EMBEDDED_TOKENS).unwrap_or_default();
-                let total = ledger
-                    .get("total_tokens_since_start")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0);
-
-                ui.horizontal(|ui| {
-                    ui.label(format!("Current version: {current_version}"));
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        ui.small(format!("Cumulative tokens used: {total}"));
-                    });
-                });
-                ui.separator();
-
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    // Per-release token metrics from the ledger (guide §12.1).
-                    if let Some(releases) = ledger.get("releases").and_then(|v| v.as_array()) {
-                        let mut any = false;
-                        for r in releases {
-                            let v = r.get("release_version").and_then(|v| v.as_str());
-                            let t = r.get("release_tokens").and_then(|v| v.as_u64());
-                            if let (Some(v), Some(t)) = (v, t) {
-                                if !any {
-                                    ui.strong("Token usage per release");
-                                    any = true;
-                                }
-                                ui.small(format!("{v}: {t} tokens"));
-                            }
-                        }
-                        if any {
-                            ui.separator();
-                        }
-                    }
-
-                    // Changelog sections for the current version and Unreleased.
-                    let mut shown = false;
-                    for line in EMBEDDED_CHANGELOG.lines() {
-                        let trimmed = line.trim_start();
-                        if trimmed.starts_with("## [") {
-                            if shown
-                                && !trimmed.contains(&format!("[{current_version}]"))
-                                && !trimmed.contains("[Unreleased]")
-                            {
-                                break; // Stop at the next version section
-                            }
-                            if trimmed.contains(&format!("[{current_version}]"))
-                                || trimmed.contains("[Unreleased]")
-                            {
-                                shown = true;
-                            }
-                        }
-                        if shown {
-                            if trimmed.starts_with("## [") {
-                                ui.add_space(8.0);
-                                ui.strong(line.trim_start_matches('#').trim());
-                            } else {
-                                ui.label(line);
-                            }
-                        }
-                    }
-                    if !shown {
-                        ui.label("No release notes found for this version.");
-                    }
-                });
-
-                ui.separator();
-                ui.horizontal(|ui| {
-                    if ui.button("Check for Updates…").clicked() {
-                        self.begin_update_check(ctx);
-                    }
-                    if ui.button("View on GitHub").clicked() {
-                        let _ = open_url(&format!("https://github.com/{}/releases", self.repo));
-                    }
-                    if ui.button("Close").clicked() {
-                        self.ui.show_release_notes = false;
-                    }
-                });
-            });
-        if !open {
-            self.ui.show_release_notes = false;
         }
     }
 
@@ -2475,7 +2462,7 @@ impl RubricApp {
 
         // Release-notes popup (guide §9, §12.1): opened from the subtle
         // bottom-right version label. Content is embedded at build time.
-        self.draw_release_notes(ui.ctx());
+        crate::ui::release_notes::draw_release_notes(self, ui.ctx());
 
         // Bug report dialog (guide §7.1): preview + editable notes; nothing is
         // sent until the user explicitly chooses to.

@@ -20,6 +20,7 @@ pub mod inspector;
 pub mod markups_list;
 pub mod menu;
 pub mod pages;
+pub mod release_notes;
 pub mod theme;
 pub mod tool_chest;
 pub mod toolbar;

@@ -5,22 +5,29 @@ Updated whenever the available free models change (guide §5.2).
 
 ## Provider order (guide §5)
 
-1. **OpenCode free models** (default).
+1. **OpenCode free models** (default, tier 1).
 2. **NVIDIA free models** — used automatically when OpenCode free is
    exhausted (rate limits, quota, or unavailable), via the configured API
-   key integration.
+   key integration (tier 2).
+3. **OpenRouter free models** — owner-added tier 3 (deviation from the guide's
+   two-tier policy, owner-directed), reached only after tiers 1 and 2; the
+   owner-supplied OpenRouter key is live in `~/.config/opencode/opencode.jsonc`
+   and the free quota (50 requests/day, 1000 with credits added) is currently
+   exhausted.
 
 No local model hosting (Ollama or similar) is used. Only the provider
-changes between the two tiers; the process, roles, vertical-slice
+changes between the tiers; the process, roles, vertical-slice
 discipline, CI-first rule and tracking files stay identical.
 
-## OpenCode free (active — discovered 2026-10-31)
+## OpenCode free (active — discovered 2026-11-17)
 
-Live catalog at session start: `flint-40b-free`, `nemotron-3.5-super-vl-free`,
-`beam-free`, `mimo-v2.6-flash-free`, `deepseek-v4.1-flash-free`,
-`glm-5.3-flash-free` (all zero-cost). The previously recorded
-`nemotron-3-ultra-free`, `big-pickle` and `nemotron-3.5-lightning-free` IDs
-are no longer listed by the catalog.
+Live catalog at session start (final full CLI listing, `opencode models`):
+`deepseek-v4.1-flash-free`, `glm-5.3-flash-free`, `mimo-v2.6-flash-free`,
+`flint-40b-free`, `nemotron-3.5-lightning-free`, `longcat-2.5-free`,
+`inkling-2-small-free`, `iceman-free`, `hy4-flash-free`, `beam-free` (all
+zero-cost), plus the interactive default `opencode/big-pickle` and the
+vision-only `nemotron-3.5-super-vl-free`. The earlier note that
+`nemotron-3.5-lightning-free` was no longer listed was stale; it is live again.
 
 | Role | Model |
 |---|---|
@@ -86,7 +93,8 @@ at session-start discovery (the orchestrator therefore runs on NVIDIA free tier 
 but reappeared in later listings; `opencode/minimax-m3.1-flash-free` was listed,
 returned "not available" when used, and vanished from the catalog the same day.
 Assignments are re-verified on first use, with failover chain OpenCode free →
-NVIDIA free → paid API keys and no mid-session switching.
+NVIDIA free → OpenRouter free and no mid-session switching. No paid API tier is
+ever selected.
 
 The router in `~/.config/opencode/failover.json` (`fallbacks` +
 `fallbacksByAgent`) carries this order. It never re-chooses a model that has
@@ -130,11 +138,13 @@ an adaptation rather than assumed.
 Every model and API used during the build is accounted for, so the
 redistribution terms stay auditable:
 
-- **Providers:** OpenCode (free tier) and NVIDIA (free tier) only — no paid
-  generation, no local model hosting. Terms of use are the sites' own
-  standard free-tier terms; nothing forbids redistribution of generated
-  *project* material in this repository, which is reviewed as original work
-  before commit.
+- **Providers:** OpenCode (free tier) and NVIDIA (free tier) and OpenRouter
+  (free tier, owner-added) only — no paid generation, no local model hosting.
+  Terms of use are the sites' own standard free-tier terms; nothing forbids
+  redistribution of generated *project* material in this repository, which is
+  reviewed as original work before commit. OpenRouter is metered (50 free
+  requests/day, 1000 with credits added); the key is stored in the OpenCode
+  config with mode 600 and nothing key-derived is committed.
 - **Record of record:** the licence/terms summary lives in
   `ATTRIBUTION.md` ("AI tooling used during the build"), next to the
   dependency SBOMs — kept together so attribution review sees both humans'
@@ -155,3 +165,15 @@ redistribution terms stay auditable:
   conflict), design-guidelines canonical source re-pointed from the deprecated
   standalone file to guide §20/§21, dead-code rule pointer added to §19.
   No Rubric-repo rule changes required (house-rules block unchanged).
+
+- **2026-11-17:** guide.md (1677 lines, Nov 17 17:33) read in full; global
+  ruleset re-synced — §5.2 three-tier model rotation (OpenRouter free tier as
+  tier 3, owner-supplied key verified live), 14 house rules (Dev-identity
+  authorship, guide II.26.7 in force), §19 token-efficiency skills +
+  measured-only rule, §20 scope note, §23 config appendices, §24
+  token/contributor schemas (`docs/tokens.md` supersedes `docs/tokens.json`
+  as the ledger; measured-only), §25 six external catalogs + use rules,
+  II.29 fifth scan surface (crash payload), §7.1 mandatory crash scrub,
+  §7.2 signing-key compromise procedure, §9.1–9.4 gates, §17 binding Rust
+  summary. OpenRouter scan: 355 models, 13 free + coding-capable; free
+  quota shared (50/day) so the tier sits last in every chain.
