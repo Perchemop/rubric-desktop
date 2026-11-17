@@ -2553,16 +2553,7 @@ pub(crate) fn draw_canvas(
                         };
                         // Point handles first: an endpoint/vertex grab is more
                         // specific than a bounding-box corner grab.
-                        if let Some(idx) = point_handle_at(
-                            m,
-                            screen_pp,
-                            origin,
-                            pan,
-                            zoom,
-                            page.width,
-                            page.height,
-                            page.rotation,
-                        ) {
+                        if let Some(idx) = point_handle_at(m, screen_pp, origin, pan, zoom, page) {
                             picked_point = Some(idx);
                             break;
                         }
@@ -2916,6 +2907,14 @@ mod tests {
 
     #[test]
     fn point_handle_at_finds_endpoints_but_not_the_middle() {
+        // Letter-size page at rotation 0 for the identity mapping.
+        let page = crate::domain::Page {
+            index: 0,
+            width: 612.0,
+            height: 792.0,
+            rotation: 0,
+            scale: crate::domain::Scale::PAPER,
+        };
         let m = Markup::new(
             0,
             MarkupKind::Line,
@@ -2928,42 +2927,15 @@ mod tests {
         // Identity transform: page points land on the same screen coords.
         // Rotation=0 gives identity mapping; page dims use the test's default size.
         assert_eq!(
-            point_handle_at(
-                &m,
-                Pos2::new(0.0, 0.0),
-                Pos2::ZERO,
-                Vec2::ZERO,
-                1.0,
-                612.0,
-                792.0,
-                0
-            ),
+            point_handle_at(&m, Pos2::new(0.0, 0.0), Pos2::ZERO, Vec2::ZERO, 1.0, &page),
             Some(0)
         );
         assert_eq!(
-            point_handle_at(
-                &m,
-                Pos2::new(100.0, 100.0),
-                Pos2::ZERO,
-                Vec2::ZERO,
-                1.0,
-                612.0,
-                792.0,
-                0
-            ),
+            point_handle_at(&m, Pos2::new(100.0, 100.0), Pos2::ZERO, Vec2::ZERO, 1.0, &page),
             Some(1)
         );
         assert_eq!(
-            point_handle_at(
-                &m,
-                Pos2::new(50.0, 50.0),
-                Pos2::ZERO,
-                Vec2::ZERO,
-                1.0,
-                612.0,
-                792.0,
-                0
-            ),
+            point_handle_at(&m, Pos2::new(50.0, 50.0), Pos2::ZERO, Vec2::ZERO, 1.0, &page),
             None,
             "the middle of the segment carries no point handle"
         );
