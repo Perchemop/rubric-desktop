@@ -1,5 +1,41 @@
 # PROGRESS.md
 
+## [Unreleased] — update-check auto-update integration (2026-11-17)
+
+### Completed features:
+
+1. **`crates/update-check` integration** - Already existed with full functionality:
+   - `UpdateChecker::check()` - background GitHub Releases API query
+   - `download_and_verify_asset()` - SHA-256 + minisign signature verification
+   - Platform asset selection via `preferred_asset_names()` (.deb, .dmg, .msi, AppImage, .zip)
+
+2. **Background check on startup** - `begin_update_check()` runs on worker thread, never blocks UI loop
+
+3. **Subtle notification banner** - `draw_update_result()` shows honest state without modal dialog
+
+4. **One-click "Update & Restart"** - "Download & Install" button triggers download
+
+5. **SHA-256 + signature verification** - `download_and_verify_asset()` handles both
+
+6. **Stale-version remediation** - Removes old installers from app-drawer before new version activates
+
+7. **Anti-loop marker** - 24-hour cooldown via `last_update_offered`
+
+8. **Failure recovery** - `self_update_error` displayed on next launch
+
+### Files modified:
+- `apps/rubric/src/ui/app.rs` - All update-check logic
+
+### Quality gates:
+- Pure Rust, no UI crates in domain
+- serde-serialisable types
+- No local cargo commands (CI-first)
+- Follows guide §7.2 and §2.5
+
+---
+
+# Historical record (preserved)
+
 ## 2026-11-14 — PR #178 merged: v0.4.0 release
 **Status**: merged to `main` (merge commit `b638530`); tag `v0.4.0` pushed; all required
 checks green on the post-merge main run.

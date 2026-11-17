@@ -18,8 +18,14 @@ pub(crate) fn draw_status_bar(app: &mut RubricApp, ui: &mut Ui) {
         if let (Some(pages), Some(title)) = (page_count, doc_title) {
             let plural = if pages == 1 { "" } else { "s" };
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                let version_btn = egui::Button::new(
+                    egui::RichText::new(format!("v{}", env!("CARGO_PKG_VERSION")))
+                        .small()
+                        .weak(),
+                )
+                .frame(false);
                 if ui
-                    .small(format!("v{}", env!("CARGO_PKG_VERSION")))
+                    .add(version_btn)
                     .on_hover_text("Click for release notes")
                     .clicked()
                 {

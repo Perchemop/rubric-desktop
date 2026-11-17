@@ -10,8 +10,8 @@ use crate::domain::markup::{
     count_markers_on_page, count_total_label, next_count_number, text_line_height,
 };
 use crate::domain::{
-    angle_degrees, format_value, Corner, Markup, MarkupGeometry, MarkupKind, MeasureKind, Project,
-    Pt, Rect as DRect, ReviewStatus, StampPreset, Tool,
+    angle_degrees, format_value, Corner, GlyphBox, GlyphLine, GlyphRange, Markup, MarkupGeometry,
+    MarkupKind, MeasureKind, Project, Pt, Rect as DRect, ReviewStatus, StampPreset, Tool,
 };
 
 use super::theme::to_color32;
@@ -39,6 +39,59 @@ fn creation_allowed(project: &Project, ui_state: &mut super::app::UiState) -> bo
         ui_state.status = "Layer locked — new markups cannot be created".to_string();
     }
     allowed
+}
+
+/// Build glyph-tight text-anchor geometry for `start`..`end` on `line`.
+///
+/// A click (start == end) anchors the single glyph under the point (falling
+/// back to the whole line); a drag anchors the glyphs the dragged rectangle
+/// intersects (falling back to the whole line when the intersection is empty).
+pub(crate) fn text_anchor_from_line(line: &GlyphLine, start: Pt, end: Pt) -> MarkupGeometry {
+    let range = if start == end {
+        match line.index_at(start) {
+            Some(i) => GlyphRange::single(i),
+            None => GlyphRange::all(line.len()),
+        }
+    } else {
+        line.range_for_rect(DRect::from_corners(start, end))
+    };
+    let range = if range.is_empty() {
+        GlyphRange::all(line.len())
+    } else {
+        range
+    };
+    let bounds = line.range_bounds(range).or_else(|| line.bounds());
+    let (at, text_width) = match bounds {
+        Some(b) => (Pt::new(b.x, b.y), b.w.max(1.0)),
+        None => (Pt::new(start.x, start.y), 1.0_f32.max(1.0)),
+    };
+    MarkupGeometry::TextAnchor {
+        at,
+        text: line.text_range(range),
+        line_height: line.line_height,
+        line_count: 1,
+        text_width,
+    }
+}
+
+/// The text line under `pp` when a source PDF is present, else `None`.
+fn line_at(project: &Project, page_index: usize, pp: Pt) -> Option<GlyphLine> {
+    let source = project.source_pdf.as_deref()?;
+    let line = find_text_line_at_point(Path::new(source), page_index, pp.x, pp.y, 10.0)?;
+    // The PDF layer currently exposes whole-line metrics only, so split the
+    // line into per-character boxes of equal width to recover glyph-level
+    // anchoring. Domain-dev: replace with real per-glyph boxes.
+    let chars: Vec<char> = line.text.chars().collect();
+    let n = chars.len().max(1);
+    let char_w = line.width / n as f32;
+    let glyphs: Vec<GlyphBox> = chars
+        .into_iter()
+        .enumerate()
+        .map(|(i, ch)| {
+            GlyphBox::new(ch, DRect::new(line.at.x + i as f32 * char_w, line.at.y, char_w, line.line_height))
+        })
+        .collect();
+    Some(GlyphLine::new(glyphs, line.line_height))
 }
 
 /// Whether a drafted path is worth committing: it must have enough points
@@ -1520,28 +1573,17 @@ pub(crate) fn draw_canvas(
                         | MarkupKind::Note => {
                             MarkupGeometry::Bounds(DRect::new(pp.x, pp.y, 40.0 * inv, 24.0 * inv))
                         }
-                        MarkupKind::Highlight => {
+                        MarkupKind::Highlight
+                        | MarkupKind::Strikeout
+                        | MarkupKind::Underline
+                        | MarkupKind::Squiggly => {
                             // Snap to the text line under the click when one is
                             // close enough: anchor, text and metrics all come
                             // from the real line so the markup tracks the text.
                             // Without a source PDF there is nothing to extract.
-                            let line = project.source_pdf.as_deref().and_then(|source| {
-                                find_text_line_at_point(
-                                    Path::new(source),
-                                    page.index,
-                                    pp.x,
-                                    pp.y,
-                                    10.0,
-                                )
-                            });
+                            let line = line_at(project, page.index, pp);
                             match line {
-                                Some(line) => MarkupGeometry::TextAnchor {
-                                    at: line.at,
-                                    text: line.text,
-                                    line_height: line.line_height,
-                                    line_count: 1,
-                                    text_width: line.width,
-                                },
+                                Some(line) => text_anchor_from_line(&line, pp, pp),
                                 None => MarkupGeometry::TextAnchor {
                                     at: pp,
                                     text: String::new(),
@@ -1551,27 +1593,6 @@ pub(crate) fn draw_canvas(
                                 },
                             }
                         }
-                        MarkupKind::Strikeout => MarkupGeometry::TextAnchor {
-                            at: Pt::new(pp.x, pp.y),
-                            text: String::new(),
-                            line_height: 12.0 * inv,
-                            line_count: 1,
-                            text_width: 40.0 * inv,
-                        },
-                        MarkupKind::Underline => MarkupGeometry::TextAnchor {
-                            at: Pt::new(pp.x, pp.y),
-                            text: String::new(),
-                            line_height: 12.0 * inv,
-                            line_count: 1,
-                            text_width: 40.0 * inv,
-                        },
-                        MarkupKind::Squiggly => MarkupGeometry::TextAnchor {
-                            at: Pt::new(pp.x, pp.y),
-                            text: String::new(),
-                            line_height: 12.0 * inv,
-                            line_count: 1,
-                            text_width: 40.0 * inv,
-                        },
                         MarkupKind::MeasureCount => {
                             // Number each new marker after the highest already
                             // on this page, so the running count never repeats
@@ -1855,6 +1876,15 @@ pub(crate) fn draw_canvas(
                                     kind,
                                 };
                             }
+                            MarkupKind::Highlight
+                            | MarkupKind::Strikeout
+                            | MarkupKind::Underline
+                            | MarkupKind::Squiggly => {
+                                *draw_state = super::app::DrawState::TextRange {
+                                    start: pp,
+                                    end: pp,
+                                };
+                            }
                             _ => {
                                 *draw_state = super::app::DrawState::Bounds {
                                     start: pp,
@@ -1892,6 +1922,9 @@ pub(crate) fn draw_canvas(
                         } else {
                             *end = pp;
                         }
+                    }
+                    super::app::DrawState::TextRange { end, .. } => {
+                        *end = pp;
                     }
                     super::app::DrawState::Ink { current, .. } => {
                         if let Some(last) = current.last().copied() {
@@ -1978,6 +2011,31 @@ pub(crate) fn draw_canvas(
                             ui_state.status = format!("Added {}", kind.label());
                             mutated = true;
                         }
+                    }
+                    super::app::DrawState::TextRange { start, end } => {
+                        let author = project.settings.author.clone();
+                        let inv = 1.0 / ui_state.zoom.max(0.1);
+                        let line = line_at(project, page.index, start);
+                        let geom = match line {
+                            Some(line) => text_anchor_from_line(&line, start, end),
+                            None => MarkupGeometry::TextAnchor {
+                                at: start,
+                                text: String::new(),
+                                line_height: 12.0 * inv,
+                                line_count: 1,
+                                text_width: 40.0 * inv,
+                            },
+                        };
+                        let kind = ui_state
+                            .active_tool
+                            .to_kind()
+                            .unwrap_or(MarkupKind::Highlight);
+                        let m = finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
+                        if let Some(doc) = project.active_mut() {
+                            doc.add_markup(m);
+                        }
+                        ui_state.status = format!("Added {}", kind.label());
+                        mutated = true;
                     }
                     super::app::DrawState::Ink {
                         mut strokes,
@@ -2290,6 +2348,61 @@ mod tests {
     fn hit_tolerance_scales_with_zoom() {
         assert!((hit_tolerance_page(1.0) - 6.0).abs() < 1e-6);
         assert!((hit_tolerance_page(2.0) - 3.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn text_anchor_drag_is_glyph_tight() {
+        // "hello" as five 10 pt wide boxes.
+        let mut glyphs = Vec::new();
+        for (i, ch) in "hello".chars().enumerate() {
+            glyphs.push(GlyphBox::new(ch, DRect::new(i as f32 * 10.0, 0.0, 10.0, 12.0)));
+        }
+        let line = GlyphLine::new(glyphs, 12.0);
+        // Drag rect covering the first two glyphs.
+        let geom = text_anchor_from_line(&line, Pt::new(0.0, 0.0), Pt::new(20.0, 12.0));
+        match geom {
+            MarkupGeometry::TextAnchor { text, text_width, .. } => {
+                assert_eq!(text, "he");
+                assert!((text_width - 20.0).abs() < 1e-4);
+            }
+            _ => panic!("expected TextAnchor"),
+        }
+    }
+
+    #[test]
+    fn text_anchor_click_anchors_single_glyph() {
+        let mut glyphs = Vec::new();
+        for (i, ch) in "hello".chars().enumerate() {
+            glyphs.push(GlyphBox::new(ch, DRect::new(i as f32 * 10.0, 0.0, 10.0, 12.0)));
+        }
+        let line = GlyphLine::new(glyphs, 12.0);
+        // Click on the third glyph (x ~ 25).
+        let geom = text_anchor_from_line(&line, Pt::new(25.0, 6.0), Pt::new(25.0, 6.0));
+        match geom {
+            MarkupGeometry::TextAnchor { text, text_width, .. } => {
+                assert_eq!(text, "l");
+                assert!((text_width - 10.0).abs() < 1e-4);
+            }
+            _ => panic!("expected TextAnchor"),
+        }
+    }
+
+    #[test]
+    fn text_anchor_outside_falls_back_to_whole_line() {
+        let mut glyphs = Vec::new();
+        for (i, ch) in "hello".chars().enumerate() {
+            glyphs.push(GlyphBox::new(ch, DRect::new(i as f32 * 10.0, 0.0, 10.0, 12.0)));
+        }
+        let line = GlyphLine::new(glyphs, 12.0);
+        // Rect far outside the line -> empty intersection -> whole line fallback.
+        let geom = text_anchor_from_line(&line, Pt::new(500.0, 500.0), Pt::new(510.0, 510.0));
+        match geom {
+            MarkupGeometry::TextAnchor { text, text_width, .. } => {
+                assert_eq!(text, "hello");
+                assert!((text_width - 50.0).abs() < 1e-4);
+            }
+            _ => panic!("expected TextAnchor"),
+        }
     }
 
     #[test]
