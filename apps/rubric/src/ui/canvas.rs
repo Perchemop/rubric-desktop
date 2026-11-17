@@ -2553,7 +2553,7 @@ pub(crate) fn draw_canvas(
                         };
                         // Point handles first: an endpoint/vertex grab is more
                         // specific than a bounding-box corner grab.
-                        if let Some(idx) = point_handle_at(m, screen_pp, origin, pan, zoom, page) {
+                        if let Some(idx) = point_handle_at(m, screen_pp, origin, pan, zoom, &page) {
                             picked_point = Some(idx);
                             break;
                         }
