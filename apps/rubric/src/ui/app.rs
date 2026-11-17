@@ -1166,11 +1166,9 @@ impl RubricApp {
                     }) => {
                         // Anti-loop: if an update was offered in the last 24 hours,
                         // don't re-offer unless the user explicitly checks again.
-                        let too_soon =
-                            snapshot.last_update_offered.is_some_and(|instant| {
-                                instant.elapsed()
-                                    < std::time::Duration::from_secs(24 * 60 * 60)
-                            });
+                        let too_soon = snapshot.last_update_offered.is_some_and(|instant| {
+                            instant.elapsed() < std::time::Duration::from_secs(24 * 60 * 60)
+                        });
                         if too_soon && !snapshot.running {
                             ui.label(
                                 "You just checked for updates recently; \
