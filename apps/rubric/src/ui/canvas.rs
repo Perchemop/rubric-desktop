@@ -2931,11 +2931,25 @@ mod tests {
             Some(0)
         );
         assert_eq!(
-            point_handle_at(&m, Pos2::new(100.0, 100.0), Pos2::ZERO, Vec2::ZERO, 1.0, &page),
+            point_handle_at(
+                &m,
+                Pos2::new(100.0, 100.0),
+                Pos2::ZERO,
+                Vec2::ZERO,
+                1.0,
+                &page
+            ),
             Some(1)
         );
         assert_eq!(
-            point_handle_at(&m, Pos2::new(50.0, 50.0), Pos2::ZERO, Vec2::ZERO, 1.0, &page),
+            point_handle_at(
+                &m,
+                Pos2::new(50.0, 50.0),
+                Pos2::ZERO,
+                Vec2::ZERO,
+                1.0,
+                &page
+            ),
             None,
             "the middle of the segment carries no point handle"
         );
