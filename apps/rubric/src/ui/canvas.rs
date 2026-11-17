@@ -2355,13 +2355,18 @@ mod tests {
         // "hello" as five 10 pt wide boxes.
         let mut glyphs = Vec::new();
         for (i, ch) in "hello".chars().enumerate() {
-            glyphs.push(GlyphBox::new(ch, DRect::new(i as f32 * 10.0, 0.0, 10.0, 12.0)));
+            glyphs.push(GlyphBox::new(
+                ch,
+                DRect::new(i as f32 * 10.0, 0.0, 10.0, 12.0),
+            ));
         }
         let line = GlyphLine::new(glyphs, 12.0);
         // Drag rect covering the first two glyphs.
         let geom = text_anchor_from_line(&line, Pt::new(0.0, 0.0), Pt::new(20.0, 12.0));
         match geom {
-            MarkupGeometry::TextAnchor { text, text_width, .. } => {
+            MarkupGeometry::TextAnchor {
+                text, text_width, ..
+            } => {
                 assert_eq!(text, "he");
                 assert!((text_width - 20.0).abs() < 1e-4);
             }
@@ -2373,13 +2378,18 @@ mod tests {
     fn text_anchor_click_anchors_single_glyph() {
         let mut glyphs = Vec::new();
         for (i, ch) in "hello".chars().enumerate() {
-            glyphs.push(GlyphBox::new(ch, DRect::new(i as f32 * 10.0, 0.0, 10.0, 12.0)));
+            glyphs.push(GlyphBox::new(
+                ch,
+                DRect::new(i as f32 * 10.0, 0.0, 10.0, 12.0),
+            ));
         }
         let line = GlyphLine::new(glyphs, 12.0);
         // Click on the third glyph (x ~ 25).
         let geom = text_anchor_from_line(&line, Pt::new(25.0, 6.0), Pt::new(25.0, 6.0));
         match geom {
-            MarkupGeometry::TextAnchor { text, text_width, .. } => {
+            MarkupGeometry::TextAnchor {
+                text, text_width, ..
+            } => {
                 assert_eq!(text, "l");
                 assert!((text_width - 10.0).abs() < 1e-4);
             }
@@ -2391,13 +2401,18 @@ mod tests {
     fn text_anchor_outside_falls_back_to_whole_line() {
         let mut glyphs = Vec::new();
         for (i, ch) in "hello".chars().enumerate() {
-            glyphs.push(GlyphBox::new(ch, DRect::new(i as f32 * 10.0, 0.0, 10.0, 12.0)));
+            glyphs.push(GlyphBox::new(
+                ch,
+                DRect::new(i as f32 * 10.0, 0.0, 10.0, 12.0),
+            ));
         }
         let line = GlyphLine::new(glyphs, 12.0);
         // Rect far outside the line -> empty intersection -> whole line fallback.
         let geom = text_anchor_from_line(&line, Pt::new(500.0, 500.0), Pt::new(510.0, 510.0));
         match geom {
-            MarkupGeometry::TextAnchor { text, text_width, .. } => {
+            MarkupGeometry::TextAnchor {
+                text, text_width, ..
+            } => {
                 assert_eq!(text, "hello");
                 assert!((text_width - 50.0).abs() < 1e-4);
             }

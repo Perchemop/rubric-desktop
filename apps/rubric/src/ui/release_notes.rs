@@ -64,11 +64,7 @@ pub fn parse_releases(changelog: &str) -> Vec<Release> {
                 }
             } else {
                 // Top-level bullets attach to an implicit "Notes" section.
-                if !rel
-                    .sections
-                    .iter()
-                    .any(|(h, _)| h == "Notes")
-                {
+                if !rel.sections.iter().any(|(h, _)| h == "Notes") {
                     rel.sections.push(("Notes".to_string(), Vec::new()));
                 }
                 if let Some(s) = rel.sections.iter_mut().find(|(h, _)| h == "Notes") {
@@ -97,17 +93,13 @@ fn parse_header(header: &str) -> (String, String) {
 }
 
 fn token_for(ledger: &serde_json::Value, version: &str) -> Option<u64> {
-    ledger
-        .get("releases")?
-        .as_array()?
-        .iter()
-        .find_map(|r| {
-            if r.get("release_version")?.as_str()? == version {
-                r.get("release_tokens")?.as_u64()
-            } else {
-                None
-            }
-        })
+    ledger.get("releases")?.as_array()?.iter().find_map(|r| {
+        if r.get("release_version")?.as_str()? == version {
+            r.get("release_tokens")?.as_u64()
+        } else {
+            None
+        }
+    })
 }
 
 pub fn draw_release_notes(app: &mut RubricApp, ctx: &egui::Context) {
@@ -185,7 +177,7 @@ pub fn draw_release_notes(app: &mut RubricApp, ctx: &egui::Context) {
                     app.begin_update_check(ctx);
                 }
                 if ui.button("View on GitHub").clicked() {
-                    let _ = open_url(&format!("https://github.com/{}/releases", app.ui.repo));
+                    let _ = open_url(&format!("https://github.com/{}/releases", app.repo));
                 }
                 if ui.button("Close").clicked() {
                     app.ui.show_release_notes = false;
@@ -212,7 +204,9 @@ fn open_url(url: &str) -> Result<(), String> {
     }
     #[cfg(target_os = "windows")]
     {
-        let _ = std::process::Command::new("cmd").args(["/C", "start", "", url]).spawn();
+        let _ = std::process::Command::new("cmd")
+            .args(["/C", "start", "", url])
+            .spawn();
         Ok(())
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]

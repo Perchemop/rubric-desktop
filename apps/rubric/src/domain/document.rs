@@ -887,6 +887,50 @@ impl Document {
     }
 }
 
+/// Rotate `geometry` one quarter turn clockwise about the centre of a page
+/// whose current display size is `page_w` × `page_h` (the size *before* the
+/// turn). Rectangles pass through [`geom::rotate_rect_cw`]; every positioned
+/// point uses the matching clockwise map, so a markup anchored at the
+/// content's top-left lands at the displayed top-right. Text boxes keep
+/// their stored extents: the renderer honours page rotation in a follow-up
+/// slice, at which point text-box extents rotate with it.
+fn rotate_geometry_cw(geometry: &mut MarkupGeometry, page_w: f32, page_h: f32) {
+    let map = |p: Pt| -> Pt { Pt::new(page_h - p.y, p.x) };
+    match geometry {
+        MarkupGeometry::Bounds(rect) => {
+            *rect = geom::rotate_rect_cw(*rect, page_w, page_h, 1);
+        }
+        MarkupGeometry::Segment { a, b } => {
+            *a = map(*a);
+            *b = map(*b);
+        }
+        MarkupGeometry::Path { points, .. } => {
+            for p in points.iter_mut() {
+                *p = map(*p);
+            }
+        }
+        MarkupGeometry::Ink { strokes } => {
+            for stroke in strokes.iter_mut() {
+                for p in stroke.iter_mut() {
+                    *p = map(*p);
+                }
+            }
+        }
+        MarkupGeometry::Text { at, .. } => *at = map(*at),
+        MarkupGeometry::Callout { rect, tail, .. } => {
+            *rect = geom::rotate_rect_cw(*rect, page_w, page_h, 1);
+            *tail = map(*tail);
+        }
+        MarkupGeometry::TextAnchor { at, .. } => *at = map(*at),
+        MarkupGeometry::Angle { a, vertex, b } => {
+            *a = map(*a);
+            *vertex = map(*vertex);
+            *b = map(*b);
+        }
+        MarkupGeometry::Count { at, .. } => *at = map(*at),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1384,7 +1428,9 @@ mod tests {
         doc.add_markup(src);
 
         // Duplicate page 0; new page should be inserted after index 0 → at index 1.
-        let new_idx = doc.duplicate_page(0).expect("duplicate_page should succeed");
+        let new_idx = doc
+            .duplicate_page(0)
+            .expect("duplicate_page should succeed");
         assert_eq!(new_idx, 1, "new page index should be 1");
         assert_eq!(doc.page_count(), 3, "should have 3 pages after duplicate");
 
@@ -1396,7 +1442,10 @@ mod tests {
 
         // The source page (index 0) should still have its original markup.
         let src_markups = doc.markups_on_page(0);
-        assert!(!src_markups.is_empty(), "source page should still have its markup");
+        assert!(
+            !src_markups.is_empty(),
+            "source page should still have its markup"
+        );
         assert_eq!(src_markups[0].id, src_id, "source markup id unchanged");
 
         // Page indices should be renumbered: pages 0, 1, 2 → indices 0, 1, 2.
@@ -1435,9 +1484,18 @@ mod tests {
         assert_eq!(doc.page_count(), 3, "page count unchanged");
 
         // Page order should be: [1, 2, 0].
-        assert_eq!(doc.pages[0].index, 1, "first page should be original page 1");
-        assert_eq!(doc.pages[1].index, 2, "second page should be original page 2");
-        assert_eq!(doc.pages[2].index, 0, "third page should be original page 0");
+        assert_eq!(
+            doc.pages[0].index, 1,
+            "first page should be original page 1"
+        );
+        assert_eq!(
+            doc.pages[1].index, 2,
+            "second page should be original page 2"
+        );
+        assert_eq!(
+            doc.pages[2].index, 0,
+            "third page should be original page 0"
+        );
 
         // Markups should stay with their page (page field updated).
         let pages: Vec<usize> = doc.markups.iter().map(|m| m.page).collect();
@@ -1448,6 +1506,11 @@ mod tests {
         assert_eq!(pages[1], 0, "m1 should be on new page 0");
         assert_eq!(pages[2], 1, "m2 should be on new page 1");
 
+        // Moving a page relocates markups; it never re-ids them.
+        assert_eq!(doc.markups[0].id, m0_id, "m0 identity preserved");
+        assert_eq!(doc.markups[1].id, m1_id, "m1 identity preserved");
+        assert_eq!(doc.markups[2].id, m2_id, "m2 identity preserved");
+
         // Page indices should be renumbered 0, 1, 2.
         for (i, page) in doc.pages.iter().enumerate() {
             assert_eq!(page.index, i, "page {} index should be {}", i, i);
@@ -1456,33 +1519,24 @@ mod tests {
 
     #[test]
     fn insert_blank_page_adds_a4_at_front_and_after() {
-        // Test inserting at the front (after = None).
+        // after = None inserts at the front: the new page becomes index 0 and
+        // the original page shifts to index 1.
         let mut doc = Document::empty("Doc");
-        // Start with 1 page (a4 at index 0).
         assert_eq!(doc.page_count(), 1);
-
-        let new_idx = doc.insert_blank_page(None); // insert at front when None
-        // The new page is inserted at front, so it becomes index 0.
-        // The original page shifts to index 1.
-        // But wait - let me re-check the method. insert_blank_page with None = position 0.
-        // The new page is Page::a4(position) where position = 0.
-        // So new page at index 0 with width/height A4, and original page shifts to index 1.
-        // But the original page was also a4(0) - let's check what happens.
-
-        // Actually, looking at the existing code:
-        // position = None => 0
-        // self.pages.insert(position, Page::a4(position));
-        // So we insert a4(0) at position 0, shifting the old page to index 1.
-        // The old page had index 0, now it gets renumbered to 1.
-
-        // Let me just call it properly.
-        let _new_idx = doc.insert_blank_page(None);
-        assert_eq!(doc.page_count(), 2, "should have 2 pages after inserting at front");
-        // The new page should be at index 0, original at index 1.
-        assert_eq!(doc.pages[0].index, 0, "new page at front should have index 0");
+        let new_idx = doc.insert_blank_page(None);
+        assert_eq!(new_idx, 0, "front insert returns the new page's index");
+        assert_eq!(
+            doc.page_count(),
+            2,
+            "should have 2 pages after inserting at front"
+        );
+        assert_eq!(
+            doc.pages[0].index, 0,
+            "new page at front should have index 0"
+        );
         assert_eq!(doc.pages[1].index, 1, "original page should have index 1");
 
-        // Test inserting after a specific index.
+        // Inserting after a specific index places the new page directly after it.
         let mut doc2 = Document::empty("Doc");
         doc2.add_page(Page::a4(0));
         doc2.add_page(Page::a4(1));
@@ -1513,15 +1567,24 @@ mod tests {
         }
 
         // Rotation should cycle back to 0.
-        assert_eq!(doc.pages[0].rotation, 0, "rotation should cycle to 0 after 4 turns");
+        assert_eq!(
+            doc.pages[0].rotation, 0,
+            "rotation should cycle to 0 after 4 turns"
+        );
 
         // The rectangle bounds width/height should swap on quarter turns.
         // After 4 CW rotations, width and height should return to original.
         let rect_after = doc.markups[0].geometry.bounds();
         // Original was Rect::new(10.0, 20.0, 30.0, 40.0) → w=30, h=40
         // After 4 rotations, should be back to w=30, h=40
-        assert_eq!(rect_after.w, 30.0, "rectangle width should be 30 after 4 CW rotations");
-        assert_eq!(rect_after.h, 40.0, "rectangle height should be 40 after 4 CW rotations");
+        assert_eq!(
+            rect_after.w, 30.0,
+            "rectangle width should be 30 after 4 CW rotations"
+        );
+        assert_eq!(
+            rect_after.h, 40.0,
+            "rectangle height should be 40 after 4 CW rotations"
+        );
     }
 
     #[test]
@@ -1531,29 +1594,44 @@ mod tests {
 
         // duplicate_page with out-of-range index should return None.
         let result = doc.duplicate_page(5);
-        assert_eq!(result, None, "duplicate_page should return None for out-of-range index");
+        assert_eq!(
+            result, None,
+            "duplicate_page should return None for out-of-range index"
+        );
 
         // dup on empty pages len should also handle gracefully.
         // dup page 0 on doc with 1 page should still work (index 0 is valid).
 
         // move_page with out-of-range from should return false.
         let result = doc.move_page(5, 1);
-        assert_eq!(result, false, "move_page should return false for out-of-range from");
+        assert_eq!(
+            result, false,
+            "move_page should return false for out-of-range from"
+        );
 
         // move_page with from == to should return false.
         doc.add_page(Page::a4(1));
         let result = doc.move_page(1, 1);
-        assert_eq!(result, false, "move_page should return false when from == to");
+        assert_eq!(
+            result, false,
+            "move_page should return false when from == to"
+        );
 
         // rotate_page_cw with out-of-range index should return false.
         let result = doc.rotate_page_cw(5);
-        assert_eq!(result, false, "rotate_page_cw should return false for out-of-range index");
+        assert_eq!(
+            result, false,
+            "rotate_page_cw should return false for out-of-range index"
+        );
 
         // insert_blank_page should handle gracefully even with extreme after values.
         // out-of-range `after` appends at the end per the docs.
         let new_idx = doc.insert_blank_page(Some(999));
         // With 2 pages, after=999 should append at the end, position = min(999+1, 2) = 2.
-        assert_eq!(new_idx, 2, "insert_blank_page with extreme after should append at end");
+        assert_eq!(
+            new_idx, 2,
+            "insert_blank_page with extreme after should append at end"
+        );
         assert_eq!(doc.page_count(), 3, "should have 3 pages after insertion");
     }
 }

@@ -52,10 +52,7 @@ pub(crate) enum DrawState {
     /// Dragging a text-anchored markup (highlight, strikeout, underline,
     /// squiggly) across a text line. The anchored line is re-extracted at
     /// commit time from `start`, so no per-frame PDF work is done.
-    TextRange {
-        start: Pt,
-        end: Pt,
-    },
+    TextRange { start: Pt, end: Pt },
     /// Drawing a path (polyline, polygon, measure perimeter/area).
     Path {
         points: Vec<Pt>,
@@ -684,7 +681,9 @@ impl RubricApp {
                 state.running = false;
                 state.result = Some(status);
                 // Record the time we offered an update for anti-loop protection.
-                if let update_check::UpdateStatus::Available { .. } = state.result {
+                if let Some(update_check::UpdateStatus::Available { latest_version, .. }) =
+                    &state.result
+                {
                     state.last_update_offered = Some(Instant::now());
                     // When an update is offered, record the tag for remediation if
                     // the user later chooses to install it.
@@ -692,7 +691,10 @@ impl RubricApp {
                 }
                 // When a check fails after a previous self-update attempt, retain
                 // the error so the UI can show it; otherwise clear it.
-                if !matches!(state.result, update_check::UpdateStatus::Available { .. }) {
+                if !matches!(
+                    state.result,
+                    Some(update_check::UpdateStatus::Available { .. })
+                ) {
                     state.self_update_error = None;
                 }
             }
@@ -1158,11 +1160,9 @@ impl RubricApp {
                     }) => {
                         // Anti-loop: if an update was offered in the last 24 hours,
                         // don't re-offer unless the user explicitly checks again.
-                        let too_soon = snapshot
-                            .last_update_offered
-                            .map_or(false, |instant| {
-                                instant.elapsed() < std::time::Duration::from_secs(24 * 60 * 60)
-                            });
+                        let too_soon = snapshot.last_update_offered.map_or(false, |instant| {
+                            instant.elapsed() < std::time::Duration::from_secs(24 * 60 * 60)
+                        });
                         if too_soon && !snapshot.running {
                             ui.label(
                                 "You just checked for updates recently; \
@@ -1263,6 +1263,7 @@ impl RubricApp {
         let shared = Arc::clone(&self.update);
         let ctx = ctx.clone();
         let repo = self.repo.clone();
+        let app_drawer = self.app_drawer_path.clone();
         let tag = self.update_check_tag.clone().unwrap_or_default();
         if tag.is_empty() {
             let mut state = self.update.lock().unwrap_or_else(|p| p.into_inner());
@@ -1279,7 +1280,7 @@ impl RubricApp {
                         state.downloaded_path = Some(path);
                         // Stale-version remediation: remove previous installers
                         // from the app-drawer before activating the new version.
-                        if let Some(ref drawer) = self.app_drawer_path {
+                        if let Some(ref drawer) = app_drawer {
                             // Remove any .deb, .dmg, .msi, or .AppImage files
                             // that match the old version pattern.
                             if let Ok(entries) = std::fs::read_dir(drawer) {
@@ -1301,11 +1302,9 @@ impl RubricApp {
                         }
                     }
                     Err(err) => {
-                        state.download_error = Some(err);
                         // Record the failure so the UI can show it on next launch.
-                        state.self_update_error = Some(format!(
-                            "Update download failed: {err}"
-                        ));
+                        state.self_update_error = Some(format!("Update download failed: {err}"));
+                        state.download_error = Some(err);
                     }
                 }
             }
@@ -1317,8 +1316,7 @@ impl RubricApp {
     /// stale-version remediation. Returns `None` if the path cannot be determined.
     fn get_app_drawer_path() -> Option<PathBuf> {
         // Use the same pattern as the rest of the codebase (main.rs, prefs.rs).
-        directories::ProjectDirs::from("", "", "Rubric")
-            .map(|proj| proj.data_dir().to_path_buf())
+        directories::ProjectDirs::from("", "", "Rubric").map(|proj| proj.data_dir().to_path_buf())
     }
 
     /// Bug report dialog (guide §7.1): review the captured report, add notes,
@@ -1420,10 +1418,6 @@ impl RubricApp {
             None => {}
         }
     }
-
-    /// Close the calibration dialog without changing any scale. No snapshot:
-    /// nothing was committed.
-
 
     /// Close the calibration dialog without changing any scale. No snapshot:
     /// nothing was committed.
