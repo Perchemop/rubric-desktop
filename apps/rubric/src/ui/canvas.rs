@@ -20,7 +20,8 @@ use crate::ui::canvas_draw::{
     draw_bates_overlay, draw_grid, draw_measure_badge, draw_minimap, draw_rulers, draw_selection,
 };
 use crate::ui::canvas_geom::{
-    hit_tolerance_page, measure_anchor, screen_rect_page_rotated, to_page_rotated, to_screen_rotated,
+    hit_tolerance_page, measure_anchor, screen_rect_page_rotated, to_page_rotated,
+    to_screen_rotated,
 };
 use crate::ui::canvas_hit::{handle_at, pick_markup_id, point_handle_at};
 
@@ -222,7 +223,15 @@ fn draw_markup(
 
     match &m.geometry {
         MarkupGeometry::Bounds(r) => {
-            let sr = screen_rect_page_rotated(*r, origin, pan, zoom, page.width, page.height, page.rotation);
+            let sr = screen_rect_page_rotated(
+                *r,
+                origin,
+                pan,
+                zoom,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             match m.kind {
                 MarkupKind::Rectangle
                 | MarkupKind::Stamp
@@ -286,7 +295,15 @@ fn draw_markup(
             // anchored to text rather than a bounding box. `at` is the
             // top-left of the text line in page space (y-down); every value
             // is scaled into screen space before it reaches the painter.
-            let sa = to_screen_rotated(*at, pan, zoom, origin, page.width, page.height, page.rotation);
+            let sa = to_screen_rotated(
+                *at,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             let w = text_width.max(text.chars().count() as f32 * line_height * 0.6) * zoom;
             let h = *line_height * zoom;
             match m.kind {
@@ -336,8 +353,24 @@ fn draw_markup(
             }
         }
         MarkupGeometry::Segment { a, b } => {
-            let sa = to_screen_rotated(*a, pan, zoom, origin, page.width, page.height, page.rotation);
-            let sb = to_screen_rotated(*b, pan, zoom, origin, page.width, page.height, page.rotation);
+            let sa = to_screen_rotated(
+                *a,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
+            let sb = to_screen_rotated(
+                *b,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.line_segment([sa, sb], stroke_eg);
             if matches!(m.kind, MarkupKind::Arrow) {
                 let dir = (sb - sa).normalized();
@@ -352,7 +385,17 @@ fn draw_markup(
         MarkupGeometry::Path { points, closed } => {
             let pts: Vec<Pos2> = points
                 .iter()
-                .map(|p| to_screen_rotated(*p, pan, zoom, origin, page.width, page.height, page.rotation))
+                .map(|p| {
+                    to_screen_rotated(
+                        *p,
+                        pan,
+                        zoom,
+                        origin,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    )
+                })
                 .collect();
             if pts.len() >= 2 {
                 if *closed {
@@ -364,19 +407,48 @@ fn draw_markup(
         }
         MarkupGeometry::Ink { strokes } => {
             for s in strokes {
-                let pts: Vec<Pos2> = s.iter().map(|p| to_screen_rotated(*p, pan, zoom, origin, page.width, page.height, page.rotation)).collect();
+                let pts: Vec<Pos2> = s
+                    .iter()
+                    .map(|p| {
+                        to_screen_rotated(
+                            *p,
+                            pan,
+                            zoom,
+                            origin,
+                            page.width,
+                            page.height,
+                            page.rotation,
+                        )
+                    })
+                    .collect();
                 if pts.len() >= 2 {
                     painter.add(egui::Shape::line(pts, stroke_eg));
                 }
             }
         }
         MarkupGeometry::Text { at, wrap, text } => {
-            let sa = to_screen_rotated(*at, pan, zoom, origin, page.width, page.height, page.rotation);
+            let sa = to_screen_rotated(
+                *at,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             if text.is_empty() {
                 // Empty text paints no glyphs; draw the bounds as a faint
                 // outline so the markup stays visible where it hit-tests
                 // (e.g. a Text the user placed and immediately cancelled).
-                let sr = screen_rect_page_rotated(m.bounds(), origin, pan, zoom, page.width, page.height, page.rotation);
+                let sr = screen_rect_page_rotated(
+                    m.bounds(),
+                    origin,
+                    pan,
+                    zoom,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                );
                 painter.rect_stroke(
                     sr,
                     egui::CornerRadius::same(4),
@@ -394,8 +466,24 @@ fn draw_markup(
             }
         }
         MarkupGeometry::Callout { rect, tail, text } => {
-            let sr = screen_rect_page_rotated(*rect, origin, pan, zoom, page.width, page.height, page.rotation);
-            let sta = to_screen_rotated(*tail, pan, zoom, origin, page.width, page.height, page.rotation);
+            let sr = screen_rect_page_rotated(
+                *rect,
+                origin,
+                pan,
+                zoom,
+                page.width,
+                page.height,
+                page.rotation,
+            );
+            let sta = to_screen_rotated(
+                *tail,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.line_segment([sta, sr.center()], stroke_eg);
             if fill_c.a() > 0 {
                 painter.rect_filled(sr, egui::CornerRadius::same(8), fill_c);
@@ -415,9 +503,33 @@ fn draw_markup(
             );
         }
         MarkupGeometry::Angle { a, vertex, b } => {
-            let sa = to_screen_rotated(*a, pan, zoom, origin, page.width, page.height, page.rotation);
-            let sv = to_screen_rotated(*vertex, pan, zoom, origin, page.width, page.height, page.rotation);
-            let sb = to_screen_rotated(*b, pan, zoom, origin, page.width, page.height, page.rotation);
+            let sa = to_screen_rotated(
+                *a,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
+            let sv = to_screen_rotated(
+                *vertex,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
+            let sb = to_screen_rotated(
+                *b,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.line_segment([sv, sa], stroke_eg);
             painter.line_segment([sv, sb], stroke_eg);
             // The angle value is the markup's measurement label, so it obeys
@@ -434,7 +546,15 @@ fn draw_markup(
             }
         }
         MarkupGeometry::Count { at, number } => {
-            let sa = to_screen_rotated(*at, pan, zoom, origin, page.width, page.height, page.rotation);
+            let sa = to_screen_rotated(
+                *at,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.circle_filled(sa, 10.0 * zoom.max(0.7), Color32::from_rgb(30, 30, 36));
             // The dot stays visible; its number is the count measurement, so
             // it is hidden with the other measurement labels.
@@ -453,7 +573,15 @@ fn draw_markup(
     // Stamp preset glyph (spec F-111): centred, colour-matched, shrink-to-fit.
     if m.kind == MarkupKind::Stamp {
         if let Some(preset) = m.stamp {
-            let sr = screen_rect_page_rotated(m.bounds(), origin, pan, zoom, page.width, page.height, page.rotation);
+            let sr = screen_rect_page_rotated(
+                m.bounds(),
+                origin,
+                pan,
+                zoom,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             if sr.width() >= 12.0 && sr.height() >= 12.0 {
                 let color = to_color32(preset.color());
                 match preset {
@@ -507,7 +635,15 @@ fn draw_markup(
     }
 
     if m.status != ReviewStatus::Open {
-        let b = screen_rect_page_rotated(m.bounds(), origin, pan, zoom, page.width, page.height, page.rotation);
+        let b = screen_rect_page_rotated(
+            m.bounds(),
+            origin,
+            pan,
+            zoom,
+            page.width,
+            page.height,
+            page.rotation,
+        );
         let dot = Pos2::new(b.right() + 4.0, b.top() - 4.0);
         painter.circle_filled(dot, 5.0 * zoom.max(0.7), to_color32(m.status.color()));
     }
@@ -978,7 +1114,16 @@ pub(crate) fn draw_canvas(
         for id in selected_ids {
             if let Some(m) = doc.find_markup(id) {
                 if doc.is_markup_visible(m) {
-                    draw_selection(&painter, origin, pan, zoom, m, page.width, page.height, page.rotation);
+                    draw_selection(
+                        &painter,
+                        origin,
+                        pan,
+                        zoom,
+                        m,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    );
                 }
             }
         }
@@ -996,7 +1141,15 @@ pub(crate) fn draw_canvas(
             }
             if let Some(meas) = m.measurement {
                 let label = meas.label_with(unit, project.settings.precision);
-                let anchor = to_screen_rotated(measure_anchor(m), pan, zoom, origin, page.width, page.height, page.rotation);
+                let anchor = to_screen_rotated(
+                    measure_anchor(m),
+                    pan,
+                    zoom,
+                    origin,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                );
                 draw_measure_badge(&painter, anchor, label);
             }
         }
@@ -1035,8 +1188,24 @@ pub(crate) fn draw_canvas(
                         page.rotation,
                     )
                 }
-                MarkupGeometry::Callout { rect, .. } => screen_rect_page_rotated(*rect, origin, pan, zoom, page.width, page.height, page.rotation),
-                _ => screen_rect_page_rotated(m.bounds(), origin, pan, zoom, page.width, page.height, page.rotation),
+                MarkupGeometry::Callout { rect, .. } => screen_rect_page_rotated(
+                    *rect,
+                    origin,
+                    pan,
+                    zoom,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                ),
+                _ => screen_rect_page_rotated(
+                    m.bounds(),
+                    origin,
+                    pan,
+                    zoom,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                ),
             });
         if let Some(sr) = sr {
             let edit = ui_state.text_edit.as_mut().unwrap();
@@ -1073,8 +1242,17 @@ pub(crate) fn draw_canvas(
     // above all markups; clicking empty canvas space closes it.
     if let Some(note_id) = ui_state.note_popover {
         let note_screen = project.active().and_then(|doc| {
-            doc.find_markup(note_id)
-                .map(|m| screen_rect_page_rotated(m.bounds(), origin, pan, zoom, page.width, page.height, page.rotation))
+            doc.find_markup(note_id).map(|m| {
+                screen_rect_page_rotated(
+                    m.bounds(),
+                    origin,
+                    pan,
+                    zoom,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                )
+            })
         });
         if let Some(sr) = note_screen {
             let zoom = ui_state.zoom.max(0.1);
@@ -1219,7 +1397,15 @@ pub(crate) fn draw_canvas(
             let zoom_modifier = ui.ctx().input(|i| i.modifiers.command || i.modifiers.ctrl);
             if zoom_modifier && scroll.y.abs() > f32::EPSILON {
                 if let Some(hover) = response.hover_pos() {
-                    let page_before = to_page_rotated(hover, pan, zoom, origin, page.width, page.height, page.rotation);
+                    let page_before = to_page_rotated(
+                        hover,
+                        pan,
+                        zoom,
+                        origin,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    );
                     let factor = (scroll.y * 0.001).exp();
                     let new_zoom = crate::domain::view::clamp_zoom(zoom * factor);
                     let new_pan = hover
@@ -1256,7 +1442,15 @@ pub(crate) fn draw_canvas(
                     d.markups.iter().find(|m| m.id == id)
                 });
                 if let Some(m) = corner_hit {
-                    let screen_bounds = screen_rect_page_rotated(m.bounds(), origin, pan, zoom, page.width, page.height, page.rotation);
+                    let screen_bounds = screen_rect_page_rotated(
+                        m.bounds(),
+                        origin,
+                        pan,
+                        zoom,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    );
                     if let Some(corner) = handle_at(screen_bounds, sp, ui_state.zoom) {
                         icon = match corner {
                             crate::domain::Corner::TopLeft | crate::domain::Corner::BottomRight => {
@@ -1272,7 +1466,15 @@ pub(crate) fn draw_canvas(
                     && pick_markup_id(
                         project,
                         page.index,
-                        to_page_rotated(sp, pan, zoom, origin, page.width, page.height, page.rotation),
+                        to_page_rotated(
+                            sp,
+                            pan,
+                            zoom,
+                            origin,
+                            page.width,
+                            page.height,
+                            page.rotation,
+                        ),
                         hit_tolerance_page(zoom),
                     )
                     .is_some()

@@ -78,8 +78,7 @@ mod tests {
         markup::MarkupKind,
         style::{palette, DefaultStyles, MarkupStyle},
         style_preset::StylePresetLibrary,
-        Theme,
-        MeasureUnit,
+        MeasureUnit, Theme,
     };
 
     fn temp_prefs_path(tag: &str) -> PathBuf {
