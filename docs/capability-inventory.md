@@ -58,8 +58,18 @@ only when implemented *and* CI-verified.
 
 ## Planned (future slices — not yet implemented, so not "Done")
 
-*None currently — the Bates numbering capability (row 32 in the table above)
-has been implemented and moves out of this section.*
+*The Bates numbering capability (row 32 in the table above) was implemented and
+moved out of this section. The rows below are proposed takeoff-quantity
+capabilities, research-gated (guide §2.3): implementation requires owner
+approval of `docs/research/takeoff-quantities.md`. Product is Rubric for all
+rows. No feature IDs are assigned until a slice is approved.*
+
+| # | Product | Capability | Observable behaviour | Acceptance criteria (short) | Source URL(s) | Status |
+|---|---|---|---|---|---|---|
+| 33 | Rubric | Quantity list (aggregate measures by kind with names) | A panel aggregates every measurement markup by `MeasureKind` and user-assigned item name, with per-item and per-kind totals and units; aggregates update when geometry, scale or unit changes | Opening the panel lists one row per named item per kind with count/total/unit; unnamed items get a kind-derived default; scale/unit edits recompute affected totals live | `docs/research/takeoff-quantities.md`; <https://github.com/Kentucky-ai/opentakeoff> | not started (research gated) |
+| 34 | Rubric | Wall-surface derivation (perimeter × height) | A perimeter measurement with an entered height yields a derived surface-area quantity, recomputed on geometry/scale/unit change; missing height shows incomplete, not zero | Derived value equals perimeter × height in the display unit; rescale/unit change recomputes it; no height entered means an explicit "incomplete" state | `docs/research/takeoff-quantities.md`; <https://github.com/Kentucky-ai/opentakeoff> | not started (research gated) |
+| 35 | Rubric | Quantity CSV export | The quantity list exports a CSV whose rows are quantity items (name, kind, quantity, unit, page) with totals per kind; opens in a spreadsheet application | Export writes the item rows plus per-kind totals; disabled with a plain-language reason when no measurements exist | `docs/research/takeoff-quantities.md`; <https://github.com/Kentucky-ai/opentakeoff> | not started (research gated) |
+| 36 | Rubric | Symbol auto-count (stretch) | From a user-chosen example symbol region, candidate placements are detected for review; accepted candidates become ordinary numbered Count markers; refusals name a reason and create nothing | Candidates are presented before any commit; accepted ones are normal count markers with an origin note; detection failure is a plain-language refusal with no markup created | `docs/research/takeoff-quantities.md`; <https://github.com/Kentucky-ai/opentakeoff> | not started (research gated) |
 
 ## Deliberately out of scope
 

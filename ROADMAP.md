@@ -179,6 +179,21 @@ modified). Spec F-801–F-805; capability inventory row 32.
 - [x] Ghosted canvas overlay preview (follows pan/zoom; shows when enabled)
 - [x] Stamped export + print (flattened PDF, page image and print all carry the stamp)
 
+### v0.5+ — Takeoff quantities (proposed, research-gated)
+
+Capability mapping for quantity-takeoff features (quantity list, derivations,
+takeoff-shaped export) inspired at capability level by public takeoff tools.
+**Research gate applies (guide §2.3):** implementation requires owner approval
+of `docs/research/takeoff-quantities.md`; nothing below is committed work. The
+inspiration source is AGPL-3.0 — **no code adoption**; native implementation
+only, plus an optional MCP-client bridge that needs an explicit owner decision.
+
+- [ ] Quantity list panel aggregating all measure markups by kind with per-item names and per-page/document rollups
+- [ ] Wall-surface derivation (perimeter measure × entered height, recomputed on geometry/scale/unit change)
+- [ ] Takeoff-shaped CSV export (aggregated items with name, kind, quantity, unit, page; totals per kind)
+- [ ] Symbol auto-count from a chosen example (optional/stretch; proposals only, never silent commits)
+- [ ] Optional MCP-client bridge to a user-installed takeoff server (**owner decision required** — never bundled, off by default; see `docs/research/takeoff-quantities.md` §3)
+
 ### Community, security and operating hygiene — done 2026-10-24 (guide Part II)
 
 Not product features: tracked as R-C-001…R-C-012 in
