@@ -636,8 +636,8 @@ fn draw_recent_row(ui: &mut Ui, project: &mut Project, ui_state: &mut UiState, p
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{Markup, MarkupGeometry, MarkupKind};
     use crate::domain::geom::Rect;
+    use crate::domain::{Markup, MarkupGeometry, MarkupKind};
     use crate::ui::app::UiState;
 
     fn sample_markup() -> Markup {
