@@ -8,8 +8,51 @@ use crate::ui::app::{RubricApp, StatusKind};
 use crate::ui::icon_button::{triangle_button, TriangleDir};
 use crate::ui::toolbar;
 
-/// Draw the top bar: toolbar, active-tool chip, status, zoom, page nav.
+/// Draw the top bar: document tabs, toolbar, active-tool chip, status, zoom, page nav.
 pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
+    // Document tab bar (Bluebeam audit gap #11): one tab per document.
+    ui.horizontal(|ui| {
+        let docs: Vec<(uuid::Uuid, String)> = app
+            .history
+            .current()
+            .documents
+            .iter()
+            .map(|d| (d.id, d.title.clone()))
+            .collect();
+        let active_index = app.history.current().active_document;
+        let active_id = app
+            .history
+            .current()
+            .documents
+            .get(active_index)
+            .map(|d| d.id);
+        let count = docs.len();
+        for (id, title) in &docs {
+            let selected = Some(*id) == active_id;
+            let label = if title.chars().count() > 18 {
+                format!("{}...", title.chars().take(15).collect::<String>())
+            } else {
+                title.clone()
+            };
+            let resp = ui.selectable_label(selected, label);
+            if resp.clicked() {
+                app.switch_active_document(*id);
+            }
+            resp.on_hover_text(title);
+            if count > 1 {
+                if ui
+                    .add(egui::Button::new("x").min_size(egui::vec2(24.0, 24.0)))
+                    .clicked()
+                {
+                    app.close_document_tab(*id);
+                }
+            }
+        }
+        if ui.button("+").clicked() {
+            app.add_new_document();
+        }
+    });
+    ui.separator();
     ui.horizontal(|ui| {
         // Tool dropdown (replaces the inline strip that cluttered the top bar).
         // All 25 tools live inside the menu, grouped by family.

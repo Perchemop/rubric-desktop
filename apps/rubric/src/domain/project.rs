@@ -347,6 +347,44 @@ impl Project {
         }
     }
 
+    /// Switch the active document by id. Returns `true` when the document
+    /// exists and the active index changed.
+    ///
+    /// Switching is view state: this method does not push an undo snapshot and
+    /// does not touch `modified` (the caller decides whether to mark dirty).
+    pub fn set_active_document(&mut self, doc_id: Uuid) -> bool {
+        if let Some(idx) = self.documents.iter().position(|d| d.id == doc_id) {
+            if self.active_document != idx {
+                self.active_document = idx;
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Close the document identified by `doc_id`.
+    ///
+    /// Removes it from `documents`, keeping at least one document (refusing to
+    /// close the last one). Fixes `active_document` to a sensible neighbour.
+    /// Returns `true` when a document was removed.
+    pub fn close_document(&mut self, doc_id: Uuid) -> bool {
+        let Some(idx) = self.documents.iter().position(|d| d.id == doc_id) else {
+            return false;
+        };
+        if self.documents.len() <= 1 {
+            return false;
+        }
+        self.documents.remove(idx);
+        if self.active_document >= self.documents.len() {
+            self.active_document = self.documents.len().saturating_sub(1);
+        } else if idx < self.active_document {
+            self.active_document = self.active_document.saturating_sub(1);
+        }
+        self.touch();
+        true
+    }
+
     pub fn active(&self) -> Option<&Document> {
         self.documents.get(self.active_document)
     }
@@ -1384,5 +1422,53 @@ mod tests {
         let settings: Settings = serde_json::from_str(json).expect("deserialize");
         assert_eq!(settings.bates, BatesConfig::default());
         assert!(!settings.bates.enabled);
+    }
+
+    #[test]
+    fn close_document_switches_active_to_neighbour() {
+        let mut p = Project::new("P");
+        let d1 = Document::empty("Doc1");
+        let id1 = d1.id;
+        p.add_document(d1);
+        let d2 = Document::empty("Doc2");
+        let id2 = d2.id;
+        p.add_document(d2);
+        assert_eq!(p.active_document, 2);
+        assert!(p.close_document(id2));
+        assert_eq!(p.documents.len(), 2);
+        assert_eq!(p.active_document, 1);
+        assert_eq!(p.active().unwrap().title, "Doc1");
+        let _ = id1;
+    }
+
+    #[test]
+    fn close_document_refuses_last() {
+        let mut p = Project::new("P");
+        let id = p.documents[0].id;
+        assert!(!p.close_document(id));
+        assert_eq!(p.documents.len(), 1);
+    }
+
+    #[test]
+    fn close_document_preserves_titles() {
+        let mut p = Project::new("P");
+        let d = Document::empty("Secondary");
+        p.add_document(d);
+        let first_id = p.documents[0].id;
+        assert!(p.close_document(first_id));
+        assert_eq!(p.documents[0].title, "Secondary");
+    }
+
+    #[test]
+    fn set_active_document_switches_index() {
+        let mut p = Project::new("P");
+        let d = Document::empty("Second");
+        let id = d.id;
+        p.add_document(d);
+        assert_eq!(p.active_document, 1);
+        assert!(p.set_active_document(p.documents[0].id));
+        assert_eq!(p.active_document, 0);
+        assert!(!p.set_active_document(uuid::Uuid::new_v4()));
+        let _ = id;
     }
 }

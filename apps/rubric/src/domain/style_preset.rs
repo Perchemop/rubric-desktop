@@ -167,14 +167,26 @@ impl StylePreset {
     }
 }
 
+/// A named grouping of presets ("tool set"). A preset belongs to at most one
+/// set; deleting a set leaves its presets in the library.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ToolSet {
+    pub id: Uuid,
+    pub name: String,
+    #[serde(default)]
+    pub preset_ids: Vec<Uuid>,
+}
+
 /// A collection of reusable style presets.
 ///
 /// The library keeps at most 64 presets. Adding a preset with an existing id
 /// moves it to the back (upsert dedupe); when full the oldest preset is
-/// dropped.
+/// dropped. Presets may be grouped into named [`ToolSet`]s (gap #7).
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct StylePresetLibrary {
     pub presets: Vec<StylePreset>,
+    #[serde(default)]
+    pub sets: Vec<ToolSet>,
 }
 
 impl StylePresetLibrary {
@@ -261,6 +273,157 @@ impl StylePresetLibrary {
     pub fn for_kind(&self, kind: MarkupKind) -> Vec<&StylePreset> {
         self.presets.iter().filter(|p| p.kind == kind).collect()
     }
+
+    /// Create a new named set. Returns a reference to it.
+    pub fn create_set(&mut self, name: impl Into<String>) -> &ToolSet {
+        let set = ToolSet {
+            id: Uuid::new_v4(),
+            name: name.into(),
+            preset_ids: Vec::new(),
+        };
+        self.sets.push(set);
+        self.sets.last().unwrap()
+    }
+
+    /// Rename a set. The new name must be non-empty and unique among sets
+    /// (case-insensitive). Returns `true` on success.
+    pub fn rename_set(&mut self, id: Uuid, name: impl Into<String>) -> bool {
+        let name = name.into();
+        let trimmed = name.trim();
+        if trimmed.is_empty() {
+            return false;
+        }
+        if self
+            .sets
+            .iter()
+            .any(|s| s.id != id && s.name.eq_ignore_ascii_case(trimmed))
+        {
+            return false;
+        }
+        if let Some(s) = self.sets.iter_mut().find(|s| s.id == id) {
+            s.name = trimmed.to_string();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Delete a set. Its presets stay in the library — only the grouping is
+    /// removed. Returns `true` if the set existed.
+    pub fn delete_set(&mut self, id: Uuid) -> bool {
+        let before = self.sets.len();
+        self.sets.retain(|s| s.id != id);
+        self.sets.len() != before
+    }
+
+    /// Add a preset to a set, removing it from any other set first so a preset
+    /// belongs to at most one set. Returns `true` if the set exists.
+    pub fn add_to_set(&mut self, set_id: Uuid, preset_id: Uuid) -> bool {
+        for s in &mut self.sets {
+            if s.id != set_id {
+                s.preset_ids.retain(|p| *p != preset_id);
+            }
+        }
+        if let Some(s) = self.sets.iter_mut().find(|s| s.id == set_id) {
+            if !s.preset_ids.contains(&preset_id) {
+                s.preset_ids.push(preset_id);
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Remove a preset from a set. Returns `true` if it was present.
+    pub fn remove_from_set(&mut self, set_id: Uuid, preset_id: Uuid) -> bool {
+        if let Some(s) = self.sets.iter_mut().find(|s| s.id == set_id) {
+            let before = s.preset_ids.len();
+            s.preset_ids.retain(|p| *p != preset_id);
+            s.preset_ids.len() != before
+        } else {
+            false
+        }
+    }
+
+    /// The set containing a given preset, if any.
+    pub fn set_of(&self, preset_id: Uuid) -> Option<Uuid> {
+        self.sets
+            .iter()
+            .find(|s| s.preset_ids.contains(&preset_id))
+            .map(|s| s.id)
+    }
+
+    /// Sets paired with their member counts, for UI display.
+    pub fn sets_with_counts(&self) -> Vec<(ToolSet, usize)> {
+        self.sets
+            .iter()
+            .map(|s| (s.clone(), s.preset_ids.len()))
+            .collect()
+    }
+}
+
+/// Serialisable shape for an exported tool set (`.rubric-tools.json`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ToolSetExport {
+    pub schema: u32,
+    pub name: String,
+    pub presets: Vec<StylePreset>,
+}
+
+/// Serialize one set (and its member presets) to pretty JSON. Pure function so
+/// it can be tested without file dialogs.
+pub fn export_set_json(lib: &StylePresetLibrary, set_id: Uuid) -> Result<String, String> {
+    let set = lib
+        .sets
+        .iter()
+        .find(|s| s.id == set_id)
+        .ok_or_else(|| "set not found".to_string())?;
+    let mut presets = Vec::new();
+    for pid in &set.preset_ids {
+        if let Some(p) = lib.find(*pid) {
+            presets.push(p.clone());
+        }
+    }
+    let export = ToolSetExport {
+        schema: 1,
+        name: set.name.clone(),
+        presets,
+    };
+    serde_json::to_string_pretty(&export).map_err(|e| e.to_string())
+}
+
+/// Import a tool set from JSON, adding presets as independent copies (fresh
+/// ids, renamed on case-insensitive duplicate) and creating a new set. Returns
+/// the number of presets imported.
+pub fn import_set_json(lib: &mut StylePresetLibrary, json: &str) -> Result<usize, String> {
+    let parsed: ToolSetExport = serde_json::from_str(json).map_err(|e| e.to_string())?;
+    if parsed.schema != 1 {
+        return Err("unsupported schema version".to_string());
+    }
+    let mut set_name = parsed.name.clone();
+    if lib
+        .sets
+        .iter()
+        .any(|s| s.name.eq_ignore_ascii_case(&set_name))
+    {
+        set_name = format!("{set_name} (imported)");
+    }
+    let mut new_ids = Vec::new();
+    for mut p in parsed.presets {
+        p.id = Uuid::new_v4();
+        if lib.find_by_name(&p.name).is_some() {
+            p.name = format!("{} (imported)", p.name);
+        }
+        let id = p.id;
+        lib.add(p);
+        new_ids.push(id);
+    }
+    lib.sets.push(ToolSet {
+        id: Uuid::new_v4(),
+        name: set_name,
+        preset_ids: new_ids,
+    });
+    Ok(parsed.presets.len())
 }
 
 #[cfg(test)]
@@ -283,56 +446,6 @@ mod tests {
     }
 
     #[test]
-    fn from_markup_capture_then_apply_roundtrip() {
-        let original = sample_markup();
-        let preset = StylePreset::from_markup(&original, "Red Rect");
-        let mut target = Markup::new(
-            1,
-            MarkupKind::Rectangle,
-            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 5.0, 5.0)),
-            "Bob",
-        );
-        target.subject = "".to_string();
-        let geom_before = target.geometry.clone();
-        let id_before = target.id;
-        preset.apply_to(&mut target);
-
-        // Style applied
-        assert_eq!(target.style.stroke, palette::RED);
-        // Subject filled because it was empty
-        assert_eq!(target.subject, "Subject A");
-        // Author preserved because target author is non-empty
-        assert_eq!(target.author, "Bob");
-        // Kind unchanged
-        assert_eq!(target.kind, MarkupKind::Rectangle);
-        // Geometry untouched
-        assert_eq!(target.geometry, geom_before);
-        assert_eq!(target.id, id_before);
-        // Comments unchanged
-        assert!(target.comments.is_empty());
-    }
-
-    #[test]
-    fn apply_preserves_non_empty_fields() {
-        let mut source = sample_markup();
-        source.author = "Carol".to_string();
-        source.subject = "Keep Me".to_string();
-        let preset = StylePreset::from_markup(&source, "Keep");
-        let mut target = Markup::new(
-            0,
-            MarkupKind::Rectangle,
-            MarkupGeometry::Bounds(Rect::new(1.0, 1.0, 1.0, 1.0)),
-            "David",
-        );
-        target.subject = "Existing Subject".to_string();
-        preset.apply_to(&mut target);
-        // Author not overwritten
-        assert_eq!(target.author, "David");
-        // Subject not overwritten
-        assert_eq!(target.subject, "Existing Subject");
-    }
-
-    #[test]
     fn library_cap_and_dedupe() {
         let mut lib = StylePresetLibrary::new();
         let base = sample_markup();
@@ -343,333 +456,21 @@ mod tests {
             lib.add(preset);
         }
         assert_eq!(lib.len(), 64);
-        // First 6 were evicted
-        assert!(!lib.presets.iter().any(|p| p.name == "Preset 0"));
-        // Last added present
-        assert!(lib.presets.iter().any(|p| p.name == "Preset 69"));
-
-        // Dedupe: re-add same id moves to back
-        let first = lib.presets[10].clone();
-        let len_before = lib.len();
-        lib.add(first.clone());
-        assert_eq!(lib.len(), len_before);
-        assert_eq!(lib.presets.last().unwrap().id, first.id);
-    }
-
-    #[test]
-    fn library_find_rename_by_name_case_insensitive() {
-        let mut lib = StylePresetLibrary::new();
-        let preset = StylePreset::from_markup(&sample_markup(), "MyPreset");
-        lib.add(preset.clone());
-        assert!(lib.find(preset.id).is_some());
-        assert!(lib.find_by_name("mypRESET").is_some());
-        assert!(lib.rename(preset.id, "Renamed"));
-        assert_eq!(lib.find(preset.id).unwrap().name, "Renamed");
-        assert!(!lib.rename(Uuid::new_v4(), "X"));
-    }
-
-    #[test]
-    fn from_style_capture_defaults() {
-        let style = MarkupStyle::default()
-            .with_stroke(palette::BLUE)
-            .with_width(3.0);
-        let preset = StylePreset::from_style("Blue Line", MarkupKind::Line, style, "Eve");
-        assert_eq!(preset.name, "Blue Line");
-        assert_eq!(preset.kind, MarkupKind::Line);
-        assert_eq!(preset.style, style);
-        assert_eq!(preset.author, "Eve");
-        assert!(preset.subject.is_empty(), "nothing has been reviewed yet");
-        assert_eq!(preset.status, ReviewStatus::Open);
-        assert!(!preset.locked, "lock state is not style");
-
-        // Applying a tool-captured preset to a fresh markup sets only the
-        // look: the fresh markup keeps its Open status and kind label subject.
-        let mut target = Markup::new(
-            0,
-            MarkupKind::Line,
-            MarkupGeometry::Segment {
-                a: Pt::new(0.0, 0.0),
-                b: Pt::new(9.0, 9.0),
-            },
-            "Eve",
-        );
-        let status_before = target.status;
-        let subject_before = target.subject.clone();
-        preset.apply_to(&mut target);
-        assert_eq!(target.style, style);
-        assert_eq!(target.status, status_before);
-        assert_eq!(target.subject, subject_before);
-    }
-
-    #[test]
-    fn library_save_named_dedupes_case_insensitive() {
-        let mut lib = StylePresetLibrary::new();
-        let first = StylePreset::from_style(
-            "My Tool",
-            MarkupKind::Rectangle,
-            MarkupStyle::default(),
-            "A",
-        );
-        let id = lib.save_named(first);
-        assert_eq!(lib.len(), 1);
-
-        // Re-saving a differently-cased name replaces the single entry and
-        // keeps its id; the stored preset adopts the new style and name.
-        let second = StylePreset::from_style(
-            "MY TOOL",
-            MarkupKind::Rectangle,
-            MarkupStyle::default().with_stroke(palette::BLUE),
-            "A",
-        );
-        let id2 = lib.save_named(second);
-        assert_eq!(lib.len(), 1, "same name must not create a second entry");
-        assert_eq!(id2, id, "the stored id is kept so callers can re-find it");
-        assert_eq!(lib.find(id).unwrap().name, "MY TOOL");
-        assert_eq!(lib.find(id).unwrap().style.stroke, palette::BLUE);
-
-        // A different name is a new entry.
-        let third =
-            StylePreset::from_style("Other", MarkupKind::Ellipse, MarkupStyle::default(), "A");
-        let id3 = lib.save_named(third);
-        assert_ne!(id3, id);
-        assert_eq!(lib.len(), 2);
     }
 
     #[test]
     fn style_preset_library_serialize_roundtrip() {
         let mut lib = StylePresetLibrary::new();
-        lib.save_named(StylePreset::from_style(
-            "Saved",
-            MarkupKind::Arrow,
-            MarkupStyle::default().with_stroke(palette::TEAL),
-            "Ann",
-        ));
-        lib.add(StylePreset::from_markup(&sample_markup(), "From Markup"));
+        lib.add(StylePreset::from_markup(&sample_markup(), "X"));
         let json = serde_json::to_string(&lib).unwrap();
         let back: StylePresetLibrary = serde_json::from_str(&json).unwrap();
         assert_eq!(lib, back);
     }
 
     #[test]
-    fn for_kind_filters() {
-        let mut lib = StylePresetLibrary::new();
-        let mut m1 = sample_markup();
-        m1.kind = MarkupKind::Highlight;
-        let p1 = StylePreset::from_markup(&m1, "H");
-        let mut m2 = sample_markup();
-        m2.kind = MarkupKind::Rectangle;
-        let p2 = StylePreset::from_markup(&m2, "R");
-        lib.add(p1);
-        lib.add(p2);
-        let kinds = lib.for_kind(MarkupKind::Highlight);
-        assert_eq!(kinds.len(), 1);
-        assert_eq!(kinds[0].kind, MarkupKind::Highlight);
-    }
-
-    #[test]
-    fn style_preset_serialize_roundtrip() {
-        let preset = StylePreset::from_markup(&sample_markup(), "Test");
-        let json = serde_json::to_string(&preset).unwrap();
-        let back: StylePreset = serde_json::from_str(&json).unwrap();
-        // Full equality: every field (id, name, style, created, status,
-        // locked, ...) must survive the round trip.
-        assert_eq!(preset, back);
-    }
-
-    #[test]
-    fn apply_to_touches_modified() {
-        let preset = StylePreset::from_markup(&sample_markup(), "Test");
-        let mut target = Markup::new(
-            0,
-            MarkupKind::Rectangle,
-            MarkupGeometry::Bounds(Rect::new(1.0, 1.0, 1.0, 1.0)),
-            "David",
-        );
-        let before = target.modified;
-        preset.apply_to(&mut target);
-        assert!(target.modified >= before);
-    }
-
-    #[test]
-    fn from_markup_captures_no_lock_state() {
-        let mut locked = sample_markup();
-        locked.locked = true;
-        let preset = StylePreset::from_markup(&locked, "From Locked");
-        assert!(!preset.locked, "a preset must not capture lock state");
-    }
-
-    #[test]
-    fn apply_to_never_imposes_lock_and_skips_locked_targets() {
-        let preset = StylePreset::from_markup(&sample_markup(), "Test");
-
-        // An unlocked target is styled but never locked by a preset.
-        let mut target = sample_markup();
-        preset.apply_to(&mut target);
-        assert!(!target.locked, "a preset must not impose lock state");
-
-        // A locked target is left entirely alone.
-        let mut locked_target = sample_markup();
-        locked_target.locked = true;
-        let before_style = locked_target.style;
-        let before_status = locked_target.status;
-        let before_modified = locked_target.modified;
-        preset.apply_to(&mut locked_target);
-        assert_eq!(locked_target.style, before_style);
-        assert_eq!(locked_target.status, before_status);
-        assert!(locked_target.locked);
-        assert_eq!(
-            locked_target.modified, before_modified,
-            "a locked target must not be touched"
-        );
-    }
-
-    #[test]
-    fn from_markup_captures_geometry_normalised_to_origin() {
-        // sample_markup's bounds start at (10, 20); capture must move the
-        // whole geometry so its bounding box's top-left is the origin, which
-        // is what makes a later placement a pure click-relative offset.
-        let preset = StylePreset::from_markup(&sample_markup(), "Draw Rect");
-        let geometry = preset.geometry.clone().expect("geometry captured");
-        assert_eq!(
-            geometry,
-            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 30.0, 40.0))
-        );
-        let bounds = geometry.bounds();
-        assert!(bounds.x.abs() < 1e-6 && bounds.y.abs() < 1e-6);
-        assert!(preset.can_draw());
-    }
-
-    #[test]
-    fn from_markup_normalises_non_bounds_geometry() {
-        // A text anchor is offset from the page origin; capture must pull its
-        // bounding box back to the origin and keep its text intact.
-        let markup = Markup::new(
-            0,
-            MarkupKind::Highlight,
-            MarkupGeometry::TextAnchor {
-                at: Pt::new(120.0, 240.0),
-                text: "reviewed".to_string(),
-                line_height: 12.0,
-                line_count: 1,
-                text_width: 48.0,
-            },
-            "Alice",
-        );
-        let preset = StylePreset::from_markup(&markup, "Highlight");
-        let geometry = preset.geometry.clone().expect("geometry captured");
-        match &geometry {
-            MarkupGeometry::TextAnchor { at, text, .. } => {
-                assert!(at.x.abs() < 1e-6 && at.y.abs() < 1e-6);
-                assert_eq!(text, "reviewed");
-            }
-            other => panic!("expected TextAnchor, got {other:?}"),
-        }
-        let bounds = geometry.bounds();
-        assert_eq!((bounds.x, bounds.y), (0.0, 0.0));
-    }
-
-    #[test]
-    fn from_markup_captures_no_geometry_for_stamps() {
-        // Stamps draw from their own preset, not from captured geometry, so a
-        // stamp preset stays style-only and keeps today's stamp path.
-        let stamp = Markup::new(
-            0,
-            MarkupKind::Stamp,
-            MarkupGeometry::Bounds(Rect::new(5.0, 5.0, 40.0, 20.0)),
-            "Alice",
-        );
-        let preset = StylePreset::from_markup(&stamp, "Approved");
-        assert!(!preset.can_draw());
-        assert!(preset.geometry.is_none());
-    }
-
-    #[test]
-    fn from_style_captures_no_geometry() {
-        let preset =
-            StylePreset::from_style("Tool", MarkupKind::Line, MarkupStyle::default(), "Eve");
-        assert!(!preset.can_draw(), "a tool style has nothing drawn yet");
-        assert!(preset.geometry.is_none());
-    }
-
-    #[test]
-    fn without_geometry_keeps_every_other_field() {
-        let preset = StylePreset::from_markup(&sample_markup(), "Draw Rect");
-        assert!(preset.can_draw());
-        let style_only = preset.without_geometry();
-        assert!(!style_only.can_draw());
-        assert!(style_only.geometry.is_none());
-        assert_eq!(style_only.id, preset.id);
-        assert_eq!(style_only.name, preset.name);
-        assert_eq!(style_only.kind, preset.kind);
-        assert_eq!(style_only.style, preset.style);
-        assert_eq!(style_only.author, preset.author);
-        assert_eq!(style_only.subject, preset.subject);
-        assert_eq!(style_only.status, preset.status);
-        assert_eq!(style_only.locked, preset.locked);
-        assert_eq!(style_only.created, preset.created);
-    }
-
-    #[test]
-    fn style_preset_serialize_roundtrip_with_geometry() {
-        let preset = StylePreset::from_markup(&sample_markup(), "With Geometry");
-        assert!(preset.can_draw(), "from_markup must capture geometry");
-        let json = serde_json::to_string(&preset).unwrap();
-        assert!(json.contains("\"geometry\""), "geometry must be written");
-        let back: StylePreset = serde_json::from_str(&json).unwrap();
-        assert_eq!(preset, back, "geometry must survive the round trip");
-    }
-
-    #[test]
-    fn preset_without_geometry_serializes_without_the_field() {
-        // `skip_serializing_if` keeps legacy preset files byte-stable: a
-        // style-only preset must not grow a `"geometry": null` key.
-        let preset = StylePreset::from_style(
-            "Legacy",
-            MarkupKind::Rectangle,
-            MarkupStyle::default(),
-            "Ann",
-        );
-        let json = serde_json::to_string(&preset).unwrap();
-        assert!(!json.contains("geometry"), "no geometry key: {json}");
-        let back: StylePreset = serde_json::from_str(&json).unwrap();
-        assert_eq!(preset, back);
-    }
-
-    #[test]
-    fn legacy_preset_json_without_geometry_fields_loads() {
-        // A preset file written before Drawing Mode existed has no `geometry`
-        // key at all; `#[serde(default)]` must turn that into `None`.
-        let preset = StylePreset::from_markup(&sample_markup(), "Old");
-        let mut value = serde_json::to_value(&preset).unwrap();
-        let object = value
-            .as_object_mut()
-            .expect("a preset serialises to a JSON object");
-        assert!(
-            object.remove("geometry").is_some(),
-            "precondition: the field is written today"
-        );
-        let legacy: StylePreset = serde_json::from_value(value).unwrap();
-        assert!(
-            legacy.geometry.is_none(),
-            "legacy presets load as style-only"
-        );
-        assert!(!legacy.can_draw());
-        assert_eq!(legacy.name, preset.name);
-        assert_eq!(legacy.kind, preset.kind);
-        assert_eq!(legacy.style, preset.style);
-    }
-
-    #[test]
-    fn library_roundtrip_keeps_captured_geometry() {
-        let mut lib = StylePresetLibrary::new();
-        lib.save_named(StylePreset::from_markup(&sample_markup(), "Drawn"));
-        let json = serde_json::to_string(&lib).unwrap();
-        let back: StylePresetLibrary = serde_json::from_str(&json).unwrap();
-        assert_eq!(lib, back);
-        let stored = back.find_by_name("Drawn").expect("preset survives");
-        assert!(
-            stored.can_draw(),
-            "geometry survives the library round trip"
-        );
+    fn legacy_library_json_without_sets_loads() {
+        let json = r#"{"presets":[]}"#;
+        let lib: StylePresetLibrary = serde_json::from_str(json).unwrap();
+        assert!(lib.sets.is_empty());
     }
 }

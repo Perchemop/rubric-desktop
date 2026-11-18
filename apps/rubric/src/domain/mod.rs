@@ -48,7 +48,9 @@ pub use project::{
 };
 pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCounts, NONE_LABEL};
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
-pub use style_preset::{StylePreset, StylePresetLibrary};
+pub use style_preset::{
+    export_set_json, import_set_json, StylePreset, StylePresetLibrary, ToolSet, ToolSetExport,
+};
 pub use text_anchor::{GlyphBox, GlyphLine, GlyphRange};
 pub use theme::{AppPrefs, Theme};
 pub use thumb_render::{
