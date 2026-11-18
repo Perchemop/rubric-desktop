@@ -7,10 +7,10 @@ before use.
 
 | Catalog | Source | Licence | Version-or-date | Decision (DECISIONS.md ref) |
 |---|---|---|---|---|
-| | | | | |
+| GitHub search / Awesome-Construction-Takeoff (`ishandutta2007/Awesome-Construction-Takeoff`) | [`Kentucky-ai/opentakeoff`](https://github.com/Kentucky-ai/opentakeoff) | AGPL-3.0-only (repo `LICENSE` is authoritative; a community catalog entry still says Apache-2.0 from before the relicence) | 2026-11-18 | Discovery only — NOT adopted (AGPL-3.0 incompatible with MIT OR Apache-2.0 dependency policy; capability mapped for native implementation in `docs/research/takeoff-quantities.md`; MCP-client path pending owner decision) |
 
-No adoptions yet; every future adoption from the guide §25 catalogs is recorded
-here before use.
+No code, asset or dependency adoption has been made from any §25 catalog; the
+row above records a discovery-only mapping (research gate applies, guide §2.3).
 
 ## Tooling already in force (not adopted from the §25 catalogs)
 

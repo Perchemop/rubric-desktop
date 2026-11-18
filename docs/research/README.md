@@ -45,6 +45,7 @@ Recorded per note. Preferred order (guide §2.4):
 | [`bluebeam-markup-tools.md`](bluebeam-markup-tools.md) | Markup tool categories, access patterns, properties panel, markups list | Approved 2026-11-15 (owner: "continue all via agents") |
 | [`bluebeam-ui-layout.md`](bluebeam-ui-layout.md) | Window layout, side panels, docking, MultiView, status bar | Approved 2026-11-15 (owner: "continue all via agents") |
 | [`bluebeam-vs-rubric-audit.md`](bluebeam-vs-rubric-audit.md) | 77-capability gap analysis (Rubric vs Bluebeam findings) | Approved 2026-11-15 (owner: "continue all via agents") |
+| [`takeoff-quantities.md`](takeoff-quantities.md) | Quantity takeoff: quantity list, wall-surface derivation, CSV export, symbol count; AGPL licence boundary (native vs MCP-client paths) | **Awaiting owner approval** (research-gated; mapped 2026-11-18) |
 
 When a note is added, link it here with the capability it covers, its
 approval date, and the approving human's initials. The per-capability
