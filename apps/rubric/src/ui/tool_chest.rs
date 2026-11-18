@@ -52,7 +52,7 @@ fn set_drawing_mode(id: Uuid, drawing: bool) {
 }
 
 thread_local! {
-    static RECENT_EXPANDED: std::cell::RefCell<bool> = std::cell::RefCell::new(false);
+    static RECENT_EXPANDED: std::cell::RefCell<bool> = const { std::cell::RefCell::new(false) };
 }
 
 fn recent_expanded() -> bool {
@@ -152,13 +152,13 @@ pub(crate) fn draw_tool_chest(
             {
                 set_recent_expanded(true);
             }
-        } else if expanded && ui_state.recent_tools.len() > 4 {
-            if ui
+        } else if expanded
+            && ui_state.recent_tools.len() > 4
+            && ui
                 .add_sized(egui::vec2(100.0, 24.0), egui::Button::new("Show less"))
                 .clicked()
-            {
-                set_recent_expanded(false);
-            }
+        {
+            set_recent_expanded(false);
         }
         ui.separator();
     }
