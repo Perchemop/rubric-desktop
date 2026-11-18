@@ -6,7 +6,7 @@
 
 use eframe::egui::{Pos2, Vec2};
 
-use crate::domain::geom::{self, Pt};
+use crate::domain::geom::Pt;
 use crate::domain::markup::MarkupGeometry;
 use crate::domain::{Markup, Rect as DomainRect};
 
@@ -102,7 +102,7 @@ pub fn screen_rect_rotated(
         r.h,
         rotation,
     );
-    egui::Rect::from_two_points(min, max)
+    egui::Rect::from_min_max(min.min(max), min.max(max))
 }
 
 /// Map a domain [`Rect`] to screen space, honouring page rotation using the
@@ -136,7 +136,7 @@ pub fn screen_rect_page_rotated(
         rotation,
     );
     // Normalise: a 90° turn swaps the corner order (negative width otherwise).
-    egui::Rect::from_two_points(min, max)
+    egui::Rect::from_min_max(min.min(max), min.max(max))
 }
 
 /// Hit tolerance expressed in page units for a given zoom.
