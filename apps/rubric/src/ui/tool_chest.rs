@@ -19,12 +19,37 @@
 //! that mutate the *project* (apply-to-selection) request an undo snapshot.
 
 use eframe::egui::{self, Ui};
+use std::cell::RefCell;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::domain::{Color, MarkupKind, Project, StylePreset, StylePresetLibrary};
 
 use super::app::UiState;
 use super::theme::{to_color32, TEXT_CAPTION};
+
+// Session-only Drawing/Style mode per preset id. `true` = Drawing mode
+// (re-place an exact duplicate), `false` = Style mode (re-style only). Stored
+// here because `UiState` (app.rs) cannot be edited from this slice; a future
+// `tool_chest_modes: HashMap<Uuid, bool>` field on `UiState` would be cleaner
+// and is reported as the preferred home.
+thread_local! {
+    static DRAWING_MODE: RefCell<HashMap<Uuid, bool>> = RefCell::new(HashMap::new());
+}
+
+fn drawing_mode_for(preset: &StylePreset) -> bool {
+    // Presets without captured geometry can only ever be Style mode.
+    if !preset.can_draw() {
+        return false;
+    }
+    DRAWING_MODE.with(|m| *m.borrow().get(&preset.id).unwrap_or(&true))
+}
+
+fn set_drawing_mode(id: Uuid, drawing: bool) {
+    DRAWING_MODE.with(|m| {
+        m.borrow_mut().insert(id, drawing);
+    });
+}
 
 /// Draw the Tool Chest panel.
 ///
@@ -48,7 +73,12 @@ pub(crate) fn draw_tool_chest(
     if let Some(armed) = ui_state.pending_style_preset.clone() {
         ui.horizontal(|ui| {
             draw_swatch(ui, armed.style.stroke);
-            ui.label(format!("Next markup style: {}", armed.name));
+            let mode = if armed.geometry.is_some() {
+                "Drawing"
+            } else {
+                "Style"
+            };
+            ui.label(format!("Next markup: {} ({})", armed.name, mode));
             if ui.button("Stop").clicked() {
                 set_armed(ui_state, &armed, true);
             }
@@ -122,14 +152,40 @@ fn draw_preset_row(
 
     ui.horizontal(|ui| {
         draw_swatch(ui, preset.style.stroke);
-        if ui
+        let name_resp = ui
             .selectable_label(is_armed, preset.name.as_str())
-            .on_hover_text(format!("{} style", preset.kind.label()))
-            .clicked()
-        {
+            .on_hover_text(format!("{} style", preset.kind.label()));
+        if name_resp.clicked() {
             // The name doubles as the arm toggle, mirroring the tool
             // palette's selectable labels.
             set_armed(ui_state, preset, is_armed);
+        }
+        // Double-click toggles Drawing/Style mode for presets that captured
+        // geometry (audit B1/B5). A preset without geometry is style-only.
+        if name_resp.double_clicked() && preset.can_draw() {
+            let new_mode = !drawing_mode_for(preset);
+            set_drawing_mode(preset.id, new_mode);
+            // Re-arm with the new mode if this preset is currently armed.
+            let is_armed_now = ui_state
+                .pending_style_preset
+                .as_ref()
+                .is_some_and(|p| p.id == preset.id);
+            if is_armed_now {
+                set_armed(ui_state, preset, false);
+            }
+            ui_state.status = format!(
+                "'{}' mode: {}",
+                preset.name,
+                if new_mode { "Drawing" } else { "Style" }
+            );
+        }
+        if preset.can_draw() {
+            let mode = if drawing_mode_for(preset) {
+                "Draw"
+            } else {
+                "Style"
+            };
+            ui.small(mode);
         }
         let apply_label = if is_armed { "Stop" } else { "Apply" };
         if ui
@@ -335,13 +391,27 @@ fn save_selected_markup(
 
 /// Arm (or stop) a Tool Chest style preset. While armed, `canvas::finish_markup`
 /// styles every non-stamp markup created from now on with the preset's look.
+///
+/// In Drawing mode the armed copy keeps its captured geometry so the canvas
+/// places an exact duplicate; in Style mode the geometry is dropped so the
+/// canvas keeps the pre-Drawing-Mode style-only creation path.
 fn set_armed(ui_state: &mut UiState, preset: &StylePreset, stop: bool) {
     if stop {
         ui_state.pending_style_preset = None;
         ui_state.status = format!("Style '{}' stopped", preset.name);
     } else {
-        ui_state.pending_style_preset = Some(preset.clone());
-        ui_state.status = format!("Style '{}' active — next markup uses it", preset.name);
+        let drawing = drawing_mode_for(preset);
+        let armed = if drawing {
+            preset.clone()
+        } else {
+            preset.without_geometry()
+        };
+        ui_state.pending_style_preset = Some(armed);
+        ui_state.status = if drawing {
+            format!("'{}' active — next markup draws a duplicate", preset.name)
+        } else {
+            format!("'{}' active — next markup uses its style", preset.name)
+        };
     }
 }
 

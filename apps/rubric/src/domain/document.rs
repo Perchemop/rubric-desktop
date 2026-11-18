@@ -369,6 +369,38 @@ impl Document {
         true
     }
 
+    /// Apply `scale` to every page, re-deriving each page's measurements from
+    /// the new scale (same recompute path as single-page calibration).
+    /// Returns the number of pages whose scale actually changed.
+    pub fn apply_scale_to_all_pages(&mut self, scale: Scale) -> usize {
+        let mut changed = 0usize;
+        let page_indices: Vec<usize> = (0..self.pages.len()).collect();
+        for index in page_indices {
+            let before = self.pages.get(index).map(|p| p.scale);
+            let did_change = before
+                .map(|b| {
+                    b.unit != scale.unit || (b.units_per_point - scale.units_per_point).abs() > 1e-9
+                })
+                .unwrap_or(false);
+            if let Some(page) = self.pages.get_mut(index) {
+                page.scale = scale;
+            }
+            let s = self.pages.get(index).map(|p| p.scale).unwrap_or(scale);
+            for m in self.markups.iter_mut().filter(|m| m.page == index) {
+                m.recompute_measurement(s);
+                m.touch();
+            }
+            if did_change {
+                changed += 1;
+            }
+        }
+        // If no pages existed, nothing changed but we still touched? Keep safe.
+        if !self.pages.is_empty() {
+            self.touch();
+        }
+        changed
+    }
+
     /// Rewrite every page's [`Page::index`] field to its position in
     /// [`Document::pages`].
     fn renumber_pages(&mut self) {
@@ -1629,5 +1661,63 @@ mod tests {
             "insert_blank_page with extreme after should append at end"
         );
         assert_eq!(doc.page_count(), 3, "should have 3 pages after insertion");
+    }
+
+    #[test]
+    fn apply_scale_to_all_pages_updates_every_page_and_recomputes_measures() {
+        use crate::domain::{Markup, MarkupGeometry, MarkupKind, Pt};
+        let mut doc = Document::empty("t");
+        doc.pages.push(Page::a4(1));
+        let mut m0 = Markup::new(
+            0,
+            MarkupKind::MeasureLength,
+            MarkupGeometry::Segment {
+                a: Pt::new(0.0, 0.0),
+                b: Pt::new(720.0, 0.0),
+            },
+            "t",
+        );
+        m0.recompute_measurement(Scale::PAPER);
+        doc.add_markup(m0);
+        let mut m1 = Markup::new(
+            1,
+            MarkupKind::MeasureLength,
+            MarkupGeometry::Segment {
+                a: Pt::new(0.0, 0.0),
+                b: Pt::new(720.0, 0.0),
+            },
+            "t",
+        );
+        m1.recompute_measurement(Scale::PAPER);
+        doc.add_markup(m1);
+
+        let s = Scale {
+            unit: crate::domain::units::MeasureUnit::Foot,
+            units_per_point: 1.0 / 72.0,
+        };
+        let n = doc.apply_scale_to_all_pages(s);
+        assert_eq!(n, 2, "both pages changed");
+        for page in &doc.pages {
+            assert_eq!(page.scale, s);
+        }
+        for m in &doc.markups {
+            let meas = m.measurement.expect("recomputed");
+            assert!((meas.value - 10.0).abs() < 1e-6);
+        }
+    }
+
+    #[test]
+    fn apply_scale_to_all_pages_counts_changed_pages() {
+        let mut doc = Document::empty("t");
+        doc.pages.push(Page::a4(1));
+        let target = Scale {
+            unit: crate::domain::units::MeasureUnit::Foot,
+            units_per_point: 1.0 / 72.0,
+        };
+        if let Some(p) = doc.pages.get_mut(0) {
+            p.scale = target;
+        }
+        let n = doc.apply_scale_to_all_pages(target);
+        assert_eq!(n, 1, "only page 1 changed");
     }
 }

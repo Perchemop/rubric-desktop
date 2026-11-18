@@ -2,19 +2,30 @@
 //!
 //! A [`StylePreset`] captures visual style and metadata from a markup and can
 //! be applied to another markup without affecting geometry or comments.
+//!
+//! A preset may also capture the source markup's **geometry**, normalised so
+//! its bounding box starts at the origin (Drawing Mode, guide audit B1/B5).
+//! Re-placing such a preset at a point recreates an exact duplicate of the
+//! original markup instead of only re-styling a new one; a preset without
+//! captured geometry keeps the style-only behaviour, and legacy preset files
+//! (which have no geometry fields) load unchanged.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::markup::{Markup, MarkupKind, ReviewStatus};
+use super::markup_geometry::MarkupGeometry;
 use super::style::MarkupStyle;
 
 /// A reusable style and metadata preset for markups.
 ///
-/// The preset records a visual style, kind, author, subject and status.
-/// Applying a preset never touches geometry, id, page, comments, measurement,
-/// lock state or creation timestamps, and it skips locked targets entirely.
+/// The preset records a visual style, kind, author, subject and status. It may
+/// also record the source markup's geometry ([`Self::geometry`]), which turns
+/// arming it into "place an exact duplicate" (Drawing Mode). Applying a preset
+/// with [`Self::apply_to`] never touches geometry, id, page, comments,
+/// measurement, lock state or creation timestamps, and it skips locked targets
+/// entirely.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StylePreset {
     pub id: Uuid,
@@ -30,10 +41,25 @@ pub struct StylePreset {
     /// today always store `false`.
     pub locked: bool,
     pub created: DateTime<Utc>,
+    /// Captured geometry, translated so its bounding box's top-left corner sits
+    /// at the origin (page points) so placement is click-relative.
+    ///
+    /// When present, re-placing the preset creates an exact duplicate of the
+    /// captured markup offset to the click point (Drawing Mode); when absent
+    /// the preset is style-only, exactly as before this field existed. Legacy
+    /// preset files have no such field and therefore load with `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub geometry: Option<MarkupGeometry>,
 }
 
 impl StylePreset {
     /// Capture a preset from an existing markup.
+    ///
+    /// The markup's geometry is captured too, normalised to the origin (see
+    /// [`Self::normalized_geometry`]), so arming the preset can re-place an
+    /// exact duplicate. Stamps are the exception: their look comes from the
+    /// stamp preset rather than from the geometry, so a stamp is captured
+    /// style-only and keeps today's stamp drawing path.
     pub fn from_markup(markup: &Markup, name: impl Into<String>) -> Self {
         Self {
             id: Uuid::new_v4(),
@@ -47,6 +73,8 @@ impl StylePreset {
             // field remains for serialisation compatibility).
             locked: false,
             created: Utc::now(),
+            geometry: (markup.kind != MarkupKind::Stamp)
+                .then(|| Self::normalized_geometry(&markup.geometry)),
         }
     }
 
@@ -55,7 +83,8 @@ impl StylePreset {
     ///
     /// Nothing has been drawn or reviewed yet, so `subject` is empty and
     /// `status` is [`ReviewStatus::Open`]; `locked` is always `false` because
-    /// lock state is not style (see [`Self::from_markup`]).
+    /// lock state is not style (see [`Self::from_markup`]). Nothing was drawn,
+    /// so there is no geometry to capture: the preset is style-only.
     pub fn from_style(
         name: impl Into<String>,
         kind: MarkupKind,
@@ -72,7 +101,40 @@ impl StylePreset {
             status: ReviewStatus::Open,
             locked: false,
             created: Utc::now(),
+            geometry: None,
         }
+    }
+
+    /// Translate `geometry` so its bounding box's top-left corner is at the
+    /// origin.
+    ///
+    /// Captured presets store geometry this way so a later placement is a pure
+    /// offset: the caller translates the stored geometry onto the click point.
+    /// Every variant of [`MarkupGeometry`] is moved by
+    /// [`MarkupGeometry::translate`].
+    pub fn normalized_geometry(geometry: &MarkupGeometry) -> MarkupGeometry {
+        let bounds = geometry.bounds();
+        let mut normalized = geometry.clone();
+        normalized.translate(-bounds.x, -bounds.y);
+        normalized
+    }
+
+    /// Whether this preset captured geometry, i.e. whether it can be re-placed
+    /// as a duplicate (Drawing Mode) rather than only re-styling new markups.
+    pub fn can_draw(&self) -> bool {
+        self.geometry.is_some()
+    }
+
+    /// The same preset in style-only form: every field identical, but with the
+    /// captured geometry dropped.
+    ///
+    /// The Tool Chest arms this copy for Style Mode so the canvas keeps its
+    /// style-only creation path exactly as it was before Drawing Mode existed;
+    /// the library entry keeps its geometry so Drawing Mode can use it later.
+    pub fn without_geometry(&self) -> Self {
+        let mut style_only = self.clone();
+        style_only.geometry = None;
+        style_only
     }
 
     /// Apply this preset to `markup`.
@@ -458,6 +520,156 @@ mod tests {
         assert_eq!(
             locked_target.modified, before_modified,
             "a locked target must not be touched"
+        );
+    }
+
+    #[test]
+    fn from_markup_captures_geometry_normalised_to_origin() {
+        // sample_markup's bounds start at (10, 20); capture must move the
+        // whole geometry so its bounding box's top-left is the origin, which
+        // is what makes a later placement a pure click-relative offset.
+        let preset = StylePreset::from_markup(&sample_markup(), "Draw Rect");
+        let geometry = preset.geometry.clone().expect("geometry captured");
+        assert_eq!(
+            geometry,
+            MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 30.0, 40.0))
+        );
+        let bounds = geometry.bounds();
+        assert!(bounds.x.abs() < 1e-6 && bounds.y.abs() < 1e-6);
+        assert!(preset.can_draw());
+    }
+
+    #[test]
+    fn from_markup_normalises_non_bounds_geometry() {
+        // A text anchor is offset from the page origin; capture must pull its
+        // bounding box back to the origin and keep its text intact.
+        let markup = Markup::new(
+            0,
+            MarkupKind::Highlight,
+            MarkupGeometry::TextAnchor {
+                at: Pt::new(120.0, 240.0),
+                text: "reviewed".to_string(),
+                line_height: 12.0,
+                line_count: 1,
+                text_width: 48.0,
+            },
+            "Alice",
+        );
+        let preset = StylePreset::from_markup(&markup, "Highlight");
+        let geometry = preset.geometry.clone().expect("geometry captured");
+        match &geometry {
+            MarkupGeometry::TextAnchor { at, text, .. } => {
+                assert!(at.x.abs() < 1e-6 && at.y.abs() < 1e-6);
+                assert_eq!(text, "reviewed");
+            }
+            other => panic!("expected TextAnchor, got {other:?}"),
+        }
+        let bounds = geometry.bounds();
+        assert_eq!((bounds.x, bounds.y), (0.0, 0.0));
+    }
+
+    #[test]
+    fn from_markup_captures_no_geometry_for_stamps() {
+        // Stamps draw from their own preset, not from captured geometry, so a
+        // stamp preset stays style-only and keeps today's stamp path.
+        let stamp = Markup::new(
+            0,
+            MarkupKind::Stamp,
+            MarkupGeometry::Bounds(Rect::new(5.0, 5.0, 40.0, 20.0)),
+            "Alice",
+        );
+        let preset = StylePreset::from_markup(&stamp, "Approved");
+        assert!(!preset.can_draw());
+        assert!(preset.geometry.is_none());
+    }
+
+    #[test]
+    fn from_style_captures_no_geometry() {
+        let preset =
+            StylePreset::from_style("Tool", MarkupKind::Line, MarkupStyle::default(), "Eve");
+        assert!(!preset.can_draw(), "a tool style has nothing drawn yet");
+        assert!(preset.geometry.is_none());
+    }
+
+    #[test]
+    fn without_geometry_keeps_every_other_field() {
+        let preset = StylePreset::from_markup(&sample_markup(), "Draw Rect");
+        assert!(preset.can_draw());
+        let style_only = preset.without_geometry();
+        assert!(!style_only.can_draw());
+        assert!(style_only.geometry.is_none());
+        assert_eq!(style_only.id, preset.id);
+        assert_eq!(style_only.name, preset.name);
+        assert_eq!(style_only.kind, preset.kind);
+        assert_eq!(style_only.style, preset.style);
+        assert_eq!(style_only.author, preset.author);
+        assert_eq!(style_only.subject, preset.subject);
+        assert_eq!(style_only.status, preset.status);
+        assert_eq!(style_only.locked, preset.locked);
+        assert_eq!(style_only.created, preset.created);
+    }
+
+    #[test]
+    fn style_preset_serialize_roundtrip_with_geometry() {
+        let preset = StylePreset::from_markup(&sample_markup(), "With Geometry");
+        assert!(preset.can_draw(), "from_markup must capture geometry");
+        let json = serde_json::to_string(&preset).unwrap();
+        assert!(json.contains("\"geometry\""), "geometry must be written");
+        let back: StylePreset = serde_json::from_str(&json).unwrap();
+        assert_eq!(preset, back, "geometry must survive the round trip");
+    }
+
+    #[test]
+    fn preset_without_geometry_serializes_without_the_field() {
+        // `skip_serializing_if` keeps legacy preset files byte-stable: a
+        // style-only preset must not grow a `"geometry": null` key.
+        let preset = StylePreset::from_style(
+            "Legacy",
+            MarkupKind::Rectangle,
+            MarkupStyle::default(),
+            "Ann",
+        );
+        let json = serde_json::to_string(&preset).unwrap();
+        assert!(!json.contains("geometry"), "no geometry key: {json}");
+        let back: StylePreset = serde_json::from_str(&json).unwrap();
+        assert_eq!(preset, back);
+    }
+
+    #[test]
+    fn legacy_preset_json_without_geometry_fields_loads() {
+        // A preset file written before Drawing Mode existed has no `geometry`
+        // key at all; `#[serde(default)]` must turn that into `None`.
+        let preset = StylePreset::from_markup(&sample_markup(), "Old");
+        let mut value = serde_json::to_value(&preset).unwrap();
+        let object = value
+            .as_object_mut()
+            .expect("a preset serialises to a JSON object");
+        assert!(
+            object.remove("geometry").is_some(),
+            "precondition: the field is written today"
+        );
+        let legacy: StylePreset = serde_json::from_value(value).unwrap();
+        assert!(
+            legacy.geometry.is_none(),
+            "legacy presets load as style-only"
+        );
+        assert!(!legacy.can_draw());
+        assert_eq!(legacy.name, preset.name);
+        assert_eq!(legacy.kind, preset.kind);
+        assert_eq!(legacy.style, preset.style);
+    }
+
+    #[test]
+    fn library_roundtrip_keeps_captured_geometry() {
+        let mut lib = StylePresetLibrary::new();
+        lib.save_named(StylePreset::from_markup(&sample_markup(), "Drawn"));
+        let json = serde_json::to_string(&lib).unwrap();
+        let back: StylePresetLibrary = serde_json::from_str(&json).unwrap();
+        assert_eq!(lib, back);
+        let stored = back.find_by_name("Drawn").expect("preset survives");
+        assert!(
+            stored.can_draw(),
+            "geometry survives the library round trip"
         );
     }
 }
