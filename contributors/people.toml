@@ -1,0 +1,15 @@
+# Contributors credited in the app's About ▸ Contributors screen (guide §24.2).
+#
+# Schema: one [[person]] table per consented human contributor:
+#   [[person]]
+#   name = "Jane Doe"          # real name, held in the repository record
+#   display = "Jane D."        # name rendered in the app
+#   url = "https://github.com/janedoe"
+#   consented = 2026-11-01     # ISO date of consent
+#
+# Only entries with a non-empty `consented` date are rendered. By adding
+# yourself here you consent to your `display` name and `url` being shown in the
+# app's About screen and in the public repository (see CONTRIBUTING.md).
+# AI agents and models are credited separately under About ▸ Models, never here.
+#
+# No entries yet: no contributor has recorded consent.
