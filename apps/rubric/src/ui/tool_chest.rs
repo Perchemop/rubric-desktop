@@ -655,7 +655,7 @@ mod tests {
         let mut ui_state = UiState::default();
         ui_state.tool_chest_max_recents = 8;
         let m = sample_markup();
-        record_recent(&mut project, &mut ui_state, &m);
+        record_recent(&mut ui_state, &m);
         assert_eq!(ui_state.recent_tools.len(), 1);
         // second distinct markup (different geometry) inserts at front
         let mut m2 = sample_markup();
@@ -671,12 +671,12 @@ mod tests {
         let mut ui_state = UiState::default();
         ui_state.tool_chest_max_recents = 8;
         let m = sample_markup();
-        record_recent(&mut project, &mut ui_state, &m);
+        record_recent(&mut ui_state, &m);
         let mut m2 = sample_markup();
         m2.geometry = MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 5.0, 5.0));
         record_recent(&mut project, &mut ui_state, &m2);
         // re-record original moves it to front
-        record_recent(&mut project, &mut ui_state, &m);
+        record_recent(&mut ui_state, &m);
         assert_eq!(ui_state.recent_tools.len(), 2);
     }
 
@@ -688,7 +688,7 @@ mod tests {
         for i in 0..5 {
             let mut m = sample_markup();
             m.geometry = MarkupGeometry::Bounds(Rect::new(i as f32, 0.0, 1.0, 1.0));
-            record_recent(&mut project, &mut ui_state, &m);
+            record_recent(&mut ui_state, &m);
         }
         assert_eq!(ui_state.recent_tools.len(), 2);
     }
@@ -699,7 +699,7 @@ mod tests {
         let mut ui_state = UiState::default();
         ui_state.tool_chest_max_recents = 8;
         let m = sample_markup();
-        record_recent(&mut project, &mut ui_state, &m);
+        record_recent(&mut ui_state, &m);
         ui_state.recent_tools.clear();
         assert!(ui_state.recent_tools.is_empty());
     }
