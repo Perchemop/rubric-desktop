@@ -127,8 +127,12 @@ pub(crate) fn draw_tool_chest(
         let max = ui_state.tool_chest_max_recents.clamp(1, 32);
         let expanded = recent_expanded();
         let visible = visible_recent_count(ui_state.recent_tools.len(), max, expanded);
-        let recents: Vec<StylePreset> =
-            ui_state.recent_tools.iter().take(visible).cloned().collect();
+        let recents: Vec<StylePreset> = ui_state
+            .recent_tools
+            .iter()
+            .take(visible)
+            .cloned()
+            .collect();
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .max_height(160.0)
@@ -572,7 +576,12 @@ fn recent_signature(p: &StylePreset) -> (String, MarkupKind, Option<String>) {
 
 /// One recent-tool row: arms/disarms and toggles Drawing/Style mode exactly
 /// like a saved preset row, but lives in the session-only recents list.
-fn draw_recent_row(ui: &mut Ui, project: &mut Project, ui_state: &mut UiState, preset: &StylePreset) -> bool {
+fn draw_recent_row(
+    ui: &mut Ui,
+    project: &mut Project,
+    ui_state: &mut UiState,
+    preset: &StylePreset,
+) -> bool {
     let mut project_mutated = false;
     let is_armed = ui_state
         .pending_style_preset
