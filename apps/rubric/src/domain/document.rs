@@ -1665,45 +1665,45 @@ mod tests {
 
     #[test]
     fn apply_scale_to_all_pages_updates_every_page_and_recomputes_measures() {
-         use crate::domain::{Markup, MarkupGeometry, MarkupKind, Pt};
-         let mut doc = Document::empty("t");
-         doc.pages.push(Page::a4(1));
-         let mut m0 = Markup::new(
-             0,
-             MarkupKind::MeasureLength,
-             MarkupGeometry::Segment {
-                 a: Pt::new(0.0, 0.0),
-                 b: Pt::new(720.0, 0.0),
-             },
-             "t",
-         );
-         m0.recompute_measurement(Scale::PAPER);
-         doc.add_markup(m0);
-         let mut m1 = Markup::new(
-             1,
-             MarkupKind::MeasureLength,
-             MarkupGeometry::Segment {
-                 a: Pt::new(0.0, 0.0),
-                 b: Pt::new(720.0, 0.0),
-             },
-             "t",
-         );
-         m1.recompute_measurement(Scale::PAPER);
-         doc.add_markup(m1);
+        use crate::domain::{Markup, MarkupGeometry, MarkupKind, Pt};
+        let mut doc = Document::empty("t");
+        doc.pages.push(Page::a4(1));
+        let mut m0 = Markup::new(
+            0,
+            MarkupKind::MeasureLength,
+            MarkupGeometry::Segment {
+                a: Pt::new(0.0, 0.0),
+                b: Pt::new(720.0, 0.0),
+            },
+            "t",
+        );
+        m0.recompute_measurement(Scale::PAPER);
+        doc.add_markup(m0);
+        let mut m1 = Markup::new(
+            1,
+            MarkupKind::MeasureLength,
+            MarkupGeometry::Segment {
+                a: Pt::new(0.0, 0.0),
+                b: Pt::new(720.0, 0.0),
+            },
+            "t",
+        );
+        m1.recompute_measurement(Scale::PAPER);
+        doc.add_markup(m1);
 
-         let s = Scale {
-             unit: crate::domain::units::MeasureUnit::Foot,
-             units_per_point: 1.0 / 72.0,
-         };
-         let n = doc.apply_scale_to_all_pages(s);
-         assert_eq!(n, 2, "both pages changed");
-         for page in &doc.pages {
-             assert_eq!(page.scale, s);
-         }
-         for m in &doc.markups {
-             let meas = m.measurement.expect("recomputed");
-             assert!((meas.value - 10.0).abs() < 1e-6);
-         }
+        let s = Scale {
+            unit: crate::domain::units::MeasureUnit::Foot,
+            units_per_point: 1.0 / 72.0,
+        };
+        let n = doc.apply_scale_to_all_pages(s);
+        assert_eq!(n, 2, "both pages changed");
+        for page in &doc.pages {
+            assert_eq!(page.scale, s);
+        }
+        for m in &doc.markups {
+            let meas = m.measurement.expect("recomputed");
+            assert!((meas.value - 10.0).abs() < 1e-6);
+        }
      }
 
     #[test]
