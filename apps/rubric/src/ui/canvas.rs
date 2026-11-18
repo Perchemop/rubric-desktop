@@ -2884,6 +2884,7 @@ pub(crate) fn draw_canvas(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ui::app::UiState;
 
     #[test]
     fn hit_tolerance_scales_with_zoom() {
@@ -3166,7 +3167,7 @@ mod tests {
     #[test]
     fn drawing_placement_requires_matching_kind_and_captured_geometry() {
         let preset = rect_preset();
-        let mut ui_state = super::app::UiState::default();
+        let mut ui_state = UiState::default();
         let at = Pt::new(10.0, 20.0);
 
         // Nothing armed: the normal draw path handles the click.
