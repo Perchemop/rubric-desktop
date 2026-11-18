@@ -300,6 +300,11 @@ pub(crate) struct UiState {
     /// Open Tool Chest rename draft: the preset id plus the editable name, so
     /// the editor survives the per-frame panel rebuild. UI-only.
     pub(crate) tool_chest_rename: Option<(uuid::Uuid, String)>,
+    /// Recent Tools (gap #3): session-temporary list of geometry-capturing
+    /// presets auto-recorded from placed markups. Never persisted.
+    pub(crate) recent_tools: Vec<StylePreset>,
+    /// Max recent entries (persisted via prefs; seeded at startup).
+    pub(crate) tool_chest_max_recents: usize,
 }
 
 impl Default for UiState {
@@ -367,6 +372,8 @@ impl Default for UiState {
             pending_style_preset: None,
             tool_chest_save_name: String::new(),
             tool_chest_rename: None,
+            recent_tools: Vec::new(),
+            tool_chest_max_recents: 8,
         }
     }
 }
@@ -547,6 +554,7 @@ impl RubricApp {
                 current_page: prefs.current_page,
                 default_styles: prefs.default_styles.clone(),
                 unit: prefs.default_measure_unit,
+                tool_chest_max_recents: prefs.tool_chest_max_recents.clamp(1, 32),
                 ..UiState::default()
             },
             draw: DrawState::Idle,
@@ -1721,6 +1729,7 @@ impl RubricApp {
             high_contrast: self.high_contrast,
             default_styles: self.ui.default_styles.clone(),
             default_measure_unit: self.ui.unit,
+            tool_chest_max_recents: self.ui.tool_chest_max_recents.clamp(1, 32),
         }
     }
 

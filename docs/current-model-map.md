@@ -19,15 +19,25 @@ No local model hosting (Ollama or similar) is used. Only the provider
 changes between the tiers; the process, roles, vertical-slice
 discipline, CI-first rule and tracking files stay identical.
 
-## OpenCode free (active — discovered 2026-11-17)
+## OpenCode free (active — discovered 2026-11-18)
 
 Live catalog at session start (final full CLI listing, `opencode models`):
-`deepseek-v4.1-flash-free`, `glm-5.3-flash-free`, `mimo-v2.6-flash-free`,
+`deepseek-v4.1-flash-free`, `mimo-v2.6-flash-free`,
 `flint-40b-free`, `nemotron-3.5-lightning-free`, `longcat-2.5-free`,
 `inkling-2-small-free`, `iceman-free`, `hy4-flash-free`, `beam-free` (all
 zero-cost), plus the interactive default `opencode/big-pickle` and the
 vision-only `nemotron-3.5-super-vl-free`. The earlier note that
 `nemotron-3.5-lightning-free` was no longer listed was stale; it is live again.
+
+**2026-11-18 rotation refresh.** `opencode/glm-5.3-flash-free` was **removed
+from the catalog** and from every failover chain (probe + plugin log showed
+`provider.no-route`); the GLM second opinion remains reachable as
+`nvidia/z-ai/glm-5.3-flash` (tier 2). All 37 chained models were live-probed
+through the OpenCode server: 26 ok, 6 rate-limited (alive, 429), 5 nvidia
+timeouts (loaded endpoints, not removals). Full table:
+`~/.config/opencode/model-rotation.md` (section "Scan + live probe —
+2026-11-18"). A weekly systemd user timer (`model-rotation.timer`) now re-runs
+scan + probe + rebuild every Monday 06:30.
 
 | Role | Model |
 |---|---|
@@ -35,7 +45,7 @@ vision-only `nemotron-3.5-super-vl-free`. The earlier note that
 | Domain dev (pure Rust types/logic/tests) | `opencode/deepseek-v4.1-flash-free#high` |
 | UI dev (egui/eframe slices) | `opencode/nemotron-3.5-super-vl-free#high` — vision-capable per guide §5.3 for canvas-touching slices |
 | Fixer (build-gate failures) | `opencode/flint-40b-free#high` — newest OpenCode free code-generation model |
-| Reviewer (read-only review) | `opencode/glm-5.3-flash-free#high` |
+| Reviewer (read-only review) | `opencode/flint-40b-free#high` (glm-5.3-flash-free removed from catalog 2026-11-18; second opinion preserved — reviewer never starts on the coder's model) |
 | Test writer | `opencode/mimo-v2.6-flash-free` |
 | Docs writer | `opencode/beam-free#high` |
 | CI runner | `opencode/beam-free#high` |
