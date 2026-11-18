@@ -1706,18 +1706,18 @@ mod tests {
          }
      }
 
-     #[test]
-     fn apply_scale_to_all_pages_counts_changed_pages() {
-         let mut doc = Document::empty("t");
-         doc.pages.push(Page::a4(1));
-         let target = Scale {
-             unit: crate::domain::units::MeasureUnit::Foot,
-             units_per_point: 1.0 / 72.0,
-         };
-         if let Some(p) = doc.pages.get_mut(0) {
-             p.scale = target;
-         }
-         let n = doc.apply_scale_to_all_pages(target);
-         assert_eq!(n, 1, "only page 1 changed");
+    #[test]
+    fn apply_scale_to_all_pages_counts_changed_pages() {
+        let mut doc = Document::empty("t");
+        doc.pages.push(Page::a4(1));
+        let target = Scale {
+            unit: crate::domain::units::MeasureUnit::Foot,
+            units_per_point: 1.0 / 72.0,
+        };
+        if let Some(p) = doc.pages.get_mut(0) {
+            p.scale = target;
+        }
+        let n = doc.apply_scale_to_all_pages(target);
+        assert_eq!(n, 1, "only page 1 changed");
     }
 }

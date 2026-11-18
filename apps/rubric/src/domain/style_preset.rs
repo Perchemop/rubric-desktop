@@ -585,12 +585,8 @@ mod tests {
 
     #[test]
     fn from_style_captures_no_geometry() {
-        let preset = StylePreset::from_style(
-            "Tool",
-            MarkupKind::Line,
-            MarkupStyle::default(),
-            "Eve",
-        );
+        let preset =
+            StylePreset::from_style("Tool", MarkupKind::Line, MarkupStyle::default(), "Eve");
         assert!(!preset.can_draw(), "a tool style has nothing drawn yet");
         assert!(preset.geometry.is_none());
     }
@@ -671,6 +667,9 @@ mod tests {
         let back: StylePresetLibrary = serde_json::from_str(&json).unwrap();
         assert_eq!(lib, back);
         let stored = back.find_by_name("Drawn").expect("preset survives");
-        assert!(stored.can_draw(), "geometry survives the library round trip");
+        assert!(
+            stored.can_draw(),
+            "geometry survives the library round trip"
+        );
     }
 }
