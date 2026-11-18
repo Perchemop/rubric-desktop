@@ -23,7 +23,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::domain::{Color, Markup, MarkupKind, StylePreset, StylePresetLibrary};
+use crate::domain::{Color, Markup, MarkupKind, Project, StylePreset, StylePresetLibrary};
 
 use super::app::UiState;
 use super::theme::{to_color32, TEXT_CAPTION};
