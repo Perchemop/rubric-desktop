@@ -11,7 +11,8 @@ use crate::domain::markup::{
 };
 use crate::domain::{
     angle_degrees, format_value, Corner, GlyphBox, GlyphLine, GlyphRange, Markup, MarkupGeometry,
-    MarkupKind, MeasureKind, Project, Pt, Rect as DRect, ReviewStatus, StampPreset, Tool,
+    MarkupKind, MeasureKind, Project, Pt, Rect as DRect, ReviewStatus, StampPreset, StylePreset,
+    Tool,
 };
 
 use super::theme::to_color32;
@@ -147,6 +148,39 @@ fn finish_markup(mut m: Markup, ui_state: &super::app::UiState) -> Markup {
         }
         m
     }
+}
+
+/// Geometry for a Drawing Mode placement: the preset's captured (origin-
+/// normalised) geometry translated so its bounding box's top-left corner sits
+/// at `at` (the click point).
+///
+/// Returns `None` for a style-only preset, which is how the caller keeps
+/// today's draw-a-new-markup path exactly as it was before Drawing Mode.
+pub(crate) fn placed_geometry(preset: &StylePreset, at: Pt) -> Option<MarkupGeometry> {
+    let captured = preset.geometry.as_ref()?;
+    let bounds = captured.bounds();
+    let mut placed = captured.clone();
+    placed.translate(at.x - bounds.x, at.y - bounds.y);
+    Some(placed)
+}
+
+/// The duplicate to place for a Tool Chest preset at `at`, when the armed
+/// preset captured geometry AND its kind matches the active tool.
+///
+/// Style-only presets (`geometry: None`) and a mismatched active tool return
+/// `None`, so the canvas falls through to its normal per-kind drawing path
+/// with the preset styling the new markup — the pre-Drawing-Mode behaviour.
+fn drawing_placement(
+    ui_state: &super::app::UiState,
+    kind: MarkupKind,
+    at: Pt,
+) -> Option<(StylePreset, MarkupGeometry)> {
+    let preset = ui_state.pending_style_preset.as_ref()?;
+    if preset.kind != kind {
+        return None;
+    }
+    let geometry = placed_geometry(preset, at)?;
+    Some((preset.clone(), geometry))
 }
 
 /// Snap a segment's endpoint to the nearest 0°/45°/90° direction from `start`,
@@ -1888,7 +1922,51 @@ pub(crate) fn draw_canvas(
                     }
                 }
             } else if let Some(kind) = ui_state.active_tool.to_kind() {
-                if is_path_kind(kind) {
+                // Drawing Mode (audit B1/B5): an armed preset that captured
+                // geometry places an exact duplicate of the original markup at
+                // the click point, going through the normal
+                // `finish_markup` + `add_markup` + snapshot path. It only
+                // fires on a fresh click (no half-drawn multi-point draft) and
+                // in every other case the per-kind paths below are untouched,
+                // so a style-only preset behaves exactly as before.
+                let duplicate = if matches!(*draw_state, super::app::DrawState::Idle) {
+                    drawing_placement(ui_state, kind, pp)
+                } else {
+                    None
+                };
+                if let Some((preset, geometry)) = duplicate {
+                    if creation_allowed(project, ui_state) {
+                        let author = project.settings.author.clone();
+                        // A duplicated count marker is renumbered after the
+                        // highest on the page, so duplicating a counter does
+                        // not repeat a running number.
+                        let geometry = match geometry {
+                            MarkupGeometry::Count { at, .. } => {
+                                let number = project
+                                    .active()
+                                    .map(|doc| next_count_number(&doc.markups, page.index))
+                                    .unwrap_or(1);
+                                MarkupGeometry::Count { at, number }
+                            }
+                            other => other,
+                        };
+                        let mut m = Markup::new(page.index, kind, geometry, author);
+                        // Carry the captured review verdict and subject so the
+                        // duplicate matches the original tool rather than the
+                        // kind's blank defaults; the author stays the current
+                        // project author (the person placing it).
+                        if !preset.subject.is_empty() {
+                            m.subject = preset.subject.clone();
+                        }
+                        m.status = preset.status;
+                        let m = finish_markup(m, ui_state);
+                        if let Some(doc) = project.active_mut() {
+                            doc.add_markup(m);
+                        }
+                        ui_state.status = format!("Placed '{}'", preset.name);
+                        mutated = true;
+                    }
+                } else if is_path_kind(kind) {
                     let closed = path_closed(kind);
                     // A double-click in egui is also a click, so the point of
                     // that release must not be appended before committing.
@@ -3027,6 +3105,89 @@ mod tests {
         assert_eq!(
             constrain_bounds_to_square(start, Pt::new(0.0, 0.0)),
             Pt::new(0.0, 0.0)
+        );
+    }
+
+    /// A rectangle markup at an offset from the page origin, captured as a
+    /// Tool Chest preset (geometry normalised to the origin by the domain).
+    fn rect_preset() -> StylePreset {
+        let source = Markup::new(
+            0,
+            MarkupKind::Rectangle,
+            MarkupGeometry::Bounds(DRect::new(100.0, 200.0, 40.0, 24.0)),
+            "Alice",
+        );
+        StylePreset::from_markup(&source, "Rect")
+    }
+
+    #[test]
+    fn placed_geometry_translates_capture_onto_the_click_point() {
+        let preset = rect_preset();
+        let placed = placed_geometry(&preset, Pt::new(310.0, 410.0)).expect("geometry captured");
+        // The capture is origin-normalised, so the placement keeps the size
+        // and moves the top-left corner exactly onto the click point.
+        assert_eq!(
+            placed,
+            MarkupGeometry::Bounds(DRect::new(310.0, 410.0, 40.0, 24.0))
+        );
+    }
+
+    #[test]
+    fn placed_geometry_offsets_every_variant_from_its_own_bounds() {
+        // A segment's bounding box is derived from its endpoints, not stored,
+        // so this also proves the offset uses `bounds()` rather than a
+        // rectangle-only assumption.
+        let source = Markup::new(
+            0,
+            MarkupKind::Line,
+            MarkupGeometry::Segment {
+                a: Pt::new(10.0, 10.0),
+                b: Pt::new(30.0, 10.0),
+            },
+            "Alice",
+        );
+        let preset = StylePreset::from_markup(&source, "Line");
+        let placed = placed_geometry(&preset, Pt::new(5.0, 5.0)).expect("geometry captured");
+        assert_eq!(
+            placed,
+            MarkupGeometry::Segment {
+                a: Pt::new(5.0, 5.0),
+                b: Pt::new(25.0, 5.0),
+            }
+        );
+    }
+
+    #[test]
+    fn placed_geometry_is_none_without_captured_geometry() {
+        let style_only = rect_preset().without_geometry();
+        assert!(placed_geometry(&style_only, Pt::new(1.0, 2.0)).is_none());
+    }
+
+    #[test]
+    fn drawing_placement_requires_matching_kind_and_captured_geometry() {
+        let preset = rect_preset();
+        let mut ui_state = super::app::UiState::default();
+        let at = Pt::new(10.0, 20.0);
+
+        // Nothing armed: the normal draw path handles the click.
+        assert!(drawing_placement(&ui_state, MarkupKind::Rectangle, at).is_none());
+
+        // Style mode (geometry dropped from the armed copy): unchanged path.
+        ui_state.pending_style_preset = Some(preset.without_geometry());
+        assert!(drawing_placement(&ui_state, MarkupKind::Rectangle, at).is_none());
+
+        // Drawing mode, but the active tool draws a different kind: fall back
+        // to the normal per-kind path (the preset still restyles it).
+        ui_state.pending_style_preset = Some(preset.clone());
+        assert!(drawing_placement(&ui_state, MarkupKind::Ellipse, at).is_none());
+
+        // Drawing mode with the matching tool: an exact duplicate is placed.
+        let (armed, geometry) =
+            drawing_placement(&ui_state, MarkupKind::Rectangle, at).expect("placement");
+        assert_eq!(armed.id, preset.id);
+        assert_eq!(
+            geometry,
+            MarkupGeometry::Bounds(DRect::new(10.0, 20.0, 40.0, 24.0))
         );
     }
 }

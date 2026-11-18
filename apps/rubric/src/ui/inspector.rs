@@ -5,6 +5,7 @@ use uuid::Uuid;
 use eframe::egui::{self, ComboBox, Ui};
 
 use crate::domain::{
+    markup_geometry::MarkupGeometry,
     style::{Color, DashPattern, FillMode},
     units::{MeasureUnit, MAX_PRECISION},
     BatesCorner, LayerError, MarkupKind, Project, ReviewStatus, Scale, StampPreset,
@@ -408,6 +409,26 @@ pub(crate) fn draw_inspector(
                     ui_state.status = format!("Scale → {}", new_scale.describe());
                 } else {
                     ui_state.status = "Scale unchanged".to_string();
+
+         ui.separator();
+         let page_count = project.active().map(|d| d.page_count()).unwrap_or(0);
+         let apply_enabled = page_count > 1;
+         if ui
+             .add_enabled(apply_enabled, egui::Button::new("Apply to all pages"))
+             .on_hover_text("Apply this page's scale to every page")
+             .clicked()
+         {
+             let current_scale = project
+                 .active()
+                 .and_then(|d| d.pages.get(page_idx).copied())
+                 .map(|p| p.scale)
+                 .unwrap_or(Scale::PAPER);
+             if let Some(doc) = project.active_mut() {
+                 let n = doc.apply_scale_to_all_pages(current_scale);
+                 committed = true;
+                 ui_state.status = format!("Scale applied to {} pages", n);
+             }
+         }
                 }
             }
         }
@@ -668,7 +689,100 @@ pub(crate) fn draw_inspector(
                             });
                     }
 
-                    // Fill colour.
+                    if !multi {
+// Layout: numeric position/size entry (single selection).
+                     ui.separator();
+                     ui.label("Layout");
+                     let old_bounds = m.geometry.bounds();
+                     let mut x = old_bounds.x;
+                     let mut y = old_bounds.y;
+                     let mut w = old_bounds.w;
+                     let mut h = old_bounds.h;
+                     let is_bounds = matches!(m.geometry, MarkupGeometry::Bounds(_));
+                     let mut layout_changed = false;
+                     let mut interaction_ended = false;
+                     ui.horizontal(|ui| {
+                         ui.label("X");
+                         let resp = ui
+                             .add(egui::DragValue::new(&mut x).speed(1.0))
+                             .on_hover_text("X position in page points");
+                         if resp.changed() {
+                             layout_changed = true;
+                         }
+                         interaction_ended |= resp.drag_stopped() || resp.lost_focus();
+                     });
+                     ui.horizontal(|ui| {
+                         ui.label("Y");
+                         let resp = ui
+                             .add(egui::DragValue::new(&mut y).speed(1.0))
+                             .on_hover_text("Y position in page points");
+                         if resp.changed() {
+                             layout_changed = true;
+                         }
+                         interaction_ended |= resp.drag_stopped() || resp.lost_focus();
+                     });
+                     ui.horizontal(|ui| {
+                         ui.label("W");
+                         let resp = if is_bounds {
+                             ui.add(
+                                 egui::DragValue::new(&mut w)
+                                     .speed(1.0)
+                                     .range(1.0..=f32::MAX),
+                             )
+                             .on_hover_text("Width in page points")
+                         } else {
+                             ui.add_enabled(
+                                 false,
+                                 egui::DragValue::new(&mut w).speed(1.0),
+                             )
+                             .on_hover_text("Resize applies to rectangle shapes")
+                         };
+                         if resp.changed() && is_bounds {
+                             layout_changed = true;
+                         }
+                         interaction_ended |= resp.drag_stopped() || resp.lost_focus();
+                     });
+                     ui.horizontal(|ui| {
+                         ui.label("H");
+                         let resp = if is_bounds {
+                             ui.add(
+                                 egui::DragValue::new(&mut h)
+                                     .speed(1.0)
+                                     .range(1.0..=f32::MAX),
+                             )
+                             .on_hover_text("Height in page points")
+                         } else {
+                             ui.add_enabled(
+                                 false,
+                                 egui::DragValue::new(&mut h).speed(1.0),
+                             )
+                             .on_hover_text("Resize applies to rectangle shapes")
+                         };
+                         if resp.changed() && is_bounds {
+                             layout_changed = true;
+                         }
+                         interaction_ended |= resp.drag_stopped() || resp.lost_focus();
+                     });
+                     if layout_changed {
+                         let dx = x - old_bounds.x;
+                         let dy = y - old_bounds.y;
+                         if dx != 0.0 || dy != 0.0 {
+                             m.geometry.translate(dx, dy);
+                         }
+                         if is_bounds {
+                             if let MarkupGeometry::Bounds(r) = &mut m.geometry {
+                                 r.w = w.max(1.0);
+                                 r.h = h.max(1.0);
+                             }
+                         }
+                         edited = true;
+                     }
+                     if layout_changed && interaction_ended {
+                         committed = true;
+                     }
+
+                     }
+                     // Fill colour.
                     ui.label("Fill colour");
                     let mut fc = domain_to_color32(m.style.fill);
                     let fill_resp = ui
@@ -889,6 +1003,12 @@ pub(crate) fn draw_inspector(
 
         if edited && editable {
             m.touch();
+            let scale = project
+                .active()
+                .and_then(|d| d.pages.get(m.page).copied())
+                .map(|p| p.scale)
+                .unwrap_or(Scale::PAPER);
+            m.recompute_measurement(scale);
             if let Some(doc) = project.active_mut() {
                 if multi {
                     doc.apply_style_to(&selected, m.style);
