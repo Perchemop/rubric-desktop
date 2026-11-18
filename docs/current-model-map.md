@@ -177,3 +177,20 @@ redistribution terms stay auditable:
   §7.2 signing-key compromise procedure, §9.1–9.4 gates, §17 binding Rust
   summary. OpenRouter scan: 355 models, 13 free + coding-capable; free
   quota shared (50/day) so the tier sits last in every chain.
+
+- **2026-11-18 (2nd sync):** guide.md grown to 1961 lines; re-read in full.
+  New: **Authority preamble** (stricter-rule-wins; guide beats skills/plugins/
+  commands; no waiving/weakening; 4-step blocker protocol), **§5.6 OpenCode
+  Workflow Protocol** (Smart Zone <150k tokens + `/new` between phases; Case
+  1–5 selection matrix; seven commands /grill-me·/to-spec·/to-tickets·/tdd·/
+  implement·/implement-spec·/code-review; TDD verified via `ci.sh` with
+  recorded red-run IDs; batching ≤5 tests per red run), **§5.7 Multi-Agent
+  Architecture** (teams only for Case 4; one Orchestrator; 2–5 agents;
+  `docs/team-log/` audit trail; allowlist-only pre-approved commands — build
+  commands forbidden; plan approval before code; graceful shutdown; docs/dev.md
+  records the allowlist), §11 adds docs/specs·tickets·team-log·reference,
+  §13 long-session row, §15 fallback prompt now includes the §5.6/§5.7
+  workflow, §17 binding Rust summary when the addendum is absent, §18 private
+  maintenance-repo + binding §5.6/§5.7 reminders. Global ruleset synced with
+  all of the above (Authority preamble + §5.6 verified complete + §5.7 added +
+  §4 ci.sh merge/login-assertion/bootstrap-fallback + §11 + §15 + §17 + §18).
