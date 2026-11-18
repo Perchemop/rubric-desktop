@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::style::DefaultStyles;
 use crate::domain::style_preset::StylePresetLibrary;
+use crate::domain::MeasureUnit;
 
 /// Colour theme used by the application shell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -35,6 +36,14 @@ impl Theme {
     /// Whether this is the dark theme.
     pub fn is_dark(self) -> bool {
         matches!(self, Theme::Dark)
+    }
+}
+
+/// [`MeasureUnit`] has no inherent default in `units.rs`; the app default is
+/// the paper-space unit (`Point`), matching [`Scale::PAPER`].
+impl Default for MeasureUnit {
+    fn default() -> Self {
+        MeasureUnit::Point
     }
 }
 
@@ -81,6 +90,9 @@ pub struct AppPrefs {
     /// back to empty overrides, so new markups use their kind's coded default.
     #[serde(default)]
     pub default_styles: DefaultStyles,
+    /// Display unit used for new measurements (gap #8: app default).
+    #[serde(default)]
+    pub default_measure_unit: MeasureUnit,
 }
 
 fn default_true() -> bool {
@@ -106,6 +118,7 @@ impl Default for AppPrefs {
             show_minimap: false,
             high_contrast: false,
             default_styles: DefaultStyles::default(),
+            default_measure_unit: MeasureUnit::default(),
         }
     }
 }
@@ -160,6 +173,7 @@ mod tests {
             show_minimap: false,
             high_contrast: true,
             default_styles: DefaultStyles::default(),
+            default_measure_unit: MeasureUnit::Inch,
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");

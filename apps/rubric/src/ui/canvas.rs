@@ -19,7 +19,10 @@ use super::theme::to_color32;
 use crate::ui::canvas_draw::{
     draw_bates_overlay, draw_grid, draw_measure_badge, draw_minimap, draw_rulers, draw_selection,
 };
-use crate::ui::canvas_geom::{hit_tolerance_page, measure_anchor, screen_rect, to_page, to_screen};
+use crate::ui::canvas_geom::{
+    hit_tolerance_page, measure_anchor, screen_rect_page_rotated, to_page_rotated,
+    to_screen_rotated,
+};
 use crate::ui::canvas_hit::{handle_at, pick_markup_id, point_handle_at};
 
 /// Refuse to begin a draft when the markup it would create could not be edited.
@@ -210,6 +213,7 @@ fn draw_markup(
     zoom: f32,
     m: &Markup,
     show_measurements: bool,
+    page: &crate::domain::Page,
 ) {
     let style = m.style;
     let stroke_c = to_color32(style.stroke);
@@ -219,7 +223,15 @@ fn draw_markup(
 
     match &m.geometry {
         MarkupGeometry::Bounds(r) => {
-            let sr = screen_rect(*r, origin, pan, zoom);
+            let sr = screen_rect_page_rotated(
+                *r,
+                origin,
+                pan,
+                zoom,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             match m.kind {
                 MarkupKind::Rectangle
                 | MarkupKind::Stamp
@@ -283,7 +295,15 @@ fn draw_markup(
             // anchored to text rather than a bounding box. `at` is the
             // top-left of the text line in page space (y-down); every value
             // is scaled into screen space before it reaches the painter.
-            let sa = to_screen(*at, pan, zoom, origin);
+            let sa = to_screen_rotated(
+                *at,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             let w = text_width.max(text.chars().count() as f32 * line_height * 0.6) * zoom;
             let h = *line_height * zoom;
             match m.kind {
@@ -333,8 +353,24 @@ fn draw_markup(
             }
         }
         MarkupGeometry::Segment { a, b } => {
-            let sa = to_screen(*a, pan, zoom, origin);
-            let sb = to_screen(*b, pan, zoom, origin);
+            let sa = to_screen_rotated(
+                *a,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
+            let sb = to_screen_rotated(
+                *b,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.line_segment([sa, sb], stroke_eg);
             if matches!(m.kind, MarkupKind::Arrow) {
                 let dir = (sb - sa).normalized();
@@ -349,7 +385,17 @@ fn draw_markup(
         MarkupGeometry::Path { points, closed } => {
             let pts: Vec<Pos2> = points
                 .iter()
-                .map(|p| to_screen(*p, pan, zoom, origin))
+                .map(|p| {
+                    to_screen_rotated(
+                        *p,
+                        pan,
+                        zoom,
+                        origin,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    )
+                })
                 .collect();
             if pts.len() >= 2 {
                 if *closed {
@@ -361,19 +407,48 @@ fn draw_markup(
         }
         MarkupGeometry::Ink { strokes } => {
             for s in strokes {
-                let pts: Vec<Pos2> = s.iter().map(|p| to_screen(*p, pan, zoom, origin)).collect();
+                let pts: Vec<Pos2> = s
+                    .iter()
+                    .map(|p| {
+                        to_screen_rotated(
+                            *p,
+                            pan,
+                            zoom,
+                            origin,
+                            page.width,
+                            page.height,
+                            page.rotation,
+                        )
+                    })
+                    .collect();
                 if pts.len() >= 2 {
                     painter.add(egui::Shape::line(pts, stroke_eg));
                 }
             }
         }
         MarkupGeometry::Text { at, wrap, text } => {
-            let sa = to_screen(*at, pan, zoom, origin);
+            let sa = to_screen_rotated(
+                *at,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             if text.is_empty() {
                 // Empty text paints no glyphs; draw the bounds as a faint
                 // outline so the markup stays visible where it hit-tests
                 // (e.g. a Text the user placed and immediately cancelled).
-                let sr = screen_rect(m.bounds(), origin, pan, zoom);
+                let sr = screen_rect_page_rotated(
+                    m.bounds(),
+                    origin,
+                    pan,
+                    zoom,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                );
                 painter.rect_stroke(
                     sr,
                     egui::CornerRadius::same(4),
@@ -391,8 +466,24 @@ fn draw_markup(
             }
         }
         MarkupGeometry::Callout { rect, tail, text } => {
-            let sr = screen_rect(*rect, origin, pan, zoom);
-            let sta = to_screen(*tail, pan, zoom, origin);
+            let sr = screen_rect_page_rotated(
+                *rect,
+                origin,
+                pan,
+                zoom,
+                page.width,
+                page.height,
+                page.rotation,
+            );
+            let sta = to_screen_rotated(
+                *tail,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.line_segment([sta, sr.center()], stroke_eg);
             if fill_c.a() > 0 {
                 painter.rect_filled(sr, egui::CornerRadius::same(8), fill_c);
@@ -412,9 +503,33 @@ fn draw_markup(
             );
         }
         MarkupGeometry::Angle { a, vertex, b } => {
-            let sa = to_screen(*a, pan, zoom, origin);
-            let sv = to_screen(*vertex, pan, zoom, origin);
-            let sb = to_screen(*b, pan, zoom, origin);
+            let sa = to_screen_rotated(
+                *a,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
+            let sv = to_screen_rotated(
+                *vertex,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
+            let sb = to_screen_rotated(
+                *b,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.line_segment([sv, sa], stroke_eg);
             painter.line_segment([sv, sb], stroke_eg);
             // The angle value is the markup's measurement label, so it obeys
@@ -431,7 +546,15 @@ fn draw_markup(
             }
         }
         MarkupGeometry::Count { at, number } => {
-            let sa = to_screen(*at, pan, zoom, origin);
+            let sa = to_screen_rotated(
+                *at,
+                pan,
+                zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.circle_filled(sa, 10.0 * zoom.max(0.7), Color32::from_rgb(30, 30, 36));
             // The dot stays visible; its number is the count measurement, so
             // it is hidden with the other measurement labels.
@@ -450,7 +573,15 @@ fn draw_markup(
     // Stamp preset glyph (spec F-111): centred, colour-matched, shrink-to-fit.
     if m.kind == MarkupKind::Stamp {
         if let Some(preset) = m.stamp {
-            let sr = screen_rect(m.bounds(), origin, pan, zoom);
+            let sr = screen_rect_page_rotated(
+                m.bounds(),
+                origin,
+                pan,
+                zoom,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             if sr.width() >= 12.0 && sr.height() >= 12.0 {
                 let color = to_color32(preset.color());
                 match preset {
@@ -504,7 +635,15 @@ fn draw_markup(
     }
 
     if m.status != ReviewStatus::Open {
-        let b = screen_rect(m.bounds(), origin, pan, zoom);
+        let b = screen_rect_page_rotated(
+            m.bounds(),
+            origin,
+            pan,
+            zoom,
+            page.width,
+            page.height,
+            page.rotation,
+        );
         let dot = Pos2::new(b.right() + 4.0, b.top() - 4.0);
         painter.circle_filled(dot, 5.0 * zoom.max(0.7), to_color32(m.status.color()));
     }
@@ -617,7 +756,15 @@ pub(crate) fn draw_canvas(
     let pan = ui_state.pan;
     let zoom = ui_state.zoom;
 
-    let page_rect = screen_rect(page.bounds(), origin, pan, zoom);
+    let page_rect = screen_rect_page_rotated(
+        page.bounds(),
+        origin,
+        pan,
+        zoom,
+        page.width,
+        page.height,
+        page.rotation,
+    );
     let source_pdf = project.source_pdf.clone();
     // True when a real PDF backs this project (UI audit P0-2): an empty
     // string behaves like no source at all.
@@ -657,12 +804,60 @@ pub(crate) fn draw_canvas(
         if failed_page_textures.contains(&attempt_key) {
             // Already poisoned; nothing to paint here (white fill below).
         } else if let Some(tex) = page_textures.get(&attempt_key) {
-            painter.image(
-                tex.id(),
-                page_rect,
-                egui::Rect::from_min_max(egui::Pos2::new(0.0, 0.0), egui::Pos2::new(1.0, 1.0)),
-                egui::Color32::WHITE,
-            );
+            let turns = crate::ui::canvas_geom::quarter_turns(page.rotation);
+            if turns == 0 {
+                painter.image(
+                    tex.id(),
+                    page_rect,
+                    egui::Rect::from_min_max(egui::Pos2::new(0.0, 0.0), egui::Pos2::new(1.0, 1.0)),
+                    egui::Color32::WHITE,
+                );
+            } else {
+                // Rotate the raster inside the (already swapped) page rect by
+                // `turns` clockwise using per-corner UV assignment.
+                let uvs = match turns {
+                    1 => [
+                        egui::Pos2::new(0.0, 1.0),
+                        egui::Pos2::new(0.0, 0.0),
+                        egui::Pos2::new(1.0, 0.0),
+                        egui::Pos2::new(1.0, 1.0),
+                    ],
+                    2 => [
+                        egui::Pos2::new(1.0, 1.0),
+                        egui::Pos2::new(0.0, 1.0),
+                        egui::Pos2::new(0.0, 0.0),
+                        egui::Pos2::new(1.0, 0.0),
+                    ],
+                    3 => [
+                        egui::Pos2::new(1.0, 0.0),
+                        egui::Pos2::new(1.0, 1.0),
+                        egui::Pos2::new(0.0, 1.0),
+                        egui::Pos2::new(0.0, 0.0),
+                    ],
+                    _ => [
+                        egui::Pos2::new(0.0, 0.0),
+                        egui::Pos2::new(1.0, 0.0),
+                        egui::Pos2::new(1.0, 1.0),
+                        egui::Pos2::new(0.0, 1.0),
+                    ],
+                };
+                let mut mesh = egui::Mesh::with_texture(tex.id());
+                let corners = [
+                    page_rect.left_top(),
+                    page_rect.right_top(),
+                    page_rect.right_bottom(),
+                    page_rect.left_bottom(),
+                ];
+                for (i, c) in corners.iter().enumerate() {
+                    mesh.vertices.push(egui::epaint::Vertex {
+                        pos: *c,
+                        uv: uvs[i],
+                        color: egui::Color32::WHITE,
+                    });
+                }
+                mesh.indices.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
+                painter.add(egui::Shape::mesh(mesh));
+            }
             painted_texture = true;
         } else if let Some(w) = worker {
             if !is_export {
@@ -717,15 +912,61 @@ pub(crate) fn draw_canvas(
                         }
                     }
                     if let Some(tex) = page_textures.get(&tex_key) {
-                        painter.image(
-                            tex.id(),
-                            page_rect,
-                            egui::Rect::from_min_max(
-                                egui::Pos2::new(0.0, 0.0),
-                                egui::Pos2::new(1.0, 1.0),
-                            ),
-                            egui::Color32::WHITE,
-                        );
+                        let turns = crate::ui::canvas_geom::quarter_turns(page.rotation);
+                        if turns == 0 {
+                            painter.image(
+                                tex.id(),
+                                page_rect,
+                                egui::Rect::from_min_max(
+                                    egui::Pos2::new(0.0, 0.0),
+                                    egui::Pos2::new(1.0, 1.0),
+                                ),
+                                egui::Color32::WHITE,
+                            );
+                        } else {
+                            let uvs = match turns {
+                                1 => [
+                                    egui::Pos2::new(0.0, 1.0),
+                                    egui::Pos2::new(0.0, 0.0),
+                                    egui::Pos2::new(1.0, 0.0),
+                                    egui::Pos2::new(1.0, 1.0),
+                                ],
+                                2 => [
+                                    egui::Pos2::new(1.0, 1.0),
+                                    egui::Pos2::new(0.0, 1.0),
+                                    egui::Pos2::new(0.0, 0.0),
+                                    egui::Pos2::new(1.0, 0.0),
+                                ],
+                                3 => [
+                                    egui::Pos2::new(1.0, 0.0),
+                                    egui::Pos2::new(1.0, 1.0),
+                                    egui::Pos2::new(0.0, 1.0),
+                                    egui::Pos2::new(0.0, 0.0),
+                                ],
+                                _ => [
+                                    egui::Pos2::new(0.0, 0.0),
+                                    egui::Pos2::new(1.0, 0.0),
+                                    egui::Pos2::new(1.0, 1.0),
+                                    egui::Pos2::new(0.0, 1.0),
+                                ],
+                            };
+                            let mut mesh = egui::Mesh::with_texture(tex.id());
+                            let corners = [
+                                page_rect.left_top(),
+                                page_rect.right_top(),
+                                page_rect.right_bottom(),
+                                page_rect.left_bottom(),
+                            ];
+                            for (i, c) in corners.iter().enumerate() {
+                                mesh.vertices.push(egui::epaint::Vertex {
+                                    pos: *c,
+                                    uv: uvs[i],
+                                    color: egui::Color32::WHITE,
+                                });
+                            }
+                            mesh.indices.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
+                            painter.add(egui::Shape::mesh(mesh));
+                        }
                         painted_texture = true;
                     }
                 }
@@ -764,7 +1005,10 @@ pub(crate) fn draw_canvas(
 
     // Canvas grid (F-405) and rulers (F-406). Both are guides: they are painted
     // before the markups so they always sit under the content.
-    if !is_export {
+    if !is_export && page.rotation.rem_euclid(360) == 0 {
+        // TODO(rotation): grid/rulers are computed in unrotated page space and
+        // are only correct for 0° pages; hide them for rotated pages rather
+        // than render them wrongly.
         draw_grid(
             &painter,
             page.bounds(),
@@ -845,6 +1089,7 @@ pub(crate) fn draw_canvas(
             zoom,
             m,
             project.settings.show_measurements,
+            &page,
         );
     }
 
@@ -869,7 +1114,16 @@ pub(crate) fn draw_canvas(
         for id in selected_ids {
             if let Some(m) = doc.find_markup(id) {
                 if doc.is_markup_visible(m) {
-                    draw_selection(&painter, origin, pan, zoom, m);
+                    draw_selection(
+                        &painter,
+                        origin,
+                        pan,
+                        zoom,
+                        m,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    );
                 }
             }
         }
@@ -887,7 +1141,15 @@ pub(crate) fn draw_canvas(
             }
             if let Some(meas) = m.measurement {
                 let label = meas.label_with(unit, project.settings.precision);
-                let anchor = to_screen(measure_anchor(m), pan, zoom, origin);
+                let anchor = to_screen_rotated(
+                    measure_anchor(m),
+                    pan,
+                    zoom,
+                    origin,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                );
                 draw_measure_badge(&painter, anchor, label);
             }
         }
@@ -916,15 +1178,34 @@ pub(crate) fn draw_canvas(
                     // Same metrics the domain uses for bounds/hit testing, so
                     // the editor overlay covers exactly what is drawn.
                     let line_h = text_line_height(m.style.font_size);
-                    screen_rect(
+                    screen_rect_page_rotated(
                         DRect::new(at.x, at.y, wrap.max(1.0), lines * line_h),
                         origin,
                         pan,
                         zoom,
+                        page.width,
+                        page.height,
+                        page.rotation,
                     )
                 }
-                MarkupGeometry::Callout { rect, .. } => screen_rect(*rect, origin, pan, zoom),
-                _ => screen_rect(m.bounds(), origin, pan, zoom),
+                MarkupGeometry::Callout { rect, .. } => screen_rect_page_rotated(
+                    *rect,
+                    origin,
+                    pan,
+                    zoom,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                ),
+                _ => screen_rect_page_rotated(
+                    m.bounds(),
+                    origin,
+                    pan,
+                    zoom,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                ),
             });
         if let Some(sr) = sr {
             let edit = ui_state.text_edit.as_mut().unwrap();
@@ -961,8 +1242,17 @@ pub(crate) fn draw_canvas(
     // above all markups; clicking empty canvas space closes it.
     if let Some(note_id) = ui_state.note_popover {
         let note_screen = project.active().and_then(|doc| {
-            doc.find_markup(note_id)
-                .map(|m| screen_rect(m.bounds(), origin, pan, zoom))
+            doc.find_markup(note_id).map(|m| {
+                screen_rect_page_rotated(
+                    m.bounds(),
+                    origin,
+                    pan,
+                    zoom,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                )
+            })
         });
         if let Some(sr) = note_screen {
             let zoom = ui_state.zoom.max(0.1);
@@ -1076,7 +1366,9 @@ pub(crate) fn draw_canvas(
     // hit-testing — a click must still pick a markup that is not grid-aligned.
     // `page_pos` additionally honours snap-to-grid (F-405) and drives creation,
     // so new markups land on grid intersections.
-    let raw_pos = response.hover_pos().map(|h| to_page(h, pan, zoom, origin));
+    let raw_pos = response
+        .hover_pos()
+        .map(|h| to_page_rotated(h, pan, zoom, origin, page.width, page.height, page.rotation));
     // Read the keyboard modifiers once: Shift constrains drags, Ctrl bypasses
     // grid snap so the user can draw freely between grid points.
     let modifiers = ui.ctx().input(|i| i.modifiers);
@@ -1105,7 +1397,15 @@ pub(crate) fn draw_canvas(
             let zoom_modifier = ui.ctx().input(|i| i.modifiers.command || i.modifiers.ctrl);
             if zoom_modifier && scroll.y.abs() > f32::EPSILON {
                 if let Some(hover) = response.hover_pos() {
-                    let page_before = to_page(hover, pan, zoom, origin);
+                    let page_before = to_page_rotated(
+                        hover,
+                        pan,
+                        zoom,
+                        origin,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    );
                     let factor = (scroll.y * 0.001).exp();
                     let new_zoom = crate::domain::view::clamp_zoom(zoom * factor);
                     let new_pan = hover
@@ -1142,7 +1442,15 @@ pub(crate) fn draw_canvas(
                     d.markups.iter().find(|m| m.id == id)
                 });
                 if let Some(m) = corner_hit {
-                    let screen_bounds = screen_rect(m.bounds(), origin, pan, zoom);
+                    let screen_bounds = screen_rect_page_rotated(
+                        m.bounds(),
+                        origin,
+                        pan,
+                        zoom,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    );
                     if let Some(corner) = handle_at(screen_bounds, sp, ui_state.zoom) {
                         icon = match corner {
                             crate::domain::Corner::TopLeft | crate::domain::Corner::BottomRight => {
@@ -1158,7 +1466,15 @@ pub(crate) fn draw_canvas(
                     && pick_markup_id(
                         project,
                         page.index,
-                        to_page(sp, pan, zoom, origin),
+                        to_page_rotated(
+                            sp,
+                            pan,
+                            zoom,
+                            origin,
+                            page.width,
+                            page.height,
+                            page.rotation,
+                        ),
                         hit_tolerance_page(zoom),
                     )
                     .is_some()
@@ -1204,7 +1520,15 @@ pub(crate) fn draw_canvas(
     match &*draw_state {
         super::app::DrawState::Bounds { start, end, .. } => {
             let r = DRect::from_corners(*start, *end);
-            let sr = screen_rect(r, origin, pan, ui_state.zoom);
+            let sr = screen_rect_page_rotated(
+                r,
+                origin,
+                pan,
+                ui_state.zoom,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.rect_stroke(
                 sr,
                 egui::CornerRadius::ZERO,
@@ -1213,8 +1537,24 @@ pub(crate) fn draw_canvas(
             );
         }
         super::app::DrawState::Segment { start, end, .. } => {
-            let sa = to_screen(*start, ui_state.pan, ui_state.zoom, origin);
-            let sb = to_screen(*end, ui_state.pan, ui_state.zoom, origin);
+            let sa = to_screen_rotated(
+                *start,
+                ui_state.pan,
+                ui_state.zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
+            let sb = to_screen_rotated(
+                *end,
+                ui_state.pan,
+                ui_state.zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.line_segment([sa, sb], egui::Stroke::new(1.5, preview_color));
         }
         super::app::DrawState::Ink { strokes, current } => {
@@ -1222,7 +1562,17 @@ pub(crate) fn draw_canvas(
             for s in strokes.iter().chain(std::iter::once(current)) {
                 let pts: Vec<Pos2> = s
                     .iter()
-                    .map(|p| to_screen(*p, ui_state.pan, ui_state.zoom, origin))
+                    .map(|p| {
+                        to_screen_rotated(
+                            *p,
+                            ui_state.pan,
+                            ui_state.zoom,
+                            origin,
+                            page.width,
+                            page.height,
+                            page.rotation,
+                        )
+                    })
                     .collect();
                 if pts.len() >= 2 {
                     painter.add(egui::Shape::line(pts, stroke));
@@ -1233,11 +1583,29 @@ pub(crate) fn draw_canvas(
             let stroke = egui::Stroke::new(1.5, preview_color);
             let mut pts: Vec<Pos2> = points
                 .iter()
-                .map(|p| to_screen(*p, ui_state.pan, ui_state.zoom, origin))
+                .map(|p| {
+                    to_screen_rotated(
+                        *p,
+                        ui_state.pan,
+                        ui_state.zoom,
+                        origin,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    )
+                })
                 .collect();
             // Rubber-band segment from the last committed point to the cursor.
             if let Some(cursor) = page_pos {
-                let sc = to_screen(cursor, ui_state.pan, ui_state.zoom, origin);
+                let sc = to_screen_rotated(
+                    cursor,
+                    ui_state.pan,
+                    ui_state.zoom,
+                    origin,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                );
                 if !pts.is_empty() {
                     if let Some(last) = pts.last().copied() {
                         painter.line_segment([last, sc], stroke);
@@ -1261,16 +1629,48 @@ pub(crate) fn draw_canvas(
         }
         super::app::DrawState::Angle { a, vertex, .. } => {
             let stroke = egui::Stroke::new(1.5, preview_color);
-            let sa = to_screen(*a, ui_state.pan, ui_state.zoom, origin);
+            let sa = to_screen_rotated(
+                *a,
+                ui_state.pan,
+                ui_state.zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             if let Some(v) = vertex {
-                let sv = to_screen(*v, ui_state.pan, ui_state.zoom, origin);
+                let sv = to_screen_rotated(
+                    *v,
+                    ui_state.pan,
+                    ui_state.zoom,
+                    origin,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                );
                 painter.line_segment([sv, sa], stroke);
                 if let Some(cursor) = page_pos {
-                    let sc = to_screen(cursor, ui_state.pan, ui_state.zoom, origin);
+                    let sc = to_screen_rotated(
+                        cursor,
+                        ui_state.pan,
+                        ui_state.zoom,
+                        origin,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    );
                     painter.line_segment([sv, sc], stroke);
                 }
             } else if let Some(cursor) = page_pos {
-                let sc = to_screen(cursor, ui_state.pan, ui_state.zoom, origin);
+                let sc = to_screen_rotated(
+                    cursor,
+                    ui_state.pan,
+                    ui_state.zoom,
+                    origin,
+                    page.width,
+                    page.height,
+                    page.rotation,
+                );
                 painter.line_segment([sa, sc], stroke);
             }
         }
@@ -1283,8 +1683,24 @@ pub(crate) fn draw_canvas(
             // display unit so the user can aim at the known feature before
             // committing the second click.
             let stroke = egui::Stroke::new(1.5, preview_color);
-            let sa = to_screen(*start, ui_state.pan, ui_state.zoom, origin);
-            let sb = to_screen(*end, ui_state.pan, ui_state.zoom, origin);
+            let sa = to_screen_rotated(
+                *start,
+                ui_state.pan,
+                ui_state.zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
+            let sb = to_screen_rotated(
+                *end,
+                ui_state.pan,
+                ui_state.zoom,
+                origin,
+                page.width,
+                page.height,
+                page.rotation,
+            );
             painter.line_segment([sa, sb], stroke);
             painter.circle_filled(sa, 3.0, preview_color);
             let len = start.distance(*end);
@@ -1449,7 +1865,15 @@ pub(crate) fn draw_canvas(
 
                     if let Some(doc) = project.active() {
                         for m in doc.markups_in_paint_order(page.index) {
-                            let mr = screen_rect(m.bounds(), origin, pan, zoom);
+                            let mr = screen_rect_page_rotated(
+                                m.bounds(),
+                                origin,
+                                pan,
+                                zoom,
+                                page.width,
+                                page.height,
+                                page.rotation,
+                            );
                             if rect.intersects(mr) {
                                 ui_state.selected.insert(m.id);
                             }
@@ -1934,8 +2358,24 @@ pub(crate) fn draw_canvas(
                     }
                     super::app::DrawState::Ink { current, .. } => {
                         if let Some(last) = current.last().copied() {
-                            let dscreen = to_screen(pp, ui_state.pan, ui_state.zoom, origin)
-                                .distance(to_screen(last, ui_state.pan, ui_state.zoom, origin));
+                            let dscreen = to_screen_rotated(
+                                pp,
+                                ui_state.pan,
+                                ui_state.zoom,
+                                origin,
+                                page.width,
+                                page.height,
+                                page.rotation,
+                            )
+                            .distance(to_screen_rotated(
+                                last,
+                                ui_state.pan,
+                                ui_state.zoom,
+                                origin,
+                                page.width,
+                                page.height,
+                                page.rotation,
+                            ));
                             if dscreen >= 2.0 {
                                 current.push(pp);
                             }
@@ -2089,7 +2529,15 @@ pub(crate) fn draw_canvas(
         if response.drag_started() {
             if let Some(pp) = raw_pos {
                 if let Some(doc) = project.active() {
-                    let screen_pp = to_screen(pp, pan, zoom, origin);
+                    let screen_pp = to_screen_rotated(
+                        pp,
+                        pan,
+                        zoom,
+                        origin,
+                        page.width,
+                        page.height,
+                        page.rotation,
+                    );
                     let mut picked_point = None;
                     let mut picked_corner = None;
                     for id in &ui_state.selected {
@@ -2105,12 +2553,20 @@ pub(crate) fn draw_canvas(
                         };
                         // Point handles first: an endpoint/vertex grab is more
                         // specific than a bounding-box corner grab.
-                        if let Some(idx) = point_handle_at(m, screen_pp, origin, pan, zoom) {
+                        if let Some(idx) = point_handle_at(m, screen_pp, origin, pan, zoom, &page) {
                             picked_point = Some(idx);
                             break;
                         }
                         if matches!(m.geometry, MarkupGeometry::Bounds(_)) {
-                            let b = screen_rect(m.bounds(), origin, pan, zoom);
+                            let b = screen_rect_page_rotated(
+                                m.bounds(),
+                                origin,
+                                pan,
+                                zoom,
+                                page.width,
+                                page.height,
+                                page.rotation,
+                            );
                             if let Some(c) = handle_at(b, screen_pp, ui_state.zoom) {
                                 picked_corner = Some(c);
                                 break;
@@ -2451,6 +2907,14 @@ mod tests {
 
     #[test]
     fn point_handle_at_finds_endpoints_but_not_the_middle() {
+        // Letter-size page at rotation 0 for the identity mapping.
+        let page = crate::domain::Page {
+            index: 0,
+            width: 612.0,
+            height: 792.0,
+            rotation: 0,
+            scale: crate::domain::Scale::PAPER,
+        };
         let m = Markup::new(
             0,
             MarkupKind::Line,
@@ -2461,16 +2925,31 @@ mod tests {
             "t",
         );
         // Identity transform: page points land on the same screen coords.
+        // Rotation=0 gives identity mapping; page dims use the test's default size.
         assert_eq!(
-            point_handle_at(&m, Pos2::new(0.0, 0.0), Pos2::ZERO, Vec2::ZERO, 1.0),
+            point_handle_at(&m, Pos2::new(0.0, 0.0), Pos2::ZERO, Vec2::ZERO, 1.0, &page),
             Some(0)
         );
         assert_eq!(
-            point_handle_at(&m, Pos2::new(100.0, 100.0), Pos2::ZERO, Vec2::ZERO, 1.0),
+            point_handle_at(
+                &m,
+                Pos2::new(100.0, 100.0),
+                Pos2::ZERO,
+                Vec2::ZERO,
+                1.0,
+                &page
+            ),
             Some(1)
         );
         assert_eq!(
-            point_handle_at(&m, Pos2::new(50.0, 50.0), Pos2::ZERO, Vec2::ZERO, 1.0),
+            point_handle_at(
+                &m,
+                Pos2::new(50.0, 50.0),
+                Pos2::ZERO,
+                Vec2::ZERO,
+                1.0,
+                &page
+            ),
             None,
             "the middle of the segment carries no point handle"
         );
