@@ -23,7 +23,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::domain::{Color, Markup, MarkupKind, Project, StylePreset, StylePresetLibrary};
+use crate::domain::{Color, Markup, MarkupKind, StylePreset, StylePresetLibrary};
 
 use super::app::UiState;
 use super::theme::{to_color32, TEXT_CAPTION};
@@ -651,7 +651,6 @@ mod tests {
 
     #[test]
     fn record_inserts_at_front() {
-        let mut project = crate::domain::Project::new("t");
         let mut ui_state = UiState::default();
         ui_state.tool_chest_max_recents = 8;
         let m = sample_markup();
@@ -660,21 +659,20 @@ mod tests {
         // second distinct markup (different geometry) inserts at front
         let mut m2 = sample_markup();
         m2.geometry = MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 5.0, 5.0));
-        record_recent(&mut project, &mut ui_state, &m2);
+        record_recent(&mut ui_state, &m2);
         assert_eq!(ui_state.recent_tools.len(), 2);
         assert_eq!(ui_state.recent_tools[0].kind, MarkupKind::Rectangle);
     }
 
     #[test]
     fn record_dedupe_moves_to_front() {
-        let mut project = crate::domain::Project::new("t");
         let mut ui_state = UiState::default();
         ui_state.tool_chest_max_recents = 8;
         let m = sample_markup();
         record_recent(&mut ui_state, &m);
         let mut m2 = sample_markup();
         m2.geometry = MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 5.0, 5.0));
-        record_recent(&mut project, &mut ui_state, &m2);
+        record_recent(&mut ui_state, &m2);
         // re-record original moves it to front
         record_recent(&mut ui_state, &m);
         assert_eq!(ui_state.recent_tools.len(), 2);
@@ -682,7 +680,6 @@ mod tests {
 
     #[test]
     fn record_truncates_at_max() {
-        let mut project = crate::domain::Project::new("t");
         let mut ui_state = UiState::default();
         ui_state.tool_chest_max_recents = 2;
         for i in 0..5 {
@@ -695,7 +692,6 @@ mod tests {
 
     #[test]
     fn clear_empties() {
-        let mut project = crate::domain::Project::new("t");
         let mut ui_state = UiState::default();
         ui_state.tool_chest_max_recents = 8;
         let m = sample_markup();
