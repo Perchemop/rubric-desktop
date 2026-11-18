@@ -1704,7 +1704,7 @@ mod tests {
             let meas = m.measurement.expect("recomputed");
             assert!((meas.value - 10.0).abs() < 1e-6);
         }
-     }
+    }
 
     #[test]
     fn apply_scale_to_all_pages_counts_changed_pages() {
