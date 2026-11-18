@@ -693,7 +693,9 @@ mod tests {
         ui_state.tool_chest_max_recents = 2;
         for i in 0..5 {
             let mut m = sample_markup();
-            m.geometry = MarkupGeometry::Bounds(Rect::new(i as f32, 0.0, 1.0, 1.0));
+            // Capture normalises position to the origin, so distinct recents
+            // must differ in a property that survives normalisation: size.
+            m.geometry = MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 1.0 + i as f32, 1.0));
             record_recent(&mut ui_state, &m);
         }
         assert_eq!(ui_state.recent_tools.len(), 2);
