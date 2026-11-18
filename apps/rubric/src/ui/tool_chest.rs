@@ -23,7 +23,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::domain::{Color, MarkupKind, Project, StylePreset, StylePresetLibrary};
+use crate::domain::{Color, Markup, MarkupKind, Project, StylePreset, StylePresetLibrary};
 
 use super::app::UiState;
 use super::theme::{to_color32, TEXT_CAPTION};
@@ -49,6 +49,18 @@ fn set_drawing_mode(id: Uuid, drawing: bool) {
     DRAWING_MODE.with(|m| {
         m.borrow_mut().insert(id, drawing);
     });
+}
+
+thread_local! {
+    static RECENT_EXPANDED: std::cell::RefCell<bool> = std::cell::RefCell::new(false);
+}
+
+fn recent_expanded() -> bool {
+    RECENT_EXPANDED.with(|c| *c.borrow())
+}
+
+fn set_recent_expanded(value: bool) {
+    RECENT_EXPANDED.with(|c| *c.borrow_mut() = value);
 }
 
 /// Draw the Tool Chest panel.
@@ -87,6 +99,65 @@ pub(crate) fn draw_tool_chest(
         ui.small("No active style. Pick Apply on a saved style to arm it.");
     }
     ui.separator();
+
+    // Recent Tools (gap #3): session-temporary auto-recorded presets, shown
+    // at the top of the chest. Omitted entirely when empty (no empty header).
+    if !ui_state.recent_tools.is_empty() {
+        ui.heading("Recent");
+        ui.add_space(2.0);
+        ui.horizontal(|ui| {
+            if ui
+                .add_sized(egui::vec2(56.0, 24.0), egui::Button::new("Clear"))
+                .on_hover_text("Clear the recent tools list")
+                .clicked()
+            {
+                ui_state.recent_tools.clear();
+                set_recent_expanded(false);
+                ui_state.status = "Recent tools cleared".to_string();
+            }
+            ui.label("Max");
+            let mut max = ui_state.tool_chest_max_recents as i32;
+            let resp = ui.add(egui::DragValue::new(&mut max).range(1..=32));
+            if resp.changed() {
+                let clamped = max.clamp(1, 32) as usize;
+                ui_state.tool_chest_max_recents = clamped;
+                ui_state.recent_tools.truncate(clamped);
+            }
+        });
+        let max = ui_state.tool_chest_max_recents.clamp(1, 32);
+        let expanded = recent_expanded();
+        let visible = visible_recent_count(ui_state.recent_tools.len(), max, expanded);
+        let recents: Vec<StylePreset> =
+            ui_state.recent_tools.iter().take(visible).cloned().collect();
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .max_height(160.0)
+            .show(ui, |ui| {
+                for preset in &recents {
+                    project_mutated |= draw_recent_row(ui, project, ui_state, preset);
+                }
+            });
+        if ui_state.recent_tools.len() > visible {
+            let more = ui_state.recent_tools.len() - visible;
+            if ui
+                .add_sized(
+                    egui::vec2(120.0, 24.0),
+                    egui::Button::new(format!("⋯ {more} more")),
+                )
+                .clicked()
+            {
+                set_recent_expanded(true);
+            }
+        } else if expanded && ui_state.recent_tools.len() > 4 {
+            if ui
+                .add_sized(egui::vec2(100.0, 24.0), egui::Button::new("Show less"))
+                .clicked()
+            {
+                set_recent_expanded(false);
+            }
+        }
+        ui.separator();
+    }
 
     if library.is_empty() {
         ui.label("No saved styles yet.");
@@ -456,6 +527,190 @@ fn single_selected_id(ui_state: &UiState) -> Option<Uuid> {
     let mut ids = ui_state.selected.iter();
     let id = *ids.next()?;
     ids.next().is_none().then_some(id)
+}
+
+/// Number of recent entries visible given the current expanded state.
+pub(crate) fn visible_recent_count(len: usize, max: usize, expanded: bool) -> usize {
+    let max = max.clamp(1, 32);
+    if expanded {
+        len.min(max)
+    } else {
+        len.min(4).min(max)
+    }
+}
+
+/// Auto-record a placed markup as a Recent Tool (gap #3). Builds a capturing
+/// preset via `StylePreset::from_markup`, dedupes against the front of the
+/// list (same name+kind+geometry signature moves to front), inserts at front
+/// and truncates to the configured max. Session-only state.
+pub(crate) fn record_recent(_project: &mut Project, ui_state: &mut UiState, m: &Markup) {
+    let name = m.kind.label().to_string();
+    let preset = StylePreset::from_markup(m, name);
+    let signature = recent_signature(&preset);
+    if let Some(pos) = ui_state
+        .recent_tools
+        .iter()
+        .position(|p| recent_signature(p) == signature)
+    {
+        let item = ui_state.recent_tools.remove(pos);
+        ui_state.recent_tools.insert(0, item);
+    } else {
+        ui_state.recent_tools.insert(0, preset);
+    }
+    let max = ui_state.tool_chest_max_recents.clamp(1, 32);
+    ui_state.recent_tools.truncate(max);
+}
+
+fn recent_signature(p: &StylePreset) -> (String, MarkupKind, Option<String>) {
+    // Geometry debug string as a cheap equality key alongside name+kind.
+    (
+        p.name.clone(),
+        p.kind,
+        p.geometry.as_ref().map(|g| format!("{g:?}")),
+    )
+}
+
+/// One recent-tool row: arms/disarms and toggles Drawing/Style mode exactly
+/// like a saved preset row, but lives in the session-only recents list.
+fn draw_recent_row(ui: &mut Ui, project: &mut Project, ui_state: &mut UiState, preset: &StylePreset) -> bool {
+    let mut project_mutated = false;
+    let is_armed = ui_state
+        .pending_style_preset
+        .as_ref()
+        .is_some_and(|p| p.id == preset.id);
+    let has_selection = !ui_state.selected.is_empty();
+
+    ui.horizontal(|ui| {
+        draw_swatch(ui, preset.style.stroke);
+        let name_resp = ui
+            .selectable_label(is_armed, preset.name.as_str())
+            .on_hover_text(format!("{} style", preset.kind.label()));
+        if name_resp.clicked() {
+            set_armed(ui_state, preset, is_armed);
+        }
+        if name_resp.double_clicked() && preset.can_draw() {
+            let new_mode = !drawing_mode_for(preset);
+            set_drawing_mode(preset.id, new_mode);
+            let is_armed_now = ui_state
+                .pending_style_preset
+                .as_ref()
+                .is_some_and(|p| p.id == preset.id);
+            if is_armed_now {
+                set_armed(ui_state, preset, false);
+            }
+            ui_state.status = format!(
+                "'{}' mode: {}",
+                preset.name,
+                if new_mode { "Drawing" } else { "Style" }
+            );
+        }
+        if preset.can_draw() {
+            let mode = if drawing_mode_for(preset) {
+                "Draw"
+            } else {
+                "Style"
+            };
+            ui.small(mode);
+        }
+        let apply_label = if is_armed { "Stop" } else { "Apply" };
+        if ui
+            .add_sized(egui::vec2(42.0, 24.0), egui::Button::new(apply_label))
+            .clicked()
+        {
+            set_armed(ui_state, preset, is_armed);
+        }
+        if has_selection
+            && ui
+                .add_sized(
+                    egui::vec2(88.0, 24.0),
+                    egui::Button::new("Apply to Selection"),
+                )
+                .clicked()
+        {
+            project_mutated = apply_preset_to_selection(project, ui_state, preset);
+        }
+    });
+    project_mutated
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::{Markup, MarkupGeometry, MarkupKind};
+    use crate::domain::geom::Rect;
+    use crate::ui::app::UiState;
+
+    fn sample_markup() -> Markup {
+        Markup::new(
+            0,
+            MarkupKind::Rectangle,
+            MarkupGeometry::Bounds(Rect::new(10.0, 20.0, 30.0, 40.0)),
+            "Alice",
+        )
+    }
+
+    #[test]
+    fn record_inserts_at_front() {
+        let mut project = crate::domain::Project::new("t");
+        let mut ui_state = UiState::default();
+        ui_state.tool_chest_max_recents = 8;
+        let m = sample_markup();
+        record_recent(&mut project, &mut ui_state, &m);
+        assert_eq!(ui_state.recent_tools.len(), 1);
+        // second distinct markup (different geometry) inserts at front
+        let mut m2 = sample_markup();
+        m2.geometry = MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 5.0, 5.0));
+        record_recent(&mut project, &mut ui_state, &m2);
+        assert_eq!(ui_state.recent_tools.len(), 2);
+        assert_eq!(ui_state.recent_tools[0].kind, MarkupKind::Rectangle);
+    }
+
+    #[test]
+    fn record_dedupe_moves_to_front() {
+        let mut project = crate::domain::Project::new("t");
+        let mut ui_state = UiState::default();
+        ui_state.tool_chest_max_recents = 8;
+        let m = sample_markup();
+        record_recent(&mut project, &mut ui_state, &m);
+        let mut m2 = sample_markup();
+        m2.geometry = MarkupGeometry::Bounds(Rect::new(0.0, 0.0, 5.0, 5.0));
+        record_recent(&mut project, &mut ui_state, &m2);
+        // re-record original moves it to front
+        record_recent(&mut project, &mut ui_state, &m);
+        assert_eq!(ui_state.recent_tools.len(), 2);
+    }
+
+    #[test]
+    fn record_truncates_at_max() {
+        let mut project = crate::domain::Project::new("t");
+        let mut ui_state = UiState::default();
+        ui_state.tool_chest_max_recents = 2;
+        for i in 0..5 {
+            let mut m = sample_markup();
+            m.geometry = MarkupGeometry::Bounds(Rect::new(i as f64, 0.0, 1.0, 1.0));
+            record_recent(&mut project, &mut ui_state, &m);
+        }
+        assert_eq!(ui_state.recent_tools.len(), 2);
+    }
+
+    #[test]
+    fn clear_empties() {
+        let mut project = crate::domain::Project::new("t");
+        let mut ui_state = UiState::default();
+        ui_state.tool_chest_max_recents = 8;
+        let m = sample_markup();
+        record_recent(&mut project, &mut ui_state, &m);
+        ui_state.recent_tools.clear();
+        assert!(ui_state.recent_tools.is_empty());
+    }
+
+    #[test]
+    fn visible_recent_count_logic() {
+        assert_eq!(visible_recent_count(10, 8, false), 4);
+        assert_eq!(visible_recent_count(10, 8, true), 8);
+        assert_eq!(visible_recent_count(3, 8, false), 3);
+        assert_eq!(visible_recent_count(3, 2, true), 2);
+    }
 }
 
 /// Small filled colour square previewing a preset's stroke colour.

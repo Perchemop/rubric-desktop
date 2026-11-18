@@ -93,6 +93,14 @@ pub struct AppPrefs {
     /// Display unit used for new measurements (gap #8: app default).
     #[serde(default)]
     pub default_measure_unit: MeasureUnit,
+    /// Maximum number of entries kept in the Tool Chest "Recent" list
+    /// (gap #3: Recent Tools). Session-temporary list; the cap is persisted.
+    #[serde(default = "default_max_recents")]
+    pub tool_chest_max_recents: usize,
+}
+
+fn default_max_recents() -> usize {
+    8
 }
 
 fn default_true() -> bool {
@@ -119,6 +127,7 @@ impl Default for AppPrefs {
             high_contrast: false,
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::default(),
+            tool_chest_max_recents: default_max_recents(),
         }
     }
 }
@@ -174,6 +183,7 @@ mod tests {
             high_contrast: true,
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::Inch,
+            tool_chest_max_recents: 12,
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
