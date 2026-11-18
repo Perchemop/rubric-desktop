@@ -543,7 +543,7 @@ pub(crate) fn visible_recent_count(len: usize, max: usize, expanded: bool) -> us
 /// preset via `StylePreset::from_markup`, dedupes against the front of the
 /// list (same name+kind+geometry signature moves to front), inserts at front
 /// and truncates to the configured max. Session-only state.
-pub(crate) fn record_recent(_project: &mut Project, ui_state: &mut UiState, m: &Markup) {
+pub(crate) fn record_recent(ui_state: &mut UiState, m: &Markup) {
     let name = m.kind.label().to_string();
     let preset = StylePreset::from_markup(m, name);
     let signature = recent_signature(&preset);
@@ -687,7 +687,7 @@ mod tests {
         ui_state.tool_chest_max_recents = 2;
         for i in 0..5 {
             let mut m = sample_markup();
-            m.geometry = MarkupGeometry::Bounds(Rect::new(i as f64, 0.0, 1.0, 1.0));
+            m.geometry = MarkupGeometry::Bounds(Rect::new(i as f32, 0.0, 1.0, 1.0));
             record_recent(&mut project, &mut ui_state, &m);
         }
         assert_eq!(ui_state.recent_tools.len(), 2);

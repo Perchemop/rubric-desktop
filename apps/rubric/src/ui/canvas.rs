@@ -1961,7 +1961,7 @@ pub(crate) fn draw_canvas(
                         m.status = preset.status;
                         let m = finish_markup(m, ui_state);
                         if let Some(doc) = project.active_mut() {
-                            crate::ui::tool_chest::record_recent(project, ui_state, &m);
+                            crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                         }
                         ui_state.status = format!("Placed '{}'", preset.name);
@@ -1988,7 +1988,7 @@ pub(crate) fn draw_canvas(
                                 ui_state,
                             );
                             if let Some(doc) = project.active_mut() {
-                                crate::ui::tool_chest::record_recent(project, ui_state, &m);
+                                crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                             }
                             ui_state.status = format!("Added {}", kind.label());
@@ -2036,7 +2036,7 @@ pub(crate) fn draw_canvas(
                                     ui_state,
                                 );
                                 if let Some(doc) = project.active_mut() {
-                                    crate::ui::tool_chest::record_recent(project, ui_state, &m);
+                                    crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                                 }
                                 ui_state.status = format!("Added {}", kind.label());
@@ -2127,7 +2127,7 @@ pub(crate) fn draw_canvas(
                     let new_id = m.id;
                     let is_text = matches!(kind, MarkupKind::Text | MarkupKind::Callout);
                     if let Some(doc) = project.active_mut() {
-                        crate::ui::tool_chest::record_recent(project, ui_state, &m);
+                        crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                     }
                     ui_state.status = format!("Added {}", kind.label());
@@ -2222,7 +2222,7 @@ pub(crate) fn draw_canvas(
                     };
                     let m = finish_markup(Markup::new(page.index, *kind, geom, author), ui_state);
                     if let Some(doc) = project.active_mut() {
-                        crate::ui::tool_chest::record_recent(project, ui_state, &m);
+                        crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                     }
                     ui_state.status = format!("Added {}", kind.label());
@@ -2249,7 +2249,7 @@ pub(crate) fn draw_canvas(
                         let m =
                             finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
                         if let Some(doc) = project.active_mut() {
-                            crate::ui::tool_chest::record_recent(project, ui_state, &m);
+                            crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                         }
                         ui_state.status = format!("Added {}", kind.label());
@@ -2288,7 +2288,7 @@ pub(crate) fn draw_canvas(
                     };
                     let m = finish_markup(Markup::new(page.index, *kind, geom, author), ui_state);
                     if let Some(doc) = project.active_mut() {
-                        crate::ui::tool_chest::record_recent(project, ui_state, &m);
+                        crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                     }
                     ui_state.status = format!("Added {}", kind.label());
@@ -2314,7 +2314,7 @@ pub(crate) fn draw_canvas(
                         let m =
                             finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
                         if let Some(doc) = project.active_mut() {
-                            crate::ui::tool_chest::record_recent(project, ui_state, &m);
+                            crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                         }
                         ui_state.status = format!("Added {}", kind.label());
@@ -2508,7 +2508,7 @@ pub(crate) fn draw_canvas(
                             let new_id = m.id;
                             let is_text = matches!(kind, MarkupKind::Text | MarkupKind::Callout);
                             if let Some(doc) = project.active_mut() {
-                                crate::ui::tool_chest::record_recent(project, ui_state, &m);
+                                crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                             }
                             ui_state.status = format!("Added {}", kind.label());
@@ -2539,7 +2539,7 @@ pub(crate) fn draw_canvas(
                                 ui_state,
                             );
                             if let Some(doc) = project.active_mut() {
-                                crate::ui::tool_chest::record_recent(project, ui_state, &m);
+                                crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                             }
                             ui_state.status = format!("Added {}", kind.label());
@@ -2567,7 +2567,7 @@ pub(crate) fn draw_canvas(
                         let m =
                             finish_markup(Markup::new(page.index, kind, geom, author), ui_state);
                         if let Some(doc) = project.active_mut() {
-                            crate::ui::tool_chest::record_recent(project, ui_state, &m);
+                            crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                         }
                         ui_state.status = format!("Added {}", kind.label());
@@ -2587,7 +2587,7 @@ pub(crate) fn draw_canvas(
                                 ui_state,
                             );
                             if let Some(doc) = project.active_mut() {
-                                crate::ui::tool_chest::record_recent(project, ui_state, &m);
+                                crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                             }
                             ui_state.status = "Added Ink".to_string();
