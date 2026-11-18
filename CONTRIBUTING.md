@@ -68,6 +68,9 @@ requires a token to be embedded in the app. See the privacy note in `README.md`.
 - How decisions are made: `GOVERNANCE.md`; what the product is for:
   `VISION.md`.
 - Every merged contribution is credited in `CONTRIBUTORS.md`.
+- Human contributors who consent to being shown in the app are listed in
+  `contributors/people.toml` (guide §24.2); AI models are credited separately
+  under About ▸ Models.
 
 ## What to expect
 

@@ -1,0 +1,16 @@
+# Minimal gitleaks configuration (guide §23).
+# Default rules are extended, not replaced: this only suppresses gitleaks
+# findings in paths where research text and lockfiles legitimately contain
+# URL- or hash-like strings. Allowlisted paths are still scanned by the
+# personal-data scan (guide II.29) — this is not a personal-data exemption.
+
+title = "gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+paths = [
+  "docs/research/.*",
+  "Cargo.lock",
+]
