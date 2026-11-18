@@ -1661,9 +1661,10 @@ mod tests {
             "insert_blank_page with extreme after should append at end"
         );
         assert_eq!(doc.page_count(), 3, "should have 3 pages after insertion");
+    }
 
-     #[test]
-     fn apply_scale_to_all_pages_updates_every_page_and_recomputes_measures() {
+    #[test]
+    fn apply_scale_to_all_pages_updates_every_page_and_recomputes_measures() {
          use crate::domain::{Markup, MarkupGeometry, MarkupKind, Pt};
          let mut doc = Document::empty("t");
          doc.pages.push(Page::a4(1));
