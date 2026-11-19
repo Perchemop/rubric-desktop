@@ -55,6 +55,29 @@ thread_local! {
     static RECENT_EXPANDED: std::cell::RefCell<bool> = const { std::cell::RefCell::new(false) };
 }
 
+thread_local! {
+    static SET_FILTER: std::cell::RefCell<Option<Uuid>> = const { std::cell::RefCell::new(None) };
+}
+
+fn set_filter() -> Option<Uuid> {
+    SET_FILTER.with(|c| *c.borrow())
+}
+
+fn set_set_filter(v: Option<Uuid>) {
+    SET_FILTER.with(|c| *c.borrow_mut() = v);
+}
+
+thread_local! {
+    static RENAME_SET: std::cell::RefCell<Option<(Uuid, String)>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+fn persist_library(library: &StylePresetLibrary) {
+    let mut prefs = crate::data::load_prefs();
+    prefs.tool_chest_library = library.clone();
+    let _ = crate::data::save_prefs(&prefs);
+}
+
 fn recent_expanded() -> bool {
     RECENT_EXPANDED.with(|c| *c.borrow())
 }
@@ -163,6 +186,142 @@ pub(crate) fn draw_tool_chest(
         ui.separator();
     }
 
+    // Set filter dropdown + management.
+    let sets = library.sets.clone();
+    ui.horizontal(|ui| {
+        let current = set_filter();
+        let label = current
+            .and_then(|id| sets.iter().find(|s| s.id == id).map(|s| s.name.clone()))
+            .unwrap_or_else(|| "All presets".to_string());
+        let set_filter_resp = egui::ComboBox::from_id_salt("tool_set_filter")
+            .selected_text(label)
+            .show_ui(ui, |ui| {
+                if ui
+                    .selectable_label(current.is_none(), "All presets")
+                    .clicked()
+                {
+                    set_set_filter(None);
+                }
+                for s in &sets {
+                    if ui
+                        .selectable_label(current == Some(s.id), s.name.as_str())
+                        .clicked()
+                    {
+                        set_set_filter(Some(s.id));
+                    }
+                }
+            });
+        set_filter_resp.response.widget_info(|| {
+            egui::WidgetInfo::labeled(
+                egui::Role::ComboBox,
+                set_filter_resp.response.enabled(),
+                "Tool set filter".to_owned(),
+            )
+        });
+        if ui.small_button("New set").clicked() {
+            let created = library.create_set("New set");
+            let id = created.id;
+            RENAME_SET.with(|c| *c.borrow_mut() = Some((id, "New set".to_string())));
+            set_set_filter(Some(id));
+            persist_library(library);
+        }
+        if let Some(id) = current {
+            if ui.small_button("Rename").clicked() {
+                if let Some(s) = library.sets.iter().find(|s| s.id == id) {
+                    RENAME_SET.with(|c| *c.borrow_mut() = Some((id, s.name.clone())));
+                }
+            }
+            if ui.small_button("Delete").clicked() {
+                library.delete_set(id);
+                set_set_filter(None);
+                persist_library(library);
+            }
+            let non_empty = library
+                .sets
+                .iter()
+                .find(|s| s.id == id)
+                .map(|s| !s.preset_ids.is_empty())
+                .unwrap_or(false);
+            if non_empty && ui.small_button("Export set…").clicked() {
+                if let Ok(json) = crate::domain::style_preset::export_set_json(library, id) {
+                    if let Some(path) = rfd::FileDialog::new()
+                        .add_filter("Rubric tools", &["rubric-tools.json"])
+                        .set_file_name(
+                            library
+                                .sets
+                                .iter()
+                                .find(|s| s.id == id)
+                                .map(|s| format!("{}.rubric-tools.json", s.name))
+                                .unwrap_or_else(|| "set.rubric-tools.json".to_string()),
+                        )
+                        .save_file()
+                    {
+                        let tmp = path.with_extension("tmp");
+                        if std::fs::write(&tmp, json.as_bytes()).is_ok()
+                            && std::fs::rename(&tmp, &path).is_ok()
+                        {
+                            ui_state.status = format!("Exported set to {}", path.display());
+                        } else {
+                            ui_state.status = "Export failed".to_string();
+                        }
+                    }
+                }
+            }
+        }
+        if ui.small_button("Import set…").clicked() {
+            if let Some(path) = rfd::FileDialog::new()
+                .add_filter("Rubric tools", &["rubric-tools.json"])
+                .pick_file()
+            {
+                if let Ok(text) = std::fs::read_to_string(&path) {
+                    match crate::domain::style_preset::import_set_json(library, &text) {
+                        Ok(n) => {
+                            ui_state.status = format!("Imported {n} style(s)");
+                            persist_library(library);
+                        }
+                        Err(e) => ui_state.status = format!("Import failed: {e}"),
+                    }
+                }
+            }
+        }
+    });
+
+    // Inline rename editor for a set.
+    let rename_draft = RENAME_SET.with(|c| c.borrow().clone());
+    if let Some((id, draft)) = rename_draft {
+        ui.horizontal(|ui| {
+            let mut d = draft.clone();
+            ui.add(egui::TextEdit::singleline(&mut d).desired_width(120.0));
+            if ui.button("Save").clicked() {
+                if library.rename_set(id, d.clone()) {
+                    ui_state.status = "Set renamed".to_string();
+                    persist_library(library);
+                } else {
+                    ui_state.status = "Set name empty or duplicate".to_string();
+                }
+                RENAME_SET.with(|c| *c.borrow_mut() = None);
+            }
+            if ui.button("Cancel").clicked() {
+                RENAME_SET.with(|c| *c.borrow_mut() = None);
+            }
+            // update draft
+            RENAME_SET.with(|c| {
+                if let Some((_, dd)) = c.borrow_mut().as_mut() {
+                    *dd = d;
+                }
+            });
+        });
+    }
+
+    let current_filter = set_filter();
+    let filtered_ids: Option<Vec<Uuid>> = current_filter.and_then(|id| {
+        library
+            .sets
+            .iter()
+            .find(|s| s.id == id)
+            .map(|s| s.preset_ids.clone())
+    });
+
     if library.is_empty() {
         ui.label("No saved styles yet.");
         ui.label(
@@ -171,25 +330,50 @@ pub(crate) fn draw_tool_chest(
                 .color(egui::Color32::from_gray(120)),
         );
     } else {
-        ui.label(
-            egui::RichText::new(format!(
-                "{} of {} saved styles",
-                library.len(),
-                StylePresetLibrary::MAX_PRESETS
-            ))
-            .font(TEXT_CAPTION)
-            .color(egui::Color32::from_gray(120)),
-        );
+        let visible: Vec<StylePreset> = library
+            .iter()
+            .filter(|p| match &filtered_ids {
+                Some(ids) => ids.contains(&p.id),
+                None => true,
+            })
+            .cloned()
+            .collect();
+        if visible.is_empty() {
+            ui.label("No presets in this set yet — add from the ⋯ menu on any row");
+        } else {
+            ui.label(
+                egui::RichText::new(format!(
+                    "{} of {} saved styles",
+                    library.len(),
+                    StylePresetLibrary::MAX_PRESETS
+                ))
+                .font(TEXT_CAPTION)
+                .color(egui::Color32::from_gray(120)),
+            );
+        }
         ui.separator();
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                // Clone the rows up front so rename/delete can mutate the
-                // library while the list is being drawn (the library is
-                // capped at 64 presets, so the copy is cheap).
-                let presets: Vec<StylePreset> = library.iter().cloned().collect();
-                for preset in &presets {
-                    project_mutated |= draw_preset_row(ui, library, project, ui_state, preset);
+                for preset in &visible {
+                    // Add-to-set submenu on each row.
+                    ui.horizontal(|ui| {
+                        project_mutated |= draw_preset_row(ui, library, project, ui_state, preset);
+                        ui.menu_button("⋯", |ui| {
+                            for s in &sets {
+                                if ui.button(format!("Add to {}", s.name)).clicked() {
+                                    library.add_to_set(s.id, preset.id);
+                                    persist_library(library);
+                                }
+                            }
+                            if ui.button("Remove from set").clicked() {
+                                if let Some(sid) = library.set_of(preset.id) {
+                                    library.remove_from_set(sid, preset.id);
+                                    persist_library(library);
+                                }
+                            }
+                        });
+                    });
                 }
             });
     }
@@ -304,6 +488,7 @@ fn draw_preset_row(
             .clicked()
         {
             library.remove(preset.id);
+            persist_library(library);
             if is_armed {
                 ui_state.pending_style_preset = None;
             }
@@ -352,6 +537,7 @@ fn draw_rename_editor(
                 {
                     armed.name = new_name.clone();
                 }
+                persist_library(library);
                 ui_state.status = format!("Style renamed to '{new_name}'");
                 close = true;
             } else {
@@ -436,6 +622,7 @@ fn save_current_tool(
     let author = project.settings.author.clone();
     let style = kind.default_style();
     library.save_named(StylePreset::from_style(name, kind, style, author));
+    persist_library(library);
     ui_state.tool_chest_save_name.clear();
     ui_state.status = format!("Style '{name}' saved");
 }
@@ -459,6 +646,7 @@ fn save_selected_markup(
         .map(|m| StylePreset::from_markup(m, name));
     if let Some(preset) = captured {
         library.save_named(preset);
+        persist_library(library);
         ui_state.tool_chest_save_name.clear();
         ui_state.status = format!("Style '{name}' saved");
     }

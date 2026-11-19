@@ -2,7 +2,8 @@
 
 use eframe::egui::{Align, Layout, Ui};
 
-use crate::domain::{MarkupKind, Tool, ToolGroup, ToolSet};
+use crate::domain::project::ToolSet;
+use crate::domain::{MarkupKind, Tool, ToolGroup};
 use crate::ui::icon_button::{
     draw_arrow_icon, draw_calibrate_icon, draw_callout_icon, draw_cloud_icon, draw_ellipse_icon,
     draw_highlight_icon, draw_ink_icon, draw_length_icon, draw_line_icon, draw_measure_angle_icon,

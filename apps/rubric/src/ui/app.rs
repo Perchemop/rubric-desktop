@@ -733,6 +733,37 @@ impl RubricApp {
         self.history.current_mut().active_mut()
     }
 
+    pub(crate) fn switch_active_document(&mut self, doc_id: Uuid) {
+        if self.history.current_mut().set_active_document(doc_id) {
+            self.ui.current_page = 0;
+            self.clear_selection();
+            self.ui.text_edit = None;
+        }
+    }
+
+    pub(crate) fn add_new_document(&mut self) {
+        let doc = Document::empty("Untitled Document");
+        self.history.current_mut().add_document(doc);
+        self.ui.current_page = 0;
+        self.clear_selection();
+        self.ui.text_edit = None;
+        self.ui.dirty = true;
+    }
+
+    pub(crate) fn close_document_tab(&mut self, doc_id: Uuid) {
+        if self.ui.dirty {
+            self.ui.status = "Close blocked: unsaved changes - save first".to_string();
+            self.ui.status_kind = StatusKind::Warning;
+            return;
+        }
+        if self.history.current_mut().close_document(doc_id) {
+            self.ui.current_page = 0;
+            self.clear_selection();
+            self.ui.text_edit = None;
+            self.ui.dirty = true;
+        }
+    }
+
     fn clear_selection(&mut self) {
         // Selection is session state, not project data: clearing it must not
         // mark the project dirty or trigger an autosave of unchanged content.
@@ -2309,6 +2340,17 @@ impl RubricApp {
                     self.ui.status = "Finish or cancel text edit first".to_string();
                 } else {
                     self.duplicate_selected();
+                }
+            }
+            if i.modifiers.command && i.key_pressed(egui::Key::Tab) && !wants_kb {
+                let project = self.history.current();
+                let n = project.documents.len();
+                if n > 1 {
+                    let cur = project.active_document;
+                    let next = (cur + 1) % n;
+                    if let Some(id) = project.documents.get(next).map(|d| d.id) {
+                        self.switch_active_document(id);
+                    }
                 }
             }
             if i.key_pressed(egui::Key::PageUp) && !wants_kb {
