@@ -354,16 +354,14 @@ pub(crate) fn draw_tool_chest(
                                 if ui.button(format!("Add to {}", s.name)).clicked() {
                                     library.add_to_set(s.id, preset.id);
                                     persist_library(library);
-                                    ui.close_menu();
-                                }
+                                                                    }
                             }
                             if ui.button("Remove from set").clicked() {
                                 if let Some(sid) = library.set_of(preset.id) {
                                     library.remove_from_set(sid, preset.id);
                                     persist_library(library);
                                 }
-                                ui.close_menu();
-                            }
+                                                            }
                         });
                     });
                 }

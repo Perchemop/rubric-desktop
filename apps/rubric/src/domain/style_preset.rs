@@ -409,7 +409,7 @@ pub fn import_set_json(lib: &mut StylePresetLibrary, json: &str) -> Result<usize
         set_name = format!("{set_name} (imported)");
     }
     let mut new_ids = Vec::new();
-    for mut p in parsed.presets {
+    for mut p in parsed.presets.clone() {
         p.id = Uuid::new_v4();
         if lib.find_by_name(&p.name).is_some() {
             p.name = format!("{} (imported)", p.name);
