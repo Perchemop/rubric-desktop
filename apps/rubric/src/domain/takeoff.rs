@@ -5,6 +5,7 @@
 //! Conditions group measurements (lengths, areas, perimeters, wall surfaces, counts)
 //! for a quantity schedule that can be exported as CSV.
 
+use thiserror::Error;
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -66,7 +67,7 @@ impl ConditionKind {
 ///
 /// `height` is `Some(>0.0)` only for `WallSurface` kinds; it is `None` for all other kinds.
 /// The colour is used for the panel swatch and the tint applied to assigned markups.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub struct TakeoffCondition {
     pub id: Uuid,
     pub name: String,
@@ -83,7 +84,22 @@ pub struct TakeoffCondition {
 ///
 /// The `conditions` field defaults to an empty vector, so legacy `.rubric.json`
 /// files that omit the takeoff section load with no conditions (roundtrip invariant).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Errors raised by takeoff condition operations.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum TakeoffError {
+    #[error("condition name cannot be empty")]
+    EmptyName,
+    #[error("a condition with that name already exists (case-insensitive)")]
+    DuplicateName,
+    #[error("no condition found with id {0}")]
+    NotFound(uuid::Uuid),
+    #[error("measure kind does not match condition kind")]
+    MeasureMismatch,
+    #[error("condition cap (128) reached")]
+    CapReached,
+}
+
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub struct TakeoffSettings {
     #[serde(default)]
     pub conditions: Vec<TakeoffCondition>,

@@ -596,6 +596,7 @@ impl Project {
         self.touch();
         unassigned
     }
+    takeoff: TakeoffSettings::default(),
 }
 
 /// The current drawing tool selected in the UI.
@@ -1024,6 +1025,7 @@ impl History {
     pub fn clear(&mut self, initial: Project) {
         *self = History::new(initial);
     }
+        takeoff: TakeoffSettings::default(),
 }
 
 #[cfg(test)]

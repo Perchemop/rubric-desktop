@@ -727,6 +727,7 @@ impl Markup {
             true
         }
     }
+    condition_id: None,
 }
 
 /// How many [`MarkupKind::MeasureCount`] markers lie on `page`.
@@ -1841,4 +1842,5 @@ mod tests {
             "moving an angle leg must change the measured angle"
         );
     }
+        condition_id: None,
 }

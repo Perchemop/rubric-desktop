@@ -37,6 +37,7 @@ pub fn load_prefs() -> AppPrefs {
         Some(p) => load_prefs_from(p),
         None => AppPrefs::default(),
     }
+    workspace: crate::domain::workspace::WorkspaceState::default(),
 }
 
 /// Persist the application preferences to the app config file.

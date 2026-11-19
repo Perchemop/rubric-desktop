@@ -63,7 +63,7 @@ pub struct SplitState {
 /// and canvas split configuration.
 ///
 /// Serialised into `AppPrefs.workspace` so the layout survives restarts.
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorkspaceState {
     /// Which panels are currently open.  Default does not include `Quantities`
     /// (it lands with the takeoff feature).

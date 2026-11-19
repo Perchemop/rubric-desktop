@@ -459,6 +459,7 @@ pub struct RubricApp {
     /// switches because it is stateless across documents.
     pub(crate) render_worker: Option<crate::data::render_worker::RenderWorker>,
     /// Repository used for issue URLs and release checks.
+    pub(crate) repo: String,
     /// The persisted workspace layout (docking/split state) loaded from prefs.
     /// Updated only when a workspace editor writes it in a later slice.
     pub(crate) persisted_workspace: crate::domain::workspace::WorkspaceState,
