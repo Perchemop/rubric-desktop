@@ -44,12 +44,12 @@ pub use markup_measurement::Measurement;
 pub use markup_stamp::StampPreset;
 pub use project::{
     auto_save_interval_label, History, Project, ProjectSnapshot, RecentList, Settings, Tool,
-    ToolSet, AUTO_SAVE_INTERVALS, CURRENT_SCHEMA_VERSION, MAX_RECENT, MIN_AUTO_SAVE_INTERVAL_SECS,
+    PresetSet, AUTO_SAVE_INTERVALS, CURRENT_SCHEMA_VERSION, MAX_RECENT, MIN_AUTO_SAVE_INTERVAL_SECS,
 };
 pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCounts, NONE_LABEL};
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
 pub use style_preset::{
-    export_set_json, import_set_json, StylePreset, StylePresetLibrary, ToolSet, ToolSetExport,
+    export_set_json, import_set_json, StylePreset, StylePresetLibrary, PresetSet, ToolSetExport,
 };
 pub use text_anchor::{GlyphBox, GlyphLine, GlyphRange};
 pub use theme::{AppPrefs, Theme};

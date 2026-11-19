@@ -170,7 +170,7 @@ impl StylePreset {
 /// A named grouping of presets ("tool set"). A preset belongs to at most one
 /// set; deleting a set leaves its presets in the library.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ToolSet {
+pub struct PresetSet {
     pub id: Uuid,
     pub name: String,
     #[serde(default)]
@@ -181,12 +181,12 @@ pub struct ToolSet {
 ///
 /// The library keeps at most 64 presets. Adding a preset with an existing id
 /// moves it to the back (upsert dedupe); when full the oldest preset is
-/// dropped. Presets may be grouped into named [`ToolSet`]s (gap #7).
+/// dropped. Presets may be grouped into named [`PresetSet`]s (gap #7).
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct StylePresetLibrary {
     pub presets: Vec<StylePreset>,
     #[serde(default)]
-    pub sets: Vec<ToolSet>,
+    pub sets: Vec<PresetSet>,
 }
 
 impl StylePresetLibrary {
@@ -275,8 +275,8 @@ impl StylePresetLibrary {
     }
 
     /// Create a new named set. Returns a reference to it.
-    pub fn create_set(&mut self, name: impl Into<String>) -> &ToolSet {
-        let set = ToolSet {
+    pub fn create_set(&mut self, name: impl Into<String>) -> &PresetSet {
+        let set = PresetSet {
             id: Uuid::new_v4(),
             name: name.into(),
             preset_ids: Vec::new(),
@@ -354,7 +354,7 @@ impl StylePresetLibrary {
     }
 
     /// Sets paired with their member counts, for UI display.
-    pub fn sets_with_counts(&self) -> Vec<(ToolSet, usize)> {
+    pub fn sets_with_counts(&self) -> Vec<(PresetSet, usize)> {
         self.sets
             .iter()
             .map(|s| (s.clone(), s.preset_ids.len()))
@@ -418,7 +418,7 @@ pub fn import_set_json(lib: &mut StylePresetLibrary, json: &str) -> Result<usize
         lib.add(p);
         new_ids.push(id);
     }
-    lib.sets.push(ToolSet {
+    lib.sets.push(PresetSet {
         id: Uuid::new_v4(),
         name: set_name,
         preset_ids: new_ids,
