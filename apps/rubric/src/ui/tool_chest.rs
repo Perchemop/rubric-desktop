@@ -193,9 +193,8 @@ pub(crate) fn draw_tool_chest(
         let label = current
             .and_then(|id| sets.iter().find(|s| s.id == id).map(|s| s.name.clone()))
             .unwrap_or_else(|| "All presets".to_string());
-        egui::ComboBox::from_id_salt("tool_set_filter")
+        let set_filter_resp = egui::ComboBox::from_id_salt("tool_set_filter")
             .selected_text(label)
-            .label("Tool set filter")
             .show_ui(ui, |ui| {
                 if ui
                     .selectable_label(current.is_none(), "All presets")
@@ -212,6 +211,14 @@ pub(crate) fn draw_tool_chest(
                     }
                 }
             });
+        set_filter_resp.response.widget_info(|| {
+            egui::WidgetInfo::labeled(
+                egui::Role::ComboBox,
+                set_filter_resp.response.enabled(),
+                "Tool set filter".to_owned(),
+            )
+        });
+                });
         if ui.small_button("New set").clicked() {
             let created = library.create_set("New set");
             let id = created.id;
