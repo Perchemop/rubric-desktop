@@ -199,7 +199,7 @@ mod tests {
     fn prefs_without_workspace_defaults_to_default_workspace() {
         // Legacy prefs that omit the `workspace` key should fall back to
         // `WorkspaceState::default()` via `#[serde(default)]`.
-        let json = r#"{}#";
+        let json = r#"{}"#;
         let prefs: AppPrefs = serde_json::from_str(json).expect("deserialize");
         assert_eq!(prefs.workspace, WorkspaceState::default());
     }
