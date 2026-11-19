@@ -340,6 +340,8 @@ pub struct Markup {
     #[serde(default)]
     pub comments: Vec<Comment>,
     #[serde(default)]
+    pub condition_id: Option<Uuid>,
+    #[serde(default)]
     pub measurement: Option<Measurement>,
     /// Built-in stamp preset drawn inside the stamp bounds (spec F-111).
     ///

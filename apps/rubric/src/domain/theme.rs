@@ -97,6 +97,11 @@ pub struct AppPrefs {
     /// (gap #3: Recent Tools). Session-temporary list; the cap is persisted.
     #[serde(default = "default_max_recents")]
     pub tool_chest_max_recents: usize,
+    /// Persisted workspace state — dock regions, floating panels, split view.
+    /// `#[serde(default)]` ensures legacy preference files that omit this key
+    /// load unchanged; the default layout matches `WorkspaceState::default()`.
+    #[serde(default)]
+    pub workspace: WorkspaceState,
 }
 
 fn default_max_recents() -> usize {
@@ -184,6 +189,39 @@ mod tests {
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::Inch,
             tool_chest_max_recents: 12,
+        };
+        let json = serde_json::to_string_pretty(&prefs).expect("serialize");
+        let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, prefs);
+    }
+
+    #[test]
+    fn prefs_without_workspace_defaults_to_default_workspace() {
+        // Legacy prefs that omit the `workspace` key should fall back to
+        // `WorkspaceState::default()` via `#[serde(default)]`.
+        let json = r#"{}#";
+        let prefs: AppPrefs = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(prefs.workspace, WorkspaceState::default());
+    }
+
+    #[test]
+    fn prefs_roundtrip_with_workspace() {
+        let prefs = AppPrefs {
+            theme: Theme::Light,
+            show_markups_list: true,
+            show_tool_chest: true,
+            show_pages: true,
+            zoom: 1.0,
+            current_page: 0,
+            tool_chest_library: StylePresetLibrary::new(),
+            ui_scale: 1.0,
+            focus_mode: false,
+            show_minimap: false,
+            high_contrast: false,
+            default_styles: DefaultStyles::default(),
+            default_measure_unit: MeasureUnit::Point,
+            tool_chest_max_recents: 8,
+            workspace: WorkspaceState::default(),
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
