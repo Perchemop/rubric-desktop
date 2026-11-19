@@ -429,7 +429,7 @@ pub fn import_set_json(lib: &mut StylePresetLibrary, json: &str) -> Result<usize
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::geom::{Pt, Rect};
+    use crate::domain::geom::Rect;
     use crate::domain::markup::{Markup, MarkupGeometry, MarkupKind};
     use crate::domain::style::{palette, MarkupStyle};
 
