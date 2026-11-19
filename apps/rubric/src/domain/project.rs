@@ -8,7 +8,7 @@ use super::bates::BatesConfig;
 use super::document::{Document, Page};
 use super::markup::Markup;
 use super::markup::MarkupKind;
-use super::takeoff::{ConditionKind, TakeoffError, TakeoffSettings};
+use super::takeoff::{ConditionKind, TakeoffCondition, TakeoffError, TakeoffSettings};
 use super::units::{clamp_precision, DEFAULT_PRECISION, MeasureKind};
 use crate::domain::style::Color;
 
@@ -412,19 +412,6 @@ impl Project {
     }
 
     /// Error type for takeoff operations on the project.
-    #[derive(Debug, thiserror::Error)]
-    pub enum TakeoffError {
-        #[error("condition name cannot be empty")]
-        EmptyName,
-        #[error("a condition with that name already exists (case-insensitive)")]
-        DuplicateName,
-        #[error("no condition found with id {0}")]
-        NotFound(Uuid),
-        #[error("measure kind does not match condition kind")]
-        MeasureMismatch,
-        #[error("condition cap (128) reached")]
-        CapReached,
-    }
 
     /// Create a new condition with a unique default name.
     ///
@@ -510,17 +497,18 @@ impl Project {
         let Some(condition) = self.takeoff.conditions.iter().find(|c| c.id == id) else {
             return Err(TakeoffError::NotFound(id));
         };
-        // Unassign from all markups pointing at this condition.
-        let unassigned = self
-            .markups
-            .iter()
-            .filter(|m| m.condition_id == Some(id))
-            .map(|m| {
-                m.condition_id = None;
-                m.touch();
-                1usize
-            })
-            .sum::<usize>();
+        // Unassign from all markups pointing at this condition (markups live on
+        // documents, so iterate every document of every document list).
+        let mut unassigned = 0usize;
+        for document in &mut self.documents {
+            for m in &mut document.markups {
+                if m.condition_id == Some(id) {
+                    m.condition_id = None;
+                    m.touch();
+                    unassigned += 1;
+                }
+            }
+        }
         // Remove the condition itself.
         self.takeoff.conditions.retain(|c| c.id != id);
         self.touch();
@@ -545,36 +533,48 @@ impl Project {
             return Err(TakeoffError::NotFound(condition_id));
         };
 
-        // Validate each markup's measure family matches the condition kind.
-        let mut assigned = 0usize;
-        for &markup_id in markup_ids {
-            let Some(markup) = self
-                .documents
-                .iter()
-                .flat_map(|d| d.markups.iter())
-                .find(|m| m.id == markup_id)
-            else {
-                return Err(TakeoffError::NotFound(condition_id));
-            };
+        // Validate the condition kind once (immutable pass), then mutate.
+        let condition_kind = condition.kind;
 
-            let ok = match (condition.kind, markup.kind.measure_kind()) {
-                (ConditionKind::Linear, Some(MeasureKind::Length))
-                | (ConditionKind::Linear, Some(MeasureKind::Diameter))
-                | (ConditionKind::Linear, Some(MeasureKind::Radius)) => true,
-                (ConditionKind::Area, Some(MeasureKind::Area)) => true,
-                (ConditionKind::Perimeter, Some(MeasureKind::Perimeter)) => true,
-                (
-                    ConditionKind::WallSurface,
-                    Some(MeasureKind::Perimeter)
-                    | Some(MeasureKind::Length),
-                ) => true,
-                (ConditionKind::Count, Some(MeasureKind::Count)) => true,
-                _ => false,
-            };
-            if ok {
-                markup.condition_id = Some(condition_id);
-                markup.touch();
-                assigned += 1;
+        // Acceptance by measure family (spec §2.2):
+        let accepts = |mk: Option<MeasureKind>| match (condition_kind, mk) {
+            (ConditionKind::Linear, Some(MeasureKind::Length))
+            | (ConditionKind::Linear, Some(MeasureKind::Diameter))
+            | (ConditionKind::Linear, Some(MeasureKind::Radius)) => true,
+            (ConditionKind::Area, Some(MeasureKind::Area)) => true,
+            (ConditionKind::Perimeter, Some(MeasureKind::Perimeter)) => true,
+            (ConditionKind::WallSurface, Some(MeasureKind::Perimeter))
+            | (ConditionKind::WallSurface, Some(MeasureKind::Length)) => true,
+            (ConditionKind::Count, Some(MeasureKind::Count)) => true,
+            _ => false,
+        };
+
+        // First pass: verify every markup exists and is compatible (fail fast,
+        // all-or-nothing so a partial assignment never lands).
+        let found: Vec<usize> = self
+            .documents
+            .iter()
+            .enumerate()
+            .flat_map(|(di, d)| d.markups.iter().map(move |m| (di, m)))
+            .filter(|(_, m)| markup_ids.contains(&m.id))
+            .map(|(di, m)| {
+                if !accepts(m.kind.measure_kind()) {
+                    Err(TakeoffError::MeasureMismatch)
+                } else {
+                    Ok(di)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Second pass: mutate.
+        let mut assigned = 0usize;
+        for (di, mid) in found.into_iter().zip(markup_ids.iter()) {
+            if let Some(document) = self.documents.get_mut(di) {
+                if let Some(markup) = document.markups.iter_mut().find(|m| m.id == *mid) {
+                    markup.condition_id = Some(condition_id);
+                    markup.touch();
+                    assigned += 1;
+                }
             }
         }
         self.touch();
@@ -584,9 +584,9 @@ impl Project {
     /// Unassign markups from their conditions.
     pub fn unassign_from_conditions(&mut self, markup_ids: &[uuid::Uuid]) -> usize {
         let mut unassigned = 0usize;
-        for &markup_id in markup_ids {
-            if let Some(document) = self.documents.get(0) {
-                if let Some(markup) = document.markups.iter_mut().find(|m| m.id == markup_id) {
+        for document in &mut self.documents {
+            for markup in &mut document.markups {
+                if markup_ids.contains(&markup.id) && markup.condition_id.is_some() {
                     markup.condition_id = None;
                     markup.touch();
                     unassigned += 1;
@@ -1024,6 +1024,7 @@ impl History {
     pub fn clear(&mut self, initial: Project) {
         *self = History::new(initial);
     }
+        takeoff: TakeoffSettings::default(),
 }
 
 #[cfg(test)]

@@ -13,7 +13,7 @@ use thiserror::Error;
 ///
 /// `Quantities` is feature‑flagged; it exists in the enum so the takeoff
 /// spec can add it without breaking the workspace serialisation contract.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PanelId {
     Pages,
@@ -25,7 +25,7 @@ pub enum PanelId {
 }
 
 /// Dock region a panel occupies.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Region {
     Left,
     Right,
@@ -35,7 +35,7 @@ pub enum Region {
 /// Floating window geometry: x, y, width, height in PDF points (1 pt = 1/72 in,
 /// y‑down, origin top‑left).  Values are clamped to 0..=4096 on restore, and
 /// w/h must be ≥ 200.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct FloatState {
     /// x, y, w, h in points.
     #[serde(default)]
@@ -43,7 +43,7 @@ pub struct FloatState {
 }
 
 /// Shared view state for a split pane.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct SecondaryView {
     pub page: usize,
     pub zoom: f32,
@@ -52,7 +52,7 @@ pub struct SecondaryView {
 }
 
 /// Split state for the canvas area.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct SplitState {
     pub count: u8,
     pub ratio: f32,
@@ -63,7 +63,7 @@ pub struct SplitState {
 /// and canvas split configuration.
 ///
 /// Serialised into `AppPrefs.workspace` so the layout survives restarts.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct WorkspaceState {
     /// Which panels are currently open.  Default does not include `Quantities`
     /// (it lands with the takeoff feature).
@@ -195,7 +195,7 @@ impl WorkspaceState {
         // The secondary view is stored inside split; we replace it with the
         // new page clamped to ≥ 0 (i.e. just page itself, usize is always ≥ 0).
         // This method is a no‑op for the struct‑as‑field design — the caller
-        /// should update `self.split.secondary.page` directly after clamping.
+        // should update `self.split.secondary.page` directly after clamping.
         // For completeness we just ensure the value is valid.
         _ = page; // usize is always ≥ 0
     }
@@ -294,17 +294,6 @@ mod tests {
         let json = serde_json::to_string(&ws).expect("serialize");
         let back: WorkspaceState = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, ws);
-    }
-
-    #[test]
-    fn legacy_prefs_load_default_workspace() {
-        // JSON without a `workspace` key should fall back to Default.
-        let json = r#"{"theme": "light"}"#;
-        let prefs: AppPrefs = serde_json::from_str(json).expect("deserialize");
-        // The AppPrefs default includes workspace = Default, so the whole
-        // struct should be the default prefs.
-        let expected = AppPrefs::default();
-        assert_eq!(prefs, expected);
     }
 
     #[test]

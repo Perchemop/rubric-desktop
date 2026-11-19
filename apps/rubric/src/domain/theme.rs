@@ -4,6 +4,7 @@
 //! project data: it lives in the platform config directory and is never
 //! written into a shareable `.rubric.json` project file.
 
+use crate::domain::workspace::WorkspaceState;
 use serde::{Deserialize, Serialize};
 
 use crate::domain::style::DefaultStyles;
@@ -135,6 +136,7 @@ impl Default for AppPrefs {
             tool_chest_max_recents: default_max_recents(),
         }
     }
+    workspace: WorkspaceState::default(),
 }
 
 #[cfg(test)]

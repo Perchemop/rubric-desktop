@@ -459,7 +459,9 @@ pub struct RubricApp {
     /// switches because it is stateless across documents.
     pub(crate) render_worker: Option<crate::data::render_worker::RenderWorker>,
     /// Repository used for issue URLs and release checks.
-    pub(crate) repo: String,
+    /// The persisted workspace layout (docking/split state) loaded from prefs.
+    /// Updated only when a workspace editor writes it in a later slice.
+    pub(crate) persisted_workspace: crate::domain::workspace::WorkspaceState,
     /// Latest release tag from the most recent update check, used to
     /// construct the SHA256SUMS.txt URL when downloading an update.
     pub(crate) update_check_tag: Option<String>,
@@ -594,6 +596,7 @@ impl RubricApp {
             repo: "Perchemop/rubric-desktop".to_string(),
             update_check_tag: None,
             tool_chest_library: prefs.tool_chest_library.clone(),
+            persisted_workspace: prefs.workspace.clone(),
             app_drawer_path: Self::get_app_drawer_path(),
         }
     }
@@ -1761,8 +1764,8 @@ impl RubricApp {
             default_styles: self.ui.default_styles.clone(),
             default_measure_unit: self.ui.unit,
             tool_chest_max_recents: self.ui.tool_chest_max_recents.clamp(1, 32),
-        }
-    }
+            workspace: self.persisted_workspace.clone(),
+}
 
     /// Persist all app-level preferences (panel visibility, zoom, page).
     pub(crate) fn save_app_prefs(&mut self) {
