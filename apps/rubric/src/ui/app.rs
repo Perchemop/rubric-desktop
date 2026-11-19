@@ -1765,7 +1765,8 @@ impl RubricApp {
             default_measure_unit: self.ui.unit,
             tool_chest_max_recents: self.ui.tool_chest_max_recents.clamp(1, 32),
             workspace: self.persisted_workspace.clone(),
-}
+        }
+    }
 
     /// Persist all app-level preferences (panel visibility, zoom, page).
     pub(crate) fn save_app_prefs(&mut self) {
