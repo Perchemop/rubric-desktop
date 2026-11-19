@@ -195,6 +195,7 @@ pub(crate) fn draw_tool_chest(
             .unwrap_or_else(|| "All presets".to_string());
         egui::ComboBox::from_id_salt("tool_set_filter")
             .selected_text(label)
+            .label("Tool set filter")
             .show_ui(ui, |ui| {
                 if ui
                     .selectable_label(current.is_none(), "All presets")
