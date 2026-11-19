@@ -196,7 +196,10 @@ pub(crate) fn draw_tool_chest(
         egui::ComboBox::from_id_salt("tool_set_filter")
             .selected_text(label)
             .show_ui(ui, |ui| {
-                if ui.selectable_label(current.is_none(), "All presets").clicked() {
+                if ui
+                    .selectable_label(current.is_none(), "All presets")
+                    .clicked()
+                {
                     set_set_filter(None);
                 }
                 for s in &sets {
@@ -354,14 +357,14 @@ pub(crate) fn draw_tool_chest(
                                 if ui.button(format!("Add to {}", s.name)).clicked() {
                                     library.add_to_set(s.id, preset.id);
                                     persist_library(library);
-                                                                    }
+                                }
                             }
                             if ui.button("Remove from set").clicked() {
                                 if let Some(sid) = library.set_of(preset.id) {
                                     library.remove_from_set(sid, preset.id);
                                     persist_library(library);
                                 }
-                                                            }
+                            }
                         });
                     });
                 }
