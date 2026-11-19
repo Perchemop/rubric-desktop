@@ -332,11 +332,11 @@ pub(crate) fn draw_tool_chest(
     } else {
         let visible: Vec<StylePreset> = library
             .iter()
-            .cloned()
             .filter(|p| match &filtered_ids {
                 Some(ids) => ids.contains(&p.id),
                 None => true,
             })
+            .cloned()
             .collect();
         if visible.is_empty() {
             ui.label("No presets in this set yet — add from the ⋯ menu on any row");

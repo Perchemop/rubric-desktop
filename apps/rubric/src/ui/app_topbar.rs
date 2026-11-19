@@ -39,13 +39,12 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
                 app.switch_active_document(*id);
             }
             resp.on_hover_text(title);
-            if count > 1 {
-                if ui
+            if count > 1
+                && ui
                     .add(egui::Button::new("x").min_size(egui::vec2(24.0, 24.0)))
                     .clicked()
-                {
-                    app.close_document_tab(*id);
-                }
+            {
+                app.close_document_tab(*id);
             }
         }
         if ui.button("+").clicked() {
