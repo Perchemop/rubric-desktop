@@ -134,9 +134,9 @@ impl Default for AppPrefs {
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::default(),
             tool_chest_max_recents: default_max_recents(),
+            workspace: WorkspaceState::default(),
         }
     }
-    workspace: WorkspaceState::default(),
 }
 
 #[cfg(test)]
@@ -191,7 +191,8 @@ mod tests {
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::Inch,
             tool_chest_max_recents: 12,
-        };
+                    workspace: WorkspaceState::default(),
+};
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, prefs);
