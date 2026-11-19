@@ -1024,7 +1024,6 @@ impl History {
     pub fn clear(&mut self, initial: Project) {
         *self = History::new(initial);
     }
-        takeoff: TakeoffSettings::default(),
 }
 
 #[cfg(test)]
