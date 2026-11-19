@@ -218,7 +218,6 @@ pub(crate) fn draw_tool_chest(
                 "Tool set filter".to_owned(),
             )
         });
-                });
         if ui.small_button("New set").clicked() {
             let created = library.create_set("New set");
             let id = created.id;
