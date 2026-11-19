@@ -170,7 +170,11 @@ mod tests {
                 id: Uuid::new_v4(),
                 name: kind.label().into(),
                 kind,
-                height: if kind.is_area().then_some(3.5).transpose().unwrap_or(None),
+                height: if matches!(kind, ConditionKind::Area | ConditionKind::WallSurface) {
+                    Some(3.5)
+                } else {
+                    None
+                },
                 colour: Color::rgb(100, 150, 200),
                 created: chrono::Utc::now(),
                 modified: chrono::Utc::now(),
