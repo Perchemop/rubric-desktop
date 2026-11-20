@@ -65,6 +65,7 @@ pub(crate) fn draw_quantities_panel(
                         has_assignments: false,
                         assigned_count: 0,
                         focus_name: true,
+                        show_delete_confirm: false,
                     });
                 }
                 QuantityAction::EditCondition { condition_id } => {
@@ -91,6 +92,7 @@ pub(crate) fn draw_quantities_panel(
                             has_assignments: assigned_count > 0,
                             assigned_count,
                             focus_name: true,
+                            show_delete_confirm: false,
                         });
                     }
                 }

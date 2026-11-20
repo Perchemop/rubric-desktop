@@ -158,6 +158,8 @@ pub(crate) struct TakeoffDialogState {
     pub(crate) assigned_count: usize,
     /// Focus the name field on open.
     pub(crate) focus_name: bool,
+    /// True when delete confirmation dialog should be shown.
+    pub(crate) show_delete_confirm: bool,
 }
 
 #[allow(dead_code)]
