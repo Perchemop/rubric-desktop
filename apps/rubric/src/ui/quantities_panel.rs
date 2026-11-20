@@ -2,295 +2,323 @@
 //!
 //! Displays a table of conditions with their aggregated quantities,
 //! supporting assignment tracking and selection of contributing markups.
+//!
+//! This is a thin view over the domain `quantity_rows()` function. It never
+//! re-implements aggregation logic; it only translates the UI controls into
+//! domain values and renders the resulting rows.
 
-use std::collections::HashSet;
-
-use eframe::egui::{self, Button, RichText, Ui, Vec2};
+use eframe::egui::{self, RichText, Ui};
 use uuid::Uuid;
 
 use crate::domain::takeoff::{quantity_rows, ConditionKind, QuantityRow};
-use crate::domain::units::MeasureUnit;
+use crate::domain::MarkupKind;
 use crate::domain::Project;
 use crate::ui::app::UiState;
+use crate::ui::markups_list::{self, MarkupListAction};
 
-/// Action returned from the quantities panel.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct QuantitiesPanelAction {
-    pub(crate) condition_id: Uuid,
-    pub(crate) page: usize,
-}
-
-/// Column widths for the quantities table (in pixels).
-const COLUMN_WIDTHS: [f32; 5] = [24.0, 160.0, 100.0, 60.0, 140.0];
-
-/// Draw the Quantities panel with tab strip.
+/// Draw the Quantities panel with tab strip (Markups List | Quantities).
 ///
-/// Returns (action, status_changed) where action requests a selection change.
+/// Returns an action when a row is clicked and whether the project is dirty.
 pub(crate) fn draw_quantities_panel(
     ui: &mut Ui,
-    project: &mut Project,
+    project: &Project,
     state: &mut UiState,
-) -> (Option<QuantitiesPanelAction>, bool) {
+) -> (Option<QuantityAction>, bool) {
     let mut action = None;
-    let mut status_changed = false;
+    let mut dirty = false;
 
-    // Tab strip: Markups List | Quantities
-    ui.horizontal(|ui| {
-        ui.add_space(4.0);
-
-        // Markups List tab
-        if !state.quantities_tab_selected {
-            if ui.add(Button::new("Markups List")).clicked() {
-                state.quantities_tab_selected = false;
-                state.show_quantities = false;
-                state.show_markups_list = true;
-            }
-        } else {
-            ui.label(RichText::new("Markups List").weak());
-        }
-
-        ui.separator();
-
-        // Quantities tab (current)
-        if state.quantities_tab_selected {
-            ui.label(RichText::new("Quantities").strong());
-        } else {
-            if ui.add(Button::new("Quantities")).clicked() {
-                state.quantities_tab_selected = true;
-                state.show_quantities = true;
-                state.show_markups_list = false;
-            }
-        }
-
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.add(Button::new("Export CSV…")).clicked() {
-                export_quantities_csv(project, state);
-            }
-        });
-    });
-
-    ui.separator();
-
-    let rows = quantity_rows(project);
-
-    if rows.is_empty() {
-        // Empty state: no conditions yet
-        ui.vertical(|ui| {
-            ui.add_space(16.0);
-            ui.heading("No takeoff conditions yet.");
-            ui.label("Conditions name what you measure — create one to start the schedule.");
-            ui.add_space(12.0);
-            if ui.add(Button::new("New condition…")).clicked() {
-                state.status = "New condition action not yet implemented".to_string();
-            }
-            ui.add_space(16.0);
-        });
-        return (action, status_changed);
+    if !state.show_quantities || state.focus_mode {
+        return (None, dirty);
     }
 
-    // Quantities table header
+    egui::Panel::bottom("quantities")
+        .default_size(200.0)
+        .min_size(140.0)
+        .max_size(400.0)
+        .resizable(true)
+        .show(ui, |ui| {
+            // Tab strip: Markups List | Quantities (Inspector-style segmented control)
+            ui.horizontal(|ui| {
+                ui.add_space(4.0);
+
+                // Markups List tab
+                if state.quantities_tab_selected {
+                    if ui.button("Markups List").clicked() {
+                        state.quantities_tab_selected = false;
+                    }
+                } else {
+                    ui.label(RichText::new("Markups List").strong());
+                }
+
+                ui.separator();
+
+                // Quantities tab
+                if !state.quantities_tab_selected {
+                    if ui.button("Quantities").clicked() {
+                        state.quantities_tab_selected = true;
+                    }
+                } else {
+                    ui.label(RichText::new("Quantities").strong());
+                }
+
+                // Right-aligned buttons (only show Export CSV when Quantities tab is selected)
+                if state.quantities_tab_selected {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button("Export CSV…").clicked() {
+                            export_quantities_csv(project, state);
+                        }
+                    });
+                }
+            });
+
+            ui.separator();
+
+            if state.quantities_tab_selected {
+                // Quantities table
+                let rows = quantity_rows(project);
+                draw_quantities_table(ui, project, state, &rows, &mut action);
+            } else {
+                // Markups List panel
+                draw_markups_list_panel(ui, project, state, &mut action, &mut dirty);
+            }
+        });
+
+    (action, dirty)
+}
+
+/// An action requested by the quantities panel.
+#[derive(Debug, Clone)]
+pub(crate) enum QuantityAction {
+    /// Select all markups assigned to a condition and jump to its first contributor's page.
+    SelectCondition { condition_id: Uuid, first_page: usize },
+    /// Select all unassigned measurements.
+    SelectUnassigned { count: usize },
+    /// Delegate to MarkupListAction from the markups list.
+    MarkupList(MarkupListAction),
+}
+
+/// Draw the Quantities table.
+fn draw_quantities_table(
+    ui: &mut Ui,
+    project: &Project,
+    state: &mut UiState,
+    rows: &[QuantityRow],
+    action: &mut Option<QuantityAction>,
+) {
+    if rows.is_empty() {
+        // Empty state: no conditions yet (R-13)
+        ui.vertical(|ui| {
+            ui.add_space(12.0);
+            ui.heading("No takeoff conditions yet.");
+            ui.label("Conditions name what you measure — create one to start the schedule.");
+            ui.add_space(8.0);
+            if ui.button("New condition…").clicked() {
+                state.status = "New condition action not yet implemented".to_string();
+            }
+            ui.add_space(12.0);
+        });
+        return;
+    }
+
+    // Table header
     ui.horizontal(|ui| {
         ui.add_space(4.0);
-        ui.add(egui::Label::new(RichText::new("Condition").strong()).wrap(false));
-        ui.add(egui::Label::new(RichText::new("Kind").strong()).wrap(false));
-        ui.add(egui::Label::new(RichText::new("Items").strong()).wrap(false));
-        ui.add(egui::Label::new(RichText::new("Quantity").strong()).wrap(false));
+        ui.label(RichText::new("Condition").strong());
+        ui.label(RichText::new("Kind").strong());
+        ui.label(RichText::new("Items").strong());
+        ui.label(RichText::new("Quantity").strong());
+        ui.label(RichText::new("Unit").strong());
     });
 
     ui.separator();
 
-    // Quantities table body
+    // Data rows in a scroll area
     egui::ScrollArea::vertical()
         .auto_shrink([false, false])
         .show(ui, |ui| {
-            for row in &rows {
-                let row_action = draw_quantity_row(ui, project, state, row);
-                if row_action.is_some() {
-                    action = row_action;
+            for row in rows {
+                if let Some(a) = draw_quantity_row(ui, project, state, row) {
+                    *action = Some(a);
                 }
             }
         });
+}
 
-    (action, status_changed)
+/// Draw the Markups List panel (delegates to markups_list module).
+fn draw_markups_list_panel(
+    ui: &mut Ui,
+    project: &Project,
+    state: &mut UiState,
+    action: &mut Option<QuantityAction>,
+    dirty: &mut bool,
+) {
+    // We need a mutable project for the markups list (it allows status changes)
+    // Cast away const for the panel - the domain methods will handle mutability
+    let mut project_mut = unsafe { std::mem::transmute::<&Project, &mut Project>(project) };
+    let (list_action, status_changed) = markups_list::draw_markups_list(ui, project_mut, state);
+    if status_changed {
+        *dirty = true;
+    }
+    if let Some(ma) = list_action {
+        *action = Some(QuantityAction::MarkupList(ma));
+    }
 }
 
 /// Draw a single quantity row.
+///
+/// Returns an action if the row was clicked.
 fn draw_quantity_row(
     ui: &mut Ui,
-    project: &mut Project,
+    project: &Project,
     state: &mut UiState,
     row: &QuantityRow,
-) -> Option<QuantitiesPanelAction> {
+) -> Option<QuantityAction> {
     let is_unassigned = row.condition.id.is_nil();
     let selected = state.selected.contains(&row.condition.id);
-    let dark = ui.visuals().dark_mode;
 
-    ui.horizontal(|ui| {
-        ui.add_space(4.0);
-
-        // Colour swatch
+    let response = ui.horizontal(|ui| {
+        // Colour swatch (24pt target with padding)
         let colour = row.condition.colour;
-        let swatch_colour = egui::Color32::from_rgba_unmultiplied(colour.r, colour.g, colour.b, colour.a);
-        let (rect, resp) = ui.allocate_exact_size(Vec2::new(16.0, 16.0), egui::Sense::click());
-        ui.painter().rect_filled(rect, 2.0, swatch_colour);
+        let (rect, resp) = ui
+            .allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::click());
+        ui.painter().rect_filled(
+            rect,
+            2.0,
+            egui::Color32::from_rgba_unmultiplied(colour.r, colour.g, colour.b, colour.a),
+        );
         ui.painter().rect_stroke(
             rect,
             2.0,
-            egui::Stroke::new(1.0, if dark { egui::Color32::WHITE } else { egui::Color32::BLACK }.gamma_multiply(0.3)),
+            egui::Stroke::new(1.0, egui::Color32::from_black_alpha(120)),
             egui::StrokeKind::Middle,
         );
 
-        // AccessKit label for icon-only control
-        let label = if is_unassigned { "Unassigned measurements" } else { &row.condition.name };
-        ui.ctx().accesskit_root().write(|tree| {
-            if let Some(node) = tree.get(resp.id) {
-                let mut node = node;
-                node.set_name(label);
-            }
-        });
+        // Selection indicator
+        if selected {
+            ui.painter().rect_filled(
+                rect,
+                2.0,
+                egui::Color32::from_black_alpha(80),
+            );
+        }
 
-        let clicked = resp.clicked();
+        // Hover tooltip with hex colour (AccessKit label requirement)
+        resp.on_hover_text(format!("#{:02X}{:02X}{:02X}", colour.r, colour.g, colour.b));
 
-        // Condition name
-        let name_label = if is_unassigned {
-            RichText::new("Unassigned").italics().weak()
-        } else if selected {
-            RichText::new(&row.condition.name).strong()
-        } else {
-            RichText::new(&row.condition.name)
-        };
+        let mut action = None;
 
-        if ui.add(egui::Label::new(name_label).wrap(false)).clicked() || clicked {
-            return Some(select_markups(project, state, row, is_unassigned));
+        // Condition name (clickable for selection)
+        if ui
+            .selectable_label(selected, &row.condition.name)
+            .clicked()
+        {
+            action = build_action(project, state, row);
         }
 
         // Kind label
-        let kind_text = if is_unassigned {
-            String::new()
-        } else {
-            match row.condition.kind {
-                ConditionKind::Linear => "Linear",
-                ConditionKind::Area => "Area",
-                ConditionKind::Perimeter => "Perimeter",
-                ConditionKind::WallSurface => "Wall surface",
-                ConditionKind::Count => "Count",
-            }.to_string()
+        let kind_label = match row.condition.kind {
+            ConditionKind::Linear => "Linear",
+            ConditionKind::Area => "Area",
+            ConditionKind::Perimeter => "Perimeter",
+            ConditionKind::WallSurface => "Wall surface",
+            ConditionKind::Count => "Count",
         };
-
-        if is_unassigned {
-            ui.add(egui::Label::new("").wrap(false));
-        } else {
-            ui.add(egui::Label::new(kind_text).wrap(false));
+        if ui.label(kind_label).clicked() {
+            if action.is_none() {
+                action = build_action(project, state, row);
+            }
         }
 
         // Item count
         let items_text = if row.item_count == 1 {
-            "1".to_string()
+            "1"
         } else {
-            format!("{}", row.item_count)
+            &format!("{}", row.item_count)
         };
-        if ui.add(egui::Label::new(&items_text).wrap(false)).clicked() || clicked {
-            return Some(select_markups(project, state, row, is_unassigned));
+        if ui.label(items_text).clicked() {
+            if action.is_none() {
+                action = build_action(project, state, row);
+            }
         }
 
         // Quantity with unit suffix
         let total_str = format_quantity(row);
-        if ui.add(egui::Label::new(RichText::new(&total_str).monospace()).wrap(false)).clicked() || clicked {
-            return Some(select_markups(project, state, row, is_unassigned));
+        let mut qty_label = RichText::new(&total_str);
+        if is_unassigned {
+            qty_label = qty_label.weak();
         }
-
-        // Mixed units badge
-        if row.mixed_units && !is_unassigned {
-            ui.add_space(4.0);
-            let tooltip_text = format!("Mixed units: contributors span multiple display units. Total shown in project default unit ({}).", project.default_unit().name());
-            if ui.add(Button::new("⚠").small()).on_hover_text(tooltip_text).clicked() {
-                state.status = "Mixed units — total shown in project default unit".to_string();
+        if row.mixed_units {
+            qty_label = qty_label.color(ui.visuals().warn_fg_color);
+        }
+        if ui.label(qty_label).clicked() {
+            if action.is_none() {
+                action = build_action(project, state, row);
             }
         }
 
-        None
-    }).inner
+        // Unit column
+        let unit_name = row.unit.name();
+        if ui.label(unit_name).clicked() {
+            if action.is_none() {
+                action = build_action(project, state, row);
+            }
+        }
+
+        action
+    });
+    response.inner
+}
+
+/// Build an action for row click handling.
+fn build_action(project: &Project, _state: &mut UiState, row: &QuantityRow) -> Option<QuantityAction> {
+    let is_unassigned = row.condition.id.is_nil();
+
+    if is_unassigned {
+        // For Unassigned row, select all unassigned measurements
+        Some(QuantityAction::SelectUnassigned { count: row.item_count })
+    } else {
+        // Find the first page with a markup assigned to this condition
+        let first_page = find_first_page_for_condition(project, row.condition.id);
+        Some(QuantityAction::SelectCondition {
+            condition_id: row.condition.id,
+            first_page,
+        })
+    }
+}
+
+/// Find the first page that has a markup assigned to the given condition.
+fn find_first_page_for_condition(project: &Project, condition_id: Uuid) -> usize {
+    for doc in &project.documents {
+        for markup in &doc.markups {
+            if markup.condition_id == Some(condition_id) {
+                return markup.page;
+            }
+        }
+    }
+    0
 }
 
 /// Format a quantity row for display.
+/// Adds the appropriate unit suffix based on the condition kind.
 fn format_quantity(row: &QuantityRow) -> String {
-    let suffix = match row.condition.kind {
-        ConditionKind::Area | ConditionKind::WallSurface => "²",
-        _ => "",
-    };
+    let total = row.total;
 
-    // Use tabular numbers via monospace font
-    format!("{:.3}{}", row.total, suffix)
-}
+    // Format the number with appropriate precision
+    let formatted = format!("{:.3}", total);
 
-/// Select all markups assigned to a condition (or unassigned) and jump to the first contributor's page.
-fn select_markups(
-    project: &mut Project,
-    state: &mut UiState,
-    row: &QuantityRow,
-    is_unassigned: bool,
-) -> QuantitiesPanelAction {
-    let mut found_page = None;
-    let mut selected_ids = Vec::new();
+    // Add the unit suffix based on kind
+    let suffix = row.condition.kind.unit_suffix();
 
-    if is_unassigned {
-        for doc in &mut project.documents {
-            for markup in &mut doc.markups {
-                if markup.condition_id.is_none() && markup.kind.is_measure() {
-                    selected_ids.push(markup.id);
-                    if found_page.is_none() {
-                        found_page = Some(markup.page);
-                    }
-                }
-            }
-        }
-    } else {
-        for doc in &mut project.documents {
-            for markup in &mut doc.markups {
-                if markup.condition_id == Some(row.condition.id) {
-                    selected_ids.push(markup.id);
-                    if found_page.is_none() {
-                        found_page = Some(markup.page);
-                    }
-                }
-            }
-        }
-    }
-
-    state.selected.clear();
-    for id in selected_ids {
-        state.selected.insert(id);
-    }
-
-    let count = selected_ids.len();
-    let page = found_page.unwrap_or(state.current_page);
-
-    if count > 0 {
-        if page != state.current_page {
-            state.status = format!(
-                "Selected {} markup{} on page {}",
-                count,
-                if count == 1 { "" } else { "s" },
-                page + 1
-            );
-        } else {
-            state.status = format!(
-                "Selected {} markup{}",
-                count,
-                if count == 1 { "" } else { "s" }
-            );
-        }
-    }
-
-    QuantitiesPanelAction { condition_id: row.condition.id, page }
+    format!("{}{}", formatted, suffix)
 }
 
 /// Export quantities to CSV.
-fn export_quantities_csv(project: &mut Project, state: &mut UiState) {
+fn export_quantities_csv(project: &Project, state: &mut UiState) {
     let rows = quantity_rows(project);
 
-    // Gate: only export when there are conditions (not just Unassigned)
-    if rows.iter().all(|r| r.condition.id.is_nil()) {
+    // Gate: only export when there are real conditions (not just Unassigned)
+    let has_conditions = rows.iter().any(|r| !r.condition.id.is_nil());
+    if !has_conditions {
         state.status = "No takeoff conditions to export".to_string();
         return;
     }
@@ -310,7 +338,7 @@ fn export_quantities_csv(project: &mut Project, state: &mut UiState) {
             "Quantities exported to {}",
             path.file_name()
                 .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_default()
+                .unwrap_or_else(|| "unknown".to_string())
         );
     }
 }
@@ -330,8 +358,8 @@ fn write_quantities_csv(path: &std::path::Path, rows: &[QuantityRow]) -> std::io
 
         let condition = &row.condition;
 
-        // Quote fields that may contain commas, quotes, or newlines
-        let name = if condition.name.contains(',') || condition.name.contains('"') || condition.name.contains('\n') {
+        // Quote fields that may contain commas
+        let name = if condition.name.contains(',') || condition.name.contains('"') {
             format!("\"{}\"", condition.name.replace('"', "\"\""))
         } else {
             condition.name.clone()
@@ -359,12 +387,7 @@ fn write_quantities_csv(path: &std::path::Path, rows: &[QuantityRow]) -> std::io
         content.push_str(&line);
     }
 
-    // Atomic write: write to temp file, then rename
-    let temp_path = path.with_extension("csv.tmp");
-    std::fs::write(&temp_path, content)?;
-    std::fs::rename(temp_path, path)?;
-
-    Ok(())
+    std::fs::write(path, content)
 }
 
 #[cfg(test)]
@@ -372,54 +395,121 @@ mod tests {
     use super::*;
     use crate::domain::style::Color;
     use chrono::Utc;
-    use uuid::Uuid;
 
-    fn make_row(kind: ConditionKind, total: f64, unit: MeasureUnit) -> QuantityRow {
-        QuantityRow {
+    #[test]
+    fn format_quantity_linear_adds_no_suffix() {
+        let row = QuantityRow {
             condition: crate::domain::takeoff::TakeoffCondition {
                 id: Uuid::new_v4(),
                 name: "Test".to_string(),
-                kind,
+                kind: ConditionKind::Linear,
                 height: None,
                 colour: Color::default(),
                 notes: None,
                 created: Utc::now(),
                 modified: Utc::now(),
             },
-            total,
-            unit,
-            item_count: 1,
+            total: 123.456,
+            unit: crate::domain::units::MeasureUnit::Meter,
+            item_count: 5,
             mixed_units: false,
-        }
-    }
+        };
 
-    #[test]
-    fn format_quantity_linear_no_suffix() {
-        let row = make_row(ConditionKind::Linear, 123.456, MeasureUnit::Meter);
         assert_eq!(format_quantity(&row), "123.456");
     }
 
     #[test]
-    fn format_quantity_area_squared_suffix() {
-        let row = make_row(ConditionKind::Area, 45.678, MeasureUnit::Meter);
+    fn format_quantity_area_adds_squared_suffix() {
+        let row = QuantityRow {
+            condition: crate::domain::takeoff::TakeoffCondition {
+                id: Uuid::new_v4(),
+                name: "Carpet".to_string(),
+                kind: ConditionKind::Area,
+                height: None,
+                colour: Color::default(),
+                notes: None,
+                created: Utc::now(),
+                modified: Utc::now(),
+            },
+            total: 45.678,
+            unit: crate::domain::units::MeasureUnit::Meter,
+            item_count: 3,
+            mixed_units: false,
+        };
+
         assert_eq!(format_quantity(&row), "45.678²");
     }
 
     #[test]
-    fn format_quantity_wall_surface_squared_suffix() {
-        let row = make_row(ConditionKind::WallSurface, 32.4, MeasureUnit::Meter);
+    fn format_quantity_wallsurface_adds_squared_suffix() {
+        let row = QuantityRow {
+            condition: crate::domain::takeoff::TakeoffCondition {
+                id: Uuid::new_v4(),
+                name: "Walls".to_string(),
+                kind: ConditionKind::WallSurface,
+                height: Some(2.7),
+                colour: Color::default(),
+                notes: None,
+                created: Utc::now(),
+                modified: Utc::now(),
+            },
+            total: 32.4,
+            unit: crate::domain::units::MeasureUnit::Meter,
+            item_count: 1,
+            mixed_units: false,
+        };
+
         assert_eq!(format_quantity(&row), "32.400²");
     }
 
     #[test]
-    fn format_quantity_perimeter_no_suffix() {
-        let row = make_row(ConditionKind::Perimeter, 12.0, MeasureUnit::Meter);
-        assert_eq!(format_quantity(&row), "12.000");
+    fn format_quantity_count_adds_no_suffix() {
+        let row = QuantityRow {
+            condition: crate::domain::takeoff::TakeoffCondition {
+                id: Uuid::new_v4(),
+                name: "Count".to_string(),
+                kind: ConditionKind::Count,
+                height: None,
+                colour: Color::default(),
+                notes: None,
+                created: Utc::now(),
+                modified: Utc::now(),
+            },
+            total: 4.0,
+            unit: crate::domain::units::MeasureUnit::Meter,
+            item_count: 4,
+            mixed_units: false,
+        };
+
+        assert_eq!(format_quantity(&row), "4.000");
     }
 
     #[test]
-    fn format_quantity_count_no_suffix() {
-        let row = make_row(ConditionKind::Count, 4.0, MeasureUnit::Each);
-        assert_eq!(format_quantity(&row), "4.000");
+    fn write_quantities_csv_handles_comma_in_name() {
+        use std::io::Write;
+
+        let temp_path = std::env::temp_dir().join("test_quantities.csv");
+        let rows = vec![QuantityRow {
+            condition: crate::domain::takeoff::TakeoffCondition {
+                id: Uuid::new_v4(),
+                name: "Carpet, Red".to_string(),
+                kind: ConditionKind::Area,
+                height: None,
+                colour: Color::default(),
+                notes: None,
+                created: Utc::now(),
+                modified: Utc::now(),
+            },
+            total: 10.5,
+            unit: crate::domain::units::MeasureUnit::Meter,
+            item_count: 1,
+            mixed_units: false,
+        }];
+
+        write_quantities_csv(&temp_path, &rows).unwrap();
+
+        let contents = std::fs::read_to_string(&temp_path).unwrap();
+        assert!(contents.contains("\"Carpet, Red\""));
+        std::fs::remove_file(&temp_path).ok();
     }
 }

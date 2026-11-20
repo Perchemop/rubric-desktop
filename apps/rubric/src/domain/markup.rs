@@ -181,6 +181,20 @@ impl MarkupKind {
         self.group() == ToolGroup::Measure
     }
 
+    /// Whether this markup kind can be assigned to a takeoff condition
+    /// (all measure kinds except Angle).
+    pub fn is_assignable_to_condition(self) -> bool {
+        matches!(
+            self,
+            MarkupKind::MeasureLength
+                | MarkupKind::MeasurePerimeter
+                | MarkupKind::MeasureArea
+                | MarkupKind::MeasureDiameter
+                | MarkupKind::MeasureRadius
+                | MarkupKind::MeasureCount
+        )
+    }
+
     /// The measurement quantity this tool produces, if any.
     pub fn measure_kind(self) -> Option<MeasureKind> {
         Some(match self {

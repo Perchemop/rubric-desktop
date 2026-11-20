@@ -2532,31 +2532,42 @@ impl RubricApp {
         egui::Panel::bottom("status")
             .show(ui, |ui| crate::ui::app_status::draw_status_bar(self, ui));
 
-        let (list_action, status_changed) =
-            crate::ui::app_markups_list::draw_markups_list_panel(self, ui);
-        if status_changed {
-            self.push_snapshot_quiet();
-        }
-        if let Some(action) = list_action {
-            self.ui.selected.clear();
-            self.ui.selected.insert(action.id);
-            self.ui.status = format!("Selected markup on page {}", action.page + 1);
-            if action.page != self.ui.current_page {
-                self.jump_to_page(action.page);
-            }
-        }
-
         let (quantities_action, quantities_status_changed) =
             crate::ui::app_quantities::draw_quantities_panel(self, ui);
         if quantities_status_changed {
             self.push_snapshot_quiet();
         }
         if let Some(action) = quantities_action {
-            self.ui.selected.clear();
-            self.ui.selected.insert(action.condition_id);
-            self.ui.status = format!("Selected markup on page {}", action.page + 1);
-            if action.page != self.ui.current_page {
-                self.jump_to_page(action.page);
+            use crate::ui::quantities_panel::QuantityAction;
+            match action {
+                QuantityAction::SelectCondition { condition_id, first_page } => {
+                    self.ui.selected.clear();
+                    self.ui.selected.insert(condition_id);
+                    self.ui.status = format!("Selected markup on page {}", first_page + 1);
+                    if first_page != self.ui.current_page {
+                        self.jump_to_page(first_page);
+                    }
+                }
+                QuantityAction::SelectUnassigned { count } => {
+                    self.ui.selected.clear();
+                    // Select all unassigned measurements
+                    if let Some(doc) = self.history.current_mut().active_mut() {
+                        for markup in &doc.markups {
+                            if markup.condition_id.is_none() && markup.kind.is_measure() {
+                                self.ui.selected.insert(markup.id);
+                            }
+                        }
+                    }
+                    self.ui.status = format!("Selected {} unassigned measurement(s)", count);
+                }
+                QuantityAction::MarkupList(ma) => {
+                    self.ui.selected.clear();
+                    self.ui.selected.insert(ma.id);
+                    self.ui.status = format!("Selected markup on page {}", ma.page + 1);
+                    if ma.page != self.ui.current_page {
+                        self.jump_to_page(ma.page);
+                    }
+                }
             }
         }
 
