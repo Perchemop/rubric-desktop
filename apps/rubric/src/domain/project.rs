@@ -10,8 +10,8 @@ use super::markup::MarkupKind;
 use super::takeoff::{
     quantity_rows, ConditionKind, TakeoffCondition, TakeoffError, TakeoffSettings,
 };
-use crate::data::export::write_quantities_csv;
 use super::units::{clamp_precision, MeasureKind, DEFAULT_PRECISION};
+use crate::data::export::write_quantities_csv;
 use crate::data::DataError;
 use crate::domain::style::Color;
 
