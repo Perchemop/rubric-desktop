@@ -5,17 +5,31 @@
 use egui::Ui;
 
 use crate::ui::app::RubricApp;
-use crate::ui::quantities_panel;
+use crate::ui::quantities_panel::{draw_quantities_panel, QuantityAction};
 
 /// Draw the Quantities panel (bottom-panel tab with takeoff schedule).
 ///
-/// Returns true when the project needs to be marked dirty (rare for this panel).
-pub(crate) fn draw_quantities_panel(app: &mut RubricApp, ui: &mut Ui) -> bool {
+/// Returns an action when a row is clicked and whether the project needs to be marked dirty.
+pub(crate) fn draw_quantities_panel(
+    app: &mut RubricApp,
+    ui: &mut Ui,
+) -> (Option<QuantityAction>, bool) {
+    let mut action = None;
+    let mut status_changed = false;
+
     if app.ui.show_quantities && !app.ui.focus_mode {
         let project = app.history.current_mut();
         let ui_state = &mut app.ui;
-        quantities_panel::draw_quantities_panel(ui, project, ui_state)
-    } else {
-        false
+        egui::Panel::bottom("quantities")
+            .default_size(200.0)
+            .min_size(140.0)
+            .max_size(400.0)
+            .resizable(true)
+            .show(ui, |ui| {
+                let (a, sc) = draw_quantities_panel(ui, project, ui_state);
+                action = a;
+                status_changed = sc;
+            });
     }
+    (action, status_changed)
 }
