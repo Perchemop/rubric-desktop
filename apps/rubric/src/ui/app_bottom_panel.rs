@@ -59,9 +59,8 @@ pub(crate) fn draw_bottom_panel(
                 BottomTab::Markups => {
                     let project = app.history.current_mut();
                     let ui_state = &mut app.ui;
-                    let (list_action, status_changed) = crate::ui::markups_list::draw_markups_list(
-                        ui, project, ui_state,
-                    );
+                    let (list_action, status_changed) =
+                        crate::ui::markups_list::draw_markups_list(ui, project, ui_state);
                     let _ = status_changed;
                     if let Some(la) = list_action {
                         ui_state.selected.clear();
@@ -74,17 +73,16 @@ pub(crate) fn draw_bottom_panel(
                 BottomTab::Quantities => {
                     let project = app.history.current_mut();
                     let ui_state = &mut app.ui;
-                    let (qty_action, _dirty) = crate::ui::quantities_panel::draw_quantities_content(
-                        ui, project, ui_state,
-                    );
+                    let (qty_action, _dirty) =
+                        crate::ui::quantities_panel::draw_quantities_content(ui, project, ui_state);
                     action = qty_action;
                 }
             }
 
             // Context menu on the panel body (same editor menu as canvas).
-            let _ = ui
-                .response()
-                .context_menu(|ui| menu::draw_editor_context_menu(ui, &mut app.ui, app.history.current()));
+            let _ = ui.response().context_menu(|ui| {
+                menu::draw_editor_context_menu(ui, &mut app.ui, app.history.current())
+            });
         });
 
     (action, mutated)

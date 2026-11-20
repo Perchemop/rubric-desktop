@@ -989,9 +989,7 @@ mod tests {
         project.documents[0].add_markup(m2);
 
         // Assign both to condition
-        project
-            .assign_to_condition(&[id1, id2], lin_cond)
-            .unwrap();
+        project.assign_to_condition(&[id1, id2], lin_cond).unwrap();
 
         // When: computing quantity rows
         let rows = quantity_rows(&project);

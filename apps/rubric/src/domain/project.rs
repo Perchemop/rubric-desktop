@@ -7,7 +7,9 @@ use uuid::Uuid;
 use super::bates::BatesConfig;
 use super::document::{Document, Page};
 use super::markup::MarkupKind;
-use super::takeoff::{ConditionKind, TakeoffCondition, TakeoffError, TakeoffSettings, quantity_rows};
+use super::takeoff::{
+    quantity_rows, ConditionKind, TakeoffCondition, TakeoffError, TakeoffSettings,
+};
 use crate::data::export::write_quantities_csv;
 use super::units::{clamp_precision, MeasureKind, DEFAULT_PRECISION};
 use crate::data::DataError;

@@ -459,7 +459,10 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 app.save_app_prefs();
             }
             if ui
-                .checkbox(&mut app.ui.bottom_panel_visible, "Show Bottom Panel (Ctrl+3)")
+                .checkbox(
+                    &mut app.ui.bottom_panel_visible,
+                    "Show Bottom Panel (Ctrl+3)",
+                )
                 .changed()
             {
                 app.ui.focus_mode = false;

@@ -26,7 +26,8 @@ pub(crate) enum LeftPanel {
 
 impl LeftPanel {
     /// Every tab in the strip, in display order.
-    pub(crate) const ALL: [LeftPanel; 3] = [LeftPanel::Pages, LeftPanel::Tools, LeftPanel::ToolChest];
+    pub(crate) const ALL: [LeftPanel; 3] =
+        [LeftPanel::Pages, LeftPanel::Tools, LeftPanel::ToolChest];
 
     /// Short label shown on the tab button. The Tools tab is named
     /// "Toolbox" (not "Tools") so its accessible name stays unique next to

@@ -260,7 +260,7 @@ fn select_markups(project: &Project, condition_id: Uuid, is_unassigned: bool, st
             } else {
                 markup.condition_id == Some(condition_id)
             };
-            
+
             if matches {
                 selected_ids.push(markup.id);
                 if found_page.is_none() {

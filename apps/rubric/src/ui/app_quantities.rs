@@ -6,8 +6,8 @@
 //! mirroring the Inspector flow): the panel only *requests*; this handler
 //! performs, so snapshot/status stay on a single path.
 
-use crate::domain::takeoff::ConditionKind;
 use crate::domain::style::Color;
+use crate::domain::takeoff::ConditionKind;
 use crate::ui::app::RubricApp;
 use crate::ui::quantities_panel::QuantityAction;
 
