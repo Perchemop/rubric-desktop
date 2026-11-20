@@ -3,6 +3,12 @@
 //! The panel is a thin view over the pure-domain [`MarkupList`] model. It never
 //! re-implements filtering, sorting or grouping; it only translates the UI
 //! controls into domain values and renders the resulting rows.
+//!
+//! **v0.2.0 planned feature** — domain foundation (v0.2-01) and UI (v0.2-02).
+//! Currently integrated in `app.rs` via `app_markups_list` but only activated
+//! when `show_markups_list` is enabled in preferences.
+
+#![allow(dead_code)] // Planned v0.2.0 feature; code extracted but not yet wired in
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 

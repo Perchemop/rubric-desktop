@@ -5,7 +5,6 @@
 //! rules for when an entry is applicable live here rather than being
 //! duplicated in the UI.
 use crate::domain::markup::ReviewStatus;
-use crate::domain::takeoff::ConditionKind;
 use uuid::Uuid;
 
 /// A user-invocable editor action offered by the canvas and inspector

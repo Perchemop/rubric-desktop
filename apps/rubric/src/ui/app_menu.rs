@@ -423,17 +423,9 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 app.set_high_contrast(ui.ctx(), high_contrast);
             }
             ui.separator();
-            if ui
-                .checkbox(&mut app.ui.show_tool_chest, "Show Tool Chest")
-                .changed()
-            {
-                app.ui.status = if app.ui.show_tool_chest {
-                    "Tool Chest shown".to_string()
-                } else {
-                    "Tool Chest hidden".to_string()
-                };
-                app.save_app_prefs();
-            }
+            // The consolidated left panel carries Pages/Tools/Tool Chest as
+            // tabs (UI redesign T1), so the per-panel toggles below replace
+            // the old "Show Tool Chest"/"Show Pages" checkboxes.
             if ui.checkbox(&mut app.ui.focus_mode, "Focus Mode").changed() {
                 app.ui.status = if app.ui.focus_mode {
                     "Focus mode on — panels hidden".to_string()
@@ -443,35 +435,66 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 app.save_app_prefs();
             }
             if ui
-                .checkbox(&mut app.ui.show_markups_list, "Show Markups List")
+                .checkbox(&mut app.ui.left_panel_visible, "Show Left Panel (Ctrl+1)")
                 .changed()
             {
-                app.ui.status = if app.ui.show_markups_list {
-                    "Markups List shown".to_string()
+                app.ui.focus_mode = false;
+                app.ui.status = if app.ui.left_panel_visible {
+                    "Left panel shown".to_string()
                 } else {
-                    "Markups List hidden".to_string()
-                };
-                app.save_app_prefs();
-            }
-            if ui.checkbox(&mut app.ui.show_pages, "Show Pages").changed() {
-                app.ui.status = if app.ui.show_pages {
-                    "Pages panel shown".to_string()
-                } else {
-                    "Pages panel hidden".to_string()
+                    "Left panel hidden".to_string()
                 };
                 app.save_app_prefs();
             }
             if ui
-                .checkbox(&mut app.ui.show_quantities, "Show Quantities")
+                .checkbox(&mut app.ui.inspector_visible, "Show Inspector (Ctrl+2)")
                 .changed()
             {
-                app.ui.status = if app.ui.show_quantities {
-                    "Quantities tab shown".to_string()
+                app.ui.focus_mode = false;
+                app.ui.status = if app.ui.inspector_visible {
+                    "Inspector shown".to_string()
                 } else {
-                    "Quantities tab hidden".to_string()
+                    "Inspector hidden".to_string()
                 };
                 app.save_app_prefs();
             }
+            if ui
+                .checkbox(&mut app.ui.bottom_panel_visible, "Show Bottom Panel (Ctrl+3)")
+                .changed()
+            {
+                app.ui.focus_mode = false;
+                app.ui.status = if app.ui.bottom_panel_visible {
+                    "Bottom panel shown".to_string()
+                } else {
+                    "Bottom panel hidden".to_string()
+                };
+                app.save_app_prefs();
+            }
+            ui.separator();
+            ui.menu_button("Bottom Tab", |ui| {
+                for tab in crate::ui::app_bottom_panel::BottomTab::ALL {
+                    if ui
+                        .selectable_label(app.ui.bottom_tab == tab, tab.label())
+                        .clicked()
+                    {
+                        app.ui.bottom_tab = tab;
+                        app.ui.bottom_panel_visible = true;
+                        app.ui.focus_mode = false;
+                    }
+                }
+            });
+            ui.menu_button("Left Tab", |ui| {
+                for tab in crate::ui::app_left_panel::LeftPanel::ALL {
+                    if ui
+                        .selectable_label(app.ui.left_panel == tab, tab.label())
+                        .clicked()
+                    {
+                        app.ui.left_panel = tab;
+                        app.ui.left_panel_visible = true;
+                        app.ui.focus_mode = false;
+                    }
+                }
+            });
         });
         ui.menu_button("Help", |ui| {
             if ui.button("About Rubric").clicked() {

@@ -265,7 +265,8 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
     use crate::domain::style::Color;
     use crate::domain::takeoff::ConditionKind;
 
-    let Some(state) = app.ui.takeoff_dialog.as_mut() else {
+    // Take the dialog state out, work with it, and put it back if needed
+    let Some(mut state) = app.ui.takeoff_dialog.take() else {
         return;
     };
 
@@ -354,7 +355,7 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                 ui.label("Kind");
                 let kind_enabled = !state.has_assignments;
                 let mut kind = state.kind;
-                let kind_resp = egui::ComboBox::from_label("")
+                let _kind_resp = egui::ComboBox::from_label("")
                     .selected_text(kind.label())
                     .show_ui(ui, |ui| {
                         for k in ConditionKind::ALL {
@@ -375,7 +376,6 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                 if !kind_enabled {
                     ui.small("(locked: unassign markups first to change kind)");
                 }
-                state.kind = kind;
             });
 
             // Height field (WallSurface only)
@@ -506,6 +506,7 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
         let assigned_count = state.assigned_count;
         let condition_id = state.editing_id;
         let condition_name = state.name.clone();
+        let mut delete_confirmed = false;
 
         egui::Window::new("Delete Condition")
             .collapsible(false)
@@ -520,26 +521,28 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                 ui.add_space(8.0);
                 ui.horizontal(|ui| {
                     if ui.button("Delete").clicked() {
-                        if let Some(id) = condition_id {
-                            let unassigned =
-                                app.history.current_mut().delete_condition(id).unwrap_or(0);
-                            app.push_snapshot("delete condition");
-                            app.set_status(
-                                crate::ui::app::StatusKind::Info,
-                                format!("Deleted '{}' ({} unassigned)", condition_name, unassigned),
-                            );
-                        }
-                        app.ui.takeoff_dialog = None;
+                        delete_confirmed = true;
                     }
                     if ui.button("Cancel").clicked() {
                         // Just close the confirm, keep the edit dialog open
-                        state.show_delete_confirm = false;
                     }
                 });
             });
 
-        // If user clicked Cancel on confirm, keep the edit dialog open
-        if !state.show_delete_confirm {
+        if delete_confirmed {
+            if let Some(id) = condition_id {
+                let unassigned = app.history.current_mut().delete_condition(id).unwrap_or(0);
+                app.push_snapshot("delete condition");
+                app.set_status(
+                    crate::ui::app::StatusKind::Info,
+                    format!("Deleted '{}' ({} unassigned)", condition_name, unassigned),
+                );
+            }
+            app.ui.takeoff_dialog = None;
+        } else {
+            // Cancel was clicked, keep the edit dialog open
+            state.show_delete_confirm = false;
+            app.ui.takeoff_dialog = Some(state);
             return;
         }
     }
@@ -591,20 +594,20 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
             }
         } else {
             // Creating new condition
-            match app
+            let result = app
                 .history
                 .current_mut()
-                .create_condition(name.clone(), kind, height)
-            {
-                Ok(cond) => {
-                    // Update colour and notes if they differ from defaults
+                .create_condition(name.clone(), kind, height);
+            match result {
+                Ok(cond_id) => {
+                    // Apply the dialog's colour and notes to the stored condition.
                     if let Some(cond) = app
                         .history
                         .current_mut()
                         .takeoff
                         .conditions
                         .iter_mut()
-                        .find(|c| c.id == cond.id)
+                        .find(|c| c.id == cond_id)
                     {
                         cond.colour = colour;
                         cond.notes = notes;
@@ -622,5 +625,8 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
             }
         }
         app.ui.takeoff_dialog = None;
+    } else {
+        // Put the state back if not cancelled or committed
+        app.ui.takeoff_dialog = Some(state);
     }
 }

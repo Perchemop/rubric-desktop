@@ -7,13 +7,11 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 use uuid::Uuid;
 
 use super::style::Color;
-use super::units::{MeasureKind, MeasureUnit, Scale};
+use super::units::{MeasureKind, MeasureUnit};
 use crate::domain::document::Document;
-use crate::domain::markup::{Markup, MarkupKind};
 
 /// Kind of takeoff condition — determines which measure families may be assigned.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -158,7 +156,7 @@ pub fn quantity_rows(project: &crate::domain::project::Project) -> Vec<QuantityR
     }
 
     // Add "Unassigned" row if there are any unassigned measurements
-    let unassigned = compute_unassigned(&project.documents);
+    let unassigned = compute_unassigned(&project.documents, &project.takeoff.conditions);
     if unassigned.count > 0 {
         let (unit, mixed_units) = unassigned.unit_and_mixed();
         rows.push(QuantityRow {
@@ -172,7 +170,7 @@ pub fn quantity_rows(project: &crate::domain::project::Project) -> Vec<QuantityR
                 created: Utc::now(),
                 modified: Utc::now(),
             },
-            total: unused_2dp(unassigned.total),
+            total: unassigned.total,
             unit,
             item_count: unassigned.count,
             mixed_units,
@@ -243,10 +241,14 @@ fn compute_condition_total(condition: &TakeoffCondition, documents: &[Document])
                         }
                     }
                     ConditionKind::Area => {
-                        // Area: Area measures only
+                        // Area: Area measures only. `value_points` carries the
+                        // area in raw pt², so it converts with the square of
+                        // the page scale — the same MeasureKind plumbing as
+                        // `Markup::recompute_measurement` (never re-derive
+                        // geometry here).
                         if meas.kind == MeasureKind::Area {
-                            let linear = scale.points_to_units(meas.value_points);
-                            linear * linear
+                            let upp = scale.units_per_point;
+                            meas.value_points * upp * upp
                         } else {
                             continue;
                         }
@@ -295,15 +297,21 @@ fn compute_condition_total(condition: &TakeoffCondition, documents: &[Document])
 }
 
 /// Compute total of unassigned measurements (not assigned to any condition).
-fn compute_unassigned(documents: &[Document]) -> ConditionTotal {
+///
+/// A markup with an orphaned `condition_id` (a hand-edited file whose condition
+/// no longer exists) fails open: it is treated as unassigned so it is never
+/// silently dropped from the schedule (spec error table).
+fn compute_unassigned(documents: &[Document], conditions: &[TakeoffCondition]) -> ConditionTotal {
+    let known: std::collections::HashSet<Uuid> = conditions.iter().map(|c| c.id).collect();
     let mut total = 0.0;
     let mut count = 0;
     let mut units: Vec<MeasureUnit> = Vec::new();
 
     for doc in documents {
         for markup in &doc.markups {
-            // Only consider measure/count markups that are unassigned
-            if markup.condition_id.is_some() {
+            // Only consider measure/count markups that are unassigned (or
+            // whose condition no longer exists — orphaned ids fail open).
+            if markup.condition_id.is_some_and(|id| known.contains(&id)) {
                 continue;
             }
             if !markup.kind.is_measure() {
@@ -339,6 +347,7 @@ fn compute_unassigned(documents: &[Document]) -> ConditionTotal {
 }
 
 /// Round to 2 decimal places for display purposes.
+#[allow(dead_code)] // Planned for future quantity formatting
 fn unused_2dp(value: f64) -> f64 {
     (value * 100.0).round() / 100.0
 }
@@ -346,13 +355,11 @@ fn unused_2dp(value: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::document::Document;
     use crate::domain::geom::Pt;
     use crate::domain::markup::{Markup, MarkupGeometry, MarkupKind};
     use crate::domain::units::{MeasureUnit, Scale};
 
     use super::super::style::Color;
-    use super::super::units::MeasureKind;
 
     #[test]
     fn condition_kind_all_contains_five_variants_exactly_once() {
@@ -478,7 +485,7 @@ mod tests {
 
         // Then: one row for the condition with 0 items and total 0.00
         assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].condition.id, carpet_cond.id);
+        assert_eq!(rows[0].condition.id, carpet_cond);
         assert_eq!(rows[0].total, 0.0);
         assert_eq!(rows[0].item_count, 0);
         assert_eq!(rows[0].unit, MeasureUnit::Meter);
@@ -497,7 +504,7 @@ mod tests {
             .unwrap();
 
         // When: trying to rename to "Carpet" (case-insensitive duplicate)
-        let result = project.rename_condition(cond.id, "Carpet");
+        let result = project.rename_condition(cond, "Carpet");
 
         // Then: the rename is rejected
         assert_eq!(result, Err(TakeoffError::DuplicateName));
@@ -578,7 +585,7 @@ mod tests {
         }
 
         // Assign all 5 to the condition
-        let assigned = project.assign_to_condition(&markup_ids, cond.id).unwrap();
+        let assigned = project.assign_to_condition(&markup_ids, cond).unwrap();
         assert_eq!(assigned, 5);
 
         // Verify assignments
@@ -590,12 +597,12 @@ mod tests {
                     .find(|m| &m.id == id)
                     .unwrap()
                     .condition_id,
-                Some(cond.id)
+                Some(cond)
             );
         }
 
         // When: deleting the condition
-        let unassigned_count = project.delete_condition(cond.id).unwrap();
+        let unassigned_count = project.delete_condition(cond).unwrap();
         assert_eq!(unassigned_count, 5);
 
         // Then: all markups are unassigned
@@ -619,7 +626,7 @@ mod tests {
             .unwrap();
         // Restore assignments
         project
-            .assign_to_condition(&markup_ids, restored_cond.id)
+            .assign_to_condition(&markup_ids, restored_cond)
             .unwrap();
 
         // Verify restoration
@@ -631,7 +638,7 @@ mod tests {
                     .find(|m| &m.id == id)
                     .unwrap()
                     .condition_id,
-                Some(restored_cond.id)
+                Some(restored_cond)
             );
         }
     }
@@ -676,7 +683,7 @@ mod tests {
         project.documents[0].add_markup(m);
 
         // When: assigning via domain method (locked affects editing, not scheduling)
-        let result = project.assign_to_condition(&[markup_id], cond.id);
+        let result = project.assign_to_condition(&[markup_id], cond);
 
         // Then: assignment succeeds
         assert!(result.is_ok());
@@ -688,7 +695,7 @@ mod tests {
                 .find(|m| &m.id == &markup_id)
                 .unwrap()
                 .condition_id,
-            Some(cond.id)
+            Some(cond)
         );
     }
 
@@ -726,7 +733,7 @@ mod tests {
         project.documents[0].add_markup(m);
 
         // When: trying to assign Area to Linear condition
-        let result = project.assign_to_condition(&[markup_id], linear_cond.id);
+        let result = project.assign_to_condition(&[markup_id], linear_cond);
 
         // Then: rejection with MeasureMismatch
         assert_eq!(result, Err(TakeoffError::MeasureMismatch));
@@ -764,7 +771,7 @@ mod tests {
         }
 
         // When: assigning all 3 to "Skirting" via batch operation
-        let result = project.assign_to_condition(&markup_ids, skirting_cond.id);
+        let result = project.assign_to_condition(&markup_ids, skirting_cond);
 
         // Then: all 3 are assigned
         assert!(result.is_ok());
@@ -778,7 +785,7 @@ mod tests {
                     .find(|m| &m.id == id)
                     .unwrap()
                     .condition_id,
-                Some(skirting_cond.id)
+                Some(skirting_cond)
             );
         }
     }
@@ -848,7 +855,7 @@ mod tests {
 
         // Assign both to "Skirting"
         project
-            .assign_to_condition(&markup_ids, skirting_cond.id)
+            .assign_to_condition(&markup_ids, skirting_cond)
             .unwrap();
 
         // When: computing quantity rows
@@ -910,7 +917,7 @@ mod tests {
 
         // Assign to WallSurface condition
         project
-            .assign_to_condition(&[markup_id], walls_cond.id)
+            .assign_to_condition(&[markup_id], walls_cond)
             .unwrap();
 
         // When: computing quantity rows
@@ -983,7 +990,7 @@ mod tests {
 
         // Assign both to condition
         project
-            .assign_to_condition(&[id1, id2], lin_cond.id)
+            .assign_to_condition(&[id1, id2], lin_cond)
             .unwrap();
 
         // When: computing quantity rows
@@ -1029,7 +1036,7 @@ mod tests {
 
         // Assign all 4 to Count condition
         project
-            .assign_to_condition(&markup_ids, count_cond.id)
+            .assign_to_condition(&markup_ids, count_cond)
             .unwrap();
 
         // When: computing quantity rows
@@ -1064,7 +1071,7 @@ mod tests {
 
         // Create an Area measure on the hidden layer
         // 1 sq meter at 1:100 scale = 7200 points x 7200 points = 51,840,000 sq points
-        let area_points = 1.0 * (100.0 * 72.0 / 100.0); // Simplified
+        // (geometry drives the computed value; no explicit expectation here)
         let mut m = Markup::new(
             0,
             MarkupKind::MeasureArea,
@@ -1086,7 +1093,7 @@ mod tests {
 
         // Assign to condition
         project
-            .assign_to_condition(&[markup_id], carpet_cond.id)
+            .assign_to_condition(&[markup_id], carpet_cond)
             .unwrap();
 
         // When: computing quantity rows with hidden layer

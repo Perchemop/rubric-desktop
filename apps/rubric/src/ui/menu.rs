@@ -10,7 +10,6 @@
 //! status text.
 
 use eframe::egui::{self, Ui};
-use uuid::Uuid;
 
 use crate::domain::project;
 use crate::domain::{
@@ -160,9 +159,11 @@ pub(crate) fn draw_assign_condition_menu(
     ui.menu_button("Assign to condition", |ui| {
         for (cond_id, cond_name, cond_kind) in conditions {
             let label = format!("{} ({})", cond_name, cond_kind.label());
-            if action_button(ui, ui_state, EditorAction::AssignToCondition(cond_id)) {
-                // action_button already sets pending_action and closes
-            }
+            // action_button already sets pending_action and closes
+            let _ = if ui.button(&label).clicked() {
+                ui_state.pending_action = Some(EditorAction::AssignToCondition(cond_id));
+                ui.close();
+            };
             // Add a small kind indicator - the action_button handles the click
         }
 

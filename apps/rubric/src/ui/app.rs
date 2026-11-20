@@ -19,7 +19,7 @@ use crate::domain::{
     MarkupKind, MarkupListSort, MarkupStyle, MeasureUnit, Project, Pt, Report, ReportGroupKey,
     ReviewStatus, StampPreset, StylePreset, StylePresetLibrary, Theme, Tool,
 };
-use crate::ui::{app_dialogs, canvas, pages, theme, toolbar};
+use crate::ui::{app_dialogs, canvas, pages, theme};
 use uuid::Uuid;
 
 /// User guide embedded at build time for Help ▸ User Guide. Baking it in
@@ -252,6 +252,9 @@ pub(crate) struct UiState {
     pub(crate) grid: Grid,
     /// Whether the Markups List panel is visible (View menu toggle).
     pub(crate) show_markups_list: bool,
+    /// Which tab the consolidated left panel is showing (UI redesign T1):
+    /// Pages, Tools, or the Tool Chest.
+    pub(crate) left_panel: crate::ui::app_left_panel::LeftPanel,
     /// Whether the Pages panel is visible (View menu toggle).
     pub(crate) show_pages: bool,
     /// Whether the Tool Chest panel is visible (View menu toggle, v0.4 gap
@@ -260,8 +263,20 @@ pub(crate) struct UiState {
     /// Focus/reading mode: hides all side panels so only the canvas is
     /// visible, for distraction-free review (proposal P2-13).
     pub(crate) focus_mode: bool,
+    /// Whether the consolidated left panel is visible (UI redesign T5:
+    /// Ctrl+1 toggle / View menu). Focus mode overrides it.
+    pub(crate) left_panel_visible: bool,
+    /// Whether the inspector (right) panel is visible (UI redesign T5:
+    /// Ctrl+2 toggle / View menu). Focus mode overrides it.
+    pub(crate) inspector_visible: bool,
+    /// Whether the unified bottom panel is visible (UI redesign T5: Ctrl+3
+    /// toggle / View menu). Focus mode overrides it.
+    pub(crate) bottom_panel_visible: bool,
     /// Show Quantities tab in the bottom panel (R-12).
     pub(crate) show_quantities: bool,
+    /// Which tab the unified bottom panel is showing (UI redesign T3):
+    /// Markups List or Quantities.
+    pub(crate) bottom_tab: crate::ui::app_bottom_panel::BottomTab,
     /// Which tab is selected when the Quantities panel is open: `true` =
     /// Quantities tab, `false` = Markups List tab (R-12).
     pub(crate) quantities_tab_selected: bool,
@@ -382,10 +397,15 @@ impl Default for UiState {
             grid: Grid::default(),
             marquee_start: None,
             show_markups_list: true,
+            left_panel: crate::ui::app_left_panel::LeftPanel::default(),
             show_pages: true,
             show_tool_chest: true,
             focus_mode: false,
+            left_panel_visible: true,
+            inspector_visible: true,
+            bottom_panel_visible: true,
             show_quantities: true,
+            bottom_tab: crate::ui::app_bottom_panel::BottomTab::default(),
             quantities_tab_selected: true,
             show_minimap: false,
             quit_confirm: false,
@@ -2226,15 +2246,6 @@ impl RubricApp {
         crate::ui::app_topbar::draw_top_bar(self, ui);
     }
 
-    fn left_panel(&mut self, ui: &mut Ui) {
-        toolbar::draw_tool_groups(
-            ui,
-            &mut self.ui.active_tool,
-            &mut self.ui.inspector_mode,
-            &mut self.ui.hint,
-        );
-    }
-
     /// Switch the active tool, abandoning any in-flight draft gesture exactly
     /// like Escape does (but keeping the current selection). Used by the
     /// unmodified-key tool shortcuts.
@@ -2439,6 +2450,36 @@ impl RubricApp {
             if i.modifiers.command && i.key_pressed(egui::Key::Num0) {
                 self.fit_page();
             }
+            // Panel toggles (UI redesign T5): Ctrl+1 left panel, Ctrl+2
+            // inspector, Ctrl+3 bottom panel. Focus mode hides everything, so
+            // Ctrl+0 (or the View menu) leaves it.
+            if i.modifiers.command && i.key_pressed(egui::Key::Num1) && !wants_kb {
+                self.ui.focus_mode = false;
+                self.ui.left_panel_visible = !self.ui.left_panel_visible;
+                self.ui.status = if self.ui.left_panel_visible {
+                    "Left panel shown".to_string()
+                } else {
+                    "Left panel hidden".to_string()
+                };
+            }
+            if i.modifiers.command && i.key_pressed(egui::Key::Num2) && !wants_kb {
+                self.ui.focus_mode = false;
+                self.ui.inspector_visible = !self.ui.inspector_visible;
+                self.ui.status = if self.ui.inspector_visible {
+                    "Inspector shown".to_string()
+                } else {
+                    "Inspector hidden".to_string()
+                };
+            }
+            if i.modifiers.command && i.key_pressed(egui::Key::Num3) && !wants_kb {
+                self.ui.focus_mode = false;
+                self.ui.bottom_panel_visible = !self.ui.bottom_panel_visible;
+                self.ui.status = if self.ui.bottom_panel_visible {
+                    "Bottom panel shown".to_string()
+                } else {
+                    "Bottom panel hidden".to_string()
+                };
+            }
             if i.modifiers.command && i.key_pressed(egui::Key::A) && !wants_kb {
                 // Select All on the current page (full-app audit M5/M10); the
                 // same path as Edit ▸ Select All.
@@ -2577,28 +2618,36 @@ impl RubricApp {
         }
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(ui));
         egui::Panel::top("toolbar").show(ui, |ui| self.top_bar(ui));
-        // Pages sidebar (spec F-404). Only shown when the document has pages
-        // and the panel is enabled in the View menu.
-        crate::ui::app_pages::draw_pages_panel(self, ui);
-        egui::Panel::left("tools")
-            .default_size(200.0)
-            .min_size(180.0)
-            .show(ui, |ui| self.left_panel(ui));
-        // Tool Chest (v0.4 gap #7): the "My Tools" panel over the app-level
-        // preset library. Armed presets travel via
-        // `ui.pending_style_preset`, which `canvas::finish_markup` consumes
-        // at creation time; only apply-to-selection mutates the project and
-        // asks for a snapshot.
-        let chest_mutated = crate::ui::app_tool_chest::draw_tool_chest_panel(self, ui);
+        // Consolidated left panel (UI redesign T1): Pages, Tools, and the
+        // Tool Chest live in one tabbed container so the canvas keeps the
+        // space the three stacked panels used to take. Ctrl+1 toggles (T5).
+        let chest_mutated = if self.ui.left_panel_visible {
+            crate::ui::app_left_panel::draw_left_panel(self, ui)
+        } else {
+            false
+        };
         if chest_mutated {
             self.push_snapshot("tool chest apply");
         }
-        let inspector_mutated = crate::ui::app_inspector::draw_inspector_panel(self, ui);
+        let inspector_mutated = if self.ui.inspector_visible {
+            crate::ui::app_inspector::draw_inspector_panel(self, ui)
+        } else {
+            false
+        };
         egui::Panel::bottom("status")
             .show(ui, |ui| crate::ui::app_status::draw_status_bar(self, ui));
 
-        // Quantities panel (handles its own actions internally)
-        crate::ui::app_quantities::draw_quantities_panel(self, ui);
+        // Unified bottom panel (UI redesign T3): Markups List | Quantities in
+        // one tabbed container. Opens the condition dialog on request and
+        // selects a condition's markups on row click. Ctrl+3 toggles (T5).
+        let (qty_action, _bottom_mutated) = if self.ui.bottom_panel_visible {
+            crate::ui::app_bottom_panel::draw_bottom_panel(self, ui)
+        } else {
+            (None, false)
+        };
+        if let Some(act) = qty_action {
+            crate::ui::app_quantities::handle_quantity_action(self, act);
+        }
 
         crate::ui::app_canvas::draw_canvas_panel(self, ui);
         if inspector_mutated {

@@ -124,6 +124,9 @@ mod tests {
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::Inch,
             tool_chest_max_recents: 12,
+            show_quantities: true,
+            quantities_tab_selected: true,
+            workspace: crate::domain::workspace::WorkspaceState::default(),
         };
         save_prefs_to(&path, &prefs).expect("save");
         assert_eq!(load_prefs_from(&path), prefs);

@@ -32,9 +32,9 @@ implemented · **Todo** = not started · **Out of scope** = deliberately exclude
 | Accessibility (contrast, keyboard reachability) | F-605 | Done | WCAG contrast audit test + audited body-text colours + labelled controls (2026-10-30, `docs/a11y.md`) |
 | Packaging & installers (AppImage, DMG, MSI, CI artifacts) | F-701–F-704 | Done (2026-10-23) | CI release build for 3 targets + Linux AppImage, macOS DMG, Windows MSI; installers unsigned (Q-PACK-1) |
 | Web (WASM) target | — | Out of scope (v1) | see `docs/scope.md` |
-| Quantity list (aggregate measurements by kind with names) | — | Done | `domain/takeoff.rs`: `quantity_rows()` function; tests AC-1 to AC-12; `Project.takeoff` field; `Markup.condition_id`; PR #45 |
-| Wall-surface derivation (perimeter × height) | — | Done | `ConditionKind::WallSurface` with height; `quantity_rows()` computes derived area; test AC-9 |
-| Quantity CSV export | — | Done | `data/export.rs`: RFC 4180 CSV writer; `Project::export_quantities_csv()`; tests AC-13, AC-14, AC-15; PR #47 |
+| Quantity list (aggregate measurements by kind with names) | — | Implemented on PR #230 (open, merge pending) | `domain/takeoff.rs`: `quantity_rows()` function; tests AC-1 to AC-12; `Project.takeoff` field; `Markup.condition_id`; T6 quantities panel |
+| Wall-surface derivation (perimeter × height) | — | Implemented on PR #230 (open, merge pending) | `ConditionKind::WallSurface` with height; `quantity_rows()` computes derived area; test AC-9 |
+| Quantity CSV export | — | Implemented on PR #230 (open, merge pending) | `data/export.rs`: RFC 4180 CSV writer; `Project::export_quantities_csv()`; tests AC-13, AC-14, AC-15 |
 | Symbol auto-count (stretch) | — | Out of scope (v0.5) | Marked out of scope per spec; may revisit in v0.6+
 
 ## Notes

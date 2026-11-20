@@ -324,7 +324,7 @@ mod tests {
     fn close_panel_refuses_last_panel() {
         let mut ws = WorkspaceState::default();
         // Try closing Tools when only Pages and Tools are open.
-        let ok = ws.close_panel(PanelId::Tools);
+        let _ok = ws.close_panel(PanelId::Tools);
         // After closing Tools, Pages and MarkupsList remain, so ok should be true.
         // But if we then try closing Pages, it should refuse.
         let pages_ok = ws.close_panel(PanelId::Pages);

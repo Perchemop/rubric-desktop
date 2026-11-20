@@ -38,62 +38,18 @@ pub(crate) fn draw_inspector(
 ) -> bool {
     let mut committed = false;
 
-    ui.heading("Inspector");
-    ui.separator();
+    // Context-sensitive inspector (UI redesign T2): the former five-tab strip
+    // is gone. Sections appear based on what is selected — markups show
+    // Properties (+ Measurement for measures) and Comments; with nothing
+    // selected the Project/Document settings take the panel. The mode field
+    // is now derived, not user-picked.
+    ui_state.inspector_mode = if ui_state.selected.is_empty() {
+        InspectorMode::Settings
+    } else {
+        InspectorMode::Properties
+    };
 
-    // Segmented inspector tabs (P1-7): switch which panel section is primary.
-    ui.horizontal(|ui| {
-        if ui
-            .selectable_label(
-                ui_state.inspector_mode == InspectorMode::Selection,
-                "Selection",
-            )
-            .on_hover_text("Markup properties")
-            .clicked()
-        {
-            ui_state.inspector_mode = InspectorMode::Selection;
-        }
-        if ui
-            .selectable_label(
-                ui_state.inspector_mode == InspectorMode::Properties,
-                "Properties",
-            )
-            .on_hover_text("Stroke, width, layer")
-            .clicked()
-        {
-            ui_state.inspector_mode = InspectorMode::Properties;
-        }
-        if ui
-            .selectable_label(
-                ui_state.inspector_mode == InspectorMode::Comments,
-                "Comments",
-            )
-            .on_hover_text("Threaded comments")
-            .clicked()
-        {
-            ui_state.inspector_mode = InspectorMode::Comments;
-        }
-        if ui
-            .selectable_label(
-                ui_state.inspector_mode == InspectorMode::Measurements,
-                "Measure",
-            )
-            .on_hover_text("Measurement readout")
-            .clicked()
-        {
-            ui_state.inspector_mode = InspectorMode::Measurements;
-        }
-        if ui
-            .selectable_label(
-                ui_state.inspector_mode == InspectorMode::Settings,
-                "Settings",
-            )
-            .on_hover_text("Project & document settings")
-            .clicked()
-        {
-            ui_state.inspector_mode = InspectorMode::Settings;
-        }
-    });
+    ui.heading("Inspector");
     ui.separator();
 
     // Status legend (spec F-305): one row per status with swatch + label + count.
@@ -578,11 +534,6 @@ pub(crate) fn draw_inspector(
         egui::CollapsingHeader::new("Properties")
             .default_open(true)
             .show(ui, |ui| {
-                if ui_state.inspector_mode != InspectorMode::Properties {
-                    ui.small("Click the Properties tab to edit stroke, width, layer, status.");
-                    return;
-                }
-
                 ui.label(format!("ID: {}", m.id));
                 ui.label(format!("Kind: {}", m.kind.label()));
                 ui.label(format!("Page: {}", m.page));
@@ -1014,38 +965,32 @@ pub(crate) fn draw_inspector(
                 }
 
                 if m.kind.is_measure() {
-                    if ui_state.inspector_mode != InspectorMode::Measurements {
-                        ui.small("Click the Measure tab to view the measurement readout.");
+                    let scale = project
+                        .active()
+                        .and_then(|d| d.pages.get(m.page).copied())
+                        .map(|p| p.scale)
+                        .unwrap_or(Scale::PAPER);
+                    if let Some(meas) = m.measurement {
+                        ui.separator();
+                        ui.label("Measurement");
+                        ui.small(format!(
+                            "Value: {}",
+                            meas.label_with(scale.unit, project.settings.precision)
+                        ));
+                        ui.small(format!("Points: {:.2} pt", meas.value_points));
+                        ui.small(format!(
+                            "Scale: {:.6} {}/pt",
+                            scale.units_per_point,
+                            scale.unit.suffix()
+                        ));
                     } else {
-                        let scale = project
-                            .active()
-                            .and_then(|d| d.pages.get(m.page).copied())
-                            .map(|p| p.scale)
-                            .unwrap_or(Scale::PAPER);
-                        if let Some(meas) = m.measurement {
-                            ui.separator();
-                            ui.label("Measurement");
-                            ui.small(format!(
-                                "Value: {}",
-                                meas.label_with(scale.unit, project.settings.precision)
-                            ));
-                            ui.small(format!("Points: {:.2} pt", meas.value_points));
-                            ui.small(format!(
-                                "Scale: {:.6} {}/pt",
-                                scale.units_per_point,
-                                scale.unit.suffix()
-                            ));
-                        } else {
-                            ui.small("Measurement not computed");
-                        }
+                        ui.small("Measurement not computed");
                     }
                 }
             });
 
         ui.collapsing("Comments", |ui| {
-            if ui_state.inspector_mode != InspectorMode::Comments {
-                ui.small("Click the Comments tab to view and add threaded comments.");
-            } else if m.comments.is_empty() {
+            if m.comments.is_empty() {
                 ui.small("No comments yet.");
             } else {
                 for c in &m.comments {
@@ -1115,9 +1060,10 @@ pub(crate) fn draw_inspector(
         }
     }
 
-    // Project / Document editors and tool stamp-preset picker: shown under
-    // Settings tab, or when nothing is selected.
-    if ui_state.inspector_mode == InspectorMode::Settings || selected.is_empty() {
+    // Project / Document editors and tool stamp-preset picker: shown when
+    // nothing is selected (UI redesign T2: settings are the empty-selection
+    // content of the context-sensitive panel).
+    if selected.is_empty() {
         ui.collapsing("Project", |ui| {
             let mut name = project.name.clone();
             let resp = ui.text_edit_singleline(&mut name);

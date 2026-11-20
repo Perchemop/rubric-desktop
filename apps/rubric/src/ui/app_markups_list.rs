@@ -1,6 +1,12 @@
 //! Markups list panel orchestration.
 //!
 //! Extracted from `ui/app.rs` to reduce the god-file size.
+//!
+//! **v0.2.0 planned feature** — domain foundation (v0.2-01) and UI (v0.2-02).
+//! Currently integrated in `app.rs` via `app_markups_list` but only activated
+//! when `show_markups_list` is enabled in preferences.
+
+#![allow(dead_code)] // Planned v0.2.0 feature; extracted but not yet wired in
 
 use egui::Ui;
 

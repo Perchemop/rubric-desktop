@@ -235,12 +235,12 @@ Implementation status is tracked in:
 | Accessibility | Done |
 | Packaging & installers | Done |
 | Document compare / diff | Partial (domain done, UI pending) |
-| Reusable style presets | Partial (domain done, UI pending) |
+| Reusable style presets | Mostly met (full-markup presets + Drawing Mode, PR #227 — see delta table B1/B5; per-tool mode persistence session-only) |
 
 ### Next priorities
 
 1. Inspector depth (expose existing style fields: fill mode, dash, opacity, lock)
 2. Set as default / dynamic defaults
-3. Recent tools in Tool Chest
-4. Symbol auto-count (out of scope for v0.5)
-5. Full-document tabs and split views
+3. Takeoff quantities completion: condition dialog (T8), prefs wiring (T9), docs & release (T10) — open as PR #230
+4. Docking/float/split panels (G3/G5): `WorkspaceState` groundwork landed (PR #230); UI pending
+5. B3 defect: My Tools library not persisted on save (narrowed by tool-set persistence, still open)

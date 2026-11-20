@@ -11,129 +11,84 @@ use eframe::egui::{self, RichText, Ui};
 use uuid::Uuid;
 
 use crate::domain::takeoff::{quantity_rows, ConditionKind, QuantityRow};
-use crate::domain::MarkupKind;
 use crate::domain::Project;
 use crate::ui::app::UiState;
 
-/// Column widths for the quantities table (in pixels).
-const COLUMN_WIDTHS: [f32; 5] = [24.0, 160.0, 100.0, 60.0, 140.0];
-
 /// An action requested by the quantities panel.
+///
+/// Row-click selection is performed inside the panel (R-17) via
+/// [`select_markups`]; only dialog-opening requests bubble up.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum QuantityAction {
-    /// Select all markups assigned to a condition and jump to its first contributor's page.
-    SelectCondition {
-        condition_id: Uuid,
-        first_page: usize,
-    },
-    /// Select all unassigned measurements.
-    SelectUnassigned { count: usize },
     /// Open the condition dialog to create a new condition.
     NewCondition,
     /// Open the condition dialog to edit an existing condition.
-    EditCondition { condition_id: Uuid },
+    EditCondition { condition_id: uuid::Uuid },
 }
 
-/// Draw the Quantities panel with tab strip (Markups List | Quantities).
+/// Draw the Quantities tab content inside the unified bottom panel
+/// (UI redesign T3). The panel wrapper and tab strip live in
+/// `app_bottom_panel.rs`; this draws only the toolbar + table.
 ///
 /// Returns (action, dirty) where action requests opening the condition dialog.
-pub(crate) fn draw_quantities_panel(
+pub(crate) fn draw_quantities_content(
     ui: &mut Ui,
     project: &Project,
     state: &mut UiState,
 ) -> (Option<QuantityAction>, bool) {
     let mut action = None;
-    let mut dirty = false;
+    let dirty = false;
 
-    if !state.show_quantities || state.focus_mode {
+    // Toolbar row
+    ui.horizontal(|ui| {
+        ui.add_space(4.0);
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ui.button("Export CSV…").clicked() {
+                export_quantities_csv(project, state);
+            }
+        });
+    });
+
+    ui.separator();
+
+    let rows = quantity_rows(project);
+
+    if rows.is_empty() {
+        // Empty state: no conditions yet (R-13)
+        ui.vertical(|ui| {
+            ui.add_space(12.0);
+            ui.heading("No takeoff conditions yet.");
+            ui.label("Conditions name what you measure — create one to start the schedule.");
+            ui.add_space(8.0);
+            if ui.button("New condition…").clicked() {
+                action = Some(QuantityAction::NewCondition);
+            }
+            ui.add_space(12.0);
+        });
         return (action, dirty);
     }
 
-    egui::Panel::bottom("quantities")
-        .default_size(200.0)
-        .min_size(140.0)
-        .max_size(400.0)
-        .resizable(true)
+    // Quantities table header
+    ui.horizontal(|ui| {
+        ui.add_space(4.0);
+        ui.label(RichText::new("Condition").strong());
+        ui.label(RichText::new("Kind").strong());
+        ui.label(RichText::new("Items").strong());
+        ui.label(RichText::new("Quantity").strong());
+        ui.label(RichText::new("Unit").strong());
+    });
+
+    ui.separator();
+
+    // Data rows in a scroll area
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
         .show(ui, |ui| {
-            // Tab strip: Markups List | Quantities
-            ui.horizontal(|ui| {
-                ui.add_space(4.0);
-
-                // Markups List tab
-                if state.quantities_tab_selected {
-                    if ui.button("Markups List").clicked() {
-                        state.quantities_tab_selected = false;
-                        state.show_markups_list = true;
-                        state.show_quantities = false;
-                    }
-                } else {
-                    ui.label(RichText::new("Markups List").weak());
+            for row in &rows {
+                if let Some(a) = draw_quantity_row(ui, project, state, row) {
+                    action = Some(a);
                 }
-
-                ui.separator();
-
-                // Quantities tab (current)
-                if !state.quantities_tab_selected {
-                    if ui.button("Quantities").clicked() {
-                        state.quantities_tab_selected = true;
-                        state.show_markups_list = false;
-                        state.show_quantities = true;
-                    }
-                } else {
-                    ui.label(RichText::new("Quantities").strong());
-                }
-
-                // Right-aligned buttons
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("Export CSV…").clicked() {
-                        export_quantities_csv(project, state);
-                    }
-                });
-            });
-
-            ui.separator();
-
-            let rows = quantity_rows(project);
-
-            if rows.is_empty() {
-                // Empty state: no conditions yet (R-13)
-                ui.vertical(|ui| {
-                    ui.add_space(12.0);
-                    ui.heading("No takeoff conditions yet.");
-                    ui.label(
-                        "Conditions name what you measure — create one to start the schedule.",
-                    );
-                    ui.add_space(8.0);
-                    if ui.button("New condition…").clicked() {
-                        action = Some(QuantityAction::NewCondition);
-                    }
-                    ui.add_space(12.0);
-                });
-                return;
             }
-
-            // Quantities table header
-            ui.horizontal(|ui| {
-                ui.add_space(4.0);
-                ui.label(RichText::new("Condition").strong());
-                ui.label(RichText::new("Kind").strong());
-                ui.label(RichText::new("Items").strong());
-                ui.label(RichText::new("Quantity").strong());
-                ui.label(RichText::new("Unit").strong());
-            });
-
-            ui.separator();
-
-            // Data rows in a scroll area
-            egui::ScrollArea::vertical()
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
-                    for row in &rows {
-                        if let Some(a) = draw_quantity_row(ui, project, state, row) {
-                            action = Some(a);
-                        }
-                    }
-                });
         });
 
     (action, dirty)
@@ -197,7 +152,7 @@ fn draw_quantity_row(
                     condition_id: row.condition.id,
                 });
             } else if name_clicked || clicked {
-                select_markups(project, state, row, is_unassigned);
+                select_markups(project, row.condition.id, is_unassigned, state);
             }
             // Handle Enter key when name label is focused
             if name_resp.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
@@ -207,7 +162,7 @@ fn draw_quantity_row(
             }
         } else if name_clicked || clicked {
             // Unassigned row: single click selects
-            select_markups(project, state, row, is_unassigned);
+            select_markups(project, row.condition.id, is_unassigned, state);
         }
 
         // Kind label
@@ -219,11 +174,11 @@ fn draw_quantity_row(
             ConditionKind::Count => "Count",
         };
         if is_unassigned {
-            ui.add(egui::Label::new("").wrap(false));
+            ui.add(egui::Label::new(" "));
         } else {
             if ui.label(kind_text).clicked() {
                 if action.is_none() {
-                    select_markups(project, state, row, is_unassigned);
+                    select_markups(project, row.condition.id, is_unassigned, state);
                 }
             }
         }
@@ -236,7 +191,7 @@ fn draw_quantity_row(
         };
         if ui.label(items_text).clicked() {
             if action.is_none() {
-                select_markups(project, state, row, is_unassigned);
+                select_markups(project, row.condition.id, is_unassigned, state);
             }
         }
 
@@ -244,7 +199,7 @@ fn draw_quantity_row(
         let total_str = format_quantity(row);
         if ui.label(total_str).clicked() {
             if action.is_none() {
-                select_markups(project, state, row, is_unassigned);
+                select_markups(project, row.condition.id, is_unassigned, state);
             }
         }
 
@@ -268,7 +223,7 @@ fn draw_quantity_row(
         let unit_name = row.unit.name();
         if ui.label(unit_name).clicked() {
             if action.is_none() {
-                select_markups(project, state, row, is_unassigned);
+                select_markups(project, row.condition.id, is_unassigned, state);
             }
         }
 
@@ -293,37 +248,23 @@ fn format_quantity(row: &QuantityRow) -> String {
     format!("{}{}", formatted, suffix)
 }
 
-/// Select all markups assigned to a condition (or unassigned) and jump to the first contributor's page.
-fn select_markups(
-    project: &Project,
-    state: &mut UiState,
-    row: &QuantityRow,
-    is_unassigned: bool,
-) {
+/// Select all markups assigned to a condition (or unassigned) and update selection state.
+fn select_markups(project: &Project, condition_id: Uuid, is_unassigned: bool, state: &mut UiState) {
     let mut found_page = None;
     let mut selected_ids = Vec::new();
 
-    if is_unassigned {
-        // Select all unassigned measurements
-        for doc in &project.documents {
-            for markup in &doc.markups {
-                if markup.condition_id.is_none() && markup.kind.is_measure() {
-                    selected_ids.push(markup.id);
-                    if found_page.is_none() {
-                        found_page = Some(markup.page);
-                    }
-                }
-            }
-        }
-    } else {
-        // Select all markups assigned to this condition
-        for doc in &mut project.documents {
-            for markup in &mut doc.markups {
-                if markup.condition_id == Some(row.condition.id) {
-                    selected_ids.push(markup.id);
-                    if found_page.is_none() {
-                        found_page = Some(markup.page);
-                    }
+    for doc in &project.documents {
+        for markup in &doc.markups {
+            let matches = if is_unassigned {
+                markup.condition_id.is_none() && markup.kind.is_measure()
+            } else {
+                markup.condition_id == Some(condition_id)
+            };
+            
+            if matches {
+                selected_ids.push(markup.id);
+                if found_page.is_none() {
+                    found_page = Some(markup.page);
                 }
             }
         }
@@ -335,22 +276,18 @@ fn select_markups(
         state.selected.insert(id);
     }
 
-    let page = found_page.unwrap_or(state.current_page);
-
     if count > 0 {
-        if page != state.current_page {
-            state.status = format!(
-                "Selected {} markup{} on page {}",
-                count,
-                if count == 1 { "" } else { "s" },
-                page + 1
-            );
-        } else {
-            state.status = format!(
-                "Selected {} markup{}",
-                count,
-                if count == 1 { "" } else { "s" }
-            );
+        state.status = format!(
+            "Selected {} markup{}",
+            count,
+            if count == 1 { "" } else { "s" }
+        );
+        // R-17: jump to the first contributor's page (same contract as the
+        // Markups List rows). The panel owns session UI state directly.
+        if let Some(page) = found_page {
+            if page != state.current_page {
+                state.current_page = page;
+            }
         }
     }
 }
@@ -524,7 +461,7 @@ mod tests {
                 modified: Utc::now(),
             },
             total: 4.0,
-            unit: crate::domain::units::MeasureUnit::Each,
+            unit: crate::domain::units::MeasureUnit::Point,
             item_count: 4,
             mixed_units: false,
         };

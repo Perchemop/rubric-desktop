@@ -176,13 +176,13 @@ pub fn write_quantities_csv(
             .trim_end_matches('.')
             .to_string();
         let items = row.item_count.to_string();
-        let height = if let Some(h) = condition.height {
-            format!("{:.15}", h)
-                .trim_end_matches('0')
-                .trim_end_matches('.')
+        let height_str = if let Some(h) = condition.height {
+            let s = format!("{:.15}", h);
+            s.trim_end_matches('0').trim_end_matches('.').to_string()
         } else {
-            ""
+            String::new()
         };
+        let height = &height_str;
         let notes = if let Some(ref n) = condition.notes {
             format_csv_field(n)
         } else {

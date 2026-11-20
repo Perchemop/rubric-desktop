@@ -1,5 +1,42 @@
 # PROGRESS.md
 
+## [Unreleased] — UI redesign T1–T5 (2026-11-21)
+
+Implemented from `docs/specs/ui-redesign.spec.md` (grill-me decisions in
+`docs/design/ui-redesign-decisions.md`); Bluebeam-pattern research recorded
+with URLs in the decisions doc.
+
+- **T1 — Panel consolidation:** the three left panels (Pages, Tools, Tool
+  Chest) merged into one tabbed container (`ui/app_left_panel.rs`,
+  `LeftPanel` enum; default 210 px, 180–320 px). Old standalone panel
+  wrappers removed; `show_pages`/`show_tool_chest` toggles replaced by the
+  tab strip + View ▸ Left Tab submenu.
+- **T2 — Context-sensitive Properties panel:** the five inspector tabs
+  (Selection/Properties/Comments/Measure/Settings) are gone; sections now
+  appear from the selection — markups show Properties (+ Measurement for
+  measures) and Comments; empty selection shows Project/Document settings
+  (`ui/inspector.rs`; `InspectorMode` derived, not user-picked).
+- **T3 — Unified bottom tab strip:** Markups List | Quantities in one
+  `Panel::bottom` (`ui/app_bottom_panel.rs`, `BottomTab` enum). The
+  quantities content draws inside the shared panel
+  (`quantities_panel::draw_quantities_content`); the old dual-panel toggle
+  is removed.
+- **T4 — Toolbar slim-down:** status message moved from the top bar into the
+  bottom status bar (severity-coloured); top bar keeps document tabs, Tools
+  dropdown, active-tool chip, zoom and page nav. Version button in the
+  status bar is now framed (clickable affordance).
+- **T5 — A11y & keyboard:** Ctrl+1/Ctrl+2/Ctrl+3 toggle left/inspector/bottom
+  panels (exits focus mode); View menu checkboxes carry the shortcut hints;
+  Left Tab / Bottom Tab submenus give menu access to each panel's tabs.
+- **Domain API fix:** `Project::create_condition()` now returns
+  `Result<Uuid, TakeoffError>` (borrow-local id instead of `&mut` into the
+  conditions vector), unblocking the test suite; the takeoff test borrow
+  errors from the interrupted parallel slice are fixed, `MeasureUnit::Each`
+  placeholder corrected to `Point`, and `AppPrefs` test initializer
+  completed. `cargo check --lib --tests`: 0 errors, 0 warnings.
+
+CI run: pending (pushed via `ci.sh`; run id recorded after the run).
+
 ## [Unreleased] — takeoff quantities domain layer v0.5 (2026-11-20)
 
 ### Completed features:
@@ -43,15 +80,15 @@
 - Unit tests for condition CRUD and quantity computation
 - No raw Cargo commands (CI-first approach)
 
-### Completed:
+### Completed (all on branch `opencode/ci`, open as PR #230 — not yet merged):
 - **T5 — CSV export** (RFC 4180 compliant)
   - `write_quantities_csv()` in `data/export.rs` with atomic write (temp+rename)
   - `Project::export_quantities_csv()` method using full precision
   - Tests AC-13 (header/content), AC-14 (RFC 4180 quoting), AC-15 (failure cleanup)
+- **T6 — Quantities panel UI:** bottom-panel tab strip + quantities table with row click-select, empty state, mixed-unit badge (T6 commits on PR #230)
+- **T7 — Assignment UI:** inspector combo (assignable kinds only) + context-menu submenu with batch assign/unassign (T7 commit on PR #230)
 
 ### Remaining:
-- **T6 — Quantities panel UI:** Bottom-panel tab strip + table with row click-select, empty state, mixed-unit badge, keyboard navigation, AccessKit labels
-- **T7 — Assignment UI:** Inspector combo (assignable kinds only) + context menu submenu with batch assign/unassign
 - **T8 — Condition dialog:** Create/edit dialog with validation (name, kind lock, height), Esc/⏎ handling, delete confirmation
 - **T9 — Prefs wiring:** `show_quantities` + `quantities_tab_selected` persistence in AppPrefs
 - **T10 — Docs & release:** Feature documentation, CHANGELOG entry, ROADMAP updates, v0.5.0 release

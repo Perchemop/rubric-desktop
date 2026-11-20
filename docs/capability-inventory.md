@@ -66,18 +66,20 @@ rows. No feature IDs are assigned until a slice is approved.*
 
 | # | Product | Capability | Observable behaviour | Acceptance criteria (short) | Source URL(s) | Status |
 |---|---|---|---|---|---|---|
-| 33 | Rubric | Quantity list (aggregate measures by kind with names) | A panel aggregates every measurement markup by `MeasureKind` and user-assigned item name, with per-item and per-kind totals and units; aggregates update when geometry, scale or unit changes | `domain/takeoff.rs`: `quantity_rows()` function with tests AC-1 to AC-12; `Project.takeoff` field; `Markup.condition_id` field; PR #45 | Done |
-| 34 | Rubric | Wall-surface derivation (perimeter × height) | A perimeter measurement with an entered height yields a derived surface-area quantity, recomputed on geometry/scale/unit change; missing height shows incomplete, not zero | `quantity_rows()` computes WallSurface as perimeter × height; `ConditionKind::WallSurface` stores height; test AC-9 | Done |
-| 35 | Rubric | Quantity CSV export | The quantity list exports a CSV whose rows are quantity items (name, kind, quantity, unit, page) with totals per kind; opens in a spreadsheet application | `data/export.rs`: `write_quantities_csv()` with RFC 4180 compliance; tests AC-13, AC-14, AC-15; PR #47 | Done |
+| 33 | Rubric | Quantity list (aggregate measures by kind with names) | A panel aggregates every measurement markup by `MeasureKind` and user-assigned item name, with per-item and per-kind totals and units; aggregates update when geometry, scale or unit changes | `domain/takeoff.rs`: `quantity_rows()` function with tests AC-1 to AC-12; `Project.takeoff` field; `Markup.condition_id` field; PR #230 (open) | Implemented on PR #230 (open, pending merge) |
+| 34 | Rubric | Wall-surface derivation (perimeter × height) | A perimeter measurement with an entered height yields a derived surface-area quantity, recomputed on geometry/scale/unit change; missing height shows incomplete, not zero | `quantity_rows()` computes WallSurface as perimeter × height; `ConditionKind::WallSurface` stores height; test AC-9 | Implemented on PR #230 (open, pending merge) |
+| 35 | Rubric | Quantity CSV export | The quantity list exports a CSV whose rows are quantity items (name, kind, quantity, unit, page) with totals per kind; opens in a spreadsheet application | `data/export.rs`: `write_quantities_csv()` with RFC 4180 compliance; tests AC-13, AC-14, AC-15; PR #230 (open) | Implemented on PR #230 (open, pending merge) |
 | 36 | Rubric | Symbol auto-count (stretch) | From a user-chosen example symbol region, candidate placements are detected for review; accepted candidates become ordinary numbered Count markers; refusals name a reason and create nothing | Not started - detection pipeline pending | `docs/research/takeoff-quantities.md` | out of scope for v0.5 |
 
-**Update (2026-11-20):** All T1-T5 takeoff quantities implementation complete:
+**Update (2026-11-20):** T1–T5 takeoff quantities implemented on the takeoff branch — open as PR #230, pending merge with green required checks:
 - **T1 (domain types)**: `TakeoffCondition`, `ConditionKind`, `TakeoffSettings`, `TakeoffError`, `QuantityRow` in `domain/takeoff.rs` with tests AC-1 to AC-12
 - **T2 (markup assignment)**: `Markup.condition_id` field + `assign_to_condition()`/`unassign_from_conditions()` methods
 - **T3 (quantity computation)**: `quantity_rows()` computes Linear, Area, Perimeter, WallSurface, Count with hidden layer exclusion and mixed units detection
 - **T4 (condition CRUD)**: `create_condition()`, `rename_condition()`, `delete_condition()` with 128 cap, kind-matching validation
 - **T5 (CSV export)**: `write_quantities_csv()` in `data/export.rs` with RFC 4180 compliance, atomic write, tests AC-13, AC-14, AC-15
-- Research document `docs/research/ui-layout-workflows-analysis.md` created for v0.6 UI patterns
+- **T6 (quantities panel)**: bottom-panel tab strip + quantities table (landed on PR #230)
+- **T7 (assignment UI)**: inspector combo + context-menu submenu (landed on PR #230)
+- Research document `docs/research/ui-layout-workflows-analysis.md` created for the takeoff UI (v0.5 patterns) and v0.6
 
 ## Deliberately out of scope
 

@@ -1,6 +1,6 @@
 # UI Layouts & Workflows Analysis — OpenTakeoff & Bluebeam
 
-**Clean-room capability-level summary** of UI layouts and user workflows for construction takeoff apps. This informs the **v0.6 UI Parity Revamp** (docs/spec/README.md for feature IDs). No code, icons, fonts, string tables or trade dress copied; original structural patterns only.
+**Clean-room capability-level summary** of UI layouts and user workflows for construction takeoff apps. This informs the **v0.5 Takeoff Quantities** slice — [`specs/takeoff-quantities.spec.md`](../../specs/takeoff-quantities.spec.md), the source of the **R-1–R-32** requirement IDs and **T1–T10** slice IDs cited below — and the **v0.6 UI Parity Revamp** ([`specs/ui-parity-revamp.spec.md`](../../specs/ui-parity-revamp.spec.md); product feature IDs F-1xx–F-8xx live in `docs/spec/README.md`). No code, icons, fonts, string tables or trade dress copied; original structural patterns only.
 
 ---
 
@@ -13,6 +13,8 @@ Public black-box research from:
 - Community tutorials and review analyses
 
 Every claim is an original paraphrase with source URLs. Implementation requires human approval per guide §2.3.
+
+**Spec cross-references:** `R-nn` and `Tn` IDs cited below refer to [`specs/takeoff-quantities.spec.md`](../../specs/takeoff-quantities.spec.md) (the owner-approved v0.5 implementation contract); v0.6 docking/split work refers to `specs/ui-parity-revamp.spec.md`; `F-nnn` feature IDs refer to `docs/spec/README.md`.
 
 ---
 

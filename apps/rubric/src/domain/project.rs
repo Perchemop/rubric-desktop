@@ -6,7 +6,6 @@ use uuid::Uuid;
 
 use super::bates::BatesConfig;
 use super::document::{Document, Page};
-use super::markup::Markup;
 use super::markup::MarkupKind;
 use super::takeoff::{ConditionKind, TakeoffCondition, TakeoffError, TakeoffSettings, quantity_rows};
 use crate::data::export::write_quantities_csv;
@@ -421,12 +420,16 @@ impl Project {
     /// If `name` is empty or whitespace-only, generates `"Condition N"` where N
     /// is one more than the current condition count (capped at 128).
     /// Rejects empty-after-trim and case-insensitive duplicates.
+    ///
+    /// Returns the new condition's id. Returning the id (not a `&mut` into the
+    /// conditions vector) keeps the borrow local, so callers can chain other
+    /// project mutations in the same statement sequence.
     pub fn create_condition(
         &mut self,
         name: impl Into<String>,
         kind: ConditionKind,
         height: Option<f64>,
-    ) -> Result<&TakeoffCondition, TakeoffError> {
+    ) -> Result<Uuid, TakeoffError> {
         let name = name.into().trim().to_string();
         if name.is_empty() {
             return Err(TakeoffError::EmptyName);
@@ -462,9 +465,10 @@ impl Project {
             created: chrono::Utc::now(),
             modified: chrono::Utc::now(),
         };
+        let id = condition.id;
         self.takeoff.conditions.push(condition);
         self.touch();
-        Ok(self.takeoff.conditions.last().unwrap())
+        Ok(id)
     }
 
     /// Rename an existing condition, rejecting empty/duplicate names.
@@ -473,12 +477,6 @@ impl Project {
         id: Uuid,
         name: impl Into<String>,
     ) -> Result<(), TakeoffError> {
-        let condition = self
-            .takeoff
-            .conditions
-            .iter_mut()
-            .find(|c| c.id == id)
-            .ok_or_else(|| TakeoffError::NotFound(id))?;
         let new_name = name.into().trim().to_string();
         if new_name.is_empty() {
             return Err(TakeoffError::EmptyName);
@@ -493,6 +491,12 @@ impl Project {
         {
             return Err(TakeoffError::DuplicateName);
         }
+        let condition = self
+            .takeoff
+            .conditions
+            .iter_mut()
+            .find(|c| c.id == id)
+            .ok_or_else(|| TakeoffError::NotFound(id))?;
         condition.name = new_name;
         condition.modified = chrono::Utc::now();
         self.touch();
@@ -503,7 +507,7 @@ impl Project {
     ///
     /// Returns the number of markups that were unassigned.
     pub fn delete_condition(&mut self, id: Uuid) -> Result<usize, TakeoffError> {
-        let Some(condition) = self.takeoff.conditions.iter().find(|c| c.id == id) else {
+        let Some(_condition) = self.takeoff.conditions.iter().find(|c| c.id == id) else {
             return Err(TakeoffError::NotFound(id));
         };
         // Unassign from all markups pointing at this condition (markups live on
