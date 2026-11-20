@@ -286,12 +286,19 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
     let mut cancelled = false;
     let mut commit = false;
     let mut delete_requested = false;
+    let mut show_delete_confirm = false;
+    let mut delete_confirmed = false;
 
     egui::Window::new(title)
         .open(&mut open)
         .resizable(false)
         .default_width(480.0)
         .show(ctx, |ui| {
+            // Handle Esc key globally
+            if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                cancelled = true;
+            }
+
             ui.spacing_mut().item_spacing = egui::vec2(8.0, 8.0);
 
             // Name field
@@ -319,6 +326,19 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                         })
                         .color(ui.visuals().error_fg_color),
                     );
+                }
+                // Enter on name field commits if valid
+                if name_resp.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    let height_ok = if matches!(state.kind, ConditionKind::WallSurface) {
+                        state.height.trim().parse::<f64>().map(|v| v > 0.0).unwrap_or(false)
+                    } else {
+                        true
+                    };
+                    if !name_empty && !name_duplicate && height_ok {
+                        commit = true;
+                    } else if matches!(state.kind, ConditionKind::WallSurface) {
+                        state.height_error = true;
+                    }
                 }
             });
 
@@ -348,9 +368,7 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                 if !kind_enabled {
                     ui.small("(locked: unassign markups first to change kind)");
                 }
-                // Store the kind response for keyboard handling
                 state.kind = kind;
-                // We need to track if the combo was focused for Enter handling
             });
 
             // Height field (WallSurface only)
@@ -376,6 +394,17 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                             egui::RichText::new("Enter a height greater than 0")
                                 .color(ui.visuals().error_fg_color),
                         );
+                    }
+                    // Enter on height field commits if valid
+                    if height_resp.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                        let name_trimmed = state.name.trim();
+                        let name_ok = !name_trimmed.is_empty()
+                            && !existing_names.contains(&name_trimmed.to_lowercase());
+                        if name_ok && state.height.trim().parse::<f64>().map(|v| v > 0.0).unwrap_or(false) {
+                            commit = true;
+                        } else {
+                            state.height_error = true;
+                        }
                     }
                 });
             }
@@ -420,7 +449,7 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                     // Delete button (only when editing)
                     if is_editing {
                         if ui.button("Delete").clicked() {
-                            delete_requested = true;
+                            show_delete_confirm = true;
                         }
                     }
                     if ui.button("Cancel").clicked() {
@@ -450,14 +479,12 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
         return;
     }
 
-    if delete_requested {
-        // Show confirmation dialog
+    // Handle delete confirmation (shows as a second modal window)
+    if show_delete_confirm {
         let assigned_count = state.assigned_count;
         let condition_id = state.editing_id;
         let condition_name = state.name.clone();
         
-        // We'll handle this with a nested confirmation - for now, set a flag and handle in next frame
-        // Actually, let's use a simple approach: show a modal confirm in the same frame
         egui::Window::new("Delete Condition")
             .collapsible(false)
             .resizable(false)
@@ -484,13 +511,23 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                             );
                         }
                         app.ui.takeoff_dialog = None;
+                        delete_confirmed = true;
                     }
                     if ui.button("Cancel").clicked() {
                         // Just close the confirm, keep the edit dialog open
+                        show_delete_confirm = false;
                     }
                 });
             });
-        return;
+        
+        // If user clicked Cancel on confirm, keep the edit dialog open
+        if !show_delete_confirm && !delete_confirmed {
+            return;
+        }
+        // If delete was confirmed, the dialog is already closed
+        if delete_confirmed {
+            return;
+        }
     }
 
     if commit {
