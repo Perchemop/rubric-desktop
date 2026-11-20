@@ -295,7 +295,7 @@ fn format_quantity(row: &QuantityRow) -> String {
 
 /// Select all markups assigned to a condition (or unassigned) and jump to the first contributor's page.
 fn select_markups(
-    project: &mut Project,
+    project: &Project,
     state: &mut UiState,
     row: &QuantityRow,
     is_unassigned: bool,
@@ -305,8 +305,8 @@ fn select_markups(
 
     if is_unassigned {
         // Select all unassigned measurements
-        for doc in &mut project.documents {
-            for markup in &mut doc.markups {
+        for doc in &project.documents {
+            for markup in &doc.markups {
                 if markup.condition_id.is_none() && markup.kind.is_measure() {
                     selected_ids.push(markup.id);
                     if found_page.is_none() {
@@ -330,11 +330,11 @@ fn select_markups(
     }
 
     state.selected.clear();
+    let count = selected_ids.len();
     for id in selected_ids {
         state.selected.insert(id);
     }
 
-    let count = selected_ids.len();
     let page = found_page.unwrap_or(state.current_page);
 
     if count > 0 {
@@ -356,7 +356,7 @@ fn select_markups(
 }
 
 /// Export quantities to CSV.
-fn export_quantities_csv(project: &mut Project, state: &mut UiState) {
+fn export_quantities_csv(project: &Project, state: &mut UiState) {
     let rows = quantity_rows(project);
 
     // Gate: only export when there are real conditions (not just Unassigned)

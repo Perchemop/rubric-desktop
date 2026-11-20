@@ -4,24 +4,24 @@
 
 ### Completed features:
 
-1. **Takeoff domain types (T1 partial)** - PR #45
+1. **Takeoff domain types (T1 partial)** - PR #230 (open)
    - `TakeoffCondition`, `ConditionKind`, `TakeoffSettings`, `TakeoffError` in `domain/takeoff.rs`
    - `QuantityRow` struct and `quantity_rows()` function for computing aggregates
    - `Project.takeoff` field with serde default
    - `Markup.condition_id` field with `assign_condition()` method
 
-2. **Condition CRUD (T4 partial)** - PR #45
+2. **Condition CRUD (T4 partial)** - PR #230 (open)
    - `Project.create_condition()` - unique name validation, 128 cap, colour assignment
    - `Project.rename_condition()` - case-insensitive duplicate check
    - `Project.delete_condition()` - unassigns associated markups, returns count
    - `Project.assign_to_condition()` - kind-matching validation (WallSurface accepts Perimeter/Length)
 
-3. **Markup assignment (T2 partial)** - PR #45
+3. **Markup assignment (T2 partial)** - PR #230 (open)
    - `assign_condition()` domain method with batch assignment support
    - `unassign_from_conditions()` bulk unassign method
    - Duplicate markup carries same `condition_id`
 
-4. **Quantity computation (T3 partial)** - PR #45
+4. **Quantity computation (T3 partial)** - PR #230 (open)
    - `quantity_rows()` computes aggregates by condition kind
    - Linear: Length/Diameter/Radius sum
    - Area: Squared measures

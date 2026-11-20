@@ -1,17 +1,24 @@
 # Takeoff quantities – Capability-level summary
 
 > **HUMAN GATE — implementation requires owner approval of these notes
-> (guide §2.3, §8.4). **Scope approved by the owner 2026-11-18** for the
+> (guide §2.3, §8.4).** **Scope approved by the owner 2026-11-18** for the
 > native path only (§3a): *core four capabilities · CSV export · no pricing ·
 > bottom-panel tab* — recorded in `specs/takeoff-quantities.spec.md` and
 > merged as PR #225. The MCP-client path (§3b) additionally requires an
 > explicit owner decision and remains blocked.
 >
-> **Implementation status (2026-11-20): COMPLETE** — T1-T5 shipped in PRs #45, #47 with CI verification (CI run IDs recorded below):
-> - T1 (domain types), T4 (condition CRUD), T2 (markup assignment), T3 (quantity computation), T5 (CSV export) all landed
-> - AC-4 (symbol auto-count) remains out of scope for v0.5
-> - AC-5 (MCP bridge) blocked pending owner decision
-> - Per-criterion status: all implemented capabilities marked Done in `docs/parity.md`; UI layer (T6-T10) pending for v0.6
+> **Implementation status (2026-11-20):** T1–T7 are implemented on the
+> `opencode/ci` branch and open as **PR #230** (research note + spec merged
+> as PR #225) — T1 domain types, T2 markup assignment, T3 quantity
+> computation, T4 condition CRUD, T5 CSV export (`write_quantities_csv()`,
+> RFC 4180), T6 quantities panel + tab strip, T7 assignment UI (context
+> menu + inspector combo); PR-level CI checks are the verification record.
+> **Nothing is merged yet**: T8–T10 (condition dialog, prefs wiring, docs &
+> release) are pending, and per-capability statuses in `docs/parity.md` /
+> `docs/capability-inventory.md` read "implemented on PR #230 (open)" until
+> the PR merges with green required checks. AC-4 (symbol auto-count) is out
+> of scope for v0.5; AC-5 (MCP bridge) is blocked pending the owner decision
+> on §3 path (b).
 
 **Purpose:** original, capability-level summary of construction "takeoff"
 (quantity takeoff, QTO) for a possible future Rubric slice. Rubric copies no
@@ -242,13 +249,15 @@ optional, additive and blocked pending an explicit owner decision.
 These are *proposed* criteria recorded at research stage. The owner-approved
 implementation contract for v0.5 is now `specs/takeoff-quantities.spec.md`
 (EARS requirements R-1–R-32 with its own Given/When/Then acceptance set);
-see the *Implementation status* addendum at the end of this note.
+see the *Implementation status* note in the banner at the top of this file
+and the per-criterion status below.
 
-> **Status (2026-11-20): COMPLETE** — T1-T5 shipped in PRs #45, #47 with CI verification:
-> - AC-1/AC-2 (quantity list), AC-9 (WallSurface), AC-13/AC-14/AC-15 (CSV export) all landed
-> - AC-3 (CSV export) implemented
-> - AC-4 (symbol auto-count) out of scope for v0.5
-> - AC-5 (MCP bridge) blocked pending owner decision
+> **Status (2026-11-20):** implemented on the takeoff branch, open as
+> PR #230 (not yet merged): AC-1/AC-2 domain halves (aggregation, wall-surface
+> derivation) plus the T6 quantities panel; AC-3 CSV export
+> (`write_quantities_csv()` with tests covering spec AC-13–AC-15 in
+> `data/export.rs`); AC-4 out of scope for v0.5; AC-5 blocked pending the
+> owner decision on §3 path (b).
 
 - **AC-1 Quantity list.** *When* the user opens the Quantity panel, *the system
   shall* aggregate every measurement markup in the project by `MeasureKind`

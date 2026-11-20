@@ -192,9 +192,9 @@ struct ConditionTotal {
 impl ConditionTotal {
     /// Returns the primary unit (first one collected) and whether units are mixed.
     fn unit_and_mixed(&self) -> (MeasureUnit, bool) {
-        let unique_units: std::collections::HashSet<_> = self.units.iter().collect();
+        let unique_units: std::collections::HashSet<&MeasureUnit> = self.units.iter().collect();
         let unit = if unique_units.len() == 1 {
-            *unique_units.iter().next().unwrap()
+            **unique_units.iter().next().unwrap()
         } else {
             // Project default unit when mixed
             MeasureUnit::Meter // should come from project settings

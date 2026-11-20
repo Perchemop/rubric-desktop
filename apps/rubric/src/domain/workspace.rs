@@ -24,6 +24,19 @@ pub enum PanelId {
     Quantities,
 }
 
+impl std::fmt::Display for PanelId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PanelId::Pages => write!(f, "Pages"),
+            PanelId::Tools => write!(f, "Tools"),
+            PanelId::ToolChest => write!(f, "ToolChest"),
+            PanelId::Inspector => write!(f, "Inspector"),
+            PanelId::MarkupsList => write!(f, "MarkupsList"),
+            PanelId::Quantities => write!(f, "Quantities"),
+        }
+    }
+}
+
 /// Dock region a panel occupies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Region {
