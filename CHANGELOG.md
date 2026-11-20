@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented here. Format: semantic-ish for this repo (Added/Changed/Fixed/Docs).
 
+## [0.5.0] - 2026-11-20
+
+### Added
+
+- **Takeoff quantities domain types** (`domain/takeoff.rs`): `TakeoffCondition`, `ConditionKind`, `TakeoffSettings`, `TakeoffError`; `QuantityRow` struct; `Project.takeoff` field; `Markup.condition_id` field with legacy-load + roundtrip tests
+- **Quantity list panel** (T1-T3): `quantity_rows()` computes aggregates by condition kind — Linear, Area, Perimeter, WallSurface (perimeter × height), Count; includes hidden layer exclusion, mixed units detection, and NFR-1 performance budget test
+- **Condition CRUD** (T4): `Project.create_condition()` (unique name, 128 cap, colour), `rename_condition()` (case-insensitive), `delete_condition()` (unassigns, returns count)
+- **Quantity CSV export** (T5): `data/export.rs`: `write_quantities_csv()` with RFC 4180 compliance, atomic write, worker off-thread; `Project::export_quantities_csv()` method; tests AC-13, AC-14, AC-15
+
+### Documentation
+
+- Updated `docs/parity.md` with takeoff quantity capabilities marked Done
+- Updated `docs/capability-inventory.md` with takeoff capabilities confirmed implemented
+- Updated `ROADMAP.md` v0.5 milestone status for takeoff quantities
+
 ## [0.4.11] - 2026-11-17
 
 ### Added

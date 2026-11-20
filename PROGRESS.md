@@ -1,6 +1,62 @@
 # PROGRESS.md
 
-## [Unreleased] — update-check auto-update integration (2026-11-17)
+## [Unreleased] — takeoff quantities domain layer v0.5 (2026-11-20)
+
+### Completed features:
+
+1. **Takeoff domain types (T1 partial)** - PR #45
+   - `TakeoffCondition`, `ConditionKind`, `TakeoffSettings`, `TakeoffError` in `domain/takeoff.rs`
+   - `QuantityRow` struct and `quantity_rows()` function for computing aggregates
+   - `Project.takeoff` field with serde default
+   - `Markup.condition_id` field with `assign_condition()` method
+
+2. **Condition CRUD (T4 partial)** - PR #45
+   - `Project.create_condition()` - unique name validation, 128 cap, colour assignment
+   - `Project.rename_condition()` - case-insensitive duplicate check
+   - `Project.delete_condition()` - unassigns associated markups, returns count
+   - `Project.assign_to_condition()` - kind-matching validation (WallSurface accepts Perimeter/Length)
+
+3. **Markup assignment (T2 partial)** - PR #45
+   - `assign_condition()` domain method with batch assignment support
+   - `unassign_from_conditions()` bulk unassign method
+   - Duplicate markup carries same `condition_id`
+
+4. **Quantity computation (T3 partial)** - PR #45
+   - `quantity_rows()` computes aggregates by condition kind
+   - Linear: Length/Diameter/Radius sum
+   - Area: Squared measures
+   - Perimeter: Perimeter sum
+   - WallSurface: (perimeter × height) 
+   - Count: marker count
+   - Hidden layer exclusion
+   - Mixed units detection
+
+### Files modified:
+- `apps/rubric/src/domain/takeoff.rs` - new types, quantity_rows computation, tests
+- `apps/rubric/src/domain/markup.rs` - added `condition_id` field, `assign_condition()` method
+- `apps/rubric/src/domain/project.rs` - added takeoff methods
+- `docs/research/ui-layout-workflows-analysis.md` - new clean-room analysis
+
+### Quality gates:
+- All new domain types are serde-serializable
+- Legacy project load test included
+- Unit tests for condition CRUD and quantity computation
+- No raw Cargo commands (CI-first approach)
+
+### Completed:
+- **T5 — CSV export** (RFC 4180 compliant)
+  - `write_quantities_csv()` in `data/export.rs` with atomic write (temp+rename)
+  - `Project::export_quantities_csv()` method using full precision
+  - Tests AC-13 (header/content), AC-14 (RFC 4180 quoting), AC-15 (failure cleanup)
+
+### Remaining:
+- **T6 — Quantities panel UI:** Bottom-panel tab strip + table with row click-select, empty state, mixed-unit badge, keyboard navigation, AccessKit labels
+- **T7 — Assignment UI:** Inspector combo (assignable kinds only) + context menu submenu with batch assign/unassign
+- **T8 — Condition dialog:** Create/edit dialog with validation (name, kind lock, height), Esc/⏎ handling, delete confirmation
+- **T9 — Prefs wiring:** `show_quantities` + `quantities_tab_selected` persistence in AppPrefs
+- **T10 — Docs & release:** Feature documentation, CHANGELOG entry, ROADMAP updates, v0.5.0 release
+
+---
 
 ### Completed features:
 

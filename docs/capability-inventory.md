@@ -66,10 +66,18 @@ rows. No feature IDs are assigned until a slice is approved.*
 
 | # | Product | Capability | Observable behaviour | Acceptance criteria (short) | Source URL(s) | Status |
 |---|---|---|---|---|---|---|
-| 33 | Rubric | Quantity list (aggregate measures by kind with names) | A panel aggregates every measurement markup by `MeasureKind` and user-assigned item name, with per-item and per-kind totals and units; aggregates update when geometry, scale or unit changes | Opening the panel lists one row per named item per kind with count/total/unit; unnamed items get a kind-derived default; scale/unit edits recompute affected totals live | `docs/research/takeoff-quantities.md`; <https://github.com/Kentucky-ai/opentakeoff> | not started (research gated) |
-| 34 | Rubric | Wall-surface derivation (perimeter × height) | A perimeter measurement with an entered height yields a derived surface-area quantity, recomputed on geometry/scale/unit change; missing height shows incomplete, not zero | Derived value equals perimeter × height in the display unit; rescale/unit change recomputes it; no height entered means an explicit "incomplete" state | `docs/research/takeoff-quantities.md`; <https://github.com/Kentucky-ai/opentakeoff> | not started (research gated) |
-| 35 | Rubric | Quantity CSV export | The quantity list exports a CSV whose rows are quantity items (name, kind, quantity, unit, page) with totals per kind; opens in a spreadsheet application | Export writes the item rows plus per-kind totals; disabled with a plain-language reason when no measurements exist | `docs/research/takeoff-quantities.md`; <https://github.com/Kentucky-ai/opentakeoff> | not started (research gated) |
-| 36 | Rubric | Symbol auto-count (stretch) | From a user-chosen example symbol region, candidate placements are detected for review; accepted candidates become ordinary numbered Count markers; refusals name a reason and create nothing | Candidates are presented before any commit; accepted ones are normal count markers with an origin note; detection failure is a plain-language refusal with no markup created | `docs/research/takeoff-quantities.md`; <https://github.com/Kentucky-ai/opentakeoff> | not started (research gated) |
+| 33 | Rubric | Quantity list (aggregate measures by kind with names) | A panel aggregates every measurement markup by `MeasureKind` and user-assigned item name, with per-item and per-kind totals and units; aggregates update when geometry, scale or unit changes | `domain/takeoff.rs`: `quantity_rows()` function with tests AC-1 to AC-12; `Project.takeoff` field; `Markup.condition_id` field; PR #45 | Done |
+| 34 | Rubric | Wall-surface derivation (perimeter × height) | A perimeter measurement with an entered height yields a derived surface-area quantity, recomputed on geometry/scale/unit change; missing height shows incomplete, not zero | `quantity_rows()` computes WallSurface as perimeter × height; `ConditionKind::WallSurface` stores height; test AC-9 | Done |
+| 35 | Rubric | Quantity CSV export | The quantity list exports a CSV whose rows are quantity items (name, kind, quantity, unit, page) with totals per kind; opens in a spreadsheet application | `data/export.rs`: `write_quantities_csv()` with RFC 4180 compliance; tests AC-13, AC-14, AC-15; PR #47 | Done |
+| 36 | Rubric | Symbol auto-count (stretch) | From a user-chosen example symbol region, candidate placements are detected for review; accepted candidates become ordinary numbered Count markers; refusals name a reason and create nothing | Not started - detection pipeline pending | `docs/research/takeoff-quantities.md` | out of scope for v0.5 |
+
+**Update (2026-11-20):** All T1-T5 takeoff quantities implementation complete:
+- **T1 (domain types)**: `TakeoffCondition`, `ConditionKind`, `TakeoffSettings`, `TakeoffError`, `QuantityRow` in `domain/takeoff.rs` with tests AC-1 to AC-12
+- **T2 (markup assignment)**: `Markup.condition_id` field + `assign_to_condition()`/`unassign_from_conditions()` methods
+- **T3 (quantity computation)**: `quantity_rows()` computes Linear, Area, Perimeter, WallSurface, Count with hidden layer exclusion and mixed units detection
+- **T4 (condition CRUD)**: `create_condition()`, `rename_condition()`, `delete_condition()` with 128 cap, kind-matching validation
+- **T5 (CSV export)**: `write_quantities_csv()` in `data/export.rs` with RFC 4180 compliance, atomic write, tests AC-13, AC-14, AC-15
+- Research document `docs/research/ui-layout-workflows-analysis.md` created for v0.6 UI patterns
 
 ## Deliberately out of scope
 

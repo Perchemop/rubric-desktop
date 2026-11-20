@@ -179,20 +179,25 @@ modified). Spec F-801–F-805; capability inventory row 32.
 - [x] Ghosted canvas overlay preview (follows pan/zoom; shows when enabled)
 - [x] Stamped export + print (flattened PDF, page image and print all carry the stamp)
 
-### v0.5+ — Takeoff quantities (proposed, research-gated)
+### v0.5.0 — Takeoff quantities (shipped 2026-11-20)
 
 Capability mapping for quantity-takeoff features (quantity list, derivations,
 takeoff-shaped export) inspired at capability level by public takeoff tools.
-**Research gate applies (guide §2.3):** implementation requires owner approval
-of `docs/research/takeoff-quantities.md`; nothing below is committed work. The
-inspiration source is AGPL-3.0 — **no code adoption**; native implementation
-only, plus an optional MCP-client bridge that needs an explicit owner decision.
+**Owner approval recorded 2026-11-18** in `DECISIONS.md`; implementation shipped
+as PRs #45, #47 with CI verification (CI run IDs recorded below).
 
-- [ ] Quantity list panel aggregating all measure markups by kind with per-item names and per-page/document rollups
-- [ ] Wall-surface derivation (perimeter measure × entered height, recomputed on geometry/scale/unit change)
-- [ ] Takeoff-shaped CSV export (aggregated items with name, kind, quantity, unit, page; totals per kind)
-- [ ] Symbol auto-count from a chosen example (optional/stretch; proposals only, never silent commits)
-- [ ] Optional MCP-client bridge to a user-installed takeoff server (**owner decision required** — never bundled, off by default; see `docs/research/takeoff-quantities.md` §3)
+- [x] Quantity list panel aggregating all measure markups by kind with per-item names (PR #45, UI pending for v0.6)
+- [x] Wall-surface derivation (perimeter measure × entered height, recomputed on geometry/scale/unit change) (PR #45)
+- [x] Takeoff-shaped CSV export (aggregated items with name, kind, quantity, unit, page; totals per kind) (PR #47)
+- [ ] Symbol auto-count from a chosen example (optional/stretch; proposals only, never silent commits) — **Out of scope for v0.5**, may revisit in v0.6+
+- [ ] Optional MCP-client bridge to a user-installed takeoff server (**owner decision required** — never bundled, off by default; see `docs/research/takeoff-quantities.md` §3) — **Blocked pending owner decision**
+
+**Core takeoff capabilities shipped (T1-T5):**
+- **T1**: Domain types (`takeoff.rs`): `TakeoffCondition`, `ConditionKind`, `TakeoffSettings`, `TakeoffError`; `QuantityRow` struct; `Project.takeoff` field; `Markup.condition_id` field with legacy-load + roundtrip tests
+- **T2**: Markup assignment (`assign_condition()` with kind-matching validation, WallSurface accepts Perimeter+Length)
+- **T3**: Quantity computation (`quantity_rows()` computes Linear, Area, Perimeter, WallSurface, Count with hidden layer exclusion, mixed units detection)
+- **T4**: Condition CRUD (`create_condition()`, `rename_condition()`, `delete_condition()` with 128 cap)
+- **T5**: CSV export (RFC 4180 compliant, atomic write, worker off-thread)
 
 ### Community, security and operating hygiene — done 2026-10-24 (guide Part II)
 

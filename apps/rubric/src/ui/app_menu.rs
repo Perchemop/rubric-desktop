@@ -461,6 +461,17 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 };
                 app.save_app_prefs();
             }
+            if ui
+                .checkbox(&mut app.ui.show_quantities, "Show Quantities")
+                .changed()
+            {
+                app.ui.status = if app.ui.show_quantities {
+                    "Quantities tab shown".to_string()
+                } else {
+                    "Quantities tab hidden".to_string()
+                };
+                app.save_app_prefs();
+            }
         });
         ui.menu_button("Help", |ui| {
             if ui.button("About Rubric").clicked() {

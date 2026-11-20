@@ -87,6 +87,14 @@ pub struct AppPrefs {
     /// who need maximum contrast. Missing values fall back to `false`.
     #[serde(default)]
     pub high_contrast: bool,
+    /// Show Quantities tab in the bottom panel (R-12). Missing values fall back to `true`
+    /// for new installs; backward compatibility defaults to `true`.
+    #[serde(default = "default_true")]
+    pub show_quantities: bool,
+    /// Which tab is selected when the Quantities panel is open: `true` = Quantities,
+    /// `false` = Markups List (R-12). Missing values fall back to `true`.
+    #[serde(default = "default_quantities_tab_selected")]
+    pub quantities_tab_selected: bool,
     /// Per-kind default style overrides ("Set As Default"). Missing values fall
     /// back to empty overrides, so new markups use their kind's coded default.
     #[serde(default)]
@@ -117,6 +125,10 @@ fn default_one() -> f32 {
     1.0
 }
 
+fn default_quantities_tab_selected() -> bool {
+    true
+}
+
 impl Default for AppPrefs {
     fn default() -> Self {
         Self {
@@ -131,6 +143,8 @@ impl Default for AppPrefs {
             focus_mode: false,
             show_minimap: false,
             high_contrast: false,
+            show_quantities: true,
+            quantities_tab_selected: default_quantities_tab_selected(),
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::default(),
             tool_chest_max_recents: default_max_recents(),
@@ -188,11 +202,13 @@ mod tests {
             focus_mode: true,
             show_minimap: false,
             high_contrast: true,
+            show_quantities: true,
+            quantities_tab_selected: false,
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::Inch,
             tool_chest_max_recents: 12,
-                    workspace: WorkspaceState::default(),
-};
+            workspace: WorkspaceState::default(),
+        };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, prefs);
@@ -221,6 +237,8 @@ mod tests {
             focus_mode: false,
             show_minimap: false,
             high_contrast: false,
+            show_quantities: true,
+            quantities_tab_selected: true,
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::Point,
             tool_chest_max_recents: 8,
@@ -229,5 +247,43 @@ mod tests {
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, prefs);
+    }
+
+    #[test]
+    fn show_quantities_defaults_to_true() {
+        let prefs: AppPrefs = serde_json::from_str("{}").expect("deserialize");
+        assert!(prefs.show_quantities);
+    }
+
+    #[test]
+    fn quantities_tab_selected_defaults_to_true() {
+        let prefs: AppPrefs = serde_json::from_str("{}").expect("deserialize");
+        assert!(prefs.quantities_tab_selected);
+    }
+
+    #[test]
+    fn show_quantities_serde_roundtrip() {
+        for value in [true, false] {
+            let prefs = AppPrefs {
+                show_quantities: value,
+                ..AppPrefs::default()
+            };
+            let json = serde_json::to_string(&prefs).expect("serialize");
+            let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back.show_quantities, value);
+        }
+    }
+
+    #[test]
+    fn quantities_tab_selected_serde_roundtrip() {
+        for value in [true, false] {
+            let prefs = AppPrefs {
+                quantities_tab_selected: value,
+                ..AppPrefs::default()
+            };
+            let json = serde_json::to_string(&prefs).expect("serialize");
+            let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back.quantities_tab_selected, value);
+        }
     }
 }

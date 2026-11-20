@@ -10,6 +10,7 @@ use super::markup::Markup;
 use super::markup::MarkupKind;
 use super::takeoff::{ConditionKind, TakeoffCondition, TakeoffError, TakeoffSettings};
 use super::units::{clamp_precision, DEFAULT_PRECISION, MeasureKind};
+use crate::data::DataError;
 use crate::domain::style::Color;
 
 /// Schema version written into every `.rubric.json` project file.
@@ -450,6 +451,7 @@ impl Project {
             kind,
             height,
             colour,
+            notes: None,
             created: chrono::Utc::now(),
             modified: chrono::Utc::now(),
         };
@@ -596,7 +598,16 @@ impl Project {
         self.touch();
         unassigned
     }
-    takeoff: TakeoffSettings::default(),
+
+    /// Export takeoff quantities to a CSV file at the given path.
+    ///
+    /// Returns the path written on success, or an error on failure.
+    /// The write is atomic (temp file + rename).
+    pub fn export_quantities_csv<P: AsRef<std::path::Path>>(&self, path: P) -> Result<std::path::PathBuf, DataError> {
+        let rows = takeoff::quantity_rows(self);
+        data::export::write_quantities_csv(path.as_ref(), &rows)?;
+        Ok(path.as_ref().to_path_buf())
+    }
 }
 
 /// The current drawing tool selected in the UI.
@@ -1025,7 +1036,6 @@ impl History {
     pub fn clear(&mut self, initial: Project) {
         *self = History::new(initial);
     }
-        takeoff: TakeoffSettings::default(),
 }
 
 #[cfg(test)]

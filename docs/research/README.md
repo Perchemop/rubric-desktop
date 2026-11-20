@@ -44,8 +44,9 @@ Recorded per note. Preferred order (guide §2.4):
 | [`bluebeam-settings.md`](bluebeam-settings.md) | Preferences categories, markup/measurement settings, shortcut manager | Approved 2026-11-15 (owner: "continue all via agents") |
 | [`bluebeam-markup-tools.md`](bluebeam-markup-tools.md) | Markup tool categories, access patterns, properties panel, markups list | Approved 2026-11-15 (owner: "continue all via agents") |
 | [`bluebeam-ui-layout.md`](bluebeam-ui-layout.md) | Window layout, side panels, docking, MultiView, status bar | Approved 2026-11-15 (owner: "continue all via agents") |
-| [`bluebeam-vs-rubric-audit.md`](bluebeam-vs-rubric-audit.md) | 77-capability gap analysis (Rubric vs Bluebeam findings) | Approved 2026-11-15 (owner: "continue all via agents") |
-| [`takeoff-quantities.md`](takeoff-quantities.md) | Quantity takeoff: quantity list, wall-surface derivation, CSV export, symbol count; AGPL licence boundary (native vs MCP-client paths) | **Awaiting owner approval** (research-gated; mapped 2026-11-18) |
+| [`bluebeam-vs-rubric-audit.md`](bluebeam-vs-rubric-audit.md) | 77-capability gap analysis (Rubric vs Bluebeam findings) | Approved 2026-11-15 (owner: "continue all via agents"); implementation delta recorded 2026-11-20 |
+| [`takeoff-quantities.md`](takeoff-quantities.md) | Quantity takeoff: quantity list, wall-surface derivation, CSV export, symbol count; AGPL licence boundary (native vs MCP-client paths) | Approved 2026-11-18 (owner: core four + CSV export, no pricing, bottom-panel tab — PR #225); domain landed 2026-11-20 (PR #230), UI pending |
+| [`ui-layout-workflows-analysis.md`](ui-layout-workflows-analysis.md) | UI layout & workflow patterns for the takeoff panel and the v0.6 docking program (OpenTakeoff + Bluebeam, capability-level) | **Awaiting owner approval** (drafted 2026-11-20) |
 
 When a note is added, link it here with the capability it covers, its
 approval date, and the approving human's initials. The per-capability

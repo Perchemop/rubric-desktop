@@ -376,6 +376,7 @@ impl Markup {
             layer_id: None,
             locked: false,
             comments: Vec::new(),
+            condition_id: None,
             measurement: None,
             stamp: None,
             created: now,
@@ -727,7 +728,6 @@ impl Markup {
             true
         }
     }
-    condition_id: None,
 }
 
 /// How many [`MarkupKind::MeasureCount`] markers lie on `page`.
@@ -1842,5 +1842,4 @@ mod tests {
             "moving an angle leg must change the measured angle"
         );
     }
-        condition_id: None,
 }

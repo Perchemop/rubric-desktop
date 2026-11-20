@@ -131,6 +131,35 @@ pub(crate) struct CalibrationDialog {
     pub(crate) unit: MeasureUnit,
 }
 
+/// Session-only state for the takeoff condition dialog (T8).
+/// Used for both creating new conditions and editing existing ones.
+/// Never serialized; lives only while the dialog is open.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct TakeoffDialogState {
+    /// The condition being edited, or `None` for a new condition.
+    pub(crate) editing_id: Option<uuid::Uuid>,
+    /// Condition name (validated on commit: non-empty after trim, unique case-insensitively).
+    pub(crate) name: String,
+    /// Condition kind. Locked when `has_assignments` is true.
+    pub(crate) kind: crate::domain::takeoff::ConditionKind,
+    /// Wall height input as string (for WallSurface kind). Validated on commit: > 0.
+    pub(crate) height: String,
+    /// True when height validation failed (empty or <= 0 for WallSurface).
+    pub(crate) height_error: bool,
+    /// Condition colour.
+    pub(crate) colour: crate::domain::style::Color,
+    /// Optional notes field.
+    pub(crate) notes: String,
+    /// Original name (for detecting changes when editing).
+    pub(crate) original_name: String,
+    /// Whether the condition has assigned markups (locks kind combo).
+    pub(crate) has_assignments: bool,
+    /// Number of assigned markups (for delete confirmation).
+    pub(crate) assigned_count: usize,
+    /// Focus the name field on open.
+    pub(crate) focus_name: bool,
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ReportExportFormat {
@@ -229,6 +258,11 @@ pub(crate) struct UiState {
     /// Focus/reading mode: hides all side panels so only the canvas is
     /// visible, for distraction-free review (proposal P2-13).
     pub(crate) focus_mode: bool,
+    /// Show Quantities tab in the bottom panel (R-12).
+    pub(crate) show_quantities: bool,
+    /// Which tab is selected when the Quantities panel is open: `true` =
+    /// Quantities tab, `false` = Markups List tab (R-12).
+    pub(crate) quantities_tab_selected: bool,
     /// Show a small minimap in the corner of the canvas showing page overview
     /// with viewport rectangle (proposal P2-16).
     pub(crate) show_minimap: bool,
@@ -287,6 +321,9 @@ pub(crate) struct UiState {
     /// the user finishes the two-click reference segment; drawn as a window by
     /// the app shell. UI-only, never serialized.
     pub(crate) calibration: Option<CalibrationDialog>,
+    /// Open takeoff condition dialog (T8). Set by Quantities panel or Inspector.
+    /// UI-only, never serialized.
+    pub(crate) takeoff_dialog: Option<TakeoffDialogState>,
     /// Armed Tool Chest preset (v0.4 gap #7). While this is `Some`,
     /// `canvas::finish_markup` styles every non-stamp markup created from now
     /// on with the preset's look (`Markup::with_style`, style only: at
@@ -346,6 +383,8 @@ impl Default for UiState {
             show_pages: true,
             show_tool_chest: true,
             focus_mode: false,
+            show_quantities: true,
+            quantities_tab_selected: true,
             show_minimap: false,
             quit_confirm: false,
             can_undo: false,
@@ -369,6 +408,7 @@ impl Default for UiState {
             resize_changed: false,
             show_release_notes: false,
             calibration: None,
+            takeoff_dialog: None,
             pending_style_preset: None,
             tool_chest_save_name: String::new(),
             tool_chest_rename: None,
@@ -553,6 +593,8 @@ impl RubricApp {
             ui: UiState {
                 show_markups_list: prefs.show_markups_list,
                 show_tool_chest: prefs.show_tool_chest,
+                show_quantities: prefs.show_quantities,
+                quantities_tab_selected: prefs.quantities_tab_selected,
                 zoom: prefs.zoom,
                 current_page: prefs.current_page,
                 default_styles: prefs.default_styles.clone(),
@@ -1755,6 +1797,8 @@ impl RubricApp {
             show_markups_list: self.ui.show_markups_list,
             show_tool_chest: self.ui.show_tool_chest,
             show_pages: self.ui.show_pages,
+            show_quantities: self.ui.show_quantities,
+            quantities_tab_selected: self.ui.quantities_tab_selected,
             zoom: self.ui.zoom,
             current_page: self.ui.current_page,
             tool_chest_library: self.tool_chest_library.clone(),
@@ -2502,6 +2546,20 @@ impl RubricApp {
             }
         }
 
+        let (quantities_action, quantities_status_changed) =
+            crate::ui::app_quantities::draw_quantities_panel(self, ui);
+        if quantities_status_changed {
+            self.push_snapshot_quiet();
+        }
+        if let Some(action) = quantities_action {
+            self.ui.selected.clear();
+            self.ui.selected.insert(action.condition_id);
+            self.ui.status = format!("Selected markup on page {}", action.page + 1);
+            if action.page != self.ui.current_page {
+                self.jump_to_page(action.page);
+            }
+        }
+
         crate::ui::app_canvas::draw_canvas_panel(self, ui);
         if inspector_mutated {
             self.push_snapshot("inspector edit");
@@ -2534,6 +2592,7 @@ impl RubricApp {
         // drawn reference segment and rewrite the page scale.
         // Dialog drawing code extracted to ui/app_dialogs.rs
         app_dialogs::draw_calibration_dialog(self, ui.ctx());
+        app_dialogs::draw_takeoff_dialog(self, ui.ctx());
         app_dialogs::draw_about_window(self, ui.ctx());
         app_dialogs::draw_keyboard_shortcuts(self, ui.ctx());
         app_dialogs::draw_user_guide(self, ui.ctx());

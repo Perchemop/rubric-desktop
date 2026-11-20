@@ -48,7 +48,7 @@ pub use project::{
     auto_save_interval_label, History, Project, ProjectSnapshot, RecentList, Settings, Tool,
     AUTO_SAVE_INTERVALS, CURRENT_SCHEMA_VERSION, MAX_RECENT, MIN_AUTO_SAVE_INTERVAL_SECS,
 };
-pub use takeoff::{TakeoffCondition, TakeoffError, TakeoffSettings};
+pub use takeoff::{QuantityRow, TakeoffCondition, TakeoffError, TakeoffSettings};
 pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCounts, NONE_LABEL};
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
 pub use style_preset::{

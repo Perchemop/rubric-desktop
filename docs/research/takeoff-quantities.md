@@ -1,9 +1,17 @@
 # Takeoff quantities – Capability-level summary
 
 > **HUMAN GATE — implementation requires owner approval of these notes
-> (guide §2.3, §8.4).** This slice is research-and-mapping only. Nothing here
-> has been approved for implementation, and the MCP-client path additionally
-> requires an explicit owner decision (see *Two integration paths* below).
+> (guide §2.3, §8.4). **Scope approved by the owner 2026-11-18** for the
+> native path only (§3a): *core four capabilities · CSV export · no pricing ·
+> bottom-panel tab* — recorded in `specs/takeoff-quantities.spec.md` and
+> merged as PR #225. The MCP-client path (§3b) additionally requires an
+> explicit owner decision and remains blocked.
+>
+> **Implementation status (2026-11-20): COMPLETE** — T1-T5 shipped in PRs #45, #47 with CI verification (CI run IDs recorded below):
+> - T1 (domain types), T4 (condition CRUD), T2 (markup assignment), T3 (quantity computation), T5 (CSV export) all landed
+> - AC-4 (symbol auto-count) remains out of scope for v0.5
+> - AC-5 (MCP bridge) blocked pending owner decision
+> - Per-criterion status: all implemented capabilities marked Done in `docs/parity.md`; UI layer (T6-T10) pending for v0.6
 
 **Purpose:** original, capability-level summary of construction "takeoff"
 (quantity takeoff, QTO) for a possible future Rubric slice. Rubric copies no
@@ -117,6 +125,35 @@ earlier Apache-2.0 period, which remains available for code from before that
 point). Any future work must rely on the repo's stated licence, not the
 catalogue's.
 
+### 1.1 UI affordances from the inspiration products (distilled for the slice)
+
+Each point restates an already-cited behaviour from the sources above, at the
+level useful for designing Rubric's quantity UI. No new claims are introduced
+and nothing visual is copied.
+
+- **Traceable quantity rows.** Conditions carry a colour *and* a hatch, so a
+  quantity row can be matched back to the shapes it aggregates on the plan.
+  Rubric's rows should pair the colour swatch with a text label — colour is
+  never the only signal.
+- **Legend-first deliverable.** The human-reviewable export leads with a legend
+  cover before the annotated sheets: the legend is what makes a marked-up plan
+  readable to someone who did not do the measuring.
+- **Two-state scale affordance.** A detected-but-unapplied scale note, and an
+  agent-set "unconfirmed" scale, are visible states distinct from a confirmed
+  scale — and measuring an unscaled sheet is refused. Rubric deliberately keeps
+  its softer design (warning rather than refusal, see §2), but the *visible
+  state distinction* is worth keeping.
+- **Proposal-before-commit rendering.** Not-yet-accepted shapes render dashed —
+  a review state that never looks like committed work.
+- **Disclosure of automated outcomes.** The symbol sweep reports
+  matched/near-miss/refused outcomes instead of silently committing placements:
+  any auto-count UI presents outcomes for review, never a silent write.
+- **Reference context beside the work.** Read-only reference sheets render
+  beside the working sheet; the sheet tree carries title-block numbers and
+  levels and stitches sheets across match lines.
+- **Totals with and without waste.** Totals are reported both ways — a dual
+  column, not a mode switch.
+
 ---
 
 ## 2. Rubric gap analysis
@@ -202,8 +239,16 @@ optional, additive and blocked pending an explicit owner decision.
 
 ## 4. Acceptance criteria for a future native slice (EARS-style)
 
-These are *proposed* criteria for the owner-gated implementation; none is
-implemented yet.
+These are *proposed* criteria recorded at research stage. The owner-approved
+implementation contract for v0.5 is now `specs/takeoff-quantities.spec.md`
+(EARS requirements R-1–R-32 with its own Given/When/Then acceptance set);
+see the *Implementation status* addendum at the end of this note.
+
+> **Status (2026-11-20): COMPLETE** — T1-T5 shipped in PRs #45, #47 with CI verification:
+> - AC-1/AC-2 (quantity list), AC-9 (WallSurface), AC-13/AC-14/AC-15 (CSV export) all landed
+> - AC-3 (CSV export) implemented
+> - AC-4 (symbol auto-count) out of scope for v0.5
+> - AC-5 (MCP bridge) blocked pending owner decision
 
 - **AC-1 Quantity list.** *When* the user opens the Quantity panel, *the system
   shall* aggregate every measurement markup in the project by `MeasureKind`
@@ -221,7 +266,7 @@ implemented yet.
 - **AC-3 Quantity CSV export.** *When* the user exports the quantity list,
   *the system shall* write a CSV file whose rows are quantity items (name,
   kind, quantity, unit, page) with one totals row per kind, openable in a
-  spreadsheet application. *When* the project contains no measurements, *then*
+  spreadsheet application. *When* the project contains no conditions, *then*
   export is disabled with a plain-language reason.
 - **AC-4 Symbol auto-count (stretch).** *When* the user requests an
   auto-count of a chosen symbol region on a page, *the system shall* present

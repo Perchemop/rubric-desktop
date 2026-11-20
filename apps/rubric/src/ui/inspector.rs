@@ -7,10 +7,12 @@ use eframe::egui::{self, ComboBox, Ui};
 use crate::domain::{
     markup_geometry::MarkupGeometry,
     style::{Color, DashPattern, FillMode},
-    units::{MeasureUnit, MAX_PRECISION},
+    takeoff::{ConditionKind, TakeoffCondition},
+    units::{MeasureKind, MeasureUnit, MAX_PRECISION},
     BatesCorner, LayerError, MarkupKind, Project, ReviewStatus, Scale, StampPreset,
     MAX_BATES_DIGITS, MAX_BATES_START, MIN_BATES_DIGITS,
 };
+use crate::domain::action::EditorAction;
 use crate::ui::app::{InspectorMode, UiState};
 use crate::ui::icon_button::{eye_button, lock_button, triangle_button, TriangleDir};
 
