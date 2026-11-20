@@ -106,18 +106,10 @@ pub enum TakeoffError {
     CapReached,
 }
 
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TakeoffSettings {
     #[serde(default)]
     pub conditions: Vec<TakeoffCondition>,
-}
-
-impl Default for TakeoffSettings {
-    fn default() -> Self {
-        Self {
-            conditions: Vec::new(),
-        }
-    }
 }
 
 /// A row in the quantity schedule, aggregating all measurements for a condition.

@@ -112,16 +112,18 @@ fn assignable_conditions(
     }
 
     // Filter conditions that accept at least one of the selected measure kinds
-    let accepts = |condition_kind: ConditionKind, mk: MeasureKind| match (condition_kind, mk) {
-        (ConditionKind::Linear, MeasureKind::Length)
-        | (ConditionKind::Linear, MeasureKind::Diameter)
-        | (ConditionKind::Linear, MeasureKind::Radius) => true,
-        (ConditionKind::Area, MeasureKind::Area) => true,
-        (ConditionKind::Perimeter, MeasureKind::Perimeter) => true,
-        (ConditionKind::WallSurface, MeasureKind::Perimeter)
-        | (ConditionKind::WallSurface, MeasureKind::Length) => true,
-        (ConditionKind::Count, MeasureKind::Count) => true,
-        _ => false,
+    let accepts = |condition_kind: ConditionKind, mk: MeasureKind| {
+        matches!(
+            (condition_kind, mk),
+            (ConditionKind::Linear, MeasureKind::Length)
+                | (ConditionKind::Linear, MeasureKind::Diameter)
+                | (ConditionKind::Linear, MeasureKind::Radius)
+                | (ConditionKind::Area, MeasureKind::Area)
+                | (ConditionKind::Perimeter, MeasureKind::Perimeter)
+                | (ConditionKind::WallSurface, MeasureKind::Perimeter)
+                | (ConditionKind::WallSurface, MeasureKind::Length)
+                | (ConditionKind::Count, MeasureKind::Count)
+        )
     };
 
     let mut conditions = Vec::new();
@@ -160,10 +162,10 @@ pub(crate) fn draw_assign_condition_menu(
         for (cond_id, cond_name, cond_kind) in conditions {
             let label = format!("{} ({})", cond_name, cond_kind.label());
             // action_button already sets pending_action and closes
-            let _ = if ui.button(&label).clicked() {
+            if ui.button(&label).clicked() {
                 ui_state.pending_action = Some(EditorAction::AssignToCondition(cond_id));
                 ui.close();
-            };
+            }
             // Add a small kind indicator - the action_button handles the click
         }
 

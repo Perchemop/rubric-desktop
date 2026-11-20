@@ -415,8 +415,6 @@ impl Project {
         self.touch();
     }
 
-    /// Error type for takeoff operations on the project.
-
     /// Create a new condition with a unique default name.
     ///
     /// If `name` is empty or whitespace-only, generates `"Condition N"` where N
@@ -498,7 +496,7 @@ impl Project {
             .conditions
             .iter_mut()
             .find(|c| c.id == id)
-            .ok_or_else(|| TakeoffError::NotFound(id))?;
+            .ok_or(TakeoffError::NotFound(id))?;
         condition.name = new_name;
         condition.modified = chrono::Utc::now();
         self.touch();
@@ -557,16 +555,18 @@ impl Project {
         let condition_kind = condition.kind;
 
         // Acceptance by measure family (spec §2.2):
-        let accepts = |mk: Option<MeasureKind>| match (condition_kind, mk) {
-            (ConditionKind::Linear, Some(MeasureKind::Length))
-            | (ConditionKind::Linear, Some(MeasureKind::Diameter))
-            | (ConditionKind::Linear, Some(MeasureKind::Radius)) => true,
-            (ConditionKind::Area, Some(MeasureKind::Area)) => true,
-            (ConditionKind::Perimeter, Some(MeasureKind::Perimeter)) => true,
-            (ConditionKind::WallSurface, Some(MeasureKind::Perimeter))
-            | (ConditionKind::WallSurface, Some(MeasureKind::Length)) => true,
-            (ConditionKind::Count, Some(MeasureKind::Count)) => true,
-            _ => false,
+        let accepts = |mk: Option<MeasureKind>| {
+            matches!(
+                (condition_kind, mk),
+                (ConditionKind::Linear, Some(MeasureKind::Length))
+                    | (ConditionKind::Linear, Some(MeasureKind::Diameter))
+                    | (ConditionKind::Linear, Some(MeasureKind::Radius))
+                    | (ConditionKind::Area, Some(MeasureKind::Area))
+                    | (ConditionKind::Perimeter, Some(MeasureKind::Perimeter))
+                    | (ConditionKind::WallSurface, Some(MeasureKind::Perimeter))
+                    | (ConditionKind::WallSurface, Some(MeasureKind::Length))
+                    | (ConditionKind::Count, Some(MeasureKind::Count))
+            )
         };
 
         // First pass: verify every markup exists and is compatible (fail fast,

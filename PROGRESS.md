@@ -35,7 +35,11 @@ with URLs in the decisions doc.
   placeholder corrected to `Point`, and `AppPrefs` test initializer
   completed. `cargo check --lib --tests`: 0 errors, 0 warnings.
 
-CI run: pending (pushed via `ci.sh`; run id recorded after the run).
+CI run: 44829271261 (failed - snapshot re-baseline required).
+- `shell_empty_state_snapshot_matches_baseline`: UI changed (panel consolidation) - needs new baseline
+- `shell_settles_with_widgets_queryable_by_label`: fixed to switch to Toolbox tab before querying tool buttons
+
+Snapshot artifact: `shell_empty_state.new.png` uploaded by CI run - commit to `apps/rubric/tests/snapshots/` to re-baseline.
 
 ## [Unreleased] — takeoff quantities domain layer v0.5 (2026-11-20)
 

@@ -464,10 +464,8 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
             ui.horizontal(|ui| {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     // Delete button (only when editing)
-                    if is_editing {
-                        if ui.button("Delete").clicked() {
-                            state.show_delete_confirm = true;
-                        }
+                    if is_editing && ui.button("Delete").clicked() {
+                        state.show_delete_confirm = true;
                     }
                     if ui.button("Cancel").clicked() {
                         cancelled = true;

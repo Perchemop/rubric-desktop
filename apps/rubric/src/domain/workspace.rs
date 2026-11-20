@@ -239,7 +239,7 @@ impl WorkspaceState {
         // Floating rects clamped (already guaranteed by float_panel, but guard here).
         for fs in self.floating.values() {
             let [x, y, w, h] = fs.rect;
-            if !(0.0 <= x && x <= 4096.0 && 0.0 <= y && y <= 4096.0) {
+            if !(0.0..=4096.0).contains(&x) || !(0.0..=4096.0).contains(&y) {
                 return Err(WorkspaceError::FloatRectOutOfBounds);
             }
             if w < 200.0 || h < 200.0 {
