@@ -170,7 +170,7 @@ fn draw_markups_list_panel(
 
 /// Draw a single quantity row.
 ///
-/// Returns an action if the row was clicked.
+/// Returns an action if the row was clicked/double-clicked/Enter pressed.
 fn draw_quantity_row(
     ui: &mut Ui,
     project: &Project,
@@ -180,6 +180,7 @@ fn draw_quantity_row(
     let is_unassigned = row.condition.id.is_nil();
     let selected = state.selected.contains(&row.condition.id);
 
+    // Use a horizontal layout with interactive sense for the whole row
     let response = ui.horizontal(|ui| {
         // Colour swatch (24pt target with padding)
         let colour = row.condition.colour;
@@ -211,11 +212,28 @@ fn draw_quantity_row(
 
         let mut action = None;
 
-        // Condition name (clickable for selection)
-        if ui
-            .selectable_label(selected, &row.condition.name)
-            .clicked()
-        {
+        // Condition name (clickable for selection, double-click/Enter for edit)
+        let name_resp = ui.selectable_label(selected, &row.condition.name);
+        let name_clicked = name_resp.clicked();
+        let name_double_clicked = name_resp.double_clicked();
+
+        // Handle click / double-click / Enter for non-Unassigned rows
+        if !is_unassigned {
+            if name_double_clicked {
+                action = Some(QuantityAction::EditCondition {
+                    condition_id: row.condition.id,
+                });
+            } else if name_clicked {
+                action = build_action(project, state, row);
+            }
+            // Handle Enter key when name label is focused
+            if name_resp.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                action = Some(QuantityAction::EditCondition {
+                    condition_id: row.condition.id,
+                });
+            }
+        } else if name_clicked {
+            // Unassigned row: single click selects
             action = build_action(project, state, row);
         }
 
@@ -228,7 +246,7 @@ fn draw_quantity_row(
             ConditionKind::Count => "Count",
         };
         if ui.label(kind_label).clicked() {
-            if action.is_none() {
+            if action.is_none() && !is_unassigned {
                 action = build_action(project, state, row);
             }
         }
@@ -240,7 +258,7 @@ fn draw_quantity_row(
             &format!("{}", row.item_count)
         };
         if ui.label(items_text).clicked() {
-            if action.is_none() {
+            if action.is_none() && !is_unassigned {
                 action = build_action(project, state, row);
             }
         }
@@ -255,7 +273,7 @@ fn draw_quantity_row(
             qty_label = qty_label.color(ui.visuals().warn_fg_color);
         }
         if ui.label(qty_label).clicked() {
-            if action.is_none() {
+            if action.is_none() && !is_unassigned {
                 action = build_action(project, state, row);
             }
         }
@@ -263,7 +281,7 @@ fn draw_quantity_row(
         // Unit column
         let unit_name = row.unit.name();
         if ui.label(unit_name).clicked() {
-            if action.is_none() {
+            if action.is_none() && !is_unassigned {
                 action = build_action(project, state, row);
             }
         }

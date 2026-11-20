@@ -130,6 +130,9 @@ impl EditorAction {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
     use super::*;
     use std::collections::HashSet;
 
@@ -296,4 +299,5 @@ impl EditorAction {
             "Unassign from Condition"
         );
     }
+}
 }

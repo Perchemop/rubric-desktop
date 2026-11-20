@@ -5,7 +5,9 @@
 use egui::Ui;
 
 use crate::ui::app::RubricApp;
-use crate::ui::quantities_panel::{draw_quantities_panel, QuantitiesPanelAction};
+use crate::ui::quantities_panel::{draw_quantities_panel, QuantityAction};
+use crate::domain::takeoff::ConditionKind;
+use crate::domain::style::Color;
 
 /// Draw the Quantities panel (bottom-panel tab with takeoff schedule).
 ///
@@ -13,13 +15,14 @@ use crate::ui::quantities_panel::{draw_quantities_panel, QuantitiesPanelAction};
 pub(crate) fn draw_quantities_panel(
     app: &mut RubricApp,
     ui: &mut Ui,
-) -> (Option<QuantitiesPanelAction>, bool) {
+) -> (Option<QuantityAction>, bool) {
     let mut action = None;
     let mut status_changed = false;
 
     if app.ui.show_quantities && !app.ui.focus_mode {
         let project = app.history.current_mut();
         let ui_state = &mut app.ui;
+        
         egui::Panel::bottom("quantities")
             .default_size(200.0)
             .min_size(140.0)
@@ -30,6 +33,71 @@ pub(crate) fn draw_quantities_panel(
                 action = a;
                 status_changed = sc;
             });
+        
+        // Handle actions that open the condition dialog (needs project in scope)
+        if let Some(act) = action.clone() {
+            match act {
+                QuantityAction::NewCondition => {
+                    // Generate a unique default name
+                    let conditions = &project.takeoff.conditions;
+                    let mut n = 1;
+                    let name = loop {
+                        let name = format!("Condition {}", n);
+                        let normalized = name.to_lowercase();
+                        if !conditions.iter().any(|c| c.name.to_lowercase() == normalized) {
+                            break name;
+                        }
+                        n += 1;
+                    };
+                    
+                    // Get default colour for Linear kind
+                    let colour = Color::rgb(0, 128, 255);
+                    
+                    app.ui.takeoff_dialog = Some(crate::ui::app::TakeoffDialogState {
+                        editing_id: None,
+                        name,
+                        kind: ConditionKind::Linear,
+                        height: String::new(),
+                        height_error: false,
+                        colour,
+                        notes: String::new(),
+                        original_name: String::new(),
+                        has_assignments: false,
+                        assigned_count: 0,
+                        focus_name: true,
+                    });
+                }
+                QuantityAction::EditCondition { condition_id } => {
+                    if let Some(cond) = project.takeoff.conditions.iter().find(|c| c.id == condition_id) {
+                        // Count assigned markups
+                        let mut assigned_count = 0;
+                        for doc in &project.documents {
+                            for m in &doc.markups {
+                                if m.condition_id == Some(condition_id) {
+                                    assigned_count += 1;
+                                }
+                            }
+                        }
+                        
+                        app.ui.takeoff_dialog = Some(crate::ui::app::TakeoffDialogState {
+                            editing_id: Some(condition_id),
+                            name: cond.name.clone(),
+                            kind: cond.kind,
+                            height: cond.height.map(|h| h.to_string()).unwrap_or_default(),
+                            height_error: false,
+                            colour: cond.colour,
+                            notes: cond.notes.clone().unwrap_or_default(),
+                            original_name: cond.name.clone(),
+                            has_assignments: assigned_count > 0,
+                            assigned_count,
+                            focus_name: true,
+                        });
+                    }
+                }
+                _ => {}
+            }
+        }
     }
+
     (action, status_changed)
 }

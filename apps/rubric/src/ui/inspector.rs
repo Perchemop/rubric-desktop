@@ -1269,6 +1269,42 @@ pub(crate) fn draw_inspector(
                 ui_state.bates_dirty = false;
             }
         });
+        
+        // Takeoff conditions (T8): create new condition
+        ui.collapsing("Takeoff", |ui| {
+            ui.label("Conditions group measurements for quantity schedules.");
+            ui.add_space(4.0);
+            if ui.button("New condition…").clicked() {
+                // Generate a unique default name
+                let conditions = &project.takeoff.conditions;
+                let mut n = 1;
+                let name = loop {
+                    let name = format!("Condition {}", n);
+                    let normalized = name.to_lowercase();
+                    if !conditions.iter().any(|c| c.name.to_lowercase() == normalized) {
+                        break name;
+                    }
+                    n += 1;
+                };
+                
+                // Get default colour for Linear kind
+                let colour = Color::rgb(0, 128, 255);
+                
+                ui_state.takeoff_dialog = Some(crate::ui::app::TakeoffDialogState {
+                    editing_id: None,
+                    name,
+                    kind: ConditionKind::Linear,
+                    height: String::new(),
+                    height_error: false,
+                    colour,
+                    notes: String::new(),
+                    original_name: String::new(),
+                    has_assignments: false,
+                    assigned_count: 0,
+                    focus_name: true,
+                });
+            }
+        });
     }
 
     // Compact stamp-preset selector for the active Stamp tool (UI state only).
