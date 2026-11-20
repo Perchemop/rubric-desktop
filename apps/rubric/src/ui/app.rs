@@ -939,6 +939,8 @@ impl RubricApp {
             EditorAction::BatchStatus(status) => self.apply_batch_status(status),
             EditorAction::ToggleLock => self.apply_toggle_lock(),
             EditorAction::SetAsDefault => self.apply_set_as_default(),
+            EditorAction::AssignToCondition(cond_id) => self.apply_assign_condition(cond_id),
+            EditorAction::UnassignFromConditions => self.apply_unassign_condition(),
         }
     }
 
@@ -1067,6 +1069,62 @@ impl RubricApp {
             self.ui.status = format!("Default style set for {}", first_kind.label());
         } else {
             self.ui.status = format!("Default styles set from {} markups", count);
+        }
+    }
+
+    /// Assign selected markups to a takeoff condition (R-7, R-8, R-9).
+    fn apply_assign_condition(&mut self, condition_id: Uuid) {
+        let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
+        if ids.is_empty() {
+            self.ui.status = "Select at least one markup to assign".to_string();
+            return;
+        }
+        match self.history.current_mut().assign_to_condition(&ids, condition_id) {
+            Ok(assigned) if assigned > 0 => {
+                self.push_snapshot("assign condition");
+                // Find condition name for status
+                let cond_name = self
+                    .history
+                    .current()
+                    .takeoff
+                    .conditions
+                    .iter()
+                    .find(|c| c.id == condition_id)
+                    .map(|c| c.name.as_str())
+                    .unwrap_or("condition");
+                self.ui.status = format!(
+                    "Assigned {} markup{} to '{}'",
+                    assigned,
+                    if assigned == 1 { "" } else { "s" },
+                    cond_name
+                );
+            }
+            Ok(0) => {
+                self.ui.status = "No compatible markups selected".to_string();
+            }
+            Err(e) => {
+                self.ui.status = format!("Assignment failed: {}", e);
+            }
+        }
+    }
+
+    /// Unassign selected markups from their conditions (R-7, R-8, R-9).
+    fn apply_unassign_condition(&mut self) {
+        let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
+        if ids.is_empty() {
+            self.ui.status = "Select at least one markup to unassign".to_string();
+            return;
+        }
+        let unassigned = self.history.current_mut().unassign_from_conditions(&ids);
+        if unassigned > 0 {
+            self.push_snapshot("unassign condition");
+            self.ui.status = format!(
+                "Unassigned {} markup{}",
+                unassigned,
+                if unassigned == 1 { "" } else { "s" }
+            );
+        } else {
+            self.ui.status = "No markups were assigned".to_string();
         }
     }
 

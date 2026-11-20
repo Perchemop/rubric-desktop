@@ -644,6 +644,79 @@ pub(crate) fn draw_inspector(
                                 }
                             });
 
+                        // Condition assignment (R-8): combo for assignable measure markups
+                        if editable && m.kind.is_assignable_to_condition() {
+                            // Get the current condition assignment
+                            let current_cond_id = m.condition_id;
+                            let current_cond_name = if let Some(cond_id) = current_cond_id {
+                                project
+                                    .takeoff
+                                    .conditions
+                                    .iter()
+                                    .find(|c| c.id == cond_id)
+                                    .map(|c| c.name.clone())
+                                    .unwrap_or_else(|| "Unknown".to_string())
+                            } else {
+                                "Unassigned".to_string()
+                            };
+
+                            // Get assignable conditions for this markup kind
+                            let measure_kind = m.kind.measure_kind().expect("assignable kinds have measure_kind");
+                            let assignable_conditions: Vec<&TakeoffCondition> = project
+                                .takeoff
+                                .conditions
+                                .iter()
+                                .filter(|c| {
+                                    matches!(
+                                        (c.kind, measure_kind),
+                                        (ConditionKind::Linear, MeasureKind::Length)
+                                            | (ConditionKind::Linear, MeasureKind::Diameter)
+                                            | (ConditionKind::Linear, MeasureKind::Radius)
+                                            | (ConditionKind::Area, MeasureKind::Area)
+                                            | (ConditionKind::Perimeter, MeasureKind::Perimeter)
+                                            | (ConditionKind::WallSurface, MeasureKind::Perimeter)
+                                            | (ConditionKind::WallSurface, MeasureKind::Length)
+                                            | (ConditionKind::Count, MeasureKind::Count)
+                                    )
+                                })
+                                .collect();
+
+                            if !assignable_conditions.is_empty() {
+                                ui.separator();
+                                ui.label("Condition");
+                                ComboBox::from_label("Condition")
+                                    .selected_text(current_cond_name)
+                                    .show_ui(ui, |ui| {
+                                        // Unassign option
+                                        if ui
+                                            .selectable_label(current_cond_id.is_none(), "Unassigned")
+                                            .clicked()
+                                            && current_cond_id.is_some()
+                                        {
+                                            ui_state.pending_action =
+                                                Some(EditorAction::UnassignFromConditions);
+                                            ui.close();
+                                        }
+                                        // Assignable conditions
+                                        for cond in &assignable_conditions {
+                                            let label = format!("{} ({})", cond.name, cond.kind.label());
+                                            if ui
+                                                .selectable_label(
+                                                    current_cond_id == Some(cond.id),
+                                                    label,
+                                                )
+                                                .clicked()
+                                                && current_cond_id != Some(cond.id)
+                                            {
+                                                ui_state.pending_action =
+                                                    Some(EditorAction::AssignToCondition(cond.id));
+                                                ui.close();
+                                            }
+                                        }
+                                    });
+                            }
+                        }
+
                         // Stamp preset (spec F-111): only for stamp markups.
                         if editable && m.kind == MarkupKind::Stamp {
                             ui.label("Preset");

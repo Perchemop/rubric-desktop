@@ -93,6 +93,10 @@ pub(crate) enum QuantityAction {
     SelectCondition { condition_id: Uuid, first_page: usize },
     /// Select all unassigned measurements.
     SelectUnassigned { count: usize },
+    /// Open the condition dialog to create a new condition.
+    NewCondition,
+    /// Open the condition dialog to edit an existing condition.
+    EditCondition { condition_id: Uuid },
     /// Delegate to MarkupListAction from the markups list.
     MarkupList(MarkupListAction),
 }
@@ -113,7 +117,7 @@ fn draw_quantities_table(
             ui.label("Conditions name what you measure — create one to start the schedule.");
             ui.add_space(8.0);
             if ui.button("New condition…").clicked() {
-                state.status = "New condition action not yet implemented".to_string();
+                *action = Some(QuantityAction::NewCondition);
             }
             ui.add_space(12.0);
         });
