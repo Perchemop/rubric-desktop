@@ -66,7 +66,7 @@ impl EditorAction {
     ];
 
     /// Human-readable menu label.
-    pub fn label(self) -> &'static str {
+    pub fn label(&self) -> &'static str {
         match self {
             EditorAction::Undo => "Undo",
             EditorAction::Redo => "Redo",
@@ -93,7 +93,7 @@ impl EditorAction {
     /// The keyboard shortcut shown next to the menu label, when one exists
     /// (full-app audit M5). Only shortcuts the app actually handles are
     /// returned, so the hint never lies; `None` leaves the entry bare.
-    pub fn shortcut_hint(self) -> Option<&'static str> {
+    pub fn shortcut_hint(&self) -> Option<&'static str> {
         match self {
             EditorAction::Undo => Some("Ctrl+Z"),
             EditorAction::Redo => Some("Ctrl+Y"),
@@ -110,7 +110,7 @@ impl EditorAction {
     /// entries are disabled. Copying and z-order need exactly one selected
     /// markup. The history and view actions are always offered: undo/redo
     /// simply do nothing on an empty history, and zoom always applies.
-    pub fn is_enabled(self, selection_count: usize, has_style_clipboard: bool) -> bool {
+    pub fn is_enabled(&self, selection_count: usize, has_style_clipboard: bool) -> bool {
         match self {
             EditorAction::DeleteSelection
             | EditorAction::Duplicate

@@ -1082,27 +1082,28 @@ impl RubricApp {
             return;
         }
         match self.history.current_mut().assign_to_condition(&ids, condition_id) {
-            Ok(assigned) if assigned > 0 => {
-                self.push_snapshot("assign condition");
-                // Find condition name for status
-                let cond_name = self
-                    .history
-                    .current()
-                    .takeoff
-                    .conditions
-                    .iter()
-                    .find(|c| c.id == condition_id)
-                    .map(|c| c.name.as_str())
-                    .unwrap_or("condition");
-                self.ui.status = format!(
-                    "Assigned {} markup{} to '{}'",
-                    assigned,
-                    if assigned == 1 { "" } else { "s" },
-                    cond_name
-                );
-            }
-            Ok(0) => {
-                self.ui.status = "No compatible markups selected".to_string();
+            Ok(assigned) => {
+                if assigned > 0 {
+                    self.push_snapshot("assign condition");
+                    // Find condition name for status
+                    let cond_name = self
+                        .history
+                        .current()
+                        .takeoff
+                        .conditions
+                        .iter()
+                        .find(|c| c.id == condition_id)
+                        .map(|c| c.name.as_str())
+                        .unwrap_or("condition");
+                    self.ui.status = format!(
+                        "Assigned {} markup{} to '{}'",
+                        assigned,
+                        if assigned == 1 { "" } else { "s" },
+                        cond_name
+                    );
+                } else {
+                    self.ui.status = "No compatible markups selected".to_string();
+                }
             }
             Err(e) => {
                 self.ui.status = format!("Assignment failed: {}", e);

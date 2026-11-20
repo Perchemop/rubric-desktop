@@ -1302,6 +1302,7 @@ pub(crate) fn draw_inspector(
                     has_assignments: false,
                     assigned_count: 0,
                     focus_name: true,
+                    show_delete_confirm: false,
                 });
             }
         });
