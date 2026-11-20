@@ -20,6 +20,7 @@ pub mod inspector;
 pub mod markups_list;
 pub mod menu;
 pub mod pages;
+pub mod quantities_panel;
 pub mod app_quantities;
 pub mod release_notes;
 pub mod theme;
