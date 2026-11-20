@@ -175,12 +175,8 @@ fn draw_quantity_row(
         };
         if is_unassigned {
             ui.add(egui::Label::new(" "));
-        } else {
-            if ui.label(kind_text).clicked() {
-                if action.is_none() {
-                    select_markups(project, row.condition.id, is_unassigned, state);
-                }
-            }
+        } else if ui.label(kind_text).clicked() && action.is_none() {
+            select_markups(project, row.condition.id, is_unassigned, state);
         }
 
         // Item count
@@ -189,18 +185,14 @@ fn draw_quantity_row(
         } else {
             &format!("{}", row.item_count)
         };
-        if ui.label(items_text).clicked() {
-            if action.is_none() {
-                select_markups(project, row.condition.id, is_unassigned, state);
-            }
+        if ui.label(items_text).clicked() && action.is_none() {
+            select_markups(project, row.condition.id, is_unassigned, state);
         }
 
         // Quantity with unit suffix
         let total_str = format_quantity(row);
-        if ui.label(total_str).clicked() {
-            if action.is_none() {
-                select_markups(project, row.condition.id, is_unassigned, state);
-            }
+        if ui.label(total_str).clicked() && action.is_none() {
+            select_markups(project, row.condition.id, is_unassigned, state);
         }
 
         // Mixed units badge
@@ -221,10 +213,8 @@ fn draw_quantity_row(
 
         // Unit column
         let unit_name = row.unit.name();
-        if ui.label(unit_name).clicked() {
-            if action.is_none() {
-                select_markups(project, row.condition.id, is_unassigned, state);
-            }
+        if ui.label(unit_name).clicked() && action.is_none() {
+            select_markups(project, row.condition.id, is_unassigned, state);
         }
 
         action
