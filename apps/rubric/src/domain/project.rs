@@ -8,7 +8,8 @@ use super::bates::BatesConfig;
 use super::document::{Document, Page};
 use super::markup::Markup;
 use super::markup::MarkupKind;
-use super::takeoff::{ConditionKind, TakeoffCondition, TakeoffError, TakeoffSettings};
+use super::takeoff::{ConditionKind, TakeoffCondition, TakeoffError, TakeoffSettings, quantity_rows};
+use crate::data::export::write_quantities_csv;
 use super::units::{clamp_precision, MeasureKind, DEFAULT_PRECISION};
 use crate::data::DataError;
 use crate::domain::style::Color;
@@ -283,6 +284,7 @@ impl Project {
                 ToolSet::default_measure(),
             ],
             settings: Settings::default(),
+            takeoff: TakeoffSettings::default(),
             created: now,
             modified: now,
         };
@@ -617,8 +619,8 @@ impl Project {
         &self,
         path: P,
     ) -> Result<std::path::PathBuf, DataError> {
-        let rows = takeoff::quantity_rows(self);
-        data::export::write_quantities_csv(path.as_ref(), &rows)?;
+        let rows = quantity_rows(self);
+        write_quantities_csv(path.as_ref(), &rows)?;
         Ok(path.as_ref().to_path_buf())
     }
 }

@@ -5,7 +5,7 @@
 //! Conditions group measurements (lengths, areas, perimeters, wall surfaces, counts)
 //! for a quantity schedule that can be exported as CSV.
 
-use chrono::DateTime;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
@@ -169,8 +169,8 @@ pub fn quantity_rows(project: &crate::domain::project::Project) -> Vec<QuantityR
                 height: None,
                 colour: Color::rgb(128, 128, 128), // gray placeholder
                 notes: None,
-                created: DateTime::Utc::now(),
-                modified: DateTime::Utc::now(),
+                created: Utc::now(),
+                modified: Utc::now(),
             },
             total: unused_2dp(unassigned.total),
             unit,
