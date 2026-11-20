@@ -2601,7 +2601,10 @@ impl RubricApp {
         if let Some(action) = quantities_action {
             use crate::ui::quantities_panel::QuantityAction;
             match action {
-                QuantityAction::SelectCondition { condition_id, first_page } => {
+                QuantityAction::SelectCondition {
+                    condition_id,
+                    first_page,
+                } => {
                     self.ui.selected.clear();
                     self.ui.selected.insert(condition_id);
                     self.ui.status = format!("Selected markup on page {}", first_page + 1);

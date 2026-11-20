@@ -3,6 +3,7 @@
 //! Each function takes `&mut RubricApp` and `&egui::Context` and draws the
 //! corresponding dialog if its visibility flag is set.
 
+use chrono::Utc;
 use eframe::egui;
 
 use crate::ui::app::RubricApp;
@@ -285,9 +286,6 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
     let mut open = true;
     let mut cancelled = false;
     let mut commit = false;
-    let mut delete_requested = false;
-    let mut show_delete_confirm = false;
-    let mut delete_confirmed = false;
 
     egui::Window::new(title)
         .open(&mut open)
@@ -449,7 +447,7 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                     // Delete button (only when editing)
                     if is_editing {
                         if ui.button("Delete").clicked() {
-                            show_delete_confirm = true;
+                            state.show_delete_confirm = true;
                         }
                     }
                     if ui.button("Cancel").clicked() {
@@ -480,7 +478,7 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
     }
 
     // Handle delete confirmation (shows as a second modal window)
-    if show_delete_confirm {
+    if state.show_delete_confirm {
         let assigned_count = state.assigned_count;
         let condition_id = state.editing_id;
         let condition_name = state.name.clone();
@@ -511,21 +509,16 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                             );
                         }
                         app.ui.takeoff_dialog = None;
-                        delete_confirmed = true;
                     }
                     if ui.button("Cancel").clicked() {
                         // Just close the confirm, keep the edit dialog open
-                        show_delete_confirm = false;
+                        state.show_delete_confirm = false;
                     }
                 });
             });
         
         // If user clicked Cancel on confirm, keep the edit dialog open
-        if !show_delete_confirm && !delete_confirmed {
-            return;
-        }
-        // If delete was confirmed, the dialog is already closed
-        if delete_confirmed {
+        if !state.show_delete_confirm {
             return;
         }
     }
@@ -567,7 +560,7 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                     cond.height = height;
                     cond.colour = colour;
                     cond.notes = notes;
-                    cond.modified = chrono::Utc::now();
+                    cond.modified = Utc::now();
                 }
                 app.push_snapshot("edit condition");
                 app.set_status(
@@ -590,7 +583,7 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                     {
                         cond.colour = colour;
                         cond.notes = notes;
-                        cond.modified = chrono::Utc::now();
+                        cond.modified = Utc::now();
                     }
                     app.push_snapshot("create condition");
                     app.set_status(
