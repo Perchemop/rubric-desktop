@@ -28,11 +28,14 @@ impl LeftPanel {
     /// Every tab in the strip, in display order.
     pub(crate) const ALL: [LeftPanel; 3] = [LeftPanel::Pages, LeftPanel::Tools, LeftPanel::ToolChest];
 
-    /// Short label shown on the tab button.
+    /// Short label shown on the tab button. The Tools tab is named
+    /// "Toolbox" (not "Tools") so its accessible name stays unique next to
+    /// the top bar's "Tools" drop-down menu — two different controls must
+    /// not share one accessible name (guide II.30.7.4).
     pub(crate) fn label(self) -> &'static str {
         match self {
             LeftPanel::Pages => "Pages",
-            LeftPanel::Tools => "Tools",
+            LeftPanel::Tools => "Toolbox",
             LeftPanel::ToolChest => "My Tools",
         }
     }

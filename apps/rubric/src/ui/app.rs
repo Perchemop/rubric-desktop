@@ -2854,12 +2854,16 @@ mod kittest_tests {
         // requests a periodic repaint for autosave/status — so use steps.)
         harness.run_steps(2);
 
-        // The active-tool chip ("Select" at startup) is queryable by its
-        // label through the AccessKit tree. Tool items live inside the
-        // Tools dropdown popup (not in the flat tree), so they are not
-        // queried here — those are reached through the dropdown in the live
-        // UI.
-        let _select = harness.get_by_label("Select"); // active-tool chip label
+        // The consolidated left panel (UI redesign T1) opens on the Pages tab
+        // when a document is open. Switch to the Toolbox tab so the tool
+        // buttons join the AccessKit tree, then assert the Select tool button
+        // is queryable by its label — and that clicking it works (the
+        // tab strip and the tool buttons are keyboard/screen-reader reachable).
+        harness.get_by_label("Toolbox").click();
+        harness.run_steps(2);
+        let select = harness.get_by_label("Select");
+        select.click();
+        harness.run_steps(2);
     }
 
     #[test]
