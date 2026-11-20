@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use eframe::egui::{self, ComboBox, Ui};
 
+use crate::domain::action::EditorAction;
 use crate::domain::{
     markup_geometry::MarkupGeometry,
     style::{Color, DashPattern, FillMode},
@@ -12,7 +13,6 @@ use crate::domain::{
     BatesCorner, LayerError, MarkupKind, Project, ReviewStatus, Scale, StampPreset,
     MAX_BATES_DIGITS, MAX_BATES_START, MIN_BATES_DIGITS,
 };
-use crate::domain::action::EditorAction;
 use crate::ui::app::{InspectorMode, UiState};
 use crate::ui::icon_button::{eye_button, lock_button, triangle_button, TriangleDir};
 
@@ -661,7 +661,10 @@ pub(crate) fn draw_inspector(
                             };
 
                             // Get assignable conditions for this markup kind
-                            let measure_kind = m.kind.measure_kind().expect("assignable kinds have measure_kind");
+                            let measure_kind = m
+                                .kind
+                                .measure_kind()
+                                .expect("assignable kinds have measure_kind");
                             let assignable_conditions: Vec<&TakeoffCondition> = project
                                 .takeoff
                                 .conditions
@@ -689,7 +692,10 @@ pub(crate) fn draw_inspector(
                                     .show_ui(ui, |ui| {
                                         // Unassign option
                                         if ui
-                                            .selectable_label(current_cond_id.is_none(), "Unassigned")
+                                            .selectable_label(
+                                                current_cond_id.is_none(),
+                                                "Unassigned",
+                                            )
                                             .clicked()
                                             && current_cond_id.is_some()
                                         {
@@ -699,7 +705,8 @@ pub(crate) fn draw_inspector(
                                         }
                                         // Assignable conditions
                                         for cond in &assignable_conditions {
-                                            let label = format!("{} ({})", cond.name, cond.kind.label());
+                                            let label =
+                                                format!("{} ({})", cond.name, cond.kind.label());
                                             if ui
                                                 .selectable_label(
                                                     current_cond_id == Some(cond.id),
@@ -1269,7 +1276,7 @@ pub(crate) fn draw_inspector(
                 ui_state.bates_dirty = false;
             }
         });
-        
+
         // Takeoff conditions (T8): create new condition
         ui.collapsing("Takeoff", |ui| {
             ui.label("Conditions group measurements for quantity schedules.");
@@ -1281,15 +1288,18 @@ pub(crate) fn draw_inspector(
                 let name = loop {
                     let name = format!("Condition {}", n);
                     let normalized = name.to_lowercase();
-                    if !conditions.iter().any(|c| c.name.to_lowercase() == normalized) {
+                    if !conditions
+                        .iter()
+                        .any(|c| c.name.to_lowercase() == normalized)
+                    {
                         break name;
                     }
                     n += 1;
                 };
-                
+
                 // Get default colour for Linear kind
                 let colour = Color::rgb(0, 128, 255);
-                
+
                 ui_state.takeoff_dialog = Some(crate::ui::app::TakeoffDialogState {
                     editing_id: None,
                     name,

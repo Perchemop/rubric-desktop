@@ -10,10 +10,7 @@ use crate::ui::quantities_panel;
 /// Draw the Quantities panel (bottom-panel tab with takeoff schedule).
 ///
 /// Returns true when the project needs to be marked dirty (rare for this panel).
-pub(crate) fn draw_quantities_panel(
-    app: &mut RubricApp,
-    ui: &mut Ui,
-) -> bool {
+pub(crate) fn draw_quantities_panel(app: &mut RubricApp, ui: &mut Ui) -> bool {
     if app.ui.show_quantities && !app.ui.focus_mode {
         let project = app.history.current_mut();
         let ui_state = &mut app.ui;

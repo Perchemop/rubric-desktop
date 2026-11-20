@@ -5,15 +5,15 @@
 //! Conditions group measurements (lengths, areas, perimeters, wall surfaces, counts)
 //! for a quantity schedule that can be exported as CSV.
 
-use thiserror::Error;
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use uuid::Uuid;
 
 use super::style::Color;
 use super::units::{MeasureKind, MeasureUnit, Scale};
-use crate::domain::markup::{Markup, MarkupKind};
 use crate::domain::document::Document;
+use crate::domain::markup::{Markup, MarkupKind};
 
 /// Kind of takeoff condition — determines which measure families may be assigned.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -143,11 +143,11 @@ pub struct QuantityRow {
 /// totals based on the condition kind.
 pub fn quantity_rows(project: &crate::domain::project::Project) -> Vec<QuantityRow> {
     let mut rows = Vec::new();
-    
+
     for condition in &project.takeoff.conditions {
         let result = compute_condition_total(condition, &project.documents);
         let (unit, mixed_units) = result.unit_and_mixed();
-        
+
         rows.push(QuantityRow {
             condition: condition.clone(),
             total: result.total,
@@ -156,7 +156,7 @@ pub fn quantity_rows(project: &crate::domain::project::Project) -> Vec<QuantityR
             mixed_units,
         });
     }
-    
+
     // Add "Unassigned" row if there are any unassigned measurements
     let unassigned = compute_unassigned(&project.documents);
     if unassigned.count > 0 {
@@ -178,7 +178,7 @@ pub fn quantity_rows(project: &crate::domain::project::Project) -> Vec<QuantityR
             mixed_units,
         });
     }
-    
+
     rows
 }
 
@@ -204,39 +204,39 @@ impl ConditionTotal {
 }
 
 /// Compute total for a single condition.
-fn compute_condition_total(
-    condition: &TakeoffCondition,
-    documents: &[Document],
-) -> ConditionTotal {
+fn compute_condition_total(condition: &TakeoffCondition, documents: &[Document]) -> ConditionTotal {
     let mut total = 0.0;
     let mut count = 0;
     let mut units: Vec<MeasureUnit> = Vec::new();
-    
+
     for doc in documents {
         for markup in &doc.markups {
             // Check if markup belongs to this condition
             if markup.condition_id != Some(condition.id) {
                 continue;
             }
-            
+
             // Skip hidden layers (locked layers are still counted per spec)
             // is_layer_visible returns true for the default layer (id = nil)
             // and for visible layers; false for hidden ones
             if !doc.is_layer_visible(markup.layer_id) {
                 continue;
             }
-            
+
             // Get the page's scale
             let page = &doc.pages[markup.page];
             let scale = page.scale;
             let unit = scale.unit;
-            
+
             // Get measurement value if present
             if let Some(meas) = &markup.measurement {
                 let value = match condition.kind {
                     ConditionKind::Linear => {
                         // Linear: Length, Diameter, Radius measures
-                        if matches!(meas.kind, MeasureKind::Length | MeasureKind::Diameter | MeasureKind::Radius) {
+                        if matches!(
+                            meas.kind,
+                            MeasureKind::Length | MeasureKind::Diameter | MeasureKind::Radius
+                        ) {
                             scale.points_to_units(meas.value_points)
                         } else {
                             continue;
@@ -275,10 +275,10 @@ fn compute_condition_total(
                         }
                     }
                 };
-                
+
                 total += value;
                 count += 1;
-                
+
                 // Track units for mixed_units detection
                 if !units.contains(&unit) {
                     units.push(unit);
@@ -286,8 +286,12 @@ fn compute_condition_total(
             }
         }
     }
-    
-    ConditionTotal { total, count, units }
+
+    ConditionTotal {
+        total,
+        count,
+        units,
+    }
 }
 
 /// Compute total of unassigned measurements (not assigned to any condition).
@@ -295,7 +299,7 @@ fn compute_unassigned(documents: &[Document]) -> ConditionTotal {
     let mut total = 0.0;
     let mut count = 0;
     let mut units: Vec<MeasureUnit> = Vec::new();
-    
+
     for doc in documents {
         for markup in &doc.markups {
             // Only consider measure/count markups that are unassigned
@@ -305,29 +309,33 @@ fn compute_unassigned(documents: &[Document]) -> ConditionTotal {
             if !markup.kind.is_measure() {
                 continue;
             }
-            
+
             // Skip hidden layers
             if !doc.is_layer_visible(markup.layer_id) {
                 continue;
             }
-            
+
             // Get the page's scale
             let page = &doc.pages[markup.page];
             let unit = page.scale.unit;
-            
+
             // Get measurement value if present
             if let Some(meas) = &markup.measurement {
                 total += meas.value;
                 count += 1;
-                
+
                 if !units.contains(&unit) {
                     units.push(unit);
                 }
             }
         }
     }
-    
-    ConditionTotal { total, count, units }
+
+    ConditionTotal {
+        total,
+        count,
+        units,
+    }
 }
 
 /// Round to 2 decimal places for display purposes.
@@ -339,9 +347,9 @@ fn unused_2dp(value: f64) -> f64 {
 mod tests {
     use super::*;
     use crate::domain::document::Document;
+    use crate::domain::geom::Pt;
     use crate::domain::markup::{Markup, MarkupGeometry, MarkupKind};
     use crate::domain::units::{MeasureUnit, Scale};
-    use crate::domain::geom::Pt;
 
     use super::super::style::Color;
     use super::super::units::MeasureKind;
@@ -448,7 +456,8 @@ mod tests {
             "created": "2026-01-01T00:00:00Z",
             "modified": "2026-01-01T00:00:00Z"
         }"#;
-        let project: crate::domain::project::Project = serde_json::from_str(json).expect("deserialize legacy project");
+        let project: crate::domain::project::Project =
+            serde_json::from_str(json).expect("deserialize legacy project");
         assert_eq!(project.takeoff.conditions.len(), 0);
     }
 
@@ -460,11 +469,13 @@ mod tests {
     fn ac1_quantity_rows_shows_conditions_with_zero_items() {
         // Given: project with one condition but no assigned markups
         let mut project = crate::domain::project::Project::new("Test Project");
-        let carpet_cond = project.create_condition("Carpet", ConditionKind::Area, None).unwrap();
-        
+        let carpet_cond = project
+            .create_condition("Carpet", ConditionKind::Area, None)
+            .unwrap();
+
         // When: quantity_rows is computed
         let rows = quantity_rows(&project);
-        
+
         // Then: one row for the condition with 0 items and total 0.00
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].condition.id, carpet_cond.id);
@@ -481,11 +492,13 @@ mod tests {
     fn ac2_rename_condition_rejects_case_insensitive_duplicate() {
         // Given: a project with a condition named "carpet"
         let mut project = crate::domain::project::Project::new("Test Project");
-        let cond = project.create_condition("carpet", ConditionKind::Area, None).unwrap();
-        
+        let cond = project
+            .create_condition("carpet", ConditionKind::Area, None)
+            .unwrap();
+
         // When: trying to rename to "Carpet" (case-insensitive duplicate)
         let result = project.rename_condition(cond.id, "Carpet");
-        
+
         // Then: the rename is rejected
         assert_eq!(result, Err(TakeoffError::DuplicateName));
         assert_eq!(project.takeoff.conditions[0].name, "carpet");
@@ -495,11 +508,13 @@ mod tests {
     fn ac2_create_condition_rejects_case_insensitive_duplicate() {
         // Given: a project with a condition named "carpet"
         let mut project = crate::domain::project::Project::new("Test Project");
-        project.create_condition("carpet", ConditionKind::Area, None).unwrap();
-        
+        project
+            .create_condition("carpet", ConditionKind::Area, None)
+            .unwrap();
+
         // When: trying to create "Carpet"
         let result = project.create_condition("Carpet", ConditionKind::Area, None);
-        
+
         // Then: the creation is rejected
         assert_eq!(result, Err(TakeoffError::DuplicateName));
         assert_eq!(project.takeoff.conditions.len(), 1);
@@ -513,14 +528,16 @@ mod tests {
     fn ac3_wallsurface_domain_accepts_any_f64_height() {
         // Given: a project
         let mut project = crate::domain::project::Project::new("Test Project");
-        
+
         // When: creating WallSurface conditions with various heights
         // Note: spec says height validation (empty, <=0) is UI-level per R-3
         // Domain accepts any f64; UI prevents bad values
         let result_zero = project.create_condition("Walls", ConditionKind::WallSurface, Some(0.0));
-        let result_neg = project.create_condition("Ceiling", ConditionKind::WallSurface, Some(-2.5));
-        let result_valid = project.create_condition("Office", ConditionKind::WallSurface, Some(2.7));
-        
+        let result_neg =
+            project.create_condition("Ceiling", ConditionKind::WallSurface, Some(-2.5));
+        let result_valid =
+            project.create_condition("Office", ConditionKind::WallSurface, Some(2.7));
+
         // Then: domain accepts all values (UI validation is separate)
         assert!(result_valid.is_ok());
         assert!(result_zero.is_ok());
@@ -536,10 +553,12 @@ mod tests {
         // Given: a project with 5 assigned Length measures
         let mut project = crate::domain::project::Project::new("Test Project");
         let page_scale = Scale::from_ratio(MeasureUnit::Meter, 100.0, 72.0); // 1:100 scale
-        
+
         // Create a condition
-        let cond = project.create_condition("Skirting", ConditionKind::Linear, None).unwrap();
-        
+        let cond = project
+            .create_condition("Skirting", ConditionKind::Linear, None)
+            .unwrap();
+
         // Create 5 Length measures on the condition via batch assign
         let mut markup_ids = Vec::new();
         for i in 0..5 {
@@ -557,42 +576,61 @@ mod tests {
             project.documents[0].add_markup(m);
             markup_ids.push(id);
         }
-        
+
         // Assign all 5 to the condition
         let assigned = project.assign_to_condition(&markup_ids, cond.id).unwrap();
         assert_eq!(assigned, 5);
-        
+
         // Verify assignments
         for id in &markup_ids {
             assert_eq!(
-                project.documents[0].markups.iter().find(|m| &m.id == id).unwrap().condition_id,
+                project.documents[0]
+                    .markups
+                    .iter()
+                    .find(|m| &m.id == id)
+                    .unwrap()
+                    .condition_id,
                 Some(cond.id)
             );
         }
-        
+
         // When: deleting the condition
         let unassigned_count = project.delete_condition(cond.id).unwrap();
         assert_eq!(unassigned_count, 5);
-        
+
         // Then: all markups are unassigned
         assert!(project.takeoff.conditions.is_empty());
         for id in &markup_ids {
             assert_eq!(
-                project.documents[0].markups.iter().find(|m| &m.id == id).unwrap().condition_id,
+                project.documents[0]
+                    .markups
+                    .iter()
+                    .find(|m| &m.id == id)
+                    .unwrap()
+                    .condition_id,
                 None
             );
         }
-        
+
         // Undo: restore condition and assignments (simulated via redo capability)
         // First, recreate the condition
-        let restored_cond = project.create_condition("Skirting", ConditionKind::Linear, None).unwrap();
+        let restored_cond = project
+            .create_condition("Skirting", ConditionKind::Linear, None)
+            .unwrap();
         // Restore assignments
-        project.assign_to_condition(&markup_ids, restored_cond.id).unwrap();
-        
+        project
+            .assign_to_condition(&markup_ids, restored_cond.id)
+            .unwrap();
+
         // Verify restoration
         for id in &markup_ids {
             assert_eq!(
-                project.documents[0].markups.iter().find(|m| &m.id == id).unwrap().condition_id,
+                project.documents[0]
+                    .markups
+                    .iter()
+                    .find(|m| &m.id == id)
+                    .unwrap()
+                    .condition_id,
                 Some(restored_cond.id)
             );
         }
@@ -607,14 +645,16 @@ mod tests {
         // Given: an Area measure on a locked layer
         let mut project = crate::domain::project::Project::new("Test Project");
         let page_scale = Scale::from_ratio(MeasureUnit::Meter, 100.0, 72.0);
-        
+
         // Add a layer and lock it
         let layer_id = project.documents[0].add_layer("Locked Layer");
         project.documents[0].set_layer_locked(layer_id, true);
-        
+
         // Create a condition
-        let cond = project.create_condition("Carpet", ConditionKind::Area, None).unwrap();
-        
+        let cond = project
+            .create_condition("Carpet", ConditionKind::Area, None)
+            .unwrap();
+
         // Create an Area measure on the locked layer
         let mut m = Markup::new(
             0,
@@ -634,15 +674,20 @@ mod tests {
         m.recompute_measurement(page_scale);
         let markup_id = m.id;
         project.documents[0].add_markup(m);
-        
+
         // When: assigning via domain method (locked affects editing, not scheduling)
         let result = project.assign_to_condition(&[markup_id], cond.id);
-        
+
         // Then: assignment succeeds
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 1);
         assert_eq!(
-            project.documents[0].markups.iter().find(|m| &m.id == &markup_id).unwrap().condition_id,
+            project.documents[0]
+                .markups
+                .iter()
+                .find(|m| &m.id == &markup_id)
+                .unwrap()
+                .condition_id,
             Some(cond.id)
         );
     }
@@ -656,9 +701,11 @@ mod tests {
         // Given: a Linear condition and an Area measure
         let mut project = crate::domain::project::Project::new("Test Project");
         let page_scale = Scale::from_ratio(MeasureUnit::Meter, 100.0, 72.0);
-        
-        let linear_cond = project.create_condition("Linear", ConditionKind::Linear, None).unwrap();
-        
+
+        let linear_cond = project
+            .create_condition("Linear", ConditionKind::Linear, None)
+            .unwrap();
+
         // Create an Area measure
         let mut m = Markup::new(
             0,
@@ -677,10 +724,10 @@ mod tests {
         m.recompute_measurement(page_scale);
         let markup_id = m.id;
         project.documents[0].add_markup(m);
-        
+
         // When: trying to assign Area to Linear condition
         let result = project.assign_to_condition(&[markup_id], linear_cond.id);
-        
+
         // Then: rejection with MeasureMismatch
         assert_eq!(result, Err(TakeoffError::MeasureMismatch));
     }
@@ -694,9 +741,11 @@ mod tests {
         // Given: 3 selected Length measures
         let mut project = crate::domain::project::Project::new("Test Project");
         let page_scale = Scale::from_ratio(MeasureUnit::Meter, 100.0, 72.0);
-        
-        let skirting_cond = project.create_condition("Skirting", ConditionKind::Linear, None).unwrap();
-        
+
+        let skirting_cond = project
+            .create_condition("Skirting", ConditionKind::Linear, None)
+            .unwrap();
+
         let mut markup_ids = Vec::new();
         for i in 0..3 {
             let mut m = Markup::new(
@@ -713,17 +762,22 @@ mod tests {
             project.documents[0].add_markup(m);
             markup_ids.push(id);
         }
-        
+
         // When: assigning all 3 to "Skirting" via batch operation
         let result = project.assign_to_condition(&markup_ids, skirting_cond.id);
-        
+
         // Then: all 3 are assigned
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 3);
-        
+
         for id in &markup_ids {
             assert_eq!(
-                project.documents[0].markups.iter().find(|m| &m.id == id).unwrap().condition_id,
+                project.documents[0]
+                    .markups
+                    .iter()
+                    .find(|m| &m.id == id)
+                    .unwrap()
+                    .condition_id,
                 Some(skirting_cond.id)
             );
         }
@@ -737,30 +791,32 @@ mod tests {
     fn ac8_mixed_scale_quantities_displays_metres() {
         // Given: two Length measures (2.0m @ 1:50, 3.4m @ 1:100), both displaying metres
         let mut project = crate::domain::project::Project::new("Test Project");
-        
+
         // Scale 1: 1:50 = 50 points per meter in real world
         // 1 meter = 50 * 72 = 3600 points
         let scale_1 = Scale::from_ratio(MeasureUnit::Meter, 50.0, 72.0);
-        // Scale 2: 1:100 = 100 points per meter in real world  
+        // Scale 2: 1:100 = 100 points per meter in real world
         // 1 meter = 100 * 72 = 7200 points
         let scale_2 = Scale::from_ratio(MeasureUnit::Meter, 100.0, 72.0);
-        
+
         // First page with 1:50 scale - 2.0m
         // 2.0m at 1:50 means 100 points on paper represents 2 meters on site
         // So 3600 points = 1 meter
         // For 2.0m, we need 7200 points
         let page1 = crate::domain::document::Page::letter(0).with_scale(scale_1);
-        
+
         // Second page with 1:100 scale - 3.4m
         // For 3.4m, we need 3.4 * 7200 = 24480 points
         let mut page2 = crate::domain::document::Page::letter(1);
         page2.scale = scale_2;
-        
+
         project.documents[0].pages = vec![page1, page2];
-        
+
         // Create condition
-        let skirting_cond = project.create_condition("Skirting", ConditionKind::Linear, None).unwrap();
-        
+        let skirting_cond = project
+            .create_condition("Skirting", ConditionKind::Linear, None)
+            .unwrap();
+
         // Create first length measure (2.0m on page 0)
         let mut m1 = Markup::new(
             0,
@@ -773,7 +829,7 @@ mod tests {
         );
         m1.recompute_measurement(scale_1);
         project.documents[0].add_markup(m1);
-        
+
         // Create second length measure (3.4m on page 1)
         let mut m2 = Markup::new(
             1,
@@ -786,20 +842,26 @@ mod tests {
         );
         m2.recompute_measurement(scale_2);
         project.documents[0].add_markup(m2);
-        
+
         // Get markup IDs
         let markup_ids: Vec<Uuid> = project.documents[0].markups.iter().map(|m| m.id).collect();
-        
+
         // Assign both to "Skirting"
-        project.assign_to_condition(&markup_ids, skirting_cond.id).unwrap();
-        
+        project
+            .assign_to_condition(&markup_ids, skirting_cond.id)
+            .unwrap();
+
         // When: computing quantity rows
         let rows = quantity_rows(&project);
-        
+
         // Then: shows 5.400m with 2 items, mixed_units = true
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].item_count, 2);
-        assert!((rows[0].total - 5.4).abs() < 0.001, "Expected ~5.4m, got {}", rows[0].total);
+        assert!(
+            (rows[0].total - 5.4).abs() < 0.001,
+            "Expected ~5.4m, got {}",
+            rows[0].total
+        );
         assert_eq!(rows[0].unit, MeasureUnit::Meter);
         assert!(rows[0].mixed_units, "Expected mixed_units to be true");
     }
@@ -813,19 +875,21 @@ mod tests {
         // Given: a WallSurface condition with height 2.7m and an assigned Perimeter of 12.0m
         let mut project = crate::domain::project::Project::new("Test Project");
         let scale = Scale::from_ratio(MeasureUnit::Meter, 100.0, 72.0);
-        
+
         // Set the page scale
         project.documents[0].pages[0].scale = scale;
-        
+
         // Create WallSurface condition with height 2.7m
-        let walls_cond = project.create_condition("Walls", ConditionKind::WallSurface, Some(2.7)).unwrap();
-        
+        let walls_cond = project
+            .create_condition("Walls", ConditionKind::WallSurface, Some(2.7))
+            .unwrap();
+
         // Create a Perimeter measure of 12.0m
         // A 3m x 3m square has perimeter 12m
         // 1:100 scale: 100 points per meter real -> 7200 points per meter display
         // 3m = 21600 points
         let square_size = 3.0 * 100.0 * 72.0 / 100.0; // 3m at 1:100 scale in points
-        
+
         let mut m = Markup::new(
             0,
             MarkupKind::MeasurePerimeter,
@@ -843,16 +907,22 @@ mod tests {
         m.recompute_measurement(scale);
         let markup_id = m.id;
         project.documents[0].add_markup(m);
-        
+
         // Assign to WallSurface condition
-        project.assign_to_condition(&[markup_id], walls_cond.id).unwrap();
-        
+        project
+            .assign_to_condition(&[markup_id], walls_cond.id)
+            .unwrap();
+
         // When: computing quantity rows
         let rows = quantity_rows(&project);
-        
+
         // Then: row total is 32.400 m² (12.0m × 2.7m)
         assert_eq!(rows.len(), 1);
-        assert!((rows[0].total - 32.4).abs() < 0.001, "Expected 32.4m², got {}", rows[0].total);
+        assert!(
+            (rows[0].total - 32.4).abs() < 0.001,
+            "Expected 32.4m², got {}",
+            rows[0].total
+        );
         assert_eq!(rows[0].item_count, 1);
         assert_eq!(rows[0].unit, MeasureUnit::Meter);
     }
@@ -865,20 +935,22 @@ mod tests {
     fn ac10_mixed_units_badge_when_contributors_span_units() {
         // Given: contributors in metres and feet on one condition
         let mut project = crate::domain::project::Project::new("Test Project");
-        
+
         // Create first page with meter scale
         let meter_scale = Scale::from_ratio(MeasureUnit::Meter, 100.0, 72.0);
         // Create second page with foot scale
         let foot_scale = Scale::from_ratio(MeasureUnit::Foot, 100.0, 72.0);
-        
+
         // Set up pages
         project.documents[0].pages[0].scale = meter_scale;
         let page2 = crate::domain::document::Page::letter(1).with_scale(foot_scale);
         project.documents[0].pages.push(page2);
-        
+
         // Create condition
-        let lin_cond = project.create_condition("Linear", ConditionKind::Linear, None).unwrap();
-        
+        let lin_cond = project
+            .create_condition("Linear", ConditionKind::Linear, None)
+            .unwrap();
+
         // Create Length measure in metres (1m)
         let scale_m = meter_scale;
         let mut m1 = Markup::new(
@@ -893,7 +965,7 @@ mod tests {
         m1.recompute_measurement(scale_m);
         let id1 = m1.id;
         project.documents[0].add_markup(m1);
-        
+
         // Create Length measure in feet (1ft)
         let scale_f = foot_scale;
         let mut m2 = Markup::new(
@@ -908,16 +980,21 @@ mod tests {
         m2.recompute_measurement(scale_f);
         let id2 = m2.id;
         project.documents[0].add_markup(m2);
-        
+
         // Assign both to condition
-        project.assign_to_condition(&[id1, id2], lin_cond.id).unwrap();
-        
+        project
+            .assign_to_condition(&[id1, id2], lin_cond.id)
+            .unwrap();
+
         // When: computing quantity rows
         let rows = quantity_rows(&project);
-        
+
         // Then: mixed_units is true
         assert_eq!(rows.len(), 1);
-        assert!(rows[0].mixed_units, "Expected mixed_units to be true when contributors span display units");
+        assert!(
+            rows[0].mixed_units,
+            "Expected mixed_units to be true when contributors span display units"
+        );
     }
 
     // =========================================================================
@@ -928,9 +1005,11 @@ mod tests {
     fn ac11_count_condition_shows_n_each() {
         // Given: a Count condition with 4 assigned count markers
         let mut project = crate::domain::project::Project::new("Test Project");
-        
-        let count_cond = project.create_condition("Count", ConditionKind::Count, None).unwrap();
-        
+
+        let count_cond = project
+            .create_condition("Count", ConditionKind::Count, None)
+            .unwrap();
+
         // Create 4 Count markers
         let mut markup_ids = Vec::new();
         for i in 1..=4 {
@@ -947,13 +1026,15 @@ mod tests {
             project.documents[0].add_markup(m);
             markup_ids.push(id);
         }
-        
+
         // Assign all 4 to Count condition
-        project.assign_to_condition(&markup_ids, count_cond.id).unwrap();
-        
+        project
+            .assign_to_condition(&markup_ids, count_cond.id)
+            .unwrap();
+
         // When: computing quantity rows
         let rows = quantity_rows(&project);
-        
+
         // Then: row shows "4 each" (total = 4, unit = "each" is implicit in unit suffix)
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].item_count, 4);
@@ -969,16 +1050,18 @@ mod tests {
         // Given: a markup on a hidden layer assigned to "Carpet"
         let mut project = crate::domain::project::Project::new("Test Project");
         let scale = Scale::from_ratio(MeasureUnit::Meter, 100.0, 72.0);
-        
+
         project.documents[0].pages[0].scale = scale;
-        
+
         // Add a layer and hide it
         let hidden_layer_id = project.documents[0].add_layer("Hidden Layer");
         project.documents[0].set_layer_visible(hidden_layer_id, false);
-        
+
         // Create condition
-        let carpet_cond = project.create_condition("Carpet", ConditionKind::Area, None).unwrap();
-        
+        let carpet_cond = project
+            .create_condition("Carpet", ConditionKind::Area, None)
+            .unwrap();
+
         // Create an Area measure on the hidden layer
         // 1 sq meter at 1:100 scale = 7200 points x 7200 points = 51,840,000 sq points
         let area_points = 1.0 * (100.0 * 72.0 / 100.0); // Simplified
@@ -1000,25 +1083,30 @@ mod tests {
         m.recompute_measurement(scale);
         let markup_id = m.id;
         project.documents[0].add_markup(m);
-        
+
         // Assign to condition
-        project.assign_to_condition(&[markup_id], carpet_cond.id).unwrap();
-        
+        project
+            .assign_to_condition(&[markup_id], carpet_cond.id)
+            .unwrap();
+
         // When: computing quantity rows with hidden layer
         let rows = quantity_rows(&project);
-        
+
         // Then: the markup on hidden layer is excluded (total = 0)
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].total, 0.0, "Hidden layer markup should be excluded");
         assert_eq!(rows[0].item_count, 0);
-        
+
         // When: layer is shown
         project.documents[0].set_layer_visible(hidden_layer_id, true);
-        
+
         // Then: the markup is included
         let rows_shown = quantity_rows(&project);
         assert_eq!(rows_shown.len(), 1);
-        assert!(rows_shown[0].total > 0.0, "Visible layer markup should be included");
+        assert!(
+            rows_shown[0].total > 0.0,
+            "Visible layer markup should be included"
+        );
         assert_eq!(rows_shown[0].item_count, 1);
     }
 }

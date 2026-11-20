@@ -14,18 +14,18 @@ pub use markup_geometry::{text_box_rect, text_line_height, MarkupGeometry};
 pub mod markup_list;
 pub mod markup_measurement;
 pub mod markup_stamp;
-pub mod takeoff;
-pub mod workspace;
 pub mod project;
 pub mod report;
 pub mod style;
 pub mod style_preset;
+pub mod takeoff;
 pub mod text_anchor;
 pub mod theme;
 pub mod thumb_render;
 pub mod thumbs;
 pub mod units;
 pub mod view;
+pub mod workspace;
 
 pub use a11y::{audit, contrast_ratio, meets, relative_luminance, A11yIssue, AuditPair, WcagLevel};
 pub use action::EditorAction;
@@ -48,12 +48,12 @@ pub use project::{
     auto_save_interval_label, History, Project, ProjectSnapshot, RecentList, Settings, Tool,
     AUTO_SAVE_INTERVALS, CURRENT_SCHEMA_VERSION, MAX_RECENT, MIN_AUTO_SAVE_INTERVAL_SECS,
 };
-pub use takeoff::{QuantityRow, TakeoffCondition, TakeoffError, TakeoffSettings};
 pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCounts, NONE_LABEL};
 pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
 pub use style_preset::{
     export_set_json, import_set_json, PresetSet, StylePreset, StylePresetLibrary, ToolSetExport,
 };
+pub use takeoff::{QuantityRow, TakeoffCondition, TakeoffError, TakeoffSettings};
 pub use text_anchor::{GlyphBox, GlyphLine, GlyphRange};
 pub use theme::{AppPrefs, Theme};
 pub use thumb_render::{

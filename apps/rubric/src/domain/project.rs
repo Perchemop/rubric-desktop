@@ -9,7 +9,7 @@ use super::document::{Document, Page};
 use super::markup::Markup;
 use super::markup::MarkupKind;
 use super::takeoff::{ConditionKind, TakeoffCondition, TakeoffError, TakeoffSettings};
-use super::units::{clamp_precision, DEFAULT_PRECISION, MeasureKind};
+use super::units::{clamp_precision, MeasureKind, DEFAULT_PRECISION};
 use crate::data::DataError;
 use crate::domain::style::Color;
 
@@ -431,7 +431,12 @@ impl Project {
         }
         // Check for case-insensitive duplicate.
         let normalized = name.to_lowercase();
-        if self.takeoff.conditions.iter().any(|c| c.name.to_lowercase() == normalized) {
+        if self
+            .takeoff
+            .conditions
+            .iter()
+            .any(|c| c.name.to_lowercase() == normalized)
+        {
             return Err(TakeoffError::DuplicateName);
         }
         // Enforce 128 cap.
@@ -531,7 +536,12 @@ impl Project {
         markup_ids: &[uuid::Uuid],
         condition_id: Uuid,
     ) -> Result<usize, TakeoffError> {
-        let Some(condition) = self.takeoff.conditions.iter().find(|c| c.id == condition_id) else {
+        let Some(condition) = self
+            .takeoff
+            .conditions
+            .iter()
+            .find(|c| c.id == condition_id)
+        else {
             return Err(TakeoffError::NotFound(condition_id));
         };
 
@@ -603,7 +613,10 @@ impl Project {
     ///
     /// Returns the path written on success, or an error on failure.
     /// The write is atomic (temp file + rename).
-    pub fn export_quantities_csv<P: AsRef<std::path::Path>>(&self, path: P) -> Result<std::path::PathBuf, DataError> {
+    pub fn export_quantities_csv<P: AsRef<std::path::Path>>(
+        &self,
+        path: P,
+    ) -> Result<std::path::PathBuf, DataError> {
         let rows = takeoff::quantity_rows(self);
         data::export::write_quantities_csv(path.as_ref(), &rows)?;
         Ok(path.as_ref().to_path_buf())

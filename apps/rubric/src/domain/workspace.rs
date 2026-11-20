@@ -164,10 +164,7 @@ impl WorkspaceState {
         if !self.open.contains(&id) {
             self.open.insert(id);
         }
-        let region = self
-            .region
-            .entry(id)
-            .or_insert(Region::Left);
+        let region = self.region.entry(id).or_insert(Region::Left);
         // Ensure it's at least Left; if it was in another region we keep it.
         // (The spec says "docks a floating/other‑region panel"; we just ensure it's open.)
         _ = region;
@@ -301,7 +298,10 @@ mod tests {
         let mut ws = WorkspaceState::default();
         // Close the last panel (Pages) — should refuse.
         let ok = ws.close_panel(PanelId::Pages);
-        assert!(!ok, "closing Pages should refuse when it would leave dock empty");
+        assert!(
+            !ok,
+            "closing Pages should refuse when it would leave dock empty"
+        );
         // validate should still pass because default has Pages open.
         let err = ws.validate();
         assert!(err.is_ok(), "default workspace should validate");
@@ -347,7 +347,10 @@ mod tests {
         let result = ws.float_panel(PanelId::Inspector, [-100.0, -50.0, 100.0, 50.0]);
         assert!(result.is_ok(), "float_panel should accept and clamp");
         // After floating, Inspector should not be in open set.
-        assert!(!ws.open.contains(&PanelId::Inspector), "floated panel removed from open");
+        assert!(
+            !ws.open.contains(&PanelId::Inspector),
+            "floated panel removed from open"
+        );
         // Rect should be clamped: x/y >= 0, w/h >= 200.
         let fs = ws.floating.get(&PanelId::Inspector).unwrap();
         assert!(fs.rect[0] >= 0.0, "x clamped to >= 0");
@@ -366,13 +369,14 @@ mod tests {
         let mut ws = WorkspaceState::default();
         // Move a panel that is not open should return an error.
         let err = ws.move_panel(PanelId::Quantities, Region::Left);
-        assert!(matches!(err, Err(WorkspaceError::PanelNotOpen(PanelId::Quantities))));
+        assert!(matches!(
+            err,
+            Err(WorkspaceError::PanelNotOpen(PanelId::Quantities))
+        ));
         // Moving an open panel should succeed.
-        ws.move_panel(PanelId::Inspector, Region::Right).expect("move open panel");
-        assert_eq!(
-            ws.region[&PanelId::Inspector],
-            Region::Right
-        );
+        ws.move_panel(PanelId::Inspector, Region::Right)
+            .expect("move open panel");
+        assert_eq!(ws.region[&PanelId::Inspector], Region::Right);
     }
 
     #[test]

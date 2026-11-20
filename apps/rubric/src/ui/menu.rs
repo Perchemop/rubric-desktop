@@ -13,7 +13,9 @@ use eframe::egui::{self, Ui};
 use uuid::Uuid;
 
 use crate::domain::project;
-use crate::domain::{markup::ReviewStatus, takeoff::ConditionKind, units::MeasureKind, EditorAction, Tool};
+use crate::domain::{
+    markup::ReviewStatus, takeoff::ConditionKind, units::MeasureKind, EditorAction, Tool,
+};
 use crate::ui::app::UiState;
 
 /// Menu label for a tool. `Select` has no markup kind, so it is named

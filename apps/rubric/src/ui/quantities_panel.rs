@@ -18,18 +18,35 @@ use crate::ui::app::UiState;
 /// Column widths for the quantities table (in pixels).
 const COLUMN_WIDTHS: [f32; 5] = [24.0, 160.0, 100.0, 60.0, 140.0];
 
+/// An action requested by the quantities panel.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum QuantityAction {
+    /// Select all markups assigned to a condition and jump to its first contributor's page.
+    SelectCondition {
+        condition_id: Uuid,
+        first_page: usize,
+    },
+    /// Select all unassigned measurements.
+    SelectUnassigned { count: usize },
+    /// Open the condition dialog to create a new condition.
+    NewCondition,
+    /// Open the condition dialog to edit an existing condition.
+    EditCondition { condition_id: Uuid },
+}
+
 /// Draw the Quantities panel with tab strip (Markups List | Quantities).
 ///
-/// Returns true when the project needs to be marked dirty.
+/// Returns (action, dirty) where action requests opening the condition dialog.
 pub(crate) fn draw_quantities_panel(
     ui: &mut Ui,
     project: &Project,
     state: &mut UiState,
-) -> bool {
+) -> (Option<QuantityAction>, bool) {
+    let mut action = None;
     let mut dirty = false;
 
     if !state.show_quantities || state.focus_mode {
-        return dirty;
+        return (action, dirty);
     }
 
     egui::Panel::bottom("quantities")
@@ -83,10 +100,12 @@ pub(crate) fn draw_quantities_panel(
                 ui.vertical(|ui| {
                     ui.add_space(12.0);
                     ui.heading("No takeoff conditions yet.");
-                    ui.label("Conditions name what you measure — create one to start the schedule.");
+                    ui.label(
+                        "Conditions name what you measure — create one to start the schedule.",
+                    );
                     ui.add_space(8.0);
                     if ui.button("New condition…").clicked() {
-                        state.status = "New condition action not yet implemented".to_string();
+                        action = Some(QuantityAction::NewCondition);
                     }
                     ui.add_space(12.0);
                 });
@@ -110,21 +129,25 @@ pub(crate) fn draw_quantities_panel(
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
                     for row in &rows {
-                        draw_quantity_row(ui, project, state, row);
+                        if let Some(a) = draw_quantity_row(ui, project, state, row) {
+                            action = Some(a);
+                        }
                     }
                 });
         });
 
-    dirty
+    (action, dirty)
 }
 
 /// Draw a single quantity row.
+///
+/// Returns an action if the row was clicked/double-clicked/Enter pressed.
 fn draw_quantity_row(
     ui: &mut Ui,
     project: &Project,
     state: &mut UiState,
     row: &QuantityRow,
-) {
+) -> Option<QuantityAction> {
     let is_unassigned = row.condition.id.is_nil();
     let selected = state.selected.contains(&row.condition.id);
     let dark = ui.visuals().dark_mode;
@@ -158,13 +181,32 @@ fn draw_quantity_row(
         }
 
         let clicked = resp.clicked();
+        let double_clicked = resp.double_clicked();
+
+        let mut action = None;
 
         // Condition name
-        if ui
-            .selectable_label(selected, &row.condition.name)
-            .clicked()
-            || clicked
-        {
+        let name_resp = ui.selectable_label(selected, &row.condition.name);
+        let name_clicked = name_resp.clicked();
+        let name_double_clicked = name_resp.double_clicked();
+
+        // Handle click / double-click / Enter for non-Unassigned rows
+        if !is_unassigned {
+            if name_double_clicked || double_clicked {
+                action = Some(QuantityAction::EditCondition {
+                    condition_id: row.condition.id,
+                });
+            } else if name_clicked || clicked {
+                select_markups(project, state, row, is_unassigned);
+            }
+            // Handle Enter key when name label is focused
+            if name_resp.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                action = Some(QuantityAction::EditCondition {
+                    condition_id: row.condition.id,
+                });
+            }
+        } else if name_clicked || clicked {
+            // Unassigned row: single click selects
             select_markups(project, state, row, is_unassigned);
         }
 
@@ -180,7 +222,9 @@ fn draw_quantity_row(
             ui.add(egui::Label::new("").wrap(false));
         } else {
             if ui.label(kind_text).clicked() {
-                select_markups(project, state, row, is_unassigned);
+                if action.is_none() {
+                    select_markups(project, state, row, is_unassigned);
+                }
             }
         }
 
@@ -191,13 +235,17 @@ fn draw_quantity_row(
             &format!("{}", row.item_count)
         };
         if ui.label(items_text).clicked() {
-            select_markups(project, state, row, is_unassigned);
+            if action.is_none() {
+                select_markups(project, state, row, is_unassigned);
+            }
         }
 
         // Quantity with unit suffix
         let total_str = format_quantity(row);
         if ui.label(total_str).clicked() {
-            select_markups(project, state, row, is_unassigned);
+            if action.is_none() {
+                select_markups(project, state, row, is_unassigned);
+            }
         }
 
         // Mixed units badge
@@ -219,9 +267,13 @@ fn draw_quantity_row(
         // Unit column
         let unit_name = row.unit.name();
         if ui.label(unit_name).clicked() {
-            select_markups(project, state, row, is_unassigned);
+            if action.is_none() {
+                select_markups(project, state, row, is_unassigned);
+            }
         }
-    });
+
+        action
+    }).inner
 }
 
 /// Format a quantity row for display.

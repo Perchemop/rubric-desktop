@@ -149,7 +149,10 @@ fn format_csv_field(s: &str) -> String {
 /// - Notes is quoted if it contains special characters
 /// - Uses LF line endings (consistent with platform)
 /// - Unassigned row is excluded (spec: "never exported")
-pub fn write_quantities_csv(path: &Path, rows: &[crate::domain::takeoff::QuantityRow]) -> Result<(), DataError> {
+pub fn write_quantities_csv(
+    path: &Path,
+    rows: &[crate::domain::takeoff::QuantityRow],
+) -> Result<(), DataError> {
     use std::io::Write;
 
     let mut content = String::new();
@@ -168,10 +171,15 @@ pub fn write_quantities_csv(path: &Path, rows: &[crate::domain::takeoff::Quantit
         let name = format_csv_field(&condition.name);
         let kind = format_csv_field(condition.kind.label());
         let unit = row.unit.suffix();
-        let quantity = format!("{:.15}", row.total).trim_end_matches('0').trim_end_matches('.').to_string();
+        let quantity = format!("{:.15}", row.total)
+            .trim_end_matches('0')
+            .trim_end_matches('.')
+            .to_string();
         let items = row.item_count.to_string();
         let height = if let Some(h) = condition.height {
-            format!("{:.15}", h).trim_end_matches('0').trim_end_matches('.')
+            format!("{:.15}", h)
+                .trim_end_matches('0')
+                .trim_end_matches('.')
         } else {
             ""
         };
@@ -181,11 +189,19 @@ pub fn write_quantities_csv(path: &Path, rows: &[crate::domain::takeoff::Quantit
             String::new()
         };
 
-        content.push_str(&format!("{},{},{},{},{},{},{}\n", name, kind, unit, quantity, items, height, notes));
+        content.push_str(&format!(
+            "{},{},{},{},{},{},{}\n",
+            name, kind, unit, quantity, items, height, notes
+        ));
     }
 
     // Atomic write: write to temp file then rename
-    let tmp = path.with_extension(format!("{}.tmp", path.extension().map(|e| e.to_string_lossy().to_string()).unwrap_or_default()));
+    let tmp = path.with_extension(format!(
+        "{}.tmp",
+        path.extension()
+            .map(|e| e.to_string_lossy().to_string())
+            .unwrap_or_default()
+    ));
 
     let write_result = (|| -> Result<(), DataError> {
         let mut file = std::fs::File::create(&tmp)?;
@@ -747,7 +763,9 @@ mod tests {
 
         // Create a path in a non-existent directory to force failure
         let temp_base = std::env::temp_dir();
-        let nonexistent_dir = temp_base.join("rubric_nonexistent_dir_xyz").join("test.csv");
+        let nonexistent_dir = temp_base
+            .join("rubric_nonexistent_dir_xyz")
+            .join("test.csv");
 
         let condition = TakeoffCondition {
             id: uuid::Uuid::new_v4(),

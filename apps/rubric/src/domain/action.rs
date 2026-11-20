@@ -285,7 +285,10 @@ mod tests {
 
         assert!(!unassign.is_enabled(0, false), "Unassign needs selection");
         assert!(unassign.is_enabled(1, false), "Unassign needs selection");
-        assert!(unassign.is_enabled(5, false), "Unassign with multi-selection");
+        assert!(
+            unassign.is_enabled(5, false),
+            "Unassign with multi-selection"
+        );
     }
 
     #[test]

@@ -262,15 +262,19 @@ pub(crate) fn draw_calibration_dialog(app: &mut RubricApp, ctx: &egui::Context) 
 /// Esc = cancel, Enter = commit (on focused field).
 /// Validates name (non-empty, unique case-insensitively) and height (> 0 for WallSurface).
 pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
-    use crate::domain::takeoff::ConditionKind;
     use crate::domain::style::Color;
+    use crate::domain::takeoff::ConditionKind;
 
     let Some(state) = app.ui.takeoff_dialog.as_mut() else {
         return;
     };
 
     let is_editing = state.editing_id.is_some();
-    let title = if is_editing { "Edit Condition" } else { "New Condition" };
+    let title = if is_editing {
+        "Edit Condition"
+    } else {
+        "New Condition"
+    };
 
     // Compute existing condition names for duplicate validation (case-insensitive)
     let existing_names: Vec<String> = app
@@ -328,7 +332,12 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                 // Enter on name field commits if valid
                 if name_resp.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                     let height_ok = if matches!(state.kind, ConditionKind::WallSurface) {
-                        state.height.trim().parse::<f64>().map(|v| v > 0.0).unwrap_or(false)
+                        state
+                            .height
+                            .trim()
+                            .parse::<f64>()
+                            .map(|v| v > 0.0)
+                            .unwrap_or(false)
                     } else {
                         true
                     };
@@ -398,7 +407,14 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                         let name_trimmed = state.name.trim();
                         let name_ok = !name_trimmed.is_empty()
                             && !existing_names.contains(&name_trimmed.to_lowercase());
-                        if name_ok && state.height.trim().parse::<f64>().map(|v| v > 0.0).unwrap_or(false) {
+                        if name_ok
+                            && state
+                                .height
+                                .trim()
+                                .parse::<f64>()
+                                .map(|v| v > 0.0)
+                                .unwrap_or(false)
+                        {
                             commit = true;
                         } else {
                             state.height_error = true;
@@ -411,7 +427,10 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
             ui.horizontal(|ui| {
                 ui.label("Colour");
                 let mut colour = egui::Color32::from_rgba_unmultiplied(
-                    state.colour.r, state.colour.g, state.colour.b, state.colour.a,
+                    state.colour.r,
+                    state.colour.g,
+                    state.colour.b,
+                    state.colour.a,
                 );
                 let colour_resp = ui
                     .color_edit_button_srgba(&mut colour)
@@ -458,7 +477,12 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                         let name_ok = !name_trimmed.is_empty()
                             && !existing_names.contains(&name_trimmed.to_lowercase());
                         let height_ok = if matches!(state.kind, ConditionKind::WallSurface) {
-                            state.height.trim().parse::<f64>().map(|v| v > 0.0).unwrap_or(false)
+                            state
+                                .height
+                                .trim()
+                                .parse::<f64>()
+                                .map(|v| v > 0.0)
+                                .unwrap_or(false)
                         } else {
                             true
                         };
@@ -482,7 +506,7 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
         let assigned_count = state.assigned_count;
         let condition_id = state.editing_id;
         let condition_name = state.name.clone();
-        
+
         egui::Window::new("Delete Condition")
             .collapsible(false)
             .resizable(false)
@@ -497,11 +521,8 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                 ui.horizontal(|ui| {
                     if ui.button("Delete").clicked() {
                         if let Some(id) = condition_id {
-                            let unassigned = app
-                                .history
-                                .current_mut()
-                                .delete_condition(id)
-                                .unwrap_or(0);
+                            let unassigned =
+                                app.history.current_mut().delete_condition(id).unwrap_or(0);
                             app.push_snapshot("delete condition");
                             app.set_status(
                                 crate::ui::app::StatusKind::Info,
@@ -516,7 +537,7 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
                     }
                 });
             });
-        
+
         // If user clicked Cancel on confirm, keep the edit dialog open
         if !state.show_delete_confirm {
             return;
@@ -570,7 +591,11 @@ pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
             }
         } else {
             // Creating new condition
-            match app.history.current_mut().create_condition(name.clone(), kind, height) {
+            match app
+                .history
+                .current_mut()
+                .create_condition(name.clone(), kind, height)
+            {
                 Ok(cond) => {
                     // Update colour and notes if they differ from defaults
                     if let Some(cond) = app

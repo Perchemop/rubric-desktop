@@ -1081,7 +1081,11 @@ impl RubricApp {
             self.ui.status = "Select at least one markup to assign".to_string();
             return;
         }
-        match self.history.current_mut().assign_to_condition(&ids, condition_id) {
+        match self
+            .history
+            .current_mut()
+            .assign_to_condition(&ids, condition_id)
+        {
             Ok(assigned) => {
                 if assigned > 0 {
                     self.push_snapshot("assign condition");
