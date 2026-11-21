@@ -1003,7 +1003,7 @@ mod tests {
             .create_condition("Count", ConditionKind::Count, None)
             .unwrap();
 
-        // Create 4 Count markers
+        // Create 4 Count markers (counts 1, 2, 3, 4)
         let mut markup_ids = Vec::new();
         for i in 1..=4 {
             let mut m = Markup::new(
@@ -1029,10 +1029,10 @@ mod tests {
         // When: computing quantity rows
         let rows = quantity_rows(&project);
 
-        // Then: row shows "4 each" (total = 4, unit = "each" is implicit in unit suffix)
+        // Then: row shows total = 10 (1+2+3+4), item_count = 4
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].item_count, 4);
-        assert!((rows[0].total - 4.0).abs() < 0.001);
+        assert!((rows[0].total - 10.0).abs() < 0.001);
     }
 
     // =========================================================================
