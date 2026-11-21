@@ -136,13 +136,18 @@ impl WorkspaceState {
         }
     }
 
-    /// Move a panel into a different dock region.  Panels must be open; if the
-    /// panel is floating it will be docked to the given region.
+    /// Move a panel into a different dock region.  If the panel is floating, it
+    /// will first be docked (removed from floating, added to open).
     ///
     /// # Failure
     ///
-    /// Returns `Err` if the panel is not open.
+    /// Returns `Err` if the panel is not open or floating.
     pub fn move_panel(&mut self, id: PanelId, region: Region) -> Result<(), WorkspaceError> {
+        // If the panel is floating, dock it first (removes from floating, adds to open)
+        if self.floating.contains_key(&id) {
+            self.floating.remove(&id);
+            self.open.insert(id);
+        }
         if !self.open.contains(&id) {
             return Err(WorkspaceError::PanelNotOpen(id));
         }
