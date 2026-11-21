@@ -53,7 +53,14 @@ pub(crate) fn draw_bottom_panel(
         .max_size(400.0)
         .resizable(true)
         .show(ui, |ui| {
-            draw_tab_strip(ui, &mut app.ui);
+            // Only show Quantities tab if enabled in preferences
+            let show_quantities = app.ui.show_quantities;
+            let tabs = if show_quantities {
+                BottomTab::ALL
+            } else {
+                [BottomTab::Markups]
+            };
+            draw_tab_strip(ui, &mut app.ui, tabs);
 
             match app.ui.bottom_tab {
                 BottomTab::Markups => {
@@ -71,11 +78,18 @@ pub(crate) fn draw_bottom_panel(
                     }
                 }
                 BottomTab::Quantities => {
-                    let project = app.history.current_mut();
-                    let ui_state = &mut app.ui;
-                    let (qty_action, _dirty) =
-                        crate::ui::quantities_panel::draw_quantities_content(ui, project, ui_state);
-                    action = qty_action;
+                    // Only draw quantities content if still enabled in preferences
+                    if app.ui.show_quantities {
+                        let project = app.history.current_mut();
+                        let ui_state = &mut app.ui;
+                        let (qty_action, _dirty) =
+                            crate::ui::quantities_panel::draw_quantities_content(ui, project, ui_state);
+                        action = qty_action;
+                    }
+                    // If quantities was disabled while on Quantities tab, switch to Markups
+                    if !app.ui.show_quantities && app.ui.bottom_tab == BottomTab::Quantities {
+                        app.ui.bottom_tab = BottomTab::Markups;
+                    }
                 }
             }
 
@@ -95,10 +109,10 @@ fn app_jump(app: &mut RubricApp, page: usize) {
 }
 
 /// The tab strip: one row of tab buttons; active tab highlighted.
-fn draw_tab_strip(ui: &mut Ui, state: &mut UiState) {
+fn draw_tab_strip(ui: &mut Ui, state: &mut UiState, tabs: [BottomTab; 2]) {
     ui.horizontal(|ui| {
         ui.add_space(4.0);
-        for tab in BottomTab::ALL {
+        for tab in tabs {
             let selected = state.bottom_tab == tab;
             let text = if selected {
                 egui::RichText::new(tab.label()).strong()
