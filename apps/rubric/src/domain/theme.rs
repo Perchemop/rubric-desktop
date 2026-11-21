@@ -4,6 +4,7 @@
 //! project data: it lives in the platform config directory and is never
 //! written into a shareable `.rubric.json` project file.
 
+use crate::domain::workspace::WorkspaceState;
 use serde::{Deserialize, Serialize};
 
 use crate::domain::style::DefaultStyles;
@@ -86,6 +87,14 @@ pub struct AppPrefs {
     /// who need maximum contrast. Missing values fall back to `false`.
     #[serde(default)]
     pub high_contrast: bool,
+    /// Show Quantities tab in the bottom panel (R-12). Missing values fall back to `true`
+    /// for new installs; backward compatibility defaults to `true`.
+    #[serde(default = "default_true")]
+    pub show_quantities: bool,
+    /// Which tab is selected when the Quantities panel is open: `true` = Quantities,
+    /// `false` = Markups List (R-12). Missing values fall back to `true`.
+    #[serde(default = "default_quantities_tab_selected")]
+    pub quantities_tab_selected: bool,
     /// Per-kind default style overrides ("Set As Default"). Missing values fall
     /// back to empty overrides, so new markups use their kind's coded default.
     #[serde(default)]
@@ -97,6 +106,11 @@ pub struct AppPrefs {
     /// (gap #3: Recent Tools). Session-temporary list; the cap is persisted.
     #[serde(default = "default_max_recents")]
     pub tool_chest_max_recents: usize,
+    /// Persisted workspace state — dock regions, floating panels, split view.
+    /// `#[serde(default)]` ensures legacy preference files that omit this key
+    /// load unchanged; the default layout matches `WorkspaceState::default()`.
+    #[serde(default)]
+    pub workspace: WorkspaceState,
 }
 
 fn default_max_recents() -> usize {
@@ -109,6 +123,10 @@ fn default_true() -> bool {
 
 fn default_one() -> f32 {
     1.0
+}
+
+fn default_quantities_tab_selected() -> bool {
+    true
 }
 
 impl Default for AppPrefs {
@@ -125,9 +143,12 @@ impl Default for AppPrefs {
             focus_mode: false,
             show_minimap: false,
             high_contrast: false,
+            show_quantities: true,
+            quantities_tab_selected: default_quantities_tab_selected(),
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::default(),
             tool_chest_max_recents: default_max_recents(),
+            workspace: WorkspaceState::default(),
         }
     }
 }
@@ -181,12 +202,88 @@ mod tests {
             focus_mode: true,
             show_minimap: false,
             high_contrast: true,
+            show_quantities: true,
+            quantities_tab_selected: false,
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::Inch,
             tool_chest_max_recents: 12,
+            workspace: WorkspaceState::default(),
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
         let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, prefs);
+    }
+
+    #[test]
+    fn prefs_without_workspace_defaults_to_default_workspace() {
+        // Legacy prefs that omit the `workspace` key should fall back to
+        // `WorkspaceState::default()` via `#[serde(default)]`.
+        let json = r#"{}"#;
+        let prefs: AppPrefs = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(prefs.workspace, WorkspaceState::default());
+    }
+
+    #[test]
+    fn prefs_roundtrip_with_workspace() {
+        let prefs = AppPrefs {
+            theme: Theme::Light,
+            show_markups_list: true,
+            show_tool_chest: true,
+            show_pages: true,
+            zoom: 1.0,
+            current_page: 0,
+            tool_chest_library: StylePresetLibrary::new(),
+            ui_scale: 1.0,
+            focus_mode: false,
+            show_minimap: false,
+            high_contrast: false,
+            show_quantities: true,
+            quantities_tab_selected: true,
+            default_styles: DefaultStyles::default(),
+            default_measure_unit: MeasureUnit::Point,
+            tool_chest_max_recents: 8,
+            workspace: WorkspaceState::default(),
+        };
+        let json = serde_json::to_string_pretty(&prefs).expect("serialize");
+        let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, prefs);
+    }
+
+    #[test]
+    fn show_quantities_defaults_to_true() {
+        let prefs: AppPrefs = serde_json::from_str("{}").expect("deserialize");
+        assert!(prefs.show_quantities);
+    }
+
+    #[test]
+    fn quantities_tab_selected_defaults_to_true() {
+        let prefs: AppPrefs = serde_json::from_str("{}").expect("deserialize");
+        assert!(prefs.quantities_tab_selected);
+    }
+
+    #[test]
+    fn show_quantities_serde_roundtrip() {
+        for value in [true, false] {
+            let prefs = AppPrefs {
+                show_quantities: value,
+                ..AppPrefs::default()
+            };
+            let json = serde_json::to_string(&prefs).expect("serialize");
+            let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back.show_quantities, value);
+        }
+    }
+
+    #[test]
+    fn quantities_tab_selected_serde_roundtrip() {
+        for value in [true, false] {
+            let prefs = AppPrefs {
+                quantities_tab_selected: value,
+                ..AppPrefs::default()
+            };
+            let json = serde_json::to_string(&prefs).expect("serialize");
+            let back: AppPrefs = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back.quantities_tab_selected, value);
+        }
     }
 }

@@ -3,6 +3,7 @@
 //! Each function takes `&mut RubricApp` and `&egui::Context` and draws the
 //! corresponding dialog if its visibility flag is set.
 
+use chrono::Utc;
 use eframe::egui;
 
 use crate::ui::app::RubricApp;
@@ -254,4 +255,376 @@ pub(crate) fn draw_replace_unsaved(app: &mut RubricApp, ctx: &egui::Context) {
 /// drawn reference segment and rewrite the page scale.
 pub(crate) fn draw_calibration_dialog(app: &mut RubricApp, ctx: &egui::Context) {
     app.draw_calibration_dialog(ctx);
+}
+
+/// Takeoff condition dialog (T8): create or edit a takeoff condition.
+/// Shows name, kind, height (WallSurface only), colour swatch, and notes.
+/// Esc = cancel, Enter = commit (on focused field).
+/// Validates name (non-empty, unique case-insensitively) and height (> 0 for WallSurface).
+pub(crate) fn draw_takeoff_dialog(app: &mut RubricApp, ctx: &egui::Context) {
+    use crate::domain::style::Color;
+    use crate::domain::takeoff::ConditionKind;
+
+    // Take the dialog state out, work with it, and put it back if needed
+    let Some(mut state) = app.ui.takeoff_dialog.take() else {
+        return;
+    };
+
+    let is_editing = state.editing_id.is_some();
+    let title = if is_editing {
+        "Edit Condition"
+    } else {
+        "New Condition"
+    };
+
+    // Compute existing condition names for duplicate validation (case-insensitive)
+    let existing_names: Vec<String> = app
+        .history
+        .current()
+        .takeoff
+        .conditions
+        .iter()
+        .filter(|c| state.editing_id.map(|id| c.id != id).unwrap_or(true))
+        .map(|c| c.name.to_lowercase())
+        .collect();
+
+    let mut open = true;
+    let mut cancelled = false;
+    let mut commit = false;
+
+    egui::Window::new(title)
+        .open(&mut open)
+        .resizable(false)
+        .default_width(480.0)
+        .show(ctx, |ui| {
+            // Handle Esc key globally
+            if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                cancelled = true;
+            }
+
+            ui.spacing_mut().item_spacing = egui::vec2(8.0, 8.0);
+
+            // Name field
+            ui.horizontal(|ui| {
+                ui.label("Name");
+                let name_resp = ui.add(
+                    egui::TextEdit::singleline(&mut state.name)
+                        .desired_width(280.0)
+                        .hint_text("Condition name"),
+                );
+                if state.focus_name {
+                    name_resp.request_focus();
+                    state.focus_name = false;
+                }
+                // Validate on lost focus or Enter
+                let name_trimmed = state.name.trim();
+                let name_empty = name_trimmed.is_empty();
+                let name_duplicate = existing_names.contains(&name_trimmed.to_lowercase());
+                if name_empty || name_duplicate {
+                    ui.small(
+                        egui::RichText::new(if name_empty {
+                            "Name cannot be empty"
+                        } else {
+                            "A condition with this name already exists"
+                        })
+                        .color(ui.visuals().error_fg_color),
+                    );
+                }
+                // Enter on name field commits if valid
+                if name_resp.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    let height_ok = if matches!(state.kind, ConditionKind::WallSurface) {
+                        state
+                            .height
+                            .trim()
+                            .parse::<f64>()
+                            .map(|v| v > 0.0)
+                            .unwrap_or(false)
+                    } else {
+                        true
+                    };
+                    if !name_empty && !name_duplicate && height_ok {
+                        commit = true;
+                    } else if matches!(state.kind, ConditionKind::WallSurface) {
+                        state.height_error = true;
+                    }
+                }
+            });
+
+            // Kind combo
+            ui.horizontal(|ui| {
+                ui.label("Kind");
+                let kind_enabled = !state.has_assignments;
+                let mut kind = state.kind;
+                let _kind_resp = egui::ComboBox::from_label("")
+                    .selected_text(kind.label())
+                    .show_ui(ui, |ui| {
+                        for k in ConditionKind::ALL {
+                            ui.selectable_value(&mut kind, k, k.label());
+                        }
+                    });
+                if kind != state.kind && kind_enabled {
+                    state.kind = kind;
+                    // Reset height when kind changes away from WallSurface
+                    if !matches!(kind, ConditionKind::WallSurface) {
+                        state.height.clear();
+                        state.height_error = false;
+                    } else if state.height.is_empty() {
+                        // Pre-fill with a reasonable default when switching to WallSurface
+                        state.height = "2.7".to_string();
+                    }
+                }
+                if !kind_enabled {
+                    ui.small("(locked: unassign markups first to change kind)");
+                }
+            });
+
+            // Height field (WallSurface only)
+            if matches!(state.kind, ConditionKind::WallSurface) {
+                ui.horizontal(|ui| {
+                    ui.label("Height");
+                    let height_resp = ui.add(
+                        egui::TextEdit::singleline(&mut state.height)
+                            .desired_width(120.0)
+                            .hint_text("e.g. 2.7"),
+                    );
+                    // Show unit suffix from the project default unit
+                    let unit = app
+                        .history
+                        .current()
+                        .active()
+                        .and_then(|d| d.pages.get(app.ui.current_page).copied())
+                        .map(|p| p.scale.unit)
+                        .unwrap_or_default();
+                    ui.label(unit.suffix());
+                    if state.height_error {
+                        ui.small(
+                            egui::RichText::new("Enter a height greater than 0")
+                                .color(ui.visuals().error_fg_color),
+                        );
+                    }
+                    // Enter on height field commits if valid
+                    if height_resp.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                        let name_trimmed = state.name.trim();
+                        let name_ok = !name_trimmed.is_empty()
+                            && !existing_names.contains(&name_trimmed.to_lowercase());
+                        if name_ok
+                            && state
+                                .height
+                                .trim()
+                                .parse::<f64>()
+                                .map(|v| v > 0.0)
+                                .unwrap_or(false)
+                        {
+                            commit = true;
+                        } else {
+                            state.height_error = true;
+                        }
+                    }
+                });
+            }
+
+            // Colour swatch
+            ui.horizontal(|ui| {
+                ui.label("Colour");
+                let mut colour = egui::Color32::from_rgba_unmultiplied(
+                    state.colour.r,
+                    state.colour.g,
+                    state.colour.b,
+                    state.colour.a,
+                );
+                let colour_resp = ui
+                    .color_edit_button_srgba(&mut colour)
+                    .on_hover_text("Click to pick a colour");
+                if colour_resp.changed() {
+                    state.colour = Color {
+                        r: colour.r(),
+                        g: colour.g(),
+                        b: colour.b(),
+                        a: colour.a(),
+                    };
+                }
+            });
+
+            // Notes field
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| {
+                    ui.label("Notes");
+                    let _ = ui.add(
+                        egui::TextEdit::multiline(&mut state.notes)
+                            .desired_width(440.0)
+                            .desired_rows(3)
+                            .hint_text("Optional notes"),
+                    );
+                });
+            });
+
+            ui.separator();
+
+            // Buttons
+            ui.horizontal(|ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    // Delete button (only when editing)
+                    if is_editing && ui.button("Delete").clicked() {
+                        state.show_delete_confirm = true;
+                    }
+                    if ui.button("Cancel").clicked() {
+                        cancelled = true;
+                    }
+                    let can_commit = {
+                        let name_trimmed = state.name.trim();
+                        let name_ok = !name_trimmed.is_empty()
+                            && !existing_names.contains(&name_trimmed.to_lowercase());
+                        let height_ok = if matches!(state.kind, ConditionKind::WallSurface) {
+                            state
+                                .height
+                                .trim()
+                                .parse::<f64>()
+                                .map(|v| v > 0.0)
+                                .unwrap_or(false)
+                        } else {
+                            true
+                        };
+                        name_ok && height_ok
+                    };
+                    let ok_btn = ui.add_enabled(can_commit, egui::Button::new("OK"));
+                    if ok_btn.clicked() {
+                        commit = true;
+                    }
+                });
+            });
+        });
+
+    if !open || cancelled {
+        app.ui.takeoff_dialog = None;
+        return;
+    }
+
+    // Handle delete confirmation (shows as a second modal window)
+    if state.show_delete_confirm {
+        let assigned_count = state.assigned_count;
+        let condition_id = state.editing_id;
+        let condition_name = state.name.clone();
+        let mut delete_confirmed = false;
+
+        egui::Window::new("Delete Condition")
+            .collapsible(false)
+            .resizable(false)
+            .show(ctx, |ui| {
+                ui.label(format!(
+                    "{} measurement{} will become unassigned. Delete '{}'?",
+                    assigned_count,
+                    if assigned_count == 1 { "" } else { "s" },
+                    condition_name
+                ));
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    if ui.button("Delete").clicked() {
+                        delete_confirmed = true;
+                    }
+                    if ui.button("Cancel").clicked() {
+                        // Just close the confirm, keep the edit dialog open
+                    }
+                });
+            });
+
+        if delete_confirmed {
+            if let Some(id) = condition_id {
+                let unassigned = app.history.current_mut().delete_condition(id).unwrap_or(0);
+                app.push_snapshot("delete condition");
+                app.set_status(
+                    crate::ui::app::StatusKind::Info,
+                    format!("Deleted '{}' ({} unassigned)", condition_name, unassigned),
+                );
+            }
+            app.ui.takeoff_dialog = None;
+        } else {
+            // Cancel was clicked, keep the edit dialog open
+            state.show_delete_confirm = false;
+            app.ui.takeoff_dialog = Some(state);
+            return;
+        }
+    }
+
+    if commit {
+        let name = state.name.trim().to_string();
+        let kind = state.kind;
+        let colour = state.colour;
+        let notes = if state.notes.trim().is_empty() {
+            None
+        } else {
+            Some(state.notes.trim().to_string())
+        };
+        let height = if matches!(kind, ConditionKind::WallSurface) {
+            state.height.trim().parse::<f64>().ok()
+        } else {
+            None
+        };
+
+        if let Some(editing_id) = state.editing_id {
+            // Editing existing condition
+            if let Err(e) = app
+                .history
+                .current_mut()
+                .rename_condition(editing_id, &name)
+            {
+                app.set_status(crate::ui::app::StatusKind::Error, format!("{}", e));
+            } else {
+                // Update kind, height, colour, notes
+                if let Some(cond) = app
+                    .history
+                    .current_mut()
+                    .takeoff
+                    .conditions
+                    .iter_mut()
+                    .find(|c| c.id == editing_id)
+                {
+                    cond.kind = kind;
+                    cond.height = height;
+                    cond.colour = colour;
+                    cond.notes = notes;
+                    cond.modified = Utc::now();
+                }
+                app.push_snapshot("edit condition");
+                app.set_status(
+                    crate::ui::app::StatusKind::Success,
+                    format!("Updated condition '{}'", name),
+                );
+            }
+        } else {
+            // Creating new condition
+            let result = app
+                .history
+                .current_mut()
+                .create_condition(name.clone(), kind, height);
+            match result {
+                Ok(cond_id) => {
+                    // Apply the dialog's colour and notes to the stored condition.
+                    if let Some(cond) = app
+                        .history
+                        .current_mut()
+                        .takeoff
+                        .conditions
+                        .iter_mut()
+                        .find(|c| c.id == cond_id)
+                    {
+                        cond.colour = colour;
+                        cond.notes = notes;
+                        cond.modified = Utc::now();
+                    }
+                    app.push_snapshot("create condition");
+                    app.set_status(
+                        crate::ui::app::StatusKind::Success,
+                        format!("Created condition '{}'", name),
+                    );
+                }
+                Err(e) => {
+                    app.set_status(crate::ui::app::StatusKind::Error, format!("{}", e));
+                }
+            }
+        }
+        app.ui.takeoff_dialog = None;
+    } else {
+        // Put the state back if not cancelled or committed
+        app.ui.takeoff_dialog = Some(state);
+    }
 }

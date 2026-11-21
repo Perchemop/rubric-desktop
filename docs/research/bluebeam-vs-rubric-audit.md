@@ -2,12 +2,12 @@
 
 ## Method
 
-Audited Rubric source code (apps/rubric/src/) against the four Bluebeam Revu research files in this directory:
+Audited Rubric source code (apps/rubric/src/) against the four Bluebeam Revu research files in this directory (each is an original behavioural summary with its public source URLs):
 
-- `bluebeam-toolbars.md` (toolbars, toolstrips, Tool Chest, tool sets)
-- `bluebeam-settings.md` (preferences, defaults, shortcuts, export/import)
-- `bluebeam-markup-tools.md` (tool categories, access patterns, properties, list)
-- `bluebeam-ui-layout.md` (window regions, panels, docking, MultiView, status bar)
+- [`bluebeam-toolbars.md`](bluebeam-toolbars.md) (toolbars, toolstrips, Tool Chest, tool sets)
+- [`bluebeam-settings.md`](bluebeam-settings.md) (preferences, defaults, shortcuts, export/import)
+- [`bluebeam-markup-tools.md`](bluebeam-markup-tools.md) (tool categories, access patterns, properties, list)
+- [`bluebeam-ui-layout.md`](bluebeam-ui-layout.md) (window regions, panels, docking, MultiView, status bar)
 
 Rubric files read for this audit: `ui/app.rs`, `ui/app_menu.rs`, `ui/app_topbar.rs`, `ui/app_status.rs`, `ui/toolbar.rs`, `ui/tool_chest.rs`, `ui/app_tool_chest.rs`, `ui/canvas.rs`, `ui/inspector.rs`, `ui/app_inspector.rs`, `ui/markups_list.rs`, `ui/app_markups_list.rs`, `ui/menu.rs`, `ui/app_dialogs.rs`, `ui/pages.rs`, `ui/app_pages.rs`, `domain/project.rs`, `domain/markup.rs`, `domain/markup_comment.rs`, `domain/style.rs`, `domain/style_preset.rs`, `domain/action.rs`, `data/prefs.rs`.
 
@@ -148,6 +148,8 @@ Statuses: **met** (capability exists at the level Bluebeam documents it), **part
 
 Overall shape: Rubric's strongest parity is in the Markups List core (sort/search/filter/group, totals, summary reports), the basic markup tool set, and post-draw property editing. The largest structural gaps are (1) the Tool Chest stores styles rather than reusable markups (no Recent Tools, no Drawing Mode, no sets), (2) there is no preferences/shortcuts management surface, and (3) the window is a fixed layout with no docking, tabs, splits or extra navigation panels.
 
+*(Delta 2026-11-20: four rows moved to met and two missing rows moved to partial since this snapshot — see the update section below. Recomputed snapshot: **14 met / 29 partial / 34 missing** of 77.)*
+
 ### Priority gaps for next milestones
 
 Ranked by reviewer value per unit of implementation cost, using what the domain already supports:
@@ -165,7 +167,80 @@ Ranked by reviewer value per unit of implementation cost, using what the domain 
 11. **Multi-document tabs (G4)** — the `Project.documents` model exists; a tab bar over `active_document` is the remaining work.
 12. **Docking/float panels (G3)** and **split views (G5)** — the largest egui lifts; schedule last, after the capability gaps above are closed.
 
+## Implementation status update (2026-11-20)
+
+The tables above are the **2026-11-15 snapshot**; their row statuses are left
+unchanged so the audit remains a dated record. This section is the verified
+delta since — every row change is evidenced by a merged PR.
+
+| Row | Capability | Was | Now (evidence) |
+|---|---|---|---|
+| B1 | Reusable saved markups that re-place without recreation | partial | **met** — presets capture the full markup (geometry + text) and re-place an exact duplicate at the click point (PR #227, merged 2026-11-18) |
+| B2 | Tool sets — named groups of tools | partial | **partial (improved)** — multiple named sets on `Project.tool_sets` with a set filter in the chest (PR #229); per-set mini toolbar, scale toggle and gear menu still missing |
+| B4 | Recent Tools (auto-record, overflow, Max-Recents, Clear) | missing | **met** — every placement auto-captures a recent tool with overflow arrow, Max-Recents setting and Clear Recents (PR #228); recents are session-scope, matching the researched behaviour |
+| B5 | Properties Mode vs Drawing Mode per tool | missing | **met** — double-click toggles Drawing/Style mode and the row label reflects it (PR #227); the toggle is session-only, not persisted with the tool |
+| B8 | Export/Import of tool sets | missing | **partial** — set-level JSON export/import (`export_set_json`/`import_set_json`, PR #229); "add existing as live reference" still missing |
+| D5 | Layout section (numeric X/Y/size entry) | missing | **met** — numeric position/size entry in the Inspector (PR #227) |
+| G4 | Document tabs (reorderable, hover preview, movable) | missing | **partial** — tab bar in the top bar with per-document switch/close (`switch_active_document`/`close_document_tab`, PR #229); reorder, hover preview and moving tabs between splits still missing |
+
+Beyond the audited rows:
+
+- **New capability outside Bluebeam's audited set:** apply one page's scale to
+  all pages (`Document::apply_scale_to_all_pages`, PR #227).
+- **G3 docking — groundwork only:** `domain/workspace.rs::WorkspaceState`
+  landed (PR #230, open at time of writing) plus the v0.6 UI-parity spec
+  (`specs/ui-parity-revamp.spec.md`); no docking/float/split UI yet, so the
+  G3/G5 statuses stand.
+- **B3 defect status — unchanged:** the personal My Tools library is still
+  written to `prefs.json` only when some other pref-saving action fires. Tool
+  *sets* now persist with the project document, which narrows the practical
+  impact but does not close the defect.
+- **Takeoff rows (capability inventory 33–36)** sit outside this audit's
+  Bluebeam scope; their status is tracked in `docs/capability-inventory.md`,
+  `docs/parity.md`, and `docs/research/takeoff-quantities.md` §4 (domain layer
+  landed 2026-11-20, PR #230; UI pending).
+
+Priority-gap scoreboard against the ranked list above: **#3 done** (PR #228),
+**#4 done** (PR #227), **#7 partial** (sets + export/import landed; the B3
+defect it named remains open), **#9 half** (numeric fields done; D8
+Apply-to-All-Pages still missing), **#11 done at tab-bar level** (PR #229).
+Items #1, #2, #5, #6, #8, #10 and #12 stand as written.
+
 ### Notes
 
 - Rows reflect capability presence, not Bluebeam's exact interaction design: Rubric's own mappings (e.g. digits for measure tools, its own shortcut letters) are credited where the capability is equivalent.
 - Clean-room note: this audit compares Rubric against original behavioural summaries with URLs (see the four research files). No Bluebeam UI text, icons, screenshots or trade dress may be copied into Rubric; capability-level ideas only (guide §2.1/§2.2). Per the research gate (guide §2.3/§8.4), dependent implementation tasks need explicit human approval of the source research notes.
+
+## Implementation Status (as of 2026-11-20)
+
+Implementation status is tracked in:
+
+- **`docs/parity.md`** — high-level capability parity summary
+- **`docs/capability-inventory.md`** — detailed evidence links (code, tests, CI runs)
+- **`docs/spec/README.md`** — feature IDs (F-1xx…F-7xx) for implemented features
+- **`docs/IMPLEMENTATION_PLAN.md`** — current phase priorities
+
+### Current state summary
+
+| Category | Status |
+|----------|--------|
+| Core markups (text, shapes, paths, stamps) | Done (F-101–F-116) |
+| Measurement tools | Done (F-201–F-209) |
+| Review workflow | Done (F-301–F-305) |
+| Markups list / review console | Done |
+| Persistence, autosave, recents | Done |
+| Export & print | Done |
+| Undo/redo | Done |
+| UI/UX polish (shortcuts, dark theme, context menus) | Done |
+| Accessibility | Done |
+| Packaging & installers | Done |
+| Document compare / diff | Partial (domain done, UI pending) |
+| Reusable style presets | Mostly met (full-markup presets + Drawing Mode, PR #227 — see delta table B1/B5; per-tool mode persistence session-only) |
+
+### Next priorities
+
+1. Inspector depth (expose existing style fields: fill mode, dash, opacity, lock)
+2. Set as default / dynamic defaults
+3. Takeoff quantities completion: condition dialog (T8), prefs wiring (T9), docs & release (T10) — open as PR #230
+4. Docking/float/split panels (G3/G5): `WorkspaceState` groundwork landed (PR #230); UI pending
+5. B3 defect: My Tools library not persisted on save (narrowed by tool-set persistence, still open)

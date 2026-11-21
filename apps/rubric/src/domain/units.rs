@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 /// A real-world unit of length.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MeasureUnit {
     Point,
@@ -191,7 +191,7 @@ fn trim(v: f64) -> String {
 }
 
 /// A quantity produced by a measurement tool.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MeasureKind {
     Length,

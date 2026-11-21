@@ -1,12 +1,15 @@
 //! UI module.
 
 pub mod app;
+pub mod app_bottom_panel;
 pub mod app_canvas;
 pub mod app_dialogs;
 pub mod app_inspector;
+pub mod app_left_panel;
 pub mod app_markups_list;
 pub mod app_menu;
 pub mod app_pages;
+pub mod app_quantities;
 pub mod app_status;
 pub mod app_tool_chest;
 pub mod app_topbar;
@@ -20,6 +23,7 @@ pub mod inspector;
 pub mod markups_list;
 pub mod menu;
 pub mod pages;
+pub mod quantities_panel;
 pub mod release_notes;
 pub mod theme;
 pub mod tool_chest;

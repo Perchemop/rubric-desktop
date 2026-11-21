@@ -330,5 +330,21 @@ text-anchored markup completion, which needs a PDF text-extraction path, and
 the **P0-2** bundled-font remainder) so the stamp UI can reuse the finished
 inspector/toolbar surfaces.
 
+## v0.5 — Takeoff quantities feature
+
+### Completed (T1-T5):
+- [x] **T1 — Domain types**: `domain/takeoff.rs`: `TakeoffCondition`, `ConditionKind`, `TakeoffSettings`, `TakeoffError`; `QuantityRow` struct; `Project.takeoff` field; `Markup.condition_id` field; legacy-load + roundtrip tests
+- [x] **T2 — Markup assignment**: `assign_condition()` with kind-matching validation (WallSurface accepts Perimeter+Length); `unassign_from_conditions()` batch method; duplicate carries same `condition_id`
+- [x] **T3 — Quantity computation**: `quantity_rows()` computes Linear, Area, Perimeter, WallSurface (perimeter × height), Count; hidden layer exclusion; mixed units detection; NFR-1 budget test
+- [x] **T4 — Condition CRUD**: `create_condition()` (unique name, 128 cap, colour), `rename_condition()` (case-insensitive), `delete_condition()` (unassigns, returns count)
+- [x] **T5 — CSV export**: `data/export.rs`: `write_quantities_csv()` with RFC 4180 compliance, atomic write, worker off-thread; `Project::export_quantities_csv()` method; tests AC-13, AC-14, AC-15
+
+### Remaining (T6-T10):
+- [ ] **T6 — Quantities panel UI:** Bottom-panel tab strip + table with row click-select, empty state, mixed-unit badge, keyboard navigation, AccessKit labels, narrow-window behavior
+- [ ] **T7 — Assignment UI:** Inspector combo (assignable kinds only) + context menu submenu with batch assign/unassign
+- [ ] **T8 — Condition dialog:** Create/edit dialog with validation (name, kind lock, height), Esc/⏎ handling, delete confirmation
+- [ ] **T9 — Prefs wiring:** `show_quantities` + `quantities_tab_selected` persistence in AppPrefs
+- [x] **T10 — Docs & release:** Feature documentation, CHANGELOG entry, ROADMAP updates, v0.5.0 release (shipped 2026-11-20)
+
 ## Slice strategy
 Build vertically: domain + tests → minimal UI → drawing + selection → save/load → measurements → review → polish. Keep each slice small, compiling, tested.

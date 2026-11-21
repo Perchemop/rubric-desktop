@@ -127,6 +127,98 @@ pub fn export_all_pages_to_pdf(
     crate::data::pdf::export_pdf_to(source_pdf, output_path, markups, bates)
 }
 
+/// CSV writer following RFC 4180.
+///
+/// Quote fields that contain commas, quotes, or newlines using double quotes,
+/// with any interior double quotes escaped by doubling them.
+fn format_csv_field(s: &str) -> String {
+    let needs_quote = s.contains(['"', ',', '\n', '\r']);
+    if needs_quote {
+        let escaped: String = s.replace('"', "\"\"");
+        format!("\"{}\"", escaped)
+    } else {
+        s.to_string()
+    }
+}
+
+/// Write quantity rows as RFC 4180 compliant CSV.
+///
+/// Columns: Condition,Kind,Unit,Quantity,Items,Height,Notes
+/// - Quantity uses full precision with '.' as decimal separator
+/// - Height is written as-is for WallSurface conditions, empty otherwise
+/// - Notes is quoted if it contains special characters
+/// - Uses LF line endings (consistent with platform)
+/// - Unassigned row is excluded (spec: "never exported")
+pub fn write_quantities_csv(
+    path: &Path,
+    rows: &[crate::domain::takeoff::QuantityRow],
+) -> Result<(), DataError> {
+    use std::io::Write;
+
+    let mut content = String::new();
+
+    // Header
+    content.push_str("Condition,Kind,Unit,Quantity,Items,Height,Notes\n");
+
+    // Data rows - exclude Unassigned (spec R-20, line 137: "never exported")
+    for row in rows {
+        // Skip Unassigned row
+        if row.condition.name == "Unassigned" && row.condition.id == uuid::Uuid::nil() {
+            continue;
+        }
+
+        let condition = &row.condition;
+        let name = format_csv_field(&condition.name);
+        let kind = format_csv_field(condition.kind.label());
+        let unit = row.unit.suffix();
+        let quantity = format!("{:.15}", row.total)
+            .trim_end_matches('0')
+            .trim_end_matches('.')
+            .to_string();
+        let items = row.item_count.to_string();
+        let height_str = if let Some(h) = condition.height {
+            let s = format!("{:.15}", h);
+            s.trim_end_matches('0').trim_end_matches('.').to_string()
+        } else {
+            String::new()
+        };
+        let height = &height_str;
+        let notes = if let Some(ref n) = condition.notes {
+            format_csv_field(n)
+        } else {
+            String::new()
+        };
+
+        content.push_str(&format!(
+            "{},{},{},{},{},{},{}\n",
+            name, kind, unit, quantity, items, height, notes
+        ));
+    }
+
+    // Atomic write: write to temp file then rename
+    let tmp = path.with_extension(format!(
+        "{}.tmp",
+        path.extension()
+            .map(|e| e.to_string_lossy().to_string())
+            .unwrap_or_default()
+    ));
+
+    let write_result = (|| -> Result<(), DataError> {
+        let mut file = std::fs::File::create(&tmp)?;
+        file.write_all(content.as_bytes())?;
+        file.sync_all()?;
+        std::fs::rename(&tmp, path)?;
+        Ok(())
+    })();
+
+    if let Err(e) = write_result {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(e);
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -556,5 +648,164 @@ mod tests {
             .expect_err("missing source must fail");
         assert!(matches!(error, DataError::Pdf(_)), "got {error:?}");
         assert!(!output.exists(), "a failed export must write no output");
+    }
+
+    // =========================================================================
+    // AC-13: CSV header and content with correct columns
+    // =========================================================================
+
+    #[test]
+    fn ac13_csv_header_and_content() {
+        use crate::domain::takeoff::{ConditionKind, QuantityRow, TakeoffCondition};
+        use crate::domain::units::MeasureUnit;
+
+        let temp_path = temp_csv_path();
+
+        let condition = TakeoffCondition {
+            id: uuid::Uuid::new_v4(),
+            name: "Skirting".to_string(),
+            kind: ConditionKind::Linear,
+            height: None,
+            colour: crate::domain::style::Color::rgb(0, 128, 255),
+            notes: None,
+            created: chrono::Utc::now(),
+            modified: chrono::Utc::now(),
+        };
+
+        let rows = vec![QuantityRow {
+            condition,
+            total: 5.4,
+            unit: MeasureUnit::Meter,
+            item_count: 2,
+            mixed_units: false,
+        }];
+
+        write_quantities_csv(&temp_path, &rows).expect("write CSV");
+        let content = fs::read_to_string(&temp_path).expect("read CSV");
+
+        // Header must match spec
+        assert!(
+            content.starts_with("Condition,Kind,Unit,Quantity,Items,Height,Notes\n"),
+            "unexpected header: {}",
+            content.lines().next().unwrap_or("")
+        );
+
+        // Content row must match AC-13: Skirting,Linear,m,5.4,2,
+        let lines: Vec<&str> = content.lines().collect();
+        assert_eq!(lines.len(), 2, "expected header + one data row");
+        assert_eq!(lines[1], "Skirting,Linear,m,5.4,2,,");
+
+        let _ = fs::remove_file(&temp_path);
+    }
+
+    // =========================================================================
+    // AC-14: RFC 4180 quoting for fields with commas, quotes, newlines
+    // =========================================================================
+
+    #[test]
+    fn ac14_csv_quoting_fields_with_special_characters() {
+        use crate::domain::takeoff::{ConditionKind, QuantityRow, TakeoffCondition};
+        use crate::domain::units::MeasureUnit;
+
+        let temp_path = temp_csv_path();
+
+        let condition = TakeoffCondition {
+            id: uuid::Uuid::new_v4(),
+            name: "Carpet, red".to_string(), // comma in name
+            kind: ConditionKind::Area,
+            height: None,
+            colour: crate::domain::style::Color::rgb(255, 165, 0),
+            notes: Some("A note with \"quotes\" and, commas".to_string()), // quotes and commas in notes
+            created: chrono::Utc::now(),
+            modified: chrono::Utc::now(),
+        };
+
+        let rows = vec![QuantityRow {
+            condition,
+            total: 10.5,
+            unit: MeasureUnit::Meter,
+            item_count: 1,
+            mixed_units: false,
+        }];
+
+        write_quantities_csv(&temp_path, &rows).expect("write CSV");
+        let content = fs::read_to_string(&temp_path).expect("read CSV");
+
+        let lines: Vec<&str> = content.lines().collect();
+        assert_eq!(lines.len(), 2, "expected header + one data row");
+
+        // Name with comma must be quoted: "Carpet, red"
+        assert!(
+            lines[1].starts_with("\"Carpet, red\""),
+            "name not quoted: {}",
+            lines[1]
+        );
+
+        // Notes with quotes and commas must be quoted with doubled quotes
+        // Format: "A note with ""quotes"" and, commas"
+        assert!(
+            lines[1].contains("\"A note with \"\"quotes\"\" and, commas\""),
+            "notes not properly quoted: {}",
+            lines[1]
+        );
+
+        let _ = fs::remove_file(&temp_path);
+    }
+
+    // =========================================================================
+    // AC-15: Failed export leaves no partial file
+    // =========================================================================
+
+    #[test]
+    fn ac15_failed_export_leaves_no_file() {
+        use crate::domain::takeoff::{ConditionKind, QuantityRow, TakeoffCondition};
+        use crate::domain::units::MeasureUnit;
+
+        // Create a path in a non-existent directory to force failure
+        let temp_base = std::env::temp_dir();
+        let nonexistent_dir = temp_base
+            .join("rubric_nonexistent_dir_xyz")
+            .join("test.csv");
+
+        let condition = TakeoffCondition {
+            id: uuid::Uuid::new_v4(),
+            name: "Test".to_string(),
+            kind: ConditionKind::Linear,
+            height: None,
+            colour: crate::domain::style::Color::rgb(0, 128, 255),
+            notes: None,
+            created: chrono::Utc::now(),
+            modified: chrono::Utc::now(),
+        };
+
+        let rows = vec![QuantityRow {
+            condition,
+            total: 1.0,
+            unit: MeasureUnit::Meter,
+            item_count: 1,
+            mixed_units: false,
+        }];
+
+        let result = write_quantities_csv(&nonexistent_dir, &rows);
+        assert!(result.is_err(), "should fail on nonexistent path");
+
+        // No .csv or .tmp file should remain
+        assert!(
+            !nonexistent_dir.exists(),
+            "main file should not exist after failure"
+        );
+        let tmp_path = nonexistent_dir.with_extension("csv.tmp");
+        assert!(
+            !tmp_path.exists(),
+            "temp file should not exist after failure"
+        );
+    }
+
+    fn temp_csv_path() -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "rubric_quantities_{}_{}.csv",
+            std::process::id(),
+            uuid::Uuid::new_v4()
+        ))
     }
 }

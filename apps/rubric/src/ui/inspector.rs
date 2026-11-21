@@ -4,10 +4,12 @@ use uuid::Uuid;
 
 use eframe::egui::{self, ComboBox, Ui};
 
+use crate::domain::action::EditorAction;
 use crate::domain::{
     markup_geometry::MarkupGeometry,
     style::{Color, DashPattern, FillMode},
-    units::{MeasureUnit, MAX_PRECISION},
+    takeoff::{ConditionKind, TakeoffCondition},
+    units::{MeasureKind, MeasureUnit, MAX_PRECISION},
     BatesCorner, LayerError, MarkupKind, Project, ReviewStatus, Scale, StampPreset,
     MAX_BATES_DIGITS, MAX_BATES_START, MIN_BATES_DIGITS,
 };
@@ -36,62 +38,18 @@ pub(crate) fn draw_inspector(
 ) -> bool {
     let mut committed = false;
 
-    ui.heading("Inspector");
-    ui.separator();
+    // Context-sensitive inspector (UI redesign T2): the former five-tab strip
+    // is gone. Sections appear based on what is selected — markups show
+    // Properties (+ Measurement for measures) and Comments; with nothing
+    // selected the Project/Document settings take the panel. The mode field
+    // is now derived, not user-picked.
+    ui_state.inspector_mode = if ui_state.selected.is_empty() {
+        InspectorMode::Settings
+    } else {
+        InspectorMode::Properties
+    };
 
-    // Segmented inspector tabs (P1-7): switch which panel section is primary.
-    ui.horizontal(|ui| {
-        if ui
-            .selectable_label(
-                ui_state.inspector_mode == InspectorMode::Selection,
-                "Selection",
-            )
-            .on_hover_text("Markup properties")
-            .clicked()
-        {
-            ui_state.inspector_mode = InspectorMode::Selection;
-        }
-        if ui
-            .selectable_label(
-                ui_state.inspector_mode == InspectorMode::Properties,
-                "Properties",
-            )
-            .on_hover_text("Stroke, width, layer")
-            .clicked()
-        {
-            ui_state.inspector_mode = InspectorMode::Properties;
-        }
-        if ui
-            .selectable_label(
-                ui_state.inspector_mode == InspectorMode::Comments,
-                "Comments",
-            )
-            .on_hover_text("Threaded comments")
-            .clicked()
-        {
-            ui_state.inspector_mode = InspectorMode::Comments;
-        }
-        if ui
-            .selectable_label(
-                ui_state.inspector_mode == InspectorMode::Measurements,
-                "Measure",
-            )
-            .on_hover_text("Measurement readout")
-            .clicked()
-        {
-            ui_state.inspector_mode = InspectorMode::Measurements;
-        }
-        if ui
-            .selectable_label(
-                ui_state.inspector_mode == InspectorMode::Settings,
-                "Settings",
-            )
-            .on_hover_text("Project & document settings")
-            .clicked()
-        {
-            ui_state.inspector_mode = InspectorMode::Settings;
-        }
-    });
+    ui.heading("Inspector");
     ui.separator();
 
     // Status legend (spec F-305): one row per status with swatch + label + count.
@@ -576,11 +534,6 @@ pub(crate) fn draw_inspector(
         egui::CollapsingHeader::new("Properties")
             .default_open(true)
             .show(ui, |ui| {
-                if ui_state.inspector_mode != InspectorMode::Properties {
-                    ui.small("Click the Properties tab to edit stroke, width, layer, status.");
-                    return;
-                }
-
                 ui.label(format!("ID: {}", m.id));
                 ui.label(format!("Kind: {}", m.kind.label()));
                 ui.label(format!("Page: {}", m.page));
@@ -641,6 +594,86 @@ pub(crate) fn draw_inspector(
                                     });
                                 }
                             });
+
+                        // Condition assignment (R-8): combo for assignable measure markups
+                        if editable && m.kind.is_assignable_to_condition() {
+                            // Get the current condition assignment
+                            let current_cond_id = m.condition_id;
+                            let current_cond_name = if let Some(cond_id) = current_cond_id {
+                                project
+                                    .takeoff
+                                    .conditions
+                                    .iter()
+                                    .find(|c| c.id == cond_id)
+                                    .map(|c| c.name.clone())
+                                    .unwrap_or_else(|| "Unknown".to_string())
+                            } else {
+                                "Unassigned".to_string()
+                            };
+
+                            // Get assignable conditions for this markup kind
+                            let measure_kind = m
+                                .kind
+                                .measure_kind()
+                                .expect("assignable kinds have measure_kind");
+                            let assignable_conditions: Vec<&TakeoffCondition> = project
+                                .takeoff
+                                .conditions
+                                .iter()
+                                .filter(|c| {
+                                    matches!(
+                                        (c.kind, measure_kind),
+                                        (ConditionKind::Linear, MeasureKind::Length)
+                                            | (ConditionKind::Linear, MeasureKind::Diameter)
+                                            | (ConditionKind::Linear, MeasureKind::Radius)
+                                            | (ConditionKind::Area, MeasureKind::Area)
+                                            | (ConditionKind::Perimeter, MeasureKind::Perimeter)
+                                            | (ConditionKind::WallSurface, MeasureKind::Perimeter)
+                                            | (ConditionKind::WallSurface, MeasureKind::Length)
+                                            | (ConditionKind::Count, MeasureKind::Count)
+                                    )
+                                })
+                                .collect();
+
+                            if !assignable_conditions.is_empty() {
+                                ui.separator();
+                                ui.label("Condition");
+                                ComboBox::from_label("Condition")
+                                    .selected_text(current_cond_name)
+                                    .show_ui(ui, |ui| {
+                                        // Unassign option
+                                        if ui
+                                            .selectable_label(
+                                                current_cond_id.is_none(),
+                                                "Unassigned",
+                                            )
+                                            .clicked()
+                                            && current_cond_id.is_some()
+                                        {
+                                            ui_state.pending_action =
+                                                Some(EditorAction::UnassignFromConditions);
+                                            ui.close();
+                                        }
+                                        // Assignable conditions
+                                        for cond in &assignable_conditions {
+                                            let label =
+                                                format!("{} ({})", cond.name, cond.kind.label());
+                                            if ui
+                                                .selectable_label(
+                                                    current_cond_id == Some(cond.id),
+                                                    label,
+                                                )
+                                                .clicked()
+                                                && current_cond_id != Some(cond.id)
+                                            {
+                                                ui_state.pending_action =
+                                                    Some(EditorAction::AssignToCondition(cond.id));
+                                                ui.close();
+                                            }
+                                        }
+                                    });
+                            }
+                        }
 
                         // Stamp preset (spec F-111): only for stamp markups.
                         if editable && m.kind == MarkupKind::Stamp {
@@ -932,38 +965,32 @@ pub(crate) fn draw_inspector(
                 }
 
                 if m.kind.is_measure() {
-                    if ui_state.inspector_mode != InspectorMode::Measurements {
-                        ui.small("Click the Measure tab to view the measurement readout.");
+                    let scale = project
+                        .active()
+                        .and_then(|d| d.pages.get(m.page).copied())
+                        .map(|p| p.scale)
+                        .unwrap_or(Scale::PAPER);
+                    if let Some(meas) = m.measurement {
+                        ui.separator();
+                        ui.label("Measurement");
+                        ui.small(format!(
+                            "Value: {}",
+                            meas.label_with(scale.unit, project.settings.precision)
+                        ));
+                        ui.small(format!("Points: {:.2} pt", meas.value_points));
+                        ui.small(format!(
+                            "Scale: {:.6} {}/pt",
+                            scale.units_per_point,
+                            scale.unit.suffix()
+                        ));
                     } else {
-                        let scale = project
-                            .active()
-                            .and_then(|d| d.pages.get(m.page).copied())
-                            .map(|p| p.scale)
-                            .unwrap_or(Scale::PAPER);
-                        if let Some(meas) = m.measurement {
-                            ui.separator();
-                            ui.label("Measurement");
-                            ui.small(format!(
-                                "Value: {}",
-                                meas.label_with(scale.unit, project.settings.precision)
-                            ));
-                            ui.small(format!("Points: {:.2} pt", meas.value_points));
-                            ui.small(format!(
-                                "Scale: {:.6} {}/pt",
-                                scale.units_per_point,
-                                scale.unit.suffix()
-                            ));
-                        } else {
-                            ui.small("Measurement not computed");
-                        }
+                        ui.small("Measurement not computed");
                     }
                 }
             });
 
         ui.collapsing("Comments", |ui| {
-            if ui_state.inspector_mode != InspectorMode::Comments {
-                ui.small("Click the Comments tab to view and add threaded comments.");
-            } else if m.comments.is_empty() {
+            if m.comments.is_empty() {
                 ui.small("No comments yet.");
             } else {
                 for c in &m.comments {
@@ -1033,9 +1060,10 @@ pub(crate) fn draw_inspector(
         }
     }
 
-    // Project / Document editors and tool stamp-preset picker: shown under
-    // Settings tab, or when nothing is selected.
-    if ui_state.inspector_mode == InspectorMode::Settings || selected.is_empty() {
+    // Project / Document editors and tool stamp-preset picker: shown when
+    // nothing is selected (UI redesign T2: settings are the empty-selection
+    // content of the context-sensitive panel).
+    if selected.is_empty() {
         ui.collapsing("Project", |ui| {
             let mut name = project.name.clone();
             let resp = ui.text_edit_singleline(&mut name);
@@ -1192,6 +1220,46 @@ pub(crate) fn draw_inspector(
             if committed_now || (interaction_ended && ui_state.bates_dirty) {
                 committed = true;
                 ui_state.bates_dirty = false;
+            }
+        });
+
+        // Takeoff conditions (T8): create new condition
+        ui.collapsing("Takeoff", |ui| {
+            ui.label("Conditions group measurements for quantity schedules.");
+            ui.add_space(4.0);
+            if ui.button("New condition…").clicked() {
+                // Generate a unique default name
+                let conditions = &project.takeoff.conditions;
+                let mut n = 1;
+                let name = loop {
+                    let name = format!("Condition {}", n);
+                    let normalized = name.to_lowercase();
+                    if !conditions
+                        .iter()
+                        .any(|c| c.name.to_lowercase() == normalized)
+                    {
+                        break name;
+                    }
+                    n += 1;
+                };
+
+                // Get default colour for Linear kind
+                let colour = Color::rgb(0, 128, 255);
+
+                ui_state.takeoff_dialog = Some(crate::ui::app::TakeoffDialogState {
+                    editing_id: None,
+                    name,
+                    kind: ConditionKind::Linear,
+                    height: String::new(),
+                    height_error: false,
+                    colour,
+                    notes: String::new(),
+                    original_name: String::new(),
+                    has_assignments: false,
+                    assigned_count: 0,
+                    focus_name: true,
+                    show_delete_confirm: false,
+                });
             }
         });
     }

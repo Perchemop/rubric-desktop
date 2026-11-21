@@ -88,18 +88,8 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
             });
 
         ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
-            // Severity-coloured status (UI audit P1-1): errors are visually
-            // distinct from success/info and long messages are shown on hover.
-            let status_color = match app.ui.status_kind {
-                StatusKind::Info => ui.visuals().text_color(),
-                StatusKind::Success => egui::Color32::from_rgb(76, 175, 80),
-                StatusKind::Warning => egui::Color32::from_rgb(255, 152, 0),
-                StatusKind::Error => egui::Color32::from_rgb(229, 57, 53),
-            };
-            ui.add(egui::Label::new(
-                egui::RichText::new(app.ui.status.clone()).color(status_color),
-            ))
-            .on_hover_text(app.ui.status.clone());
+            // Status text lives in the bottom status bar (UI redesign T4);
+            // the top bar keeps only zoom, page nav and the transient toast.
 
             ui.label(format!("{:.0}%", app.ui.zoom * 100.0));
             // Page navigation chrome.

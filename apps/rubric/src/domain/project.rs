@@ -7,7 +7,13 @@ use uuid::Uuid;
 use super::bates::BatesConfig;
 use super::document::{Document, Page};
 use super::markup::MarkupKind;
-use super::units::{clamp_precision, DEFAULT_PRECISION};
+use super::takeoff::{
+    quantity_rows, ConditionKind, TakeoffCondition, TakeoffError, TakeoffSettings,
+};
+use super::units::{clamp_precision, MeasureKind, DEFAULT_PRECISION};
+use crate::data::export::write_quantities_csv;
+use crate::data::DataError;
+use crate::domain::style::Color;
 
 /// Schema version written into every `.rubric.json` project file.
 ///
@@ -257,6 +263,8 @@ pub struct Project {
     #[serde(default)]
     pub tool_sets: Vec<ToolSet>,
     pub settings: Settings,
+    #[serde(default)]
+    pub takeoff: TakeoffSettings,
     pub created: DateTime<Utc>,
     pub modified: DateTime<Utc>,
 }
@@ -277,6 +285,7 @@ impl Project {
                 ToolSet::default_measure(),
             ],
             settings: Settings::default(),
+            takeoff: TakeoffSettings::default(),
             created: now,
             modified: now,
         };
@@ -404,6 +413,222 @@ impl Project {
     pub fn rename(&mut self, name: impl Into<String>) {
         self.name = name.into();
         self.touch();
+    }
+
+    /// Create a new condition with a unique default name.
+    ///
+    /// If `name` is empty or whitespace-only, generates `"Condition N"` where N
+    /// is one more than the current condition count (capped at 128).
+    /// Rejects empty-after-trim and case-insensitive duplicates.
+    ///
+    /// Returns the new condition's id. Returning the id (not a `&mut` into the
+    /// conditions vector) keeps the borrow local, so callers can chain other
+    /// project mutations in the same statement sequence.
+    pub fn create_condition(
+        &mut self,
+        name: impl Into<String>,
+        kind: ConditionKind,
+        height: Option<f64>,
+    ) -> Result<Uuid, TakeoffError> {
+        let name = name.into().trim().to_string();
+        if name.is_empty() {
+            return Err(TakeoffError::EmptyName);
+        }
+        // Check for case-insensitive duplicate.
+        let normalized = name.to_lowercase();
+        if self
+            .takeoff
+            .conditions
+            .iter()
+            .any(|c| c.name.to_lowercase() == normalized)
+        {
+            return Err(TakeoffError::DuplicateName);
+        }
+        // Enforce 128 cap.
+        if self.takeoff.conditions.len() >= 128 {
+            return Err(TakeoffError::CapReached);
+        }
+        let colour = match kind {
+            ConditionKind::Linear => Color::rgb(0, 128, 255),
+            ConditionKind::Area => Color::rgb(255, 165, 0),
+            ConditionKind::Perimeter => Color::rgb(0, 0, 255),
+            ConditionKind::WallSurface => Color::rgb(255, 105, 180),
+            ConditionKind::Count => Color::rgb(128, 128, 128),
+        };
+        let condition = TakeoffCondition {
+            id: Uuid::new_v4(),
+            name,
+            kind,
+            height,
+            colour,
+            notes: None,
+            created: chrono::Utc::now(),
+            modified: chrono::Utc::now(),
+        };
+        let id = condition.id;
+        self.takeoff.conditions.push(condition);
+        self.touch();
+        Ok(id)
+    }
+
+    /// Rename an existing condition, rejecting empty/duplicate names.
+    pub fn rename_condition(
+        &mut self,
+        id: Uuid,
+        name: impl Into<String>,
+    ) -> Result<(), TakeoffError> {
+        let new_name = name.into().trim().to_string();
+        if new_name.is_empty() {
+            return Err(TakeoffError::EmptyName);
+        }
+        let normalized = new_name.to_lowercase();
+        // Case-insensitive duplicate check.
+        // Rejects renaming to an existing name (including case-only changes to self).
+        if self
+            .takeoff
+            .conditions
+            .iter()
+            .any(|c| c.name.to_lowercase() == normalized)
+        {
+            return Err(TakeoffError::DuplicateName);
+        }
+        let condition = self
+            .takeoff
+            .conditions
+            .iter_mut()
+            .find(|c| c.id == id)
+            .ok_or(TakeoffError::NotFound(id))?;
+        condition.name = new_name;
+        condition.modified = chrono::Utc::now();
+        self.touch();
+        Ok(())
+    }
+
+    /// Delete a condition, unassigning all markups that point to it.
+    ///
+    /// Returns the number of markups that were unassigned.
+    pub fn delete_condition(&mut self, id: Uuid) -> Result<usize, TakeoffError> {
+        let Some(_condition) = self.takeoff.conditions.iter().find(|c| c.id == id) else {
+            return Err(TakeoffError::NotFound(id));
+        };
+        // Unassign from all markups pointing at this condition (markups live on
+        // documents, so iterate every document of every document list).
+        let mut unassigned = 0usize;
+        for document in &mut self.documents {
+            for m in &mut document.markups {
+                if m.condition_id == Some(id) {
+                    m.condition_id = None;
+                    m.touch();
+                    unassigned += 1;
+                }
+            }
+        }
+        // Remove the condition itself.
+        self.takeoff.conditions.retain(|c| c.id != id);
+        self.touch();
+        Ok(unassigned)
+    }
+
+    /// Assign markups to a condition, validating measure-kind compatibility.
+    ///
+    /// - Linear condition: accepts Length, Diameter, Radius measures.
+    /// - Area condition: accepts Area measures.
+    /// - Perimeter condition: accepts Perimeter measures.
+    /// - WallSurface condition: accepts Perimeter and Length measures (the "run").
+    /// - Count condition: accepts Count markers.
+    ///
+    /// Returns the number of markups successfully assigned.
+    pub fn assign_to_condition(
+        &mut self,
+        markup_ids: &[uuid::Uuid],
+        condition_id: Uuid,
+    ) -> Result<usize, TakeoffError> {
+        let Some(condition) = self
+            .takeoff
+            .conditions
+            .iter()
+            .find(|c| c.id == condition_id)
+        else {
+            return Err(TakeoffError::NotFound(condition_id));
+        };
+
+        // Validate the condition kind once (immutable pass), then mutate.
+        let condition_kind = condition.kind;
+
+        // Acceptance by measure family (spec §2.2):
+        let accepts = |mk: Option<MeasureKind>| {
+            matches!(
+                (condition_kind, mk),
+                (ConditionKind::Linear, Some(MeasureKind::Length))
+                    | (ConditionKind::Linear, Some(MeasureKind::Diameter))
+                    | (ConditionKind::Linear, Some(MeasureKind::Radius))
+                    | (ConditionKind::Area, Some(MeasureKind::Area))
+                    | (ConditionKind::Perimeter, Some(MeasureKind::Perimeter))
+                    | (ConditionKind::WallSurface, Some(MeasureKind::Perimeter))
+                    | (ConditionKind::WallSurface, Some(MeasureKind::Length))
+                    | (ConditionKind::Count, Some(MeasureKind::Count))
+            )
+        };
+
+        // First pass: verify every markup exists and is compatible (fail fast,
+        // all-or-nothing so a partial assignment never lands).
+        let found: Vec<usize> = self
+            .documents
+            .iter()
+            .enumerate()
+            .flat_map(|(di, d)| d.markups.iter().map(move |m| (di, m)))
+            .filter(|(_, m)| markup_ids.contains(&m.id))
+            .map(|(di, m)| {
+                if !accepts(m.kind.measure_kind()) {
+                    Err(TakeoffError::MeasureMismatch)
+                } else {
+                    Ok(di)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Second pass: mutate.
+        let mut assigned = 0usize;
+        for (di, mid) in found.into_iter().zip(markup_ids.iter()) {
+            if let Some(document) = self.documents.get_mut(di) {
+                if let Some(markup) = document.markups.iter_mut().find(|m| m.id == *mid) {
+                    markup.condition_id = Some(condition_id);
+                    markup.touch();
+                    assigned += 1;
+                }
+            }
+        }
+        self.touch();
+        Ok(assigned)
+    }
+
+    /// Unassign markups from their conditions.
+    pub fn unassign_from_conditions(&mut self, markup_ids: &[uuid::Uuid]) -> usize {
+        let mut unassigned = 0usize;
+        for document in &mut self.documents {
+            for markup in &mut document.markups {
+                if markup_ids.contains(&markup.id) && markup.condition_id.is_some() {
+                    markup.condition_id = None;
+                    markup.touch();
+                    unassigned += 1;
+                }
+            }
+        }
+        self.touch();
+        unassigned
+    }
+
+    /// Export takeoff quantities to a CSV file at the given path.
+    ///
+    /// Returns the path written on success, or an error on failure.
+    /// The write is atomic (temp file + rename).
+    pub fn export_quantities_csv<P: AsRef<std::path::Path>>(
+        &self,
+        path: P,
+    ) -> Result<std::path::PathBuf, DataError> {
+        let rows = quantity_rows(self);
+        write_quantities_csv(path.as_ref(), &rows)?;
+        Ok(path.as_ref().to_path_buf())
     }
 }
 

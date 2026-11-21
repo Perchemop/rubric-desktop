@@ -23,7 +23,7 @@ pub(crate) fn draw_inspector_panel(app: &mut RubricApp, ui: &mut Ui) -> bool {
             })
             .response;
         let _ = inspector_response.context_menu(|ui| {
-            menu::draw_editor_context_menu(ui, &mut app.ui);
+            menu::draw_editor_context_menu(ui, &mut app.ui, app.history.current());
         });
     }
     inspector_mutated

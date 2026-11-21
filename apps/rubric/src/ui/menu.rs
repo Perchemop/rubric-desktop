@@ -12,7 +12,9 @@
 use eframe::egui::{self, Ui};
 
 use crate::domain::project;
-use crate::domain::{markup::ReviewStatus, EditorAction, Tool};
+use crate::domain::{
+    markup::ReviewStatus, takeoff::ConditionKind, units::MeasureKind, EditorAction, Tool,
+};
 use crate::ui::app::UiState;
 
 /// Menu label for a tool. `Select` has no markup kind, so it is named
@@ -81,8 +83,108 @@ pub(crate) fn draw_selection_commands(ui: &mut Ui, ui_state: &mut UiState) {
     });
 }
 
+/// Collect assignable conditions for the current selection.
+/// Returns a vector of (condition_id, condition_name, condition_kind) for conditions
+/// that accept at least one of the selected markups' measure kinds.
+fn assignable_conditions(
+    project: &project::Project,
+    ui_state: &UiState,
+) -> Vec<(uuid::Uuid, String, ConditionKind)> {
+    let selected: Vec<uuid::Uuid> = ui_state.selected.iter().copied().collect();
+    if selected.is_empty() {
+        return Vec::new();
+    }
+
+    // Gather the distinct measure kinds in the selection
+    let mut measure_kinds = std::collections::HashSet::new();
+    for doc in &project.documents {
+        for markup in &doc.markups {
+            if selected.contains(&markup.id) {
+                if let Some(mk) = markup.kind.measure_kind() {
+                    measure_kinds.insert(mk);
+                }
+            }
+        }
+    }
+
+    if measure_kinds.is_empty() {
+        return Vec::new();
+    }
+
+    // Filter conditions that accept at least one of the selected measure kinds
+    let accepts = |condition_kind: ConditionKind, mk: MeasureKind| {
+        matches!(
+            (condition_kind, mk),
+            (ConditionKind::Linear, MeasureKind::Length)
+                | (ConditionKind::Linear, MeasureKind::Diameter)
+                | (ConditionKind::Linear, MeasureKind::Radius)
+                | (ConditionKind::Area, MeasureKind::Area)
+                | (ConditionKind::Perimeter, MeasureKind::Perimeter)
+                | (ConditionKind::WallSurface, MeasureKind::Perimeter)
+                | (ConditionKind::WallSurface, MeasureKind::Length)
+                | (ConditionKind::Count, MeasureKind::Count)
+        )
+    };
+
+    let mut conditions = Vec::new();
+    for cond in &project.takeoff.conditions {
+        if measure_kinds.iter().any(|mk| accepts(cond.kind, *mk)) {
+            conditions.push((cond.id, cond.name.clone(), cond.kind));
+        }
+    }
+    conditions
+}
+
+/// Draw the "Assign to condition" submenu in the context menu.
+pub(crate) fn draw_assign_condition_menu(
+    ui: &mut Ui,
+    ui_state: &mut UiState,
+    project: &project::Project,
+) {
+    let conditions = assignable_conditions(project, ui_state);
+    if conditions.is_empty() {
+        return;
+    }
+
+    // Check if any selected markup has a condition assigned
+    let has_assigned = ui_state.selected.iter().any(|id| {
+        for doc in &project.documents {
+            if let Some(markup) = doc.markups.iter().find(|m| m.id == *id) {
+                if markup.condition_id.is_some() {
+                    return true;
+                }
+            }
+        }
+        false
+    });
+
+    ui.menu_button("Assign to condition", |ui| {
+        for (cond_id, cond_name, cond_kind) in conditions {
+            let label = format!("{} ({})", cond_name, cond_kind.label());
+            // action_button already sets pending_action and closes
+            if ui.button(&label).clicked() {
+                ui_state.pending_action = Some(EditorAction::AssignToCondition(cond_id));
+                ui.close();
+            }
+            // Add a small kind indicator - the action_button handles the click
+        }
+
+        if has_assigned {
+            ui.separator();
+            action_button(ui, ui_state, EditorAction::UnassignFromConditions);
+        }
+    });
+}
+
 /// Render the editor context menu, recording the chosen action on `ui_state`.
-pub(crate) fn draw_editor_context_menu(ui: &mut Ui, ui_state: &mut UiState) {
+pub(crate) fn draw_editor_context_menu(
+    ui: &mut Ui,
+    ui_state: &mut UiState,
+    project: &project::Project,
+) {
+    // Assign to condition submenu (R-7): show only for measure/count markups with assignable conditions
+    draw_assign_condition_menu(ui, ui_state, project);
+
     // Tool submenu — reuses the F-601 shortcut keys for discoverability.
     ui.menu_button("Tool", |ui| {
         for tool in Tool::ALL {

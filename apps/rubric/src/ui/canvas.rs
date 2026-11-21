@@ -2201,7 +2201,7 @@ pub(crate) fn draw_canvas(
     // than opening the menu.
     if matches!(*draw_state, super::app::DrawState::Idle) {
         let _ = response.context_menu(|ui| {
-            super::menu::draw_editor_context_menu(ui, ui_state);
+            super::menu::draw_editor_context_menu(ui, ui_state, project);
         });
     }
 

@@ -19,7 +19,7 @@ use crate::domain::{
     MarkupKind, MarkupListSort, MarkupStyle, MeasureUnit, Project, Pt, Report, ReportGroupKey,
     ReviewStatus, StampPreset, StylePreset, StylePresetLibrary, Theme, Tool,
 };
-use crate::ui::{app_dialogs, canvas, pages, theme, toolbar};
+use crate::ui::{app_dialogs, canvas, pages, theme};
 use uuid::Uuid;
 
 /// User guide embedded at build time for Help ▸ User Guide. Baking it in
@@ -131,6 +131,37 @@ pub(crate) struct CalibrationDialog {
     pub(crate) unit: MeasureUnit,
 }
 
+/// Session-only state for the takeoff condition dialog (T8).
+/// Used for both creating new conditions and editing existing ones.
+/// Never serialized; lives only while the dialog is open.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct TakeoffDialogState {
+    /// The condition being edited, or `None` for a new condition.
+    pub(crate) editing_id: Option<uuid::Uuid>,
+    /// Condition name (validated on commit: non-empty after trim, unique case-insensitively).
+    pub(crate) name: String,
+    /// Condition kind. Locked when `has_assignments` is true.
+    pub(crate) kind: crate::domain::takeoff::ConditionKind,
+    /// Wall height input as string (for WallSurface kind). Validated on commit: > 0.
+    pub(crate) height: String,
+    /// True when height validation failed (empty or <= 0 for WallSurface).
+    pub(crate) height_error: bool,
+    /// Condition colour.
+    pub(crate) colour: crate::domain::style::Color,
+    /// Optional notes field.
+    pub(crate) notes: String,
+    /// Original name (for detecting changes when editing).
+    pub(crate) original_name: String,
+    /// Whether the condition has assigned markups (locks kind combo).
+    pub(crate) has_assignments: bool,
+    /// Number of assigned markups (for delete confirmation).
+    pub(crate) assigned_count: usize,
+    /// Focus the name field on open.
+    pub(crate) focus_name: bool,
+    /// True when delete confirmation dialog should be shown.
+    pub(crate) show_delete_confirm: bool,
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ReportExportFormat {
@@ -221,6 +252,9 @@ pub(crate) struct UiState {
     pub(crate) grid: Grid,
     /// Whether the Markups List panel is visible (View menu toggle).
     pub(crate) show_markups_list: bool,
+    /// Which tab the consolidated left panel is showing (UI redesign T1):
+    /// Pages, Tools, or the Tool Chest.
+    pub(crate) left_panel: crate::ui::app_left_panel::LeftPanel,
     /// Whether the Pages panel is visible (View menu toggle).
     pub(crate) show_pages: bool,
     /// Whether the Tool Chest panel is visible (View menu toggle, v0.4 gap
@@ -229,6 +263,23 @@ pub(crate) struct UiState {
     /// Focus/reading mode: hides all side panels so only the canvas is
     /// visible, for distraction-free review (proposal P2-13).
     pub(crate) focus_mode: bool,
+    /// Whether the consolidated left panel is visible (UI redesign T5:
+    /// Ctrl+1 toggle / View menu). Focus mode overrides it.
+    pub(crate) left_panel_visible: bool,
+    /// Whether the inspector (right) panel is visible (UI redesign T5:
+    /// Ctrl+2 toggle / View menu). Focus mode overrides it.
+    pub(crate) inspector_visible: bool,
+    /// Whether the unified bottom panel is visible (UI redesign T5: Ctrl+3
+    /// toggle / View menu). Focus mode overrides it.
+    pub(crate) bottom_panel_visible: bool,
+    /// Show Quantities tab in the bottom panel (R-12).
+    pub(crate) show_quantities: bool,
+    /// Which tab the unified bottom panel is showing (UI redesign T3):
+    /// Markups List or Quantities.
+    pub(crate) bottom_tab: crate::ui::app_bottom_panel::BottomTab,
+    /// Which tab is selected when the Quantities panel is open: `true` =
+    /// Quantities tab, `false` = Markups List tab (R-12).
+    pub(crate) quantities_tab_selected: bool,
     /// Show a small minimap in the corner of the canvas showing page overview
     /// with viewport rectangle (proposal P2-16).
     pub(crate) show_minimap: bool,
@@ -287,6 +338,9 @@ pub(crate) struct UiState {
     /// the user finishes the two-click reference segment; drawn as a window by
     /// the app shell. UI-only, never serialized.
     pub(crate) calibration: Option<CalibrationDialog>,
+    /// Open takeoff condition dialog (T8). Set by Quantities panel or Inspector.
+    /// UI-only, never serialized.
+    pub(crate) takeoff_dialog: Option<TakeoffDialogState>,
     /// Armed Tool Chest preset (v0.4 gap #7). While this is `Some`,
     /// `canvas::finish_markup` styles every non-stamp markup created from now
     /// on with the preset's look (`Markup::with_style`, style only: at
@@ -343,9 +397,16 @@ impl Default for UiState {
             grid: Grid::default(),
             marquee_start: None,
             show_markups_list: true,
+            left_panel: crate::ui::app_left_panel::LeftPanel::default(),
             show_pages: true,
             show_tool_chest: true,
             focus_mode: false,
+            left_panel_visible: true,
+            inspector_visible: true,
+            bottom_panel_visible: true,
+            show_quantities: true,
+            bottom_tab: crate::ui::app_bottom_panel::BottomTab::default(),
+            quantities_tab_selected: true,
             show_minimap: false,
             quit_confirm: false,
             can_undo: false,
@@ -369,6 +430,7 @@ impl Default for UiState {
             resize_changed: false,
             show_release_notes: false,
             calibration: None,
+            takeoff_dialog: None,
             pending_style_preset: None,
             tool_chest_save_name: String::new(),
             tool_chest_rename: None,
@@ -460,6 +522,9 @@ pub struct RubricApp {
     pub(crate) render_worker: Option<crate::data::render_worker::RenderWorker>,
     /// Repository used for issue URLs and release checks.
     pub(crate) repo: String,
+    /// The persisted workspace layout (docking/split state) loaded from prefs.
+    /// Updated only when a workspace editor writes it in a later slice.
+    pub(crate) persisted_workspace: crate::domain::workspace::WorkspaceState,
     /// Latest release tag from the most recent update check, used to
     /// construct the SHA256SUMS.txt URL when downloading an update.
     pub(crate) update_check_tag: Option<String>,
@@ -550,6 +615,8 @@ impl RubricApp {
             ui: UiState {
                 show_markups_list: prefs.show_markups_list,
                 show_tool_chest: prefs.show_tool_chest,
+                show_quantities: prefs.show_quantities,
+                quantities_tab_selected: prefs.quantities_tab_selected,
                 zoom: prefs.zoom,
                 current_page: prefs.current_page,
                 default_styles: prefs.default_styles.clone(),
@@ -594,6 +661,7 @@ impl RubricApp {
             repo: "Perchemop/rubric-desktop".to_string(),
             update_check_tag: None,
             tool_chest_library: prefs.tool_chest_library.clone(),
+            persisted_workspace: prefs.workspace.clone(),
             app_drawer_path: Self::get_app_drawer_path(),
         }
     }
@@ -893,6 +961,8 @@ impl RubricApp {
             EditorAction::BatchStatus(status) => self.apply_batch_status(status),
             EditorAction::ToggleLock => self.apply_toggle_lock(),
             EditorAction::SetAsDefault => self.apply_set_as_default(),
+            EditorAction::AssignToCondition(cond_id) => self.apply_assign_condition(cond_id),
+            EditorAction::UnassignFromConditions => self.apply_unassign_condition(),
         }
     }
 
@@ -1021,6 +1091,67 @@ impl RubricApp {
             self.ui.status = format!("Default style set for {}", first_kind.label());
         } else {
             self.ui.status = format!("Default styles set from {} markups", count);
+        }
+    }
+
+    /// Assign selected markups to a takeoff condition (R-7, R-8, R-9).
+    fn apply_assign_condition(&mut self, condition_id: Uuid) {
+        let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
+        if ids.is_empty() {
+            self.ui.status = "Select at least one markup to assign".to_string();
+            return;
+        }
+        match self
+            .history
+            .current_mut()
+            .assign_to_condition(&ids, condition_id)
+        {
+            Ok(assigned) => {
+                if assigned > 0 {
+                    self.push_snapshot("assign condition");
+                    // Find condition name for status
+                    let cond_name = self
+                        .history
+                        .current()
+                        .takeoff
+                        .conditions
+                        .iter()
+                        .find(|c| c.id == condition_id)
+                        .map(|c| c.name.as_str())
+                        .unwrap_or("condition");
+                    self.ui.status = format!(
+                        "Assigned {} markup{} to '{}'",
+                        assigned,
+                        if assigned == 1 { "" } else { "s" },
+                        cond_name
+                    );
+                } else {
+                    self.ui.status = "No compatible markups selected".to_string();
+                }
+            }
+            Err(e) => {
+                self.ui.status = format!("Assignment failed: {}", e);
+            }
+        }
+    }
+
+    /// Unassign selected markups from their conditions (R-7, R-8, R-9).
+    fn apply_unassign_condition(&mut self) {
+        let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
+        if ids.is_empty() {
+            self.ui.status = "Select at least one markup to unassign".to_string();
+            return;
+        }
+        let unassigned = self.history.current_mut().unassign_from_conditions(&ids);
+        if unassigned > 0 {
+            self.push_snapshot("unassign condition");
+            self.ui.status = format!(
+                "Unassigned {} markup{}",
+                unassigned,
+                if unassigned == 1 { "" } else { "s" }
+            );
+        } else {
+            self.ui.status = "No markups were assigned".to_string();
         }
     }
 
@@ -1751,6 +1882,8 @@ impl RubricApp {
             show_markups_list: self.ui.show_markups_list,
             show_tool_chest: self.ui.show_tool_chest,
             show_pages: self.ui.show_pages,
+            show_quantities: self.ui.show_quantities,
+            quantities_tab_selected: self.ui.quantities_tab_selected,
             zoom: self.ui.zoom,
             current_page: self.ui.current_page,
             tool_chest_library: self.tool_chest_library.clone(),
@@ -1761,6 +1894,7 @@ impl RubricApp {
             default_styles: self.ui.default_styles.clone(),
             default_measure_unit: self.ui.unit,
             tool_chest_max_recents: self.ui.tool_chest_max_recents.clamp(1, 32),
+            workspace: self.persisted_workspace.clone(),
         }
     }
 
@@ -2112,15 +2246,6 @@ impl RubricApp {
         crate::ui::app_topbar::draw_top_bar(self, ui);
     }
 
-    fn left_panel(&mut self, ui: &mut Ui) {
-        toolbar::draw_tool_groups(
-            ui,
-            &mut self.ui.active_tool,
-            &mut self.ui.inspector_mode,
-            &mut self.ui.hint,
-        );
-    }
-
     /// Switch the active tool, abandoning any in-flight draft gesture exactly
     /// like Escape does (but keeping the current selection). Used by the
     /// unmodified-key tool shortcuts.
@@ -2325,6 +2450,36 @@ impl RubricApp {
             if i.modifiers.command && i.key_pressed(egui::Key::Num0) {
                 self.fit_page();
             }
+            // Panel toggles (UI redesign T5): Ctrl+1 left panel, Ctrl+2
+            // inspector, Ctrl+3 bottom panel. Focus mode hides everything, so
+            // Ctrl+0 (or the View menu) leaves it.
+            if i.modifiers.command && i.key_pressed(egui::Key::Num1) && !wants_kb {
+                self.ui.focus_mode = false;
+                self.ui.left_panel_visible = !self.ui.left_panel_visible;
+                self.ui.status = if self.ui.left_panel_visible {
+                    "Left panel shown".to_string()
+                } else {
+                    "Left panel hidden".to_string()
+                };
+            }
+            if i.modifiers.command && i.key_pressed(egui::Key::Num2) && !wants_kb {
+                self.ui.focus_mode = false;
+                self.ui.inspector_visible = !self.ui.inspector_visible;
+                self.ui.status = if self.ui.inspector_visible {
+                    "Inspector shown".to_string()
+                } else {
+                    "Inspector hidden".to_string()
+                };
+            }
+            if i.modifiers.command && i.key_pressed(egui::Key::Num3) && !wants_kb {
+                self.ui.focus_mode = false;
+                self.ui.bottom_panel_visible = !self.ui.bottom_panel_visible;
+                self.ui.status = if self.ui.bottom_panel_visible {
+                    "Bottom panel shown".to_string()
+                } else {
+                    "Bottom panel hidden".to_string()
+                };
+            }
             if i.modifiers.command && i.key_pressed(egui::Key::A) && !wants_kb {
                 // Select All on the current page (full-app audit M5/M10); the
                 // same path as Edit ▸ Select All.
@@ -2463,38 +2618,35 @@ impl RubricApp {
         }
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(ui));
         egui::Panel::top("toolbar").show(ui, |ui| self.top_bar(ui));
-        // Pages sidebar (spec F-404). Only shown when the document has pages
-        // and the panel is enabled in the View menu.
-        crate::ui::app_pages::draw_pages_panel(self, ui);
-        egui::Panel::left("tools")
-            .default_size(200.0)
-            .min_size(180.0)
-            .show(ui, |ui| self.left_panel(ui));
-        // Tool Chest (v0.4 gap #7): the "My Tools" panel over the app-level
-        // preset library. Armed presets travel via
-        // `ui.pending_style_preset`, which `canvas::finish_markup` consumes
-        // at creation time; only apply-to-selection mutates the project and
-        // asks for a snapshot.
-        let chest_mutated = crate::ui::app_tool_chest::draw_tool_chest_panel(self, ui);
+        // Consolidated left panel (UI redesign T1): Pages, Tools, and the
+        // Tool Chest live in one tabbed container so the canvas keeps the
+        // space the three stacked panels used to take. Ctrl+1 toggles (T5).
+        let chest_mutated = if self.ui.left_panel_visible {
+            crate::ui::app_left_panel::draw_left_panel(self, ui)
+        } else {
+            false
+        };
         if chest_mutated {
             self.push_snapshot("tool chest apply");
         }
-        let inspector_mutated = crate::ui::app_inspector::draw_inspector_panel(self, ui);
+        let inspector_mutated = if self.ui.inspector_visible {
+            crate::ui::app_inspector::draw_inspector_panel(self, ui)
+        } else {
+            false
+        };
         egui::Panel::bottom("status")
             .show(ui, |ui| crate::ui::app_status::draw_status_bar(self, ui));
 
-        let (list_action, status_changed) =
-            crate::ui::app_markups_list::draw_markups_list_panel(self, ui);
-        if status_changed {
-            self.push_snapshot_quiet();
-        }
-        if let Some(action) = list_action {
-            self.ui.selected.clear();
-            self.ui.selected.insert(action.id);
-            self.ui.status = format!("Selected markup on page {}", action.page + 1);
-            if action.page != self.ui.current_page {
-                self.jump_to_page(action.page);
-            }
+        // Unified bottom panel (UI redesign T3): Markups List | Quantities in
+        // one tabbed container. Opens the condition dialog on request and
+        // selects a condition's markups on row click. Ctrl+3 toggles (T5).
+        let (qty_action, _bottom_mutated) = if self.ui.bottom_panel_visible {
+            crate::ui::app_bottom_panel::draw_bottom_panel(self, ui)
+        } else {
+            (None, false)
+        };
+        if let Some(act) = qty_action {
+            crate::ui::app_quantities::handle_quantity_action(self, act);
         }
 
         crate::ui::app_canvas::draw_canvas_panel(self, ui);
@@ -2529,6 +2681,7 @@ impl RubricApp {
         // drawn reference segment and rewrite the page scale.
         // Dialog drawing code extracted to ui/app_dialogs.rs
         app_dialogs::draw_calibration_dialog(self, ui.ctx());
+        app_dialogs::draw_takeoff_dialog(self, ui.ctx());
         app_dialogs::draw_about_window(self, ui.ctx());
         app_dialogs::draw_keyboard_shortcuts(self, ui.ctx());
         app_dialogs::draw_user_guide(self, ui.ctx());
@@ -2701,12 +2854,16 @@ mod kittest_tests {
         // requests a periodic repaint for autosave/status — so use steps.)
         harness.run_steps(2);
 
-        // The active-tool chip ("Select" at startup) is queryable by its
-        // label through the AccessKit tree. Tool items live inside the
-        // Tools dropdown popup (not in the flat tree), so they are not
-        // queried here — those are reached through the dropdown in the live
-        // UI.
-        let _select = harness.get_by_label("Select"); // active-tool chip label
+        // The consolidated left panel (UI redesign T1) opens on the Pages tab
+        // when a document is open. Switch to the Toolbox tab so the tool
+        // buttons join the AccessKit tree, then assert the Select tool button
+        // is queryable by its label — and that clicking it works (the
+        // tab strip and the tool buttons are keyboard/screen-reader reachable).
+        harness.get_by_label("Toolbox").click();
+        harness.run_steps(2);
+        let select = harness.get_by_label("Select");
+        select.click();
+        harness.run_steps(2);
     }
 
     #[test]

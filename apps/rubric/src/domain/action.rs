@@ -5,10 +5,11 @@
 //! rules for when an entry is applicable live here rather than being
 //! duplicated in the UI.
 use crate::domain::markup::ReviewStatus;
+use uuid::Uuid;
 
 /// A user-invocable editor action offered by the canvas and inspector
 /// context menus (spec F-603).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum EditorAction {
     Undo,
     Redo,
@@ -31,11 +32,16 @@ pub enum EditorAction {
     BatchStatus(ReviewStatus),
     /// Toggle `Markup.locked` on every selected editable markup.
     ToggleLock,
+    /// Assign selected measure/count markups to a takeoff condition.
+    /// Single variant that includes the condition kind for filtering in the UI.
+    AssignToCondition(Uuid),
+    /// Unassign selected markups from their conditions.
+    UnassignFromConditions,
 }
 
 impl EditorAction {
     /// Every action, in menu order.
-    pub const ALL: [EditorAction; 17] = [
+    pub const ALL: [EditorAction; 19] = [
         EditorAction::Undo,
         EditorAction::Redo,
         EditorAction::DeleteSelection,
@@ -53,10 +59,13 @@ impl EditorAction {
         EditorAction::FitPage,
         EditorAction::BatchStatus(ReviewStatus::Open),
         EditorAction::ToggleLock,
+        // Condition assignment actions
+        EditorAction::AssignToCondition(Uuid::nil()),
+        EditorAction::UnassignFromConditions,
     ];
 
     /// Human-readable menu label.
-    pub fn label(self) -> &'static str {
+    pub fn label(&self) -> &'static str {
         match self {
             EditorAction::Undo => "Undo",
             EditorAction::Redo => "Redo",
@@ -75,13 +84,15 @@ impl EditorAction {
             EditorAction::FitPage => "Fit Page",
             EditorAction::BatchStatus(status) => status.label(),
             EditorAction::ToggleLock => "Lock / Unlock",
+            EditorAction::AssignToCondition(_) => "Assign to Condition",
+            EditorAction::UnassignFromConditions => "Unassign from Condition",
         }
     }
 
     /// The keyboard shortcut shown next to the menu label, when one exists
     /// (full-app audit M5). Only shortcuts the app actually handles are
     /// returned, so the hint never lies; `None` leaves the entry bare.
-    pub fn shortcut_hint(self) -> Option<&'static str> {
+    pub fn shortcut_hint(&self) -> Option<&'static str> {
         match self {
             EditorAction::Undo => Some("Ctrl+Z"),
             EditorAction::Redo => Some("Ctrl+Y"),
@@ -98,7 +109,7 @@ impl EditorAction {
     /// entries are disabled. Copying and z-order need exactly one selected
     /// markup. The history and view actions are always offered: undo/redo
     /// simply do nothing on an empty history, and zoom always applies.
-    pub fn is_enabled(self, selection_count: usize, has_style_clipboard: bool) -> bool {
+    pub fn is_enabled(&self, selection_count: usize, has_style_clipboard: bool) -> bool {
         match self {
             EditorAction::DeleteSelection
             | EditorAction::Duplicate
@@ -111,7 +122,9 @@ impl EditorAction {
             | EditorAction::SendToBack => selection_count == 1,
             EditorAction::PasteProperties => selection_count > 0 && has_style_clipboard,
             EditorAction::BatchStatus(_) => selection_count > 0,
-            EditorAction::ToggleLock => selection_count > 0,
+            EditorAction::ToggleLock
+            | EditorAction::AssignToCondition(_)
+            | EditorAction::UnassignFromConditions => selection_count > 0,
             _ => true,
         }
     }
@@ -124,7 +137,7 @@ mod tests {
 
     #[test]
     fn all_contains_every_variant_exactly_once() {
-        assert_eq!(EditorAction::ALL.len(), 17);
+        assert_eq!(EditorAction::ALL.len(), 19);
         for (i, a) in EditorAction::ALL.iter().enumerate() {
             for b in EditorAction::ALL.iter().skip(i + 1) {
                 assert_ne!(a, b, "duplicate action in ALL: {a:?}");
@@ -184,6 +197,9 @@ mod tests {
             EditorAction::DeleteSelection,
             EditorAction::Duplicate,
             EditorAction::ClearSelection,
+            EditorAction::ToggleLock,
+            EditorAction::AssignToCondition(Uuid::nil()),
+            EditorAction::UnassignFromConditions,
         ] {
             assert!(
                 !a.is_enabled(0, false),
@@ -255,5 +271,34 @@ mod tests {
                 "{a:?} should stay enabled with a selection"
             );
         }
+    }
+
+    #[test]
+    fn condition_assignment_actions_require_selection() {
+        let assign = EditorAction::AssignToCondition(Uuid::nil());
+        let unassign = EditorAction::UnassignFromConditions;
+
+        assert!(!assign.is_enabled(0, false), "Assign needs selection");
+        assert!(assign.is_enabled(1, false), "Assign needs selection");
+        assert!(assign.is_enabled(5, false), "Assign with multi-selection");
+
+        assert!(!unassign.is_enabled(0, false), "Unassign needs selection");
+        assert!(unassign.is_enabled(1, false), "Unassign needs selection");
+        assert!(
+            unassign.is_enabled(5, false),
+            "Unassign with multi-selection"
+        );
+    }
+
+    #[test]
+    fn condition_assignment_actions_have_correct_labels() {
+        assert_eq!(
+            EditorAction::AssignToCondition(Uuid::nil()).label(),
+            "Assign to Condition"
+        );
+        assert_eq!(
+            EditorAction::UnassignFromConditions.label(),
+            "Unassign from Condition"
+        );
     }
 }

@@ -70,3 +70,6 @@ default = []
 # validation of the pure-Rust implementation. PDFium remains the default
 # until hayro passes corpus fidelity tests.
 hayro = ["dep:hayro", "dep:hayro-syntax"]
+# Feature for Markups List panel (v0.2.0). Planned but not yet activated;
+# kept as incomplete code to reduce friction when the slice ships.
+markups-list = []

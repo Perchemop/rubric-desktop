@@ -181,6 +181,20 @@ impl MarkupKind {
         self.group() == ToolGroup::Measure
     }
 
+    /// Whether this markup kind can be assigned to a takeoff condition
+    /// (all measure kinds except Angle).
+    pub fn is_assignable_to_condition(self) -> bool {
+        matches!(
+            self,
+            MarkupKind::MeasureLength
+                | MarkupKind::MeasurePerimeter
+                | MarkupKind::MeasureArea
+                | MarkupKind::MeasureDiameter
+                | MarkupKind::MeasureRadius
+                | MarkupKind::MeasureCount
+        )
+    }
+
     /// The measurement quantity this tool produces, if any.
     pub fn measure_kind(self) -> Option<MeasureKind> {
         Some(match self {
@@ -340,6 +354,8 @@ pub struct Markup {
     #[serde(default)]
     pub comments: Vec<Comment>,
     #[serde(default)]
+    pub condition_id: Option<Uuid>,
+    #[serde(default)]
     pub measurement: Option<Measurement>,
     /// Built-in stamp preset drawn inside the stamp bounds (spec F-111).
     ///
@@ -374,6 +390,7 @@ impl Markup {
             layer_id: None,
             locked: false,
             comments: Vec::new(),
+            condition_id: None,
             measurement: None,
             stamp: None,
             created: now,
