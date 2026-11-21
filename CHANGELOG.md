@@ -16,6 +16,8 @@ All notable changes to this project will be documented here. Format: semantic-is
 - Updated `docs/parity.md` with takeoff quantity capabilities marked Done
 - Updated `docs/capability-inventory.md` with takeoff capabilities confirmed implemented
 - Updated `ROADMAP.md` v0.5 milestone status for takeoff quantities
+- **Condition dialog (T8):** Create/edit dialog with validation, Esc/Enter handling, delete confirmation
+- **Preferences wiring (T9):** `show_quantities` and `quantities_tab_selected` now control bottom panel tab visibility
 
 ## [0.4.11] - 2026-11-17
 

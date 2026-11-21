@@ -92,10 +92,10 @@ Snapshot artifact: `shell_empty_state.new.png` uploaded by CI run - commit to `a
 - **T6 — Quantities panel UI:** bottom-panel tab strip + quantities table with row click-select, empty state, mixed-unit badge (T6 commits on PR #230)
 - **T7 — Assignment UI:** inspector combo (assignable kinds only) + context-menu submenu with batch assign/unassign (T7 commit on PR #230)
 
-### Remaining:
-- **T8 — Condition dialog:** Create/edit dialog with validation (name, kind lock, height), Esc/⏎ handling, delete confirmation
-- **T9 — Prefs wiring:** `show_quantities` + `quantities_tab_selected` persistence in AppPrefs
-- **T10 — Docs & release:** Feature documentation, CHANGELOG entry, ROADMAP updates, v0.5.0 release
+### Completed (continuing from PR #230):
+- **T8 — Condition dialog:** Create/edit dialog with validation (name, kind lock, height), Esc/⏎ handling, delete confirmation (implemented in `app_dialogs.rs`)
+- **T9 — Prefs wiring:** `show_quantities` + `quantities_tab_selected` persistence in AppPrefs (wired to bottom panel visibility)
+- **T10 — Docs & release:** v0.5.0 release shipped 2026-11-20
 
 ---
 
