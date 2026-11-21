@@ -53,7 +53,8 @@ pub(crate) fn draw_bottom_panel(
         .max_size(400.0)
         .resizable(true)
         .show(ui, |ui| {
-            draw_tab_strip(ui, &mut app.ui, app.ui.show_quantities);
+            let show_quantities = app.ui.show_quantities;
+            draw_tab_strip(ui, &mut app.ui, show_quantities);
 
             match app.ui.bottom_tab {
                 BottomTab::Markups => {
