@@ -448,7 +448,7 @@ mod tests {
             "id": "a0eebc99-9c0b-4ef8-bb5d-3c3bd1e16bac",
             "name": "Plan",
             "source_pdf": null,
-            "documents": [{"id": "doc1", "title": "Plan", "pages": []}],
+            "documents": [{"id": "1719ae60-1e1b-4f9b-8e8d-b8e8b8e8b8e8", "title": "Plan", "pages": []}],
             "active_document": 0,
             "tool_sets": [],
             "settings": {"author": "Reviewer", "auto_save": false, "auto_save_interval_secs": 60, "ui_scale": 1.0, "show_grid": false, "show_measurements": true, "precision": 3},

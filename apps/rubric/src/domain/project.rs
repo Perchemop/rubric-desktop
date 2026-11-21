@@ -482,12 +482,13 @@ impl Project {
             return Err(TakeoffError::EmptyName);
         }
         let normalized = new_name.to_lowercase();
-        // Case-insensitive duplicate check, excluding the condition itself.
+        // Case-insensitive duplicate check.
+        // Rejects renaming to an existing name (including case-only changes to self).
         if self
             .takeoff
             .conditions
             .iter()
-            .any(|c| c.id != id && c.name.to_lowercase() == normalized)
+            .any(|c| c.name.to_lowercase() == normalized)
         {
             return Err(TakeoffError::DuplicateName);
         }

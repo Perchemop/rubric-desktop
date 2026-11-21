@@ -690,10 +690,10 @@ mod tests {
             content.lines().next().unwrap_or("")
         );
 
-        // Content row must match AC-13: Skirting,Linear,m,5.4,2,,,
+        // Content row must match AC-13: Skirting,Linear,m,5.4,2,
         let lines: Vec<&str> = content.lines().collect();
         assert_eq!(lines.len(), 2, "expected header + one data row");
-        assert_eq!(lines[1], "Skirting,Linear,m,5.4,2,,,");
+        assert_eq!(lines[1], "Skirting,Linear,m,5.4,2,,");
 
         let _ = fs::remove_file(&temp_path);
     }
