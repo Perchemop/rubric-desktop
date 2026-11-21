@@ -24,7 +24,7 @@ pub(crate) enum BottomTab {
 impl BottomTab {
     pub(crate) const ALL: [BottomTab; 2] = [BottomTab::Markups, BottomTab::Quantities];
 
-    pub(crate) fn label(self) -> \'&static str {
+    pub(crate) fn label(self) -> &'static str {
         match self {
             BottomTab::Markups => "Markups List",
             BottomTab::Quantities => "Quantities",
@@ -34,8 +34,8 @@ impl BottomTab {
 
 /// Draw the unified bottom panel.
 ///
-/// Returns \`(action, mutated)\` where \`action\` is the Quantities panel\'s
-/// dialog-opening request and \`mutated\` is whether the project changed.
+/// Returns `(action, mutated)` where `action` is the Quantities panel's
+/// dialog-opening request and `mutated` is whether the project changed.
 pub(crate) fn draw_bottom_panel(
     app: &mut RubricApp,
     ui: &mut Ui,
@@ -53,11 +53,7 @@ pub(crate) fn draw_bottom_panel(
         .max_size(400.0)
         .resizable(true)
         .show(ui, |ui| {
-            // Read quantities preference
-            let show_quantities = app.ui.show_quantities;
-
-            // Draw tab strip (conditionally shows Quantities tab)
-            draw_tab_strip(ui, &mut app.ui, show_quantities);
+            draw_tab_strip(ui, &mut app.ui, app.ui.show_quantities);
 
             match app.ui.bottom_tab {
                 BottomTab::Markups => {
@@ -75,18 +71,11 @@ pub(crate) fn draw_bottom_panel(
                     }
                 }
                 BottomTab::Quantities => {
-                    // Only draw quantities content if enabled in preferences
-                    if show_quantities {
-                        let project = app.history.current_mut();
-                        let ui_state = &mut app.ui;
-                        let (qty_action, _dirty) =
-                            crate::ui::quantities_panel::draw_quantities_content(ui, project, ui_state);
-                        action = qty_action;
-                    }
-                    // If quantities was disabled while on Quantities tab, switch to Markups
-                    if !show_quantities {
-                        app.ui.bottom_tab = BottomTab::Markups;
-                    }
+                    let project = app.history.current_mut();
+                    let ui_state = &mut app.ui;
+                    let (qty_action, _dirty) =
+                        crate::ui::quantities_panel::draw_quantities_content(ui, project, ui_state);
+                    action = qty_action;
                 }
             }
 
