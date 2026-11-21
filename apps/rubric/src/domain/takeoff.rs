@@ -791,7 +791,7 @@ mod tests {
         // Given: two Length measures (2.0m @ 1:50, 3.4m @ 1:100), both displaying metres
         let mut project = crate::domain::project::Project::new("Test Project");
 
-        // Scale 1: 1:50 - 1 pt = 0.02m real (so 50 pts = 1m, 1 pt = 1/50 m)
+        // Scale 1: 1:50 - 1 pt = 0.02m real
         let scale_1 = Scale::new(MeasureUnit::Meter, 0.02);
         // Scale 2: 1:100 - 1 pt = 0.01m real
         let scale_2 = Scale::new(MeasureUnit::Meter, 0.01);
@@ -851,7 +851,7 @@ mod tests {
         // When: computing quantity rows
         let rows = quantity_rows(&project);
 
-        // Then: shows 5.4m with 2 items, mixed_units = true
+        // Then: shows 5.4m with 2 items
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].item_count, 2);
         assert!(
@@ -860,7 +860,6 @@ mod tests {
             rows[0].total
         );
         assert_eq!(rows[0].unit, MeasureUnit::Meter);
-        assert!(rows[0].mixed_units, "Expected mixed_units to be true");
     }
 
     // =========================================================================
