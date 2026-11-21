@@ -24,7 +24,7 @@ pub(crate) enum BottomTab {
 impl BottomTab {
     pub(crate) const ALL: [BottomTab; 2] = [BottomTab::Markups, BottomTab::Quantities];
 
-    pub(crate) fn label(self) -> &'static str {
+    pub(crate) fn label(self) -> \'&static str {
         match self {
             BottomTab::Markups => "Markups List",
             BottomTab::Quantities => "Quantities",
@@ -34,8 +34,8 @@ impl BottomTab {
 
 /// Draw the unified bottom panel.
 ///
-/// Returns `(action, mutated)` where `action` is the Quantities panel's
-/// dialog-opening request and `mutated` is whether the project changed.
+/// Returns \`(action, mutated)\` where \`action\` is the Quantities panel\'s
+/// dialog-opening request and \`mutated\` is whether the project changed.
 pub(crate) fn draw_bottom_panel(
     app: &mut RubricApp,
     ui: &mut Ui,
@@ -53,14 +53,11 @@ pub(crate) fn draw_bottom_panel(
         .max_size(400.0)
         .resizable(true)
         .show(ui, |ui| {
-            // Only show Quantities tab if enabled in preferences
+            // Read quantities preference
             let show_quantities = app.ui.show_quantities;
-            let tabs = if show_quantities {
-                BottomTab::ALL
-            } else {
-                [BottomTab::Markups]
-            };
-            draw_tab_strip(ui, &mut app.ui, tabs);
+
+            // Draw tab strip (conditionally shows Quantities tab)
+            draw_tab_strip(ui, &mut app.ui, show_quantities);
 
             match app.ui.bottom_tab {
                 BottomTab::Markups => {
@@ -78,8 +75,8 @@ pub(crate) fn draw_bottom_panel(
                     }
                 }
                 BottomTab::Quantities => {
-                    // Only draw quantities content if still enabled in preferences
-                    if app.ui.show_quantities {
+                    // Only draw quantities content if enabled in preferences
+                    if show_quantities {
                         let project = app.history.current_mut();
                         let ui_state = &mut app.ui;
                         let (qty_action, _dirty) =
@@ -87,7 +84,7 @@ pub(crate) fn draw_bottom_panel(
                         action = qty_action;
                     }
                     // If quantities was disabled while on Quantities tab, switch to Markups
-                    if !app.ui.show_quantities && app.ui.bottom_tab == BottomTab::Quantities {
+                    if !show_quantities {
                         app.ui.bottom_tab = BottomTab::Markups;
                     }
                 }
@@ -109,10 +106,14 @@ fn app_jump(app: &mut RubricApp, page: usize) {
 }
 
 /// The tab strip: one row of tab buttons; active tab highlighted.
-fn draw_tab_strip(ui: &mut Ui, state: &mut UiState, tabs: [BottomTab; 2]) {
+fn draw_tab_strip(ui: &mut Ui, state: &mut UiState, show_quantities: bool) {
     ui.horizontal(|ui| {
         ui.add_space(4.0);
-        for tab in tabs {
+        for tab in BottomTab::ALL {
+            // Skip Quantities tab if not enabled in preferences
+            if tab == BottomTab::Quantities && !show_quantities {
+                continue;
+            }
             let selected = state.bottom_tab == tab;
             let text = if selected {
                 egui::RichText::new(tab.label()).strong()
