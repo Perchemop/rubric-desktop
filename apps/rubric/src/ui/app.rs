@@ -620,12 +620,12 @@ impl RubricApp {
                 zoom: prefs.zoom,
                 current_page: prefs.current_page,
                 default_styles: prefs.default_styles.clone(),
+                unit: prefs.default_measure_unit,
                 bottom_tab: if prefs.quantities_tab_selected && prefs.show_quantities {
                     crate::ui::app_bottom_panel::BottomTab::Quantities
                 } else {
                     crate::ui::app_bottom_panel::BottomTab::Markups
                 },
-                unit: prefs.default_measure_unit,
                 tool_chest_max_recents: prefs.tool_chest_max_recents.clamp(1, 32),
                 ..UiState::default()
             },

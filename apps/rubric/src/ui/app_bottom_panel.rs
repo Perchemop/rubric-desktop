@@ -53,8 +53,7 @@ pub(crate) fn draw_bottom_panel(
         .max_size(400.0)
         .resizable(true)
         .show(ui, |ui| {
-            let show_quantities = app.ui.show_quantities;
-            draw_tab_strip(ui, &mut app.ui, show_quantities);
+            draw_tab_strip(ui, &mut app.ui);
 
             match app.ui.bottom_tab {
                 BottomTab::Markups => {
@@ -96,14 +95,10 @@ fn app_jump(app: &mut RubricApp, page: usize) {
 }
 
 /// The tab strip: one row of tab buttons; active tab highlighted.
-fn draw_tab_strip(ui: &mut Ui, state: &mut UiState, show_quantities: bool) {
+fn draw_tab_strip(ui: &mut Ui, state: &mut UiState) {
     ui.horizontal(|ui| {
         ui.add_space(4.0);
         for tab in BottomTab::ALL {
-            // Skip Quantities tab if not enabled in preferences
-            if tab == BottomTab::Quantities && !show_quantities {
-                continue;
-            }
             let selected = state.bottom_tab == tab;
             let text = if selected {
                 egui::RichText::new(tab.label()).strong()
@@ -112,6 +107,7 @@ fn draw_tab_strip(ui: &mut Ui, state: &mut UiState, show_quantities: bool) {
             };
             if ui.selectable_label(selected, text).clicked() {
                 state.bottom_tab = tab;
+                state.quantities_tab_selected = tab == BottomTab::Quantities;
             }
             ui.separator();
         }
