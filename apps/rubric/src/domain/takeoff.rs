@@ -448,7 +448,7 @@ mod tests {
             "id": "a0eebc99-9c0b-4ef8-bb5d-3c3bd1e16bac",
             "name": "Plan",
             "source_pdf": null,
-            "documents": [{"id": "1719ae60-1e1b-4f9b-8e8d-b8e8b8e8b8e8", "title": "Plan", "pages": []}],
+            "documents": [{"id": "1719ae60-1e1b-4f9b-8e8d-b8e8b8e8b8e8", "title": "Plan", "pages": [], "markups": [], "layers": [], "created": "2026-01-01T00:00:00Z", "modified": "2026-01-01T00:00:00Z"}],
             "active_document": 0,
             "tool_sets": [],
             "settings": {"author": "Reviewer", "auto_save": false, "auto_save_interval_secs": 60, "ui_scale": 1.0, "show_grid": false, "show_measurements": true, "precision": 3},
@@ -791,21 +791,19 @@ mod tests {
         // Given: two Length measures (2.0m @ 1:50, 3.4m @ 1:100), both displaying metres
         let mut project = crate::domain::project::Project::new("Test Project");
 
-        // Scale 1: 1:50 = 50 points per meter in real world
-        // 1 meter = 50 * 72 = 3600 points
-        let scale_1 = Scale::from_ratio(MeasureUnit::Meter, 50.0, 72.0);
-        // Scale 2: 1:100 = 100 points per meter in real world
-        // 1 meter = 100 * 72 = 7200 points
-        let scale_2 = Scale::from_ratio(MeasureUnit::Meter, 100.0, 72.0);
+        // Scale 1: 1:50 - 1 pt = 0.02m real (so 50 pts = 1m, 1 pt = 1/50 m)
+        let scale_1 = Scale::new(MeasureUnit::Meter, 0.02);
+        // Scale 2: 1:100 - 1 pt = 0.01m real
+        let scale_2 = Scale::new(MeasureUnit::Meter, 0.01);
 
         // First page with 1:50 scale - 2.0m
-        // 2.0m at 1:50 means 100 points on paper represents 2 meters on site
-        // So 3600 points = 1 meter
-        // For 2.0m, we need 7200 points
+        // At 1:50 scale with units_per_point = 0.02:
+        // 100 points * 0.02 m/pt = 2.0m
         let page1 = crate::domain::document::Page::letter(0).with_scale(scale_1);
 
         // Second page with 1:100 scale - 3.4m
-        // For 3.4m, we need 3.4 * 7200 = 24480 points
+        // At 1:100 scale with units_per_point = 0.01:
+        // 340 points * 0.01 m/pt = 3.4m
         let mut page2 = crate::domain::document::Page::letter(1);
         page2.scale = scale_2;
 
@@ -822,7 +820,7 @@ mod tests {
             MarkupKind::MeasureLength,
             MarkupGeometry::Segment {
                 a: Pt::new(0.0, 0.0),
-                b: Pt::new(7200.0, 0.0), // 2m at 1:50 scale
+                b: Pt::new(100.0, 0.0), // 100 points at 1:50 scale = 2.0m
             },
             "Length 1",
         );
@@ -835,7 +833,7 @@ mod tests {
             MarkupKind::MeasureLength,
             MarkupGeometry::Segment {
                 a: Pt::new(0.0, 0.0),
-                b: Pt::new(24480.0, 0.0), // 3.4m at 1:100 scale
+                b: Pt::new(340.0, 0.0), // 340 points at 1:100 scale = 3.4m
             },
             "Length 2",
         );
@@ -853,7 +851,7 @@ mod tests {
         // When: computing quantity rows
         let rows = quantity_rows(&project);
 
-        // Then: shows 5.400m with 2 items, mixed_units = true
+        // Then: shows 5.4m with 2 items, mixed_units = true
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].item_count, 2);
         assert!(
@@ -871,11 +869,9 @@ mod tests {
 
     #[test]
     fn ac9_wallsurface_derivation_perimeter_times_height() {
-        // Given: a WallSurface condition with height 2.7m and an assigned Perimeter of 12.0m
+        // Given: a WallSurface condition with height 2.7m and an assigned Perimeter
         let mut project = crate::domain::project::Project::new("Test Project");
-        let scale = Scale::from_ratio(MeasureUnit::Meter, 100.0, 72.0);
-
-        // Set the page scale
+        let scale = Scale::new(MeasureUnit::Meter, 0.01); // 1:100 scale - 1 pt = 0.01m real
         project.documents[0].pages[0].scale = scale;
 
         // Create WallSurface condition with height 2.7m
@@ -883,11 +879,12 @@ mod tests {
             .create_condition("Walls", ConditionKind::WallSurface, Some(2.7))
             .unwrap();
 
-        // Create a Perimeter measure of 12.0m
-        // A 3m x 3m square has perimeter 12m
-        // 1:100 scale: 100 points per meter real -> 7200 points per meter display
-        // 3m = 21600 points
-        let square_size = 3.0 * 100.0 * 72.0 / 100.0; // 3m at 1:100 scale in points
+        // Create a Perimeter measure of 12.0m (3m x 3m square perimeter)
+        // At 1:100 scale with units_per_point = 0.01:
+        // 12.0m / 0.01 m/pt = 1200 points perimeter
+        // Square side = 1200 / 4 = 300 points
+        let square_size = 300.0; // 300 points per side at 1:100 scale
+        let total_perimeter = 1200.0; // 4 * 300 = 1200 points = 12.0m
 
         let mut m = Markup::new(
             0,
@@ -1010,7 +1007,7 @@ mod tests {
         // Create 4 Count markers
         let mut markup_ids = Vec::new();
         for i in 1..=4 {
-            let m = Markup::new(
+            let mut m = Markup::new(
                 0,
                 MarkupKind::MeasureCount,
                 MarkupGeometry::Count {
@@ -1019,6 +1016,7 @@ mod tests {
                 },
                 format!("Count {}", i),
             );
+            m.recompute_measurement(Scale::PAPER); // compute measurement from Count geometry
             let id = m.id;
             project.documents[0].add_markup(m);
             markup_ids.push(id);
