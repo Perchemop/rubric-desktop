@@ -97,11 +97,13 @@ with URLs in the decisions doc.
   placeholder corrected to `Point`, and `AppPrefs` test initializer
   completed. `cargo check --lib --tests`: 0 errors, 0 warnings.
 
-CI run: 44829271261 (failed - snapshot re-baseline required).
-- `shell_empty_state_snapshot_matches_baseline`: UI changed (panel consolidation) - needs new baseline
-- `shell_settles_with_widgets_queryable_by_label`: fixed to switch to Toolbox tab before querying tool buttons
-
-Snapshot artifact: `shell_empty_state.new.png` uploaded by CI run - commit to `apps/rubric/tests/snapshots/` to re-baseline.
+CI run 44829271261 initially failed on the snapshot check (panel consolidation
+changed the shell); **resolved in PR #234** (merged `1e73b3e`) by flipping the
+fresh-install bottom-tab default to Markups instead of re-baselining, plus the
+test updated to switch to the Toolbox tab before querying tool buttons. No new
+baseline PNG was committed. Evidence: PR #234 head `6ee924b` — CI 44972261353,
+Security 44972261343, PR author 44972261330, all SUCCESS; every later required
+run (PRs #235-#237, main through `233c2be`) keeps `snapshot` green.
 
 ## [Unreleased] — takeoff quantities domain layer v0.5 (2026-11-20)
 
@@ -146,7 +148,7 @@ Snapshot artifact: `shell_empty_state.new.png` uploaded by CI run - commit to `a
 - Unit tests for condition CRUD and quantity computation
 - No raw Cargo commands (CI-first approach)
 
-### Completed (all on branch `opencode/ci`, open as PR #230 — not yet merged):
+### Completed (landed via PR #230, merged to `main` as `8273d2a`; merge-commit CI 44898960667, Security 44898960738, both SUCCESS):
 - **T5 — CSV export** (RFC 4180 compliant)
   - `write_quantities_csv()` in `data/export.rs` with atomic write (temp+rename)
   - `Project::export_quantities_csv()` method using full precision

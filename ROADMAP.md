@@ -81,7 +81,7 @@ Small, low-risk completions; each its own Task + release.
       — PR #88 merged (commit `8bc2601`)
 - [x] **v0.3-05**: `lopdf` write support (Export PDF…) — PRs #79-84 merged
 - [x] Process: `docs/capability-inventory.md` (guide II.27.3) — capability rows with source URLs, acceptance criteria and evidence (gap G3 in `docs/guide-compliance.md`) — 2026-10-30
-- [ ] Process: extract a `Host`/plain-`Ui` seam from `RubricApp` so `egui_kittest` can render real widgets to PNG as CI visual evidence (guide II.27.12, gap G4)
+- [x] Process: extract a `Host`/plain-`Ui` seam from `RubricApp` so `egui_kittest` can render real widgets to PNG as CI visual evidence (guide II.27.12, gap G4) — closed 2026-11-06 (PRs #134/#136/#138)
 - [x] Empty / error states for every panel; no dead controls — shipped as audit item P0-5 (no document / no markups / empty filtered list / empty Tool Chest states; see `docs/capability-inventory.md`)
 - [x] ~~`gitleaks` (or GitHub secret scanning) in CI~~ — done early 2026-10-24:
       push-protected secret scanning at repo level plus an in-CI pattern scan
@@ -184,11 +184,21 @@ modified). Spec F-801–F-805; capability inventory row 32.
 Capability mapping for quantity-takeoff features (quantity list, derivations,
 takeoff-shaped export) inspired at capability level by public takeoff tools.
 **Owner approval recorded 2026-11-18** in `DECISIONS.md`; implementation shipped
-as PRs #45, #47 with CI verification (CI run IDs recorded below).
+as **PR #230** (merged `8273d2a`; CI 44898960667, Security 44898960738 — both
+SUCCESS), with the UI-redesign integration and the bottom-tab snapshot fix in
+**PR #234** (merged `1e73b3e`).
 
-- [x] Quantity list panel aggregating all measure markups by kind with per-item names (PR #45, UI pending for v0.6)
-- [x] Wall-surface derivation (perimeter measure × entered height, recomputed on geometry/scale/unit change) (PR #45)
-- [x] Takeoff-shaped CSV export (aggregated items with name, kind, quantity, unit, page; totals per kind) (PR #47)
+- [x] Quantity list panel aggregating all measure markups by kind with per-item names (PR #230 — T6 bottom-panel Quantities tab)
+- [x] Wall-surface derivation (perimeter measure × entered height, recomputed on geometry/scale/unit change) (PR #230)
+- [x] Takeoff-shaped CSV export (aggregated items with name, kind, quantity, unit, page; totals per kind) (PR #230 — T5)
+- [x] Markup→condition assignment UI (inspector combo + context-menu batch assign/unassign) (PR #230 — T7)
+- [x] Condition create/edit dialog with validation, Esc/⏎ handling, delete confirmation (PR #230 — T8)
+- [x] Quantities-tab visibility persisted in `AppPrefs` (`show_quantities`, `quantities_tab_selected`) (PR #230 — T9)
+- [ ] **Publish the v0.5.0 release** — `CHANGELOG.md` carries `[0.5.0] - 2026-11-20`
+      and the takeoff + UI-redesign work is on `main`, but no `v0.5.0` tag or GitHub
+      Release exists yet (latest published: v0.4.10, 2026-11-16) and
+      `apps/rubric/Cargo.toml` still reads `0.4.6` — the in-app version must be
+      bumped before the tag so the release notes and update-check agree.
 - [ ] Symbol auto-count from a chosen example (optional/stretch; proposals only, never silent commits) — **Out of scope for v0.5**, may revisit in v0.6+
 - [ ] Optional MCP-client bridge to a user-installed takeoff server (**owner decision required** — never bundled, off by default; see `docs/research/takeoff-quantities.md` §3) — **Blocked pending owner decision**
 
@@ -229,7 +239,7 @@ evidence.
 - [ ] Hands-on macOS + Windows installer smoke (install → import → mark → export → print) — v1.0 gate, needs machines
 - [x] Issue #29 dependency refresh (egui/eframe 0.37, ureq 3.x, rfd 0.17) — PR #160 (code + lock; 3-OS `Package` validation and run IDs recorded in `PROGRESS.md`)
 - [x] Split god files: `ui/app.rs` (~130 KB), `ui/canvas.rs` (~106 KB), `domain/markup.rs` (~77 KB) — PR #160 (app.rs → app_{canvas,inspector,markups_list,pages,status,tool_chest}.rs; markup.rs → markup_{comment,geometry,measurement,stamp}.rs; canvas.rs helpers → canvas_geom.rs; no behaviour change intended)
-- [x] Async page thumbnails (thumbnails currently render on the UI thread) — PR #160, async-thumbnails Slices 1–3 (worker thread + pages sidebar; Slice 4 disk eviction and Slice 5 canvas background queued — brief: `docs/tasks/async-thumbnails-slice5-canvas-background.md`)
+- [x] Async page thumbnails — PR #160 (Slices 1–3: worker thread + pages sidebar), PR #169 (Slice 4: disk cache eviction), PR #167/#175 (Slice 5: canvas page background on the shared worker). All five slices shipped; no UI-thread raster or decode remains on the live canvas path
 - [ ] Glyph-range (not whole-line) text anchoring for highlight/strikeout; rotated-page text-anchor fidelity (documented limitation)
 - [ ] Signed releases + checksum-verified `SHA256SUMS.txt` + in-app signature verification (guide §12.1); portable self-replace install pending (later slice).
 - [x] Optional: minimap — shipped in the P2 batch (PR #157, merge commit `76309b0`, 2026-11-08; overlay originally P2-16/PR #119)
@@ -240,18 +250,18 @@ P0 items from the UI/UX audit were fixed and merged in PR #148 (replace-dialog
 dead end, drag-drop + first-run CTA, theme-aware toolbar, AccessKit naming,
 Ctrl+Shift+S, honest menus). The remaining queue, in priority order:
 
-- [ ] P1-1 Severity-coloured status + toasts; dedicated messages (no "Snapshot: …", no raw UUIDs)
-- [ ] P1-2 Move heavy work off the UI thread (print/export render, report submit, Highlight text lookups, page backgrounds, thumbnails)
-- [ ] P1-3 Inspector tabs become the sole navigator (no decorative tab strip)
-- [ ] P1-4 Bates/settings edits commit undo snapshots on drag-stopped/lost-focus only
-- [ ] P1-5 Scroll pans; Ctrl/⌘+scroll zooms (or a setting)
-- [ ] P1-6 Tool Chest rows fit the default panel width; disabled-with-hint "Apply to Selection"
-- [ ] P1-7 Stroke colour edit preserves fill hue/alpha
-- [ ] P1-8 Cursor affordances (crosshair/move/resize/I-beam) + theme-aware marquee
-- [ ] P1-9 Canvas + thumbnails accessibility (AccessKit nodes, keyboard nudge)
-- [ ] P1-10 Unify the two tool pickers (one grouping, one source of truth)
-- [ ] P1-11 Workspace prefs survive project installs; restore show_pages/focus_mode; expose ui_scale; surface prefs parse failures
-- [ ] P1-12 Rewrite the Keyboard Shortcuts dialog + USER_GUIDE.md against the real input map
+- [ ] P1-1 Severity-coloured status + toasts; dedicated messages (no "Snapshot: …", no raw UUIDs) — **partial**: severity colours + human messages landed (no "Snapshot: …" prefix, no raw UUIDs in user text); the toast layer is still dead code (`set_toast` has no call sites) and ~120 direct `ui.status` writes bypass the severity field, so a stale error colour can survive a later success message
+- [ ] P1-2 Move heavy work off the UI thread (print/export render, report submit, Highlight text lookups, page backgrounds, thumbnails) — **partial**: page backgrounds + thumbnails are on the shared render worker (PRs #160/#169/#167/#175); still open: export/print offscreen render, blocking bug-report HTTP submit, and per-click PDF text re-parsing for Highlight anchors
+- [x] P1-3 Inspector tabs become the sole navigator (no decorative tab strip) — closed by the UI redesign T2 (2026-11-21): the five tabs are gone; sections are derived from the selection
+- [x] P1-4 Bates/settings edits commit undo snapshots on drag-stopped/lost-focus only
+- [x] P1-5 Scroll pans; Ctrl/⌘+scroll zooms (or a setting)
+- [ ] P1-6 Tool Chest rows fit the default panel width; disabled-with-hint "Apply to Selection" — **open**: the row is ~280 px wide against a 210 px default panel, and "Apply to Selection" is hidden rather than disabled-with-hint when nothing is selected
+- [x] P1-7 Stroke colour edit preserves fill hue/alpha
+- [x] P1-8 Cursor affordances (crosshair/move/resize/I-beam) + theme-aware marquee — code landed; the muted "Rendering page…" label still has no recorded contrast check in `docs/a11y.md`
+- [ ] P1-9 Canvas + thumbnails accessibility (AccessKit nodes, keyboard nudge) — **open**: the canvas allocates a bare sense with no AccessKit node and there is no arrow-key nudge
+- [ ] P1-10 Unify the two tool pickers (one grouping, one source of truth) — **open**: the top-bar dropdown and the Toolbox tab keep two hand-maintained groupings and have diverged (the Toolbox omits Calibrate)
+- [ ] P1-11 Workspace prefs survive project installs; restore show_pages/focus_mode; expose ui_scale; surface prefs parse failures — **open**: `show_pages`/`focus_mode`/`show_minimap` are saved but never restored, opening a project still resets `UiState`, `ui_scale` has no UI control, and a prefs parse failure silently resets
+- [ ] P1-12 Rewrite the Keyboard Shortcuts dialog + USER_GUIDE.md against the real input map — **partial**: the 25 tool keys are generated from `TOOL_METADATA` and the old false claims are gone; the dialog still advertises Ctrl+N and Esc-fullscreen (no such handlers) and omits Ctrl+I/P/+/−/0/1–3/Tab, and `USER_GUIDE.md` repeats two false claims
 - [ ] P2 batch (see audit doc §P2): resizable Inspector/Tools, icon vocabulary, dead glyph table, type-scale tokens in overlays, Delete confirmation, guide table rendering (page-nav order shipped PR #167; comment dates and minimap navigation shipped in the P2 batch PRs #148/#157).
 
 ---
