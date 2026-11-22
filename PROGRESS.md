@@ -1,5 +1,20 @@
 # PROGRESS.md
 
+## 2026-11-22 — PR-authorship required check (guide II.26.7)
+
+**Status**: infra slice; no application code changed. Verification: on
+`854c00cc` — CI 44971819681, Security 44971819848, and the new
+`pr-author-is-dev` check itself 44971819844, all SUCCESS (the check passed on
+its own PR; final gating run cited in the merge record).
+
+- New workflow `.github/workflows/pr-author.yml` (job `pr-author-is-dev`):
+  fails any PR not authored by the Dev account (`Perchemop`, now recorded in
+  `DECISIONS.md` per II.26.7 item 6) or `dependabot[bot]` (allowlist rationale
+  in `DECISIONS.md` 2026-11-22).
+- `pr-author-is-dev` added to `.ci-required.txt`, closing the guide §13
+  residual risk (personal-account PRs previously caught only client-side by
+  `ci.sh`, never by the merge gate). This PR is the check's first self-run.
+
 ## 2026-11-22 — AGENTS.md synced with updated guide.md (DSH update)
 
 **Status**: process-docs sync; no application code changed. Verification:

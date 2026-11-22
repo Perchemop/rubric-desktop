@@ -1,0 +1,30 @@
+name: PR author
+
+# Guide II.26.7: every pull request is opened by the Dev account. This check
+# enforces that on GitHub's side; the required check name is
+# `pr-author-is-dev` (listed in .ci-required.txt). Dependabot's automated
+# dependency PRs are allowlisted - see DECISIONS.md 2026-11-22.
+
+on:
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+
+permissions: {} # no token use: the author comes from the event payload
+
+jobs:
+  pr-author-is-dev:
+    name: pr-author-is-dev
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify the PR author is allowlisted
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          DEV_LOGIN: "Perchemop" # Dev account login, recorded in DECISIONS.md (guide II.26.7)
+        run: |
+          echo "PR author: ${AUTHOR}"
+          if [ "${AUTHOR}" = "${DEV_LOGIN}" ] || [ "${AUTHOR}" = "dependabot[bot]" ]; then
+            echo "Author '${AUTHOR}' is allowlisted (Dev account or Dependabot)."
+            exit 0
+          fi
+          echo "::error::PR author '${AUTHOR}' is not the Dev account ('${DEV_LOGIN}', per DECISIONS.md / guide II.26.7) and not Dependabot. Re-open the PR from the Dev account."
+          exit 1

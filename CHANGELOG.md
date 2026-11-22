@@ -4,6 +4,12 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ## [Unreleased]
 
+### Infrastructure
+
+- New required CI check `pr-author-is-dev` (`.github/workflows/pr-author.yml`):
+  pull requests must be opened by the Dev account or Dependabot (guide II.26.7;
+  rationale and allowlist in `DECISIONS.md` 2026-11-22).
+
 ### Documentation
 
 - Synced `AGENTS.md` with the guide.md DSH update (guide §5.5 integrity
