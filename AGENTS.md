@@ -3,7 +3,7 @@
 This document provides guidance for AI coding agents working on **Rubric**.
 
 ## Purpose
-Build a free, cross-platform Rust PDF markup/measurement desktop app (egui/eframe). Adhere to the build guide `~/guide.md` (kept outside the repo, never committed/pushed) — the **single source of truth**: the former `~/addendum.md` is archived, its rules merged into the guide's Appendix A (Sections A–O). Other products may be named only as capability-level inspiration in `docs/inspiration.md`. Maintain quality gates.
+Build a free, cross-platform Rust PDF markup/measurement desktop app (egui/eframe). Adhere to the build guide `~/guide.md` (kept outside the repo, never committed/pushed) — the **single source of truth**, targeting the **DeepSeek Harness (DSH)** runtime (guide Authority preamble, §5.6). The former `~/addendum.md` companion is retired and no longer present; where the guide references addendum sections, the guide's own inline fallbacks are binding (§15 session prompt, §17 Rust rules). Agents never edit the guide — changes go through the human-owned maintenance repository (guide §18). Other products may be named only as capability-level inspiration in `docs/inspiration.md`. Maintain quality gates.
 
 ## Operating model (CTO.new-style free process, guide §5)
 
@@ -20,12 +20,13 @@ models and GitHub Actions:
   small, bounded vertical slice, updates tests and tracking files, then commits
   and pushes. GitHub Actions is the free **Task Runner** that verifies it.
 - **Pull Request (review)** — the change lands as a PR; the CI run plus the
-  `reviewer` subagent and the human review it (trust but verify, guide §9).
+  `reviewer` subagent and the human review it (trust but verify; Reviewer role
+  guide §5.3, QC gates guide §9).
 - **Merge** — the **agent merges** once CI is green and review findings are
   addressed (owner directive 2026-10-26). The owner may still ask to review a
   PR first; otherwise do not wait for a manual merge.
 - **PR template** — every PR uses `.github/PULL_REQUEST_TEMPLATE.md` (acceptance criteria, tests, CI, no proprietary material); reviewers reject PRs that fail its checklist (guide §8.3).
-- **Roadmap** — `ROADMAP.md` tracks staged milestones and readiness %; percentages move **only from verified evidence** (guide §6.2).
+- **Roadmap** — `ROADMAP.md` tracks staged milestones and readiness %; percentages move **only from verified evidence** (guide §6.3 readiness definitions).
 - **Research gate** — public research lives in `docs/research/*.md` as original summaries + URLs, and needs explicit human approval before dependent implementation Tasks (guide §2.3, §8.4).
 
 ## Codebase rules
@@ -77,14 +78,20 @@ worktrees instead of a shared tree. "Remember this" — keep parallelising by
 default for broad work.
 
 ## Subagent pipeline
-Specialised subagents live in `.opencode/agents/`: `orchestrator` (Chat/planning)
-and `coder` (Task execution) are the process roles; the build is split by stage
-into `domain-dev` (types + unit tests) → `test-writer` (coverage) → `ui-dev`
-(egui slices) → `reviewer` (read-only review) → `docs-writer` (process docs) →
-`fixer` (fmt/clippy/check failures), with `ci-runner` driving the GitHub Actions
-Task Runner. All run on free OpenCode models in `subagent` mode. Conventions:
-subagents never commit or push — the parent agent does, and it opens the Pull
-Request.
+Specialised subagents live in `.opencode/agents/` (legacy directory name; the
+guide's canonical layout is `.dsh/agents/`, guide §5.3): `orchestrator`
+(Chat/planning) and `coder` (Task execution) are the process roles; the build is
+split by stage into `domain-dev` (types + unit tests) → `test-writer`
+(coverage) → `ui-dev` (egui slices) → `reviewer` (read-only review) →
+`docs-writer` (process docs) → `fixer` (fmt/clippy/check failures), with
+`ci-runner` driving the GitHub Actions Task Runner. These names are
+**specialisations of the guide §5.3 canonical roles** (Orchestrator, Coder,
+Explorer/Researcher, Reviewer, Designer) as permitted by guide §5.7.3:
+`domain-dev`/`test-writer`/`ui-dev`/`fixer`/`docs-writer` are Coder
+specialisations; `ci-runner` is the Coder verification step (guide §5.6.4).
+All run on DSH free models (NVIDIA free fallback, guide §5.2) in `subagent`
+mode. Conventions: subagents never commit or push — the parent agent does, and
+it opens the Pull Request.
 
 ## Suite infrastructure (guide §7)
 `crates/crash-report` and `crates/update-check` are shared crates consumed by
@@ -163,7 +170,7 @@ overall completion of the application**, not to a convenient stopping point.
   in-scope item is unfinished, the work is unfinished.
 - Do not pause between slices to ask whether to continue. Continue.
 - Never present a summary as though the work were finished while items remain.
-- The application is complete only when the quality gates pass (guide Part I §9,
+- The application is complete only when the quality gates pass (guide §9,
   the §2.5 per-release legal checklist, and CI green on the default branch).
 
 ## Questions and user input — always via the question tool
