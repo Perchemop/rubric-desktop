@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented here. Format: semantic-ish for this repo (Added/Changed/Fixed/Docs).
 
+## [Unreleased]
+
+### Documentation
+
+- Synced `AGENTS.md` with the guide.md DSH update (guide §5.5 integrity
+  check): truthful addendum status, DSH runtime naming, canonical-role mapping
+  for the subagent pipeline, corrected guide section references.
+
 ## [0.5.0] - 2026-11-20
 
 ### Added

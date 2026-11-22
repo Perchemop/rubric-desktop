@@ -1,5 +1,28 @@
 # PROGRESS.md
 
+## 2026-11-22 — AGENTS.md synced with updated guide.md (DSH update)
+
+**Status**: process-docs sync; no application code changed. Verification:
+CI run 44969861044 (CI) and 44969861048 (Security) both SUCCESS on `ee332987`
+(PR #235; final gating run cited in the merge record).
+
+- guide.md (2026-11-22 10:10 update) re-targets the **DeepSeek Harness (DSH)**
+  runtime; per guide §5.5 CI integrity check, the repo's `AGENTS.md` must be
+  updated with it and committed via `ci.sh`. This PR is that sync.
+- `AGENTS.md` Purpose: addendum now truthfully described as retired and absent
+  (`~/addendum.md` verified missing); guide §15/§17 inline fallbacks named as
+  binding. The old "merged into the guide's Appendix A (Sections A–O)" claim
+  was false — no Appendix A exists in the guide.
+- `AGENTS.md`: OpenCode → DSH model wording (NVIDIA fallback, guide §5.2);
+  `.opencode/agents/` marked as the legacy name of the guide's `.dsh/agents/`
+  canonical layout; pipeline roles mapped as §5.3/§5.7.3 specialisations of
+  the canonical roles; stale section refs fixed (readiness % §6.2 → §6.3,
+  "guide Part I §9" → §9, PR-review ref → §5.3 + §9).
+- Open guide-vs-repo conflicts recorded for owner decision (not fixed here):
+  §9.3 "require linear history" vs this repo's merge-commit practice;
+  II.30.8 "no pixel baselines" vs the required `snapshot` PNG gate;
+  II.26.7 PR-author check missing from `.ci-required.txt`.
+
 ## [Unreleased] — UI redesign T1–T5 (2026-11-21)
 
 Implemented from `docs/specs/ui-redesign.spec.md` (grill-me decisions in
