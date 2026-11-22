@@ -1,5 +1,28 @@
 # PROGRESS.md
 
+## 2026-11-22 — RUSTSEC-2026-0592: transitive `url` advisory fixed in the lockfile
+
+**Status**: dependency-security fix; no source code changed. The advisory was
+caught by the required `Cargo deny (licences, advisories)` check on the
+docs-reconciliation PR (run 45014251286): **RUSTSEC-2026-0592** — "Stack
+overflow in `Url::origin()` on nested `blob:` URLs`, affecting `url ≤ 2.5.8`,
+fixed in `url 2.5.9`.
+
+- `url` is **transitive**: `egui-winit 0.37.0 → webbrowser 1.2.4 → url ^2`,
+  so no direct dependency needed changing — only the lockfile.
+- `Cargo.lock` hand-bumped to `url 2.5.9` (checksum
+  `f00cd2407bb42c0ef17be88d4cf020f5cceffd121665bac9b8b9493a369b3b1a`) and,
+  because `url 2.5.9` raises its bound to `form_urlencoded ^1.2.3`, to
+  `form_urlencoded 1.2.3` (checksum
+  `afa489199eaffb1211795df1c6236ce1ad0d41a6fa45250add73e3b02420f06e`).
+  `percent-encoding 2.3.2` already satisfies `form_urlencoded 1.2.3`.
+- Checksums were taken from the crates.io sparse index
+  (`https://index.crates.io/3/u/url`, `https://index.crates.io/fo/rm/form_urlencoded`);
+  the local machine runs **no cargo command** (AGENTS.md CI-first rule), so CI
+  is the validator: `cargo build` verifies the checksums and `cargo deny`
+  re-checks the advisory database.
+
+
 ## 2026-11-22 — Dependabot batch merged (6 PRs, queue drained)
 
 **Status**: dependency maintenance only; no application code changed.
@@ -97,11 +120,13 @@ with URLs in the decisions doc.
   placeholder corrected to `Point`, and `AppPrefs` test initializer
   completed. `cargo check --lib --tests`: 0 errors, 0 warnings.
 
-CI run: 44829271261 (failed - snapshot re-baseline required).
-- `shell_empty_state_snapshot_matches_baseline`: UI changed (panel consolidation) - needs new baseline
-- `shell_settles_with_widgets_queryable_by_label`: fixed to switch to Toolbox tab before querying tool buttons
-
-Snapshot artifact: `shell_empty_state.new.png` uploaded by CI run - commit to `apps/rubric/tests/snapshots/` to re-baseline.
+CI run 44829271261 initially failed on the snapshot check (panel consolidation
+changed the shell); **resolved in PR #234** (merged `1e73b3e`) by flipping the
+fresh-install bottom-tab default to Markups instead of re-baselining, plus the
+test updated to switch to the Toolbox tab before querying tool buttons. No new
+baseline PNG was committed. Evidence: PR #234 head `6ee924b` — CI 44972261353,
+Security 44972261343, PR author 44972261330, all SUCCESS; every later required
+run (PRs #235-#237, main through `233c2be`) keeps `snapshot` green.
 
 ## [Unreleased] — takeoff quantities domain layer v0.5 (2026-11-20)
 
@@ -146,7 +171,7 @@ Snapshot artifact: `shell_empty_state.new.png` uploaded by CI run - commit to `a
 - Unit tests for condition CRUD and quantity computation
 - No raw Cargo commands (CI-first approach)
 
-### Completed (all on branch `opencode/ci`, open as PR #230 — not yet merged):
+### Completed (landed via PR #230, merged to `main` as `8273d2a`; merge-commit CI 44898960667, Security 44898960738, both SUCCESS):
 - **T5 — CSV export** (RFC 4180 compliant)
   - `write_quantities_csv()` in `data/export.rs` with atomic write (temp+rename)
   - `Project::export_quantities_csv()` method using full precision
