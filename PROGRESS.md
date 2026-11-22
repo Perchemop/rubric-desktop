@@ -1,5 +1,28 @@
 # PROGRESS.md
 
+## 2026-11-22 — RUSTSEC-2026-0592: transitive `url` advisory fixed in the lockfile
+
+**Status**: dependency-security fix; no source code changed. The advisory was
+caught by the required `Cargo deny (licences, advisories)` check on the
+docs-reconciliation PR (run 45014251286): **RUSTSEC-2026-0592** — "Stack
+overflow in `Url::origin()` on nested `blob:` URLs`, affecting `url ≤ 2.5.8`,
+fixed in `url 2.5.9`.
+
+- `url` is **transitive**: `egui-winit 0.37.0 → webbrowser 1.2.4 → url ^2`,
+  so no direct dependency needed changing — only the lockfile.
+- `Cargo.lock` hand-bumped to `url 2.5.9` (checksum
+  `f00cd2407bb42c0ef17be88d4cf020f5cceffd121665bac9b8b9493a369b3b1a`) and,
+  because `url 2.5.9` raises its bound to `form_urlencoded ^1.2.3`, to
+  `form_urlencoded 1.2.3` (checksum
+  `afa489199eaffb1211795df1c6236ce1ad0d41a6fa45250add73e3b02420f06e`).
+  `percent-encoding 2.3.2` already satisfies `form_urlencoded 1.2.3`.
+- Checksums were taken from the crates.io sparse index
+  (`https://index.crates.io/3/u/url`, `https://index.crates.io/fo/rm/form_urlencoded`);
+  the local machine runs **no cargo command** (AGENTS.md CI-first rule), so CI
+  is the validator: `cargo build` verifies the checksums and `cargo deny`
+  re-checks the advisory database.
+
+
 ## 2026-11-22 — Dependabot batch merged (6 PRs, queue drained)
 
 **Status**: dependency maintenance only; no application code changed.
