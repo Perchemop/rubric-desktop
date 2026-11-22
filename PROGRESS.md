@@ -2,8 +2,9 @@
 
 ## 2026-11-22 — AGENTS.md synced with updated guide.md (DSH update)
 
-**Status**: process-docs sync; no application code changed. Verification: CI
-run recorded below.
+**Status**: process-docs sync; no application code changed. Verification:
+CI run 44969861044 (CI) and 44969861048 (Security) both SUCCESS on `ee332987`
+(PR #235; final gating run cited in the merge record).
 
 - guide.md (2026-11-22 10:10 update) re-targets the **DeepSeek Harness (DSH)**
   runtime; per guide §5.5 CI integrity check, the repo's `AGENTS.md` must be
