@@ -107,6 +107,7 @@ fn draw_tab_strip(ui: &mut Ui, state: &mut UiState) {
             };
             if ui.selectable_label(selected, text).clicked() {
                 state.bottom_tab = tab;
+                state.quantities_tab_selected = tab == BottomTab::Quantities;
             }
             ui.separator();
         }

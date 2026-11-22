@@ -126,7 +126,9 @@ fn default_one() -> f32 {
 }
 
 fn default_quantities_tab_selected() -> bool {
-    true
+    // Fresh installs open on the Markups List (the documented default tab);
+    // the Quantities tab is restored only for users who selected it (T9).
+    false
 }
 
 impl Default for AppPrefs {
@@ -256,9 +258,9 @@ mod tests {
     }
 
     #[test]
-    fn quantities_tab_selected_defaults_to_true() {
+    fn quantities_tab_selected_defaults_to_false() {
         let prefs: AppPrefs = serde_json::from_str("{}").expect("deserialize");
-        assert!(prefs.quantities_tab_selected);
+        assert!(!prefs.quantities_tab_selected);
     }
 
     #[test]
