@@ -13,3 +13,6 @@ Dependency review
 Cargo deny (licences, advisories)
 SBOM (SPDX + CycloneDX)
 packaging-plan
+# PR authorship gate (guide II.26.7): fails for any author other than the Dev
+# account or Dependabot (rationale in DECISIONS.md 2026-11-22).
+pr-author-is-dev

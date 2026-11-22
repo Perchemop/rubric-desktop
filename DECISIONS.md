@@ -2,6 +2,25 @@
 
 Record significant architectural/implementation decisions.
 
+## 2026-11-22: PR-authorship required check (guide II.26.7 items 2 and 6)
+- **Decision**: A new required check `pr-author-is-dev`
+  (`.github/workflows/pr-author.yml`) fails any pull request whose author is
+  not the Dev account (**GitHub login `Perchemop`**, recorded here per guide
+  II.26.7 item 6) or `dependabot[bot]`. The check name is listed in
+  `.ci-required.txt`, so it gates merges.
+- **Rationale**: guide II.26.7 makes the Dev account the machine identity for
+  every GitHub action. Until now the identity was asserted only client-side by
+  `ci.sh` (the fast path); a manual personal-account PR would not have been
+  caught by CI — an acknowledged residual risk in guide §13. The GitHub-side
+  required check closes that gap.
+- **Allowlist deviation**: `dependabot[bot]` is allowed despite the strict
+  reading of II.26.7, because automated dependency PRs are maintenance the
+  repo relies on (guide II.25 requires Dependabot enabled for Cargo and
+  Actions) and blocking them would stop security/dependency updates. The
+  human's personal account stays blocked by design: personal-account actions
+  remain a process defect (guide II.26.7), remediated by re-opening from the
+  Dev account.
+
 ## 2026-11-04: Bates numbering — non-destructive overlay, queued as v0.6
 - **Decision**: Add Bates numbering (sequential page stamping) as a future slice
   (**v0.6**), implemented as a **non-destructive overlay**: a domain
