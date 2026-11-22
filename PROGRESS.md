@@ -2,8 +2,10 @@
 
 ## 2026-11-22 — PR-authorship required check (guide II.26.7)
 
-**Status**: infra slice; no application code changed. Verification: CI run IDs
-recorded below (final gating run cited in the merge record).
+**Status**: infra slice; no application code changed. Verification: on
+`854c00cc` — CI 44971819681, Security 44971819848, and the new
+`pr-author-is-dev` check itself 44971819844, all SUCCESS (the check passed on
+its own PR; final gating run cited in the merge record).
 
 - New workflow `.github/workflows/pr-author.yml` (job `pr-author-is-dev`):
   fails any PR not authored by the Dev account (`Perchemop`, now recorded in
