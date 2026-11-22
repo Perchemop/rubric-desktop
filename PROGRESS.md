@@ -1,5 +1,29 @@
 # PROGRESS.md
 
+## 2026-11-22 — Dependabot batch merged (6 PRs, queue drained)
+
+**Status**: dependency maintenance only; no application code changed.
+Verification: each PR merged on its own green head run — #231 `543de08`
+(CI 44868215175, Security 44868215297), #232 `c40e3f0` (CI 44868220851,
+Security 44868220800), #233 `82b642b` (CI 44868241895, Security 44868241769),
+#217 `f4e91d9` (CI 43807146400, Security 43807146347), #219 `6ad4465`
+(CI 44986391040, Security 44986391023, PR author 44986391009), #218
+`f372193` (CI 44986392999, Security 44986393048, PR author 44986393018) —
+and post-merge `main` push runs green through the final combined tree
+`d8cec53` (CI 44987062456, Security 44987062552).
+
+- Actions bumps: `actions/dependency-review-action` 5.0.0→5.0.1 (#231),
+  `EmbarkStudios/cargo-deny-action` 2.1.1→2.1.2 (#232),
+  `taiki-e/install-action` 2.90.1→2.90.5 (#233).
+- Cargo bumps: `uuid` 1.29.0→1.29.2 (#217), `ureq` 3.5.1→3.5.2 (#219),
+  `rfd` 0.17.2→0.18.0 (#218, minor).
+- The three lockfile PRs merged sequentially (#217 → #219 → #218) because all
+  touch `Cargo.lock`; #219/#218 were rebased onto the new `main` via
+  `@dependabot rebase` and their fresh runs show the new `pr-author-is-dev`
+  check passing for `dependabot[bot]` — the II.26.7 allowlist working
+  end-to-end on the merge gate itself.
+- After the batch: no open pull requests remain on the repository.
+
 ## 2026-11-22 — PR-authorship required check (guide II.26.7)
 
 **Status**: infra slice; no application code changed. Verification: on
