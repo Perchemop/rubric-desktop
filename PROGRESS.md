@@ -1,5 +1,35 @@
 # PROGRESS.md
 
+## 2026-11-23 — v0.5.0 release published
+
+**Status**: release tag pushed; GitHub-hosted Release + Package workflows built,
+signed, and published all artefacts on the merge commit `647fe10`.
+Verification: Package `#45165408747`, Release `#45165408908` — both SUCCESS;
+post-merge `main` CI `#45163658354`, Security `#45163658304` — both SUCCESS.
+Published assets (9 platform archives + signed checksums):
+`rubric-linux-arm64.zip`, `rubric-linux-x86_64.tar.gz`,
+`rubric-linux-x86_64.zip`, `rubric-macos-arm64.zip`,
+`rubric-macos.dmg`, `rubric-windows-x86_64.zip`,
+`rubric-x86_64.AppImage`, `rubric.msi`,
+`SHA256SUMS`, `SHA256SUMS.txt`, `SHA256SUMS.txt.minisig`.
+
+Landed in this release (all on `main`):
+- **Takeoff quantities** (T1–T9, PR #230): domain types, condition CRUD,
+  quantity computation, CSV export, assignment UI, condition dialog, prefs
+  wiring.
+- **UI redesign T1–T5** (PRs #225–#234): panel consolidation (T1),
+  context-sensitive Properties (T2), unified bottom tabs (T3), toolbar
+  slim-down + severity status (T4), A11y/keyboard Ctrl+1/2/3 toggles (T5).
+- **P1-2 Highlight lookup cache** (`data/pdf.rs`, `ui/canvas.rs`):
+  per-(file, page) text-line cache stops re-parsing PDF on every anchor click.
+- **P1-6 Tool Chest row fix** (`ui/tool_chest.rs`): wrapped rows fit the
+  210 px panel; "Apply to Selection" always rendered, disabled with hint.
+- **Infra**: `pr-author-is-dev` required check (PR #235/#236),
+  RUSTSEC-2026-0592 fixed in `Cargo.lock` (PR #238).
+- Version bumped to 0.5.0 across the workspace (`apps/rubric`,
+  `crates/crash-report`, `crates/update-check`); CHANGELOG rolled;
+  snapshot baseline updated for the version string change.
+
 ## 2026-11-23 — UI-audit P1-2 (Highlight lookup cache) + P1-6 (Tool Chest rows)
 
 **Status**: two bounded slices from the verified P1 queue, disjoint files
