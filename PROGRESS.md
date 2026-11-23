@@ -3,9 +3,10 @@
 ## 2026-11-23 — UI-audit P1-2 (Highlight lookup cache) + P1-6 (Tool Chest rows)
 
 **Status**: two bounded slices from the verified P1 queue, disjoint files
-(data/pdf.rs + ui/canvas.rs; ui/tool_chest.rs). Verification: CI run on the
-PR head (IDs recorded below once the run completes; required checks include
-the full suite plus the three new cache tests).
+(data/pdf.rs + ui/canvas.rs; ui/tool_chest.rs). Verification:
+PR head `387173c` — CI #45156007747, Security #45156008587, PR author #45156007762,
+all SUCCESS; post-merge `main` at `4ceced8` — CI #45156781869, Security
+#45156781896, both SUCCESS.
 
 - **P1-2 — Highlight text lookups cached** (`data/pdf.rs`, `ui/canvas.rs`):
   the last per-click PDF re-parse on the live path is gone. `page_text_lines`
