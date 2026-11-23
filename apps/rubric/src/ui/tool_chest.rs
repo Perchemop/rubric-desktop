@@ -384,6 +384,16 @@ pub(crate) fn draw_tool_chest(
     project_mutated
 }
 
+/// Affordance for a style row's "Apply to Selection" action (UI audit
+/// P1-6): the button is ALWAYS rendered — it only *enables* when something
+/// is selected, with an honest hint explaining the disabled state. Hiding
+/// the control made the row's action set depend on the selection, and the
+/// button vanished entirely at exactly the moment the user would look for it.
+/// Returns `(enabled, disabled_hint)`; the hint is only shown while disabled.
+fn apply_to_selection_affordance(has_selection: bool) -> (bool, &'static str) {
+    (has_selection, "Select a markup first")
+}
+
 /// One saved-preset row: colour swatch, name (highlighted while armed) and
 /// the Apply / apply-to-selection / rename / delete controls.
 fn draw_preset_row(
@@ -409,7 +419,10 @@ fn draw_preset_row(
         .is_some_and(|p| p.id == preset.id);
     let has_selection = !ui_state.selected.is_empty();
 
-    ui.horizontal(|ui| {
+    // Wrapped, not fixed: the row's actions total ~280 px against the
+    // 210 px default panel width, so plain `horizontal` clipped the trailing
+    // buttons off-panel (UI audit P1-6). Wrapping keeps every action visible.
+    ui.horizontal_wrapped(|ui| {
         draw_swatch(ui, preset.style.stroke);
         let name_resp = ui
             .selectable_label(is_armed, preset.name.as_str())
@@ -460,17 +473,19 @@ fn draw_preset_row(
         }
 
         // Restyle the current selection with the full preset (style plus the
-        // author/subject/status fill rules of `apply_to`). Only offered when
-        // something is selected. This is the one row action that mutates the
-        // project, so it asks for an undo snapshot.
-        if has_selection
-            && ui
-                .add_sized(
-                    egui::vec2(88.0, 24.0),
-                    egui::Button::new("Apply to Selection"),
-                )
-                .on_hover_text("Apply this style to every selected markup")
-                .clicked()
+        // author/subject/status fill rules of `apply_to`). Always rendered:
+        // disabled with a hint when nothing is selected (UI audit P1-6).
+        // This is the one row action that mutates the project, so it asks
+        // for an undo snapshot.
+        let (apply_enabled, apply_hint) = apply_to_selection_affordance(has_selection);
+        if ui
+            .add_enabled(
+                apply_enabled,
+                egui::Button::new("Apply to Selection").min_size(egui::vec2(88.0, 24.0)),
+            )
+            .on_hover_text("Apply this style to every selected markup")
+            .on_disabled_hover_text(apply_hint)
+            .clicked()
         {
             project_mutated = apply_preset_to_selection(project, ui_state, preset);
         }
@@ -777,7 +792,8 @@ fn draw_recent_row(
         .is_some_and(|p| p.id == preset.id);
     let has_selection = !ui_state.selected.is_empty();
 
-    ui.horizontal(|ui| {
+    // Same wrapped layout as the library row (UI audit P1-6).
+    ui.horizontal_wrapped(|ui| {
         draw_swatch(ui, preset.style.stroke);
         let name_resp = ui
             .selectable_label(is_armed, preset.name.as_str())
@@ -816,13 +832,16 @@ fn draw_recent_row(
         {
             set_armed(ui_state, preset, is_armed);
         }
-        if has_selection
-            && ui
-                .add_sized(
-                    egui::vec2(88.0, 24.0),
-                    egui::Button::new("Apply to Selection"),
-                )
-                .clicked()
+        // Always rendered, disabled with a hint when nothing is selected
+        // (UI audit P1-6) — same affordance as the library row.
+        let (apply_enabled, apply_hint) = apply_to_selection_affordance(has_selection);
+        if ui
+            .add_enabled(
+                apply_enabled,
+                egui::Button::new("Apply to Selection").min_size(egui::vec2(88.0, 24.0)),
+            )
+            .on_disabled_hover_text(apply_hint)
+            .clicked()
         {
             project_mutated = apply_preset_to_selection(project, ui_state, preset);
         }
@@ -905,6 +924,24 @@ mod tests {
         assert_eq!(visible_recent_count(10, 8, true), 8);
         assert_eq!(visible_recent_count(3, 8, false), 3);
         assert_eq!(visible_recent_count(3, 2, true), 2);
+    }
+
+    // UI audit P1-6: "Apply to Selection" is always part of the row; only
+    // its enabled state flips, so the action never silently disappears.
+    #[test]
+    fn apply_to_selection_is_disabled_with_a_hint_when_nothing_is_selected() {
+        let (enabled, hint) = apply_to_selection_affordance(false);
+        assert!(!enabled, "no selection must disable the action");
+        assert!(
+            hint.contains("Select"),
+            "the hint must tell the user what to do, got {hint:?}"
+        );
+    }
+
+    #[test]
+    fn apply_to_selection_enables_when_something_is_selected() {
+        let (enabled, _hint) = apply_to_selection_affordance(true);
+        assert!(enabled, "a selection must enable the action");
     }
 }
 

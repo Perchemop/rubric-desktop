@@ -251,11 +251,11 @@ dead end, drag-drop + first-run CTA, theme-aware toolbar, AccessKit naming,
 Ctrl+Shift+S, honest menus). The remaining queue, in priority order:
 
 - [ ] P1-1 Severity-coloured status + toasts; dedicated messages (no "Snapshot: …", no raw UUIDs) — **partial**: severity colours + human messages landed (no "Snapshot: …" prefix, no raw UUIDs in user text); the toast layer is still dead code (`set_toast` has no call sites) and ~120 direct `ui.status` writes bypass the severity field, so a stale error colour can survive a later success message
-- [ ] P1-2 Move heavy work off the UI thread (print/export render, report submit, Highlight text lookups, page backgrounds, thumbnails) — **partial**: page backgrounds + thumbnails are on the shared render worker (PRs #160/#169/#167/#175); still open: export/print offscreen render, blocking bug-report HTTP submit, and per-click PDF text re-parsing for Highlight anchors
+- [ ] P1-2 Move heavy work off the UI thread (print/export render, report submit, Highlight text lookups, page backgrounds, thumbnails) — **partial**: page backgrounds + thumbnails are on the shared render worker (PRs #160/#169/#167/#175) and Highlight text lookups now hit a per-(file, page) line cache instead of re-parsing the PDF per click; still open: export/print offscreen render and the blocking bug-report HTTP submit
 - [x] P1-3 Inspector tabs become the sole navigator (no decorative tab strip) — closed by the UI redesign T2 (2026-11-21): the five tabs are gone; sections are derived from the selection
 - [x] P1-4 Bates/settings edits commit undo snapshots on drag-stopped/lost-focus only
 - [x] P1-5 Scroll pans; Ctrl/⌘+scroll zooms (or a setting)
-- [ ] P1-6 Tool Chest rows fit the default panel width; disabled-with-hint "Apply to Selection" — **open**: the row is ~280 px wide against a 210 px default panel, and "Apply to Selection" is hidden rather than disabled-with-hint when nothing is selected
+- [x] P1-6 Tool Chest rows fit the default panel width; disabled-with-hint "Apply to Selection" — rows now wrap within the 210 px panel and "Apply to Selection" is always rendered, disabled with a "Select a markup first" hint when the selection is empty
 - [x] P1-7 Stroke colour edit preserves fill hue/alpha
 - [x] P1-8 Cursor affordances (crosshair/move/resize/I-beam) + theme-aware marquee — code landed; the muted "Rendering page…" label still has no recorded contrast check in `docs/a11y.md`
 - [ ] P1-9 Canvas + thumbnails accessibility (AccessKit nodes, keyboard nudge) — **open**: the canvas allocates a bare sense with no AccessKit node and there is no arrow-key nudge

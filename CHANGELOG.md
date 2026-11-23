@@ -4,6 +4,19 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ## [Unreleased]
 
+### Fixed
+
+- **Highlight/underline/strikeout anchoring no longer re-parses the PDF on
+  every click** (`data/pdf.rs`, `ui/canvas.rs`): text-line extraction is now
+  cached per (file, page) with the file's mtime+size in the cache key, so a
+  re-saved PDF misses the cache while repeated anchor drags stop re-binding
+  PDFium each frame (UI audit P1-2).
+- **Tool Chest rows fit the panel and never lose buttons** (`ui/tool_chest.rs`):
+  style rows wrap within the 210 px default panel instead of clipping the
+  Rename/Delete buttons off-panel, and "Apply to Selection" is always rendered
+  — disabled with a "Select a markup first" hint when nothing is selected
+  instead of silently vanishing (UI audit P1-6).
+
 ### Infrastructure
 
 - New required CI check `pr-author-is-dev` (`.github/workflows/pr-author.yml`):

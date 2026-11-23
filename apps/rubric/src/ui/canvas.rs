@@ -5,7 +5,7 @@ use std::path::Path;
 use eframe::egui::{self, Align2, Color32, FontId, Painter, Pos2, Sense, Ui, Vec2};
 use uuid::Uuid;
 
-use crate::data::pdf::find_text_line_at_point;
+use crate::data::pdf::find_text_line_at_point_cached;
 use crate::domain::markup::{
     count_markers_on_page, count_total_label, next_count_number, text_line_height,
 };
@@ -79,9 +79,13 @@ pub(crate) fn text_anchor_from_line(line: &GlyphLine, start: Pt, end: Pt) -> Mar
 }
 
 /// The text line under `pp` when a source PDF is present, else `None`.
+///
+/// Uses the cached extraction (`find_text_line_at_point_cached`) so repeated
+/// anchoring during a drag does not re-bind PDFium and re-parse the document
+/// on every frame (UI audit P1-2).
 fn line_at(project: &Project, page_index: usize, pp: Pt) -> Option<GlyphLine> {
     let source = project.source_pdf.as_deref()?;
-    let line = find_text_line_at_point(Path::new(source), page_index, pp.x, pp.y, 10.0)?;
+    let line = find_text_line_at_point_cached(Path::new(source), page_index, pp.x, pp.y, 10.0)?;
     // The PDF layer currently exposes whole-line metrics only, so split the
     // line into per-character boxes of equal width to recover glyph-level
     // anchoring. Domain-dev: replace with real per-glyph boxes.

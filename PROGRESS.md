@@ -1,5 +1,36 @@
 # PROGRESS.md
 
+## 2026-11-23 — UI-audit P1-2 (Highlight lookup cache) + P1-6 (Tool Chest rows)
+
+**Status**: two bounded slices from the verified P1 queue, disjoint files
+(data/pdf.rs + ui/canvas.rs; ui/tool_chest.rs). Verification: CI run on the
+PR head (IDs recorded below once the run completes; required checks include
+the full suite plus the three new cache tests).
+
+- **P1-2 — Highlight text lookups cached** (`data/pdf.rs`, `ui/canvas.rs`):
+  the last per-click PDF re-parse on the live path is gone. `page_text_lines`
+  bound PDFium and re-parsed the document on every anchor click/drag-start
+  (`canvas.rs` `line_at` → `find_text_line_at_point`; call sites at the click
+  and drag-start anchors). New `page_text_lines_cached` /
+  `find_text_line_at_point_cached` wrap it in a bounded per-(file, page) cache:
+  key = (path, mtime_nanos, size) so a re-saved PDF misses instead of serving
+  stale lines; 64-page cap with oldest-entry eviction; extraction errors are
+  never cached; the lock is never held across PDFium work; poisoning is
+  recovered, not panicked. The uncached functions keep their exact signatures
+  and semantics (existing tests untouched); the canvas now uses the cached
+  variant. Tests: cache-hit on second lookup, invalidation on file
+  replacement (different-length rewrite defeats mtime granularity), and
+  error-then-recovery — all headless, skipped like their neighbours when the
+  PDFium runtime is absent.
+- **P1-6 — Tool Chest rows fit the panel** (`ui/tool_chest.rs`): both style
+  rows (library + recent) now use `horizontal_wrapped`, so the ~280 px of row
+  actions wrap within the 210 px default panel instead of clipping Rename/
+  Delete off-panel. "Apply to Selection" is ALWAYS rendered via
+  `add_enabled` + `min_size`: disabled with an honest "Select a markup first"
+  hint when the selection is empty, instead of silently vanishing. Pure
+  affordance helper `apply_to_selection_affordance(has_selection)` carries
+  the decision and is unit-tested in the module's existing test block.
+
 ## 2026-11-22 — RUSTSEC-2026-0592: transitive `url` advisory fixed in the lockfile
 
 **Status**: dependency-security fix; no source code changed. The advisory was
