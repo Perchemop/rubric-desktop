@@ -1006,7 +1006,10 @@ fn file_stamp(path: &Path) -> Option<(u128, u64)> {
 ///
 /// Extraction errors are never cached: a failed call returns the error and
 /// the next call retries from scratch.
-pub fn page_text_lines_cached(pdf_path: &Path, page_index: usize) -> Result<CachedLines, DataError> {
+pub fn page_text_lines_cached(
+    pdf_path: &Path,
+    page_index: usize,
+) -> Result<CachedLines, DataError> {
     let Some((mtime_nanos, size)) = file_stamp(pdf_path) else {
         // Unstat'able file: extract fresh; the error (if any) reaches the caller.
         return page_text_lines(pdf_path, page_index).map(|lines| CachedLines {

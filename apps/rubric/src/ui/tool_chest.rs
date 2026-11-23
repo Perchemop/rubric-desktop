@@ -932,7 +932,10 @@ mod tests {
     fn apply_to_selection_is_disabled_with_a_hint_when_nothing_is_selected() {
         let (enabled, hint) = apply_to_selection_affordance(false);
         assert!(!enabled, "no selection must disable the action");
-        assert!(hint.contains("Select"), "the hint must tell the user what to do, got {hint:?}");
+        assert!(
+            hint.contains("Select"),
+            "the hint must tell the user what to do, got {hint:?}"
+        );
     }
 
     #[test]
