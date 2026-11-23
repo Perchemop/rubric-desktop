@@ -16,10 +16,11 @@
 //! otherwise PDFium is the default renderer.
 
 use std::collections::hash_map::DefaultHasher;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
 
 use crate::domain::bates::BatesConfig;
 use crate::domain::geom::Pt;
@@ -905,6 +906,13 @@ pub fn find_text_line_at_point(
     tolerance: f32,
 ) -> Option<TextLine> {
     let lines = page_text_lines(pdf_path, page_index).ok()?;
+    best_line_within(&lines, x, y, tolerance)
+}
+
+/// Shared nearest-line selection for [`find_text_line_at_point`] and its
+/// cached variant: the line whose bounding box (expanded by `tolerance`)
+/// contains the point, nearest by distance to the line's top-left anchor.
+fn best_line_within(lines: &[TextLine], x: f32, y: f32, tolerance: f32) -> Option<TextLine> {
     let mut best: Option<(f32, TextLine)> = None;
 
     for line in lines {
@@ -918,12 +926,143 @@ pub fn find_text_line_at_point(
         if x >= x_min && x <= x_max && y >= y_min && y <= y_max {
             let distance = ((x - line.at.x).powi(2) + (y - line.at.y).powi(2)).sqrt();
             if best.as_ref().is_none_or(|(d, _)| distance < *d) {
-                best = Some((distance, line));
+                best = Some((distance, line.clone()));
             }
         }
     }
 
     best.map(|(_, line)| line)
+}
+
+/// Result of a cached text-line lookup: the lines plus whether they came from
+/// the cache (exposed so tests can prove reuse without global counters).
+pub struct CachedLines {
+    /// The extracted lines; cheap to hand out (reference-counted).
+    pub lines: std::sync::Arc<Vec<TextLine>>,
+    /// `true` when this call was served from the cache without re-extracting.
+    pub from_cache: bool,
+}
+
+/// Cache key for extracted text lines. The file stamp (modification time +
+/// size) is part of the key so a PDF replaced at the same path is not served
+/// stale — see [`page_text_lines_cached`].
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct TextCacheKey {
+    path: PathBuf,
+    /// Nanoseconds since the Unix epoch; `u128` keeps the granularity honest.
+    mtime_nanos: u128,
+    /// File size in bytes; defeats same-second rewrites of different length.
+    size: u64,
+    page_index: usize,
+}
+
+/// Bounded per-page text-line cache (UI audit P1-2): a few dozen pages of
+/// lines is plenty for anchoring drags, which stay on one or two pages.
+const TEXT_CACHE_MAX_PAGES: usize = 64;
+
+struct TextLineCache {
+    map: HashMap<TextCacheKey, std::sync::Arc<Vec<TextLine>>>,
+    /// Insertion order, for evicting the oldest entry when full.
+    order: VecDeque<TextCacheKey>,
+}
+
+impl TextLineCache {
+    fn new() -> Self {
+        Self {
+            map: HashMap::new(),
+            order: VecDeque::new(),
+        }
+    }
+}
+
+fn text_line_cache() -> &'static Mutex<TextLineCache> {
+    static CACHE: OnceLock<Mutex<TextLineCache>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(TextLineCache::new()))
+}
+
+/// Cheap file-identity stamp for the cache key. `None` when the file cannot
+/// be stat'ed (the caller then extracts fresh and skips caching).
+fn file_stamp(path: &Path) -> Option<(u128, u64)> {
+    let meta = fs::metadata(path).ok()?;
+    let mtime = meta
+        .modified()
+        .ok()?
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?
+        .as_nanos();
+    Some((mtime, meta.len()))
+}
+
+/// [`page_text_lines`] with a per-(file, page) cache (UI audit P1-2).
+///
+/// Anchoring a text-anchored markup re-asks for the same page's lines on
+/// every drag frame; without the cache each ask re-binds PDFium and re-parses
+/// the whole document, which visibly hitches the UI. The cache key includes
+/// the file's modification time and size, so a PDF re-saved at the same path
+/// misses the cache instead of serving stale lines. Known limitation: a
+/// same-length rewrite within one filesystem timestamp tick can slip through;
+/// accepted here because editor saves are neither same-length nor
+/// sub-tick in practice.
+///
+/// Extraction errors are never cached: a failed call returns the error and
+/// the next call retries from scratch.
+pub fn page_text_lines_cached(pdf_path: &Path, page_index: usize) -> Result<CachedLines, DataError> {
+    let Some((mtime_nanos, size)) = file_stamp(pdf_path) else {
+        // Unstat'able file: extract fresh; the error (if any) reaches the caller.
+        return page_text_lines(pdf_path, page_index).map(|lines| CachedLines {
+            lines: std::sync::Arc::new(lines),
+            from_cache: false,
+        });
+    };
+    let key = TextCacheKey {
+        path: pdf_path.to_path_buf(),
+        mtime_nanos,
+        size,
+        page_index,
+    };
+
+    // Hit check takes the lock only for the lookup; the PDFium extraction
+    // below runs without holding it.
+    {
+        let cache = text_line_cache().lock().unwrap_or_else(|p| p.into_inner());
+        if let Some(lines) = cache.map.get(&key) {
+            return Ok(CachedLines {
+                lines: std::sync::Arc::clone(lines),
+                from_cache: true,
+            });
+        }
+    }
+
+    let lines = std::sync::Arc::new(page_text_lines(pdf_path, page_index)?);
+    let mut cache = text_line_cache().lock().unwrap_or_else(|p| p.into_inner());
+    if cache.map.len() >= TEXT_CACHE_MAX_PAGES && !cache.map.contains_key(&key) {
+        // Evict the oldest entry still present (order may hold stale keys).
+        while let Some(old) = cache.order.pop_front() {
+            if cache.map.remove(&old).is_some() {
+                break;
+            }
+        }
+    }
+    cache.order.push_back(key.clone());
+    cache.map.insert(key, std::sync::Arc::clone(&lines));
+    Ok(CachedLines {
+        lines,
+        from_cache: false,
+    })
+}
+
+/// [`find_text_line_at_point`] over the cached per-page lines — the canvas
+/// anchoring path, so repeated drags stop re-parsing the PDF per click
+/// (UI audit P1-2). Semantics are identical to the uncached variant.
+pub fn find_text_line_at_point_cached(
+    pdf_path: &Path,
+    page_index: usize,
+    x: f32,
+    y: f32,
+    tolerance: f32,
+) -> Option<TextLine> {
+    let cached = page_text_lines_cached(pdf_path, page_index).ok()?;
+    best_line_within(&cached.lines, x, y, tolerance)
 }
 
 /// Check if a markup's geometry intersects the page bounds.
@@ -2024,6 +2163,100 @@ mod tests {
             page_text_lines(&path, 3).is_err(),
             "an out-of-range page index is an error"
         );
+
+        let _ = fs::remove_file(&path);
+    }
+
+    // ---------------------------------------------------------------
+    // Text-line cache (UI audit P1-2): repeat anchoring must not re-parse.
+
+    #[test]
+    fn page_text_lines_cached_serves_the_second_lookup_from_the_cache() {
+        // Needs the PDFium runtime (provisioned by CI; skip when absent).
+        if std::env::var_os(PDFIUM_PATH_ENV).is_none() {
+            eprintln!("skipping: {PDFIUM_PATH_ENV} not set");
+            return;
+        }
+
+        let path = temp_pdf_path("text_cache_hit");
+        fs::write(&path, text_pdf(612.0, 792.0, "Cache me")).expect("write test PDF");
+
+        let first = page_text_lines_cached(&path, 0).expect("first lookup");
+        assert!(!first.from_cache, "the first lookup must extract fresh");
+        let second = page_text_lines_cached(&path, 0).expect("second lookup");
+        assert!(
+            second.from_cache,
+            "the second lookup must be served from the cache"
+        );
+        assert_eq!(first.lines.len(), second.lines.len());
+        assert_eq!(first.lines[0].text, second.lines[0].text);
+        assert_eq!(first.lines[0].text, "Cache me");
+
+        // Cached snapping behaves like the uncached variant.
+        let line = &first.lines[0];
+        let hit = find_text_line_at_point_cached(
+            &path,
+            0,
+            line.at.x + 5.0,
+            line.at.y + line.line_height * 0.5,
+            10.0,
+        );
+        assert!(hit.is_some(), "cached snapping must find the line");
+        assert!(
+            find_text_line_at_point_cached(&path, 0, 600.0, 100.0, 10.0).is_none(),
+            "a far point must not snap"
+        );
+
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn page_text_lines_cached_misses_when_the_file_is_replaced() {
+        if std::env::var_os(PDFIUM_PATH_ENV).is_none() {
+            eprintln!("skipping: {PDFIUM_PATH_ENV} not set");
+            return;
+        }
+
+        let path = temp_pdf_path("text_cache_invalidate");
+        fs::write(&path, text_pdf(612.0, 792.0, "First version")).expect("write test PDF");
+        let first = page_text_lines_cached(&path, 0).expect("first lookup");
+        assert!(!first.from_cache);
+        assert_eq!(first.lines[0].text, "First version");
+
+        // Replace with different content of a DIFFERENT byte length so the
+        // stamp (mtime + size) changes even on coarse-timestamp filesystems.
+        fs::write(
+            &path,
+            text_pdf(612.0, 792.0, "Second considerably longer version"),
+        )
+        .expect("rewrite test PDF");
+        let second = page_text_lines_cached(&path, 0).expect("second lookup");
+        assert!(!second.from_cache, "a replaced file must miss the cache");
+        assert_eq!(second.lines[0].text, "Second considerably longer version");
+
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn page_text_lines_cached_does_not_cache_extraction_errors() {
+        if std::env::var_os(PDFIUM_PATH_ENV).is_none() {
+            eprintln!("skipping: {PDFIUM_PATH_ENV} not set");
+            return;
+        }
+
+        let path = temp_pdf_path("text_cache_error");
+        fs::write(&path, b"this is not a pdf").expect("write junk file");
+        assert!(
+            page_text_lines_cached(&path, 0).is_err(),
+            "a junk file must error"
+        );
+
+        // Fix the file: the earlier error must not have been cached as a
+        // success — the next call extracts fresh and succeeds.
+        fs::write(&path, text_pdf(612.0, 792.0, "Recovered")).expect("write real PDF");
+        let fixed = page_text_lines_cached(&path, 0).expect("recovered lookup");
+        assert!(!fixed.from_cache, "the failed attempt must not be cached");
+        assert_eq!(fixed.lines[0].text, "Recovered");
 
         let _ = fs::remove_file(&path);
     }
