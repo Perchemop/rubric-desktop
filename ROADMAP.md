@@ -179,7 +179,7 @@ modified). Spec F-801–F-805; capability inventory row 32.
 - [x] Ghosted canvas overlay preview (follows pan/zoom; shows when enabled)
 - [x] Stamped export + print (flattened PDF, page image and print all carry the stamp)
 
-### v0.5.0 — Takeoff quantities (shipped 2026-11-20)
+### v0.5.0 — Takeoff quantities (shipped 2026-11-23)
 
 Capability mapping for quantity-takeoff features (quantity list, derivations,
 takeoff-shaped export) inspired at capability level by public takeoff tools.
@@ -194,11 +194,7 @@ SUCCESS), with the UI-redesign integration and the bottom-tab snapshot fix in
 - [x] Markup→condition assignment UI (inspector combo + context-menu batch assign/unassign) (PR #230 — T7)
 - [x] Condition create/edit dialog with validation, Esc/⏎ handling, delete confirmation (PR #230 — T8)
 - [x] Quantities-tab visibility persisted in `AppPrefs` (`show_quantities`, `quantities_tab_selected`) (PR #230 — T9)
-- [ ] **Publish the v0.5.0 release** — `CHANGELOG.md` carries `[0.5.0] - 2026-11-20`
-      and the takeoff + UI-redesign work is on `main`, but no `v0.5.0` tag or GitHub
-      Release exists yet (latest published: v0.4.10, 2026-11-16) and
-      `apps/rubric/Cargo.toml` still reads `0.4.6` — the in-app version must be
-      bumped before the tag so the release notes and update-check agree.
+- [x] **Publish the v0.5.0 release** — `CHANGELOG.md` carries `[0.5.0] - 2026-11-23`, the v0.5.0 tag exists on GitHub, and `apps/rubric/Cargo.toml` shows version `0.5.0`.
 - [ ] Symbol auto-count from a chosen example (optional/stretch; proposals only, never silent commits) — **Out of scope for v0.5**, may revisit in v0.6+
 - [ ] Optional MCP-client bridge to a user-installed takeoff server (**owner decision required** — never bundled, off by default; see `docs/research/takeoff-quantities.md` §3) — **Blocked pending owner decision**
 
