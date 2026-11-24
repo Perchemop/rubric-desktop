@@ -746,11 +746,12 @@ and rendered PNG evidence (G4-2b) are all shipped and CI-enforced. The guide's
   "Select", so that label legitimately matches two nodes.
 
 ### Next (G4-2b, optional follow-up)
-- Snapshot **PNG** evidence needs kittest's `wgpu` + `snapshot` features and a
-  software renderer (mesa/lavapipe) in CI, plus committed baselines
-  (`UPDATE_SNAPSHOTS=true` round-trip). Deferred as its own slice — the
-  headless a11y evidence above is the gate relevant to II.27.12's
-  "automated AccessKit" requirement.
+- Snapshot **PNG** evidence on Ubuntu with lavapipe (software Vulkan): CI job
+  `snapshot-ubuntu-lavapipe` runs with up to 3 retries to handle intermittent
+  SIGSEGV flakes (guide §M.5), and increased pixel tolerance in `kittest.toml`
+  accommodates software-renderer differences. When stable, it will unlock the
+  deferred visual-evidence gate (G4-2b) and the a11y-tree audit. Fallback
+  stays at phase 2a AccessKit evidence until the job is reliably green.
 
 ## 2026-11-06 — G4-1: Host/Ui seam — headless RubricApp (PR #134)
 **Status**: merged to main; CI green (all required checks).
@@ -867,7 +868,9 @@ release).
   PR #130 auto-marked merged (its commits are reachable from `main`).
 
 ### Remaining v0.5/v1.0 deferrals (unchanged)
-- **P1-11 / G4** `egui_kittest` visual evidence (owner-approved deferral).
+- **P1-11 / G4** `egui_kittest` visual evidence (owner-approved deferral; Ubuntu
+  lavapipe job added with retry logic per guide §M.5, still working toward
+  reliable green; fallback at phase 2a AccessKit evidence).
 - **§12.1** signed releases + in-app checksum-verified auto-update install.
 - **v1.0-0** hands-on macOS/Windows installer verification (needs machines).
 

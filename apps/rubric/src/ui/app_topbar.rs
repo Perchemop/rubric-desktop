@@ -56,7 +56,7 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
         // Tool dropdown (replaces the inline strip that cluttered the top bar).
         // All 25 tools live inside the menu, grouped by family.
         if toolbar::draw_tool_dropdown(ui, &mut app.ui.active_tool) {
-            app.ui.status = format!("Tool: {}", app.ui.active_tool.label());
+            app.set_toast(crate::ui::app::StatusKind::Info, format!("Tool: {}", app.ui.active_tool.label()));
         }
 
         // Active-tool chip (P0-4): a persistent pill showing what tool is
