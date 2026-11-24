@@ -24,8 +24,9 @@ marketing figures and estimated savings never appear here or in a release note
 |---|---|---:|---:|---|
 | v0.3.0 | 2026-11-06 | 0 | 0 | Migrated from `docs/tokens.json`; metering not yet wired — honest zero |
 | v0.4.10 | 2026-11-16 | 0 | 0 | Migrated from `docs/tokens.json`; metering not yet wired — honest zero |
+| v0.5.0 | 2026-11-23 | 0 | 0 | Release published; metering not yet wired — honest zero |
 
-Ledger created 2026-11-18 from the existing `docs/tokens.json`
+Ledger updated 2026-11-23 from `docs/tokens.json` and release notes
 (`total_tokens_since_start: 0`, and `release_tokens: 0` for both recorded
 releases). Release dates come from `CHANGELOG.md`. No numbers were invented.
 
