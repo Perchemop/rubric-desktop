@@ -101,15 +101,24 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                                 &bates,
                             ) {
                                 Ok(()) => {
-                                    app.set_status(crate::ui::app::StatusKind::Success, format!("PDF exported to {}", path.display()));
+                                    app.set_status(
+                                        crate::ui::app::StatusKind::Success,
+                                        format!("PDF exported to {}", path.display()),
+                                    );
                                 }
                                 Err(e) => {
-                                    app.set_status(crate::ui::app::StatusKind::Error, format!("PDF export failed: {e}"));
+                                    app.set_status(
+                                        crate::ui::app::StatusKind::Error,
+                                        format!("PDF export failed: {e}"),
+                                    );
                                 }
                             }
                         }
                     } else {
-                        app.set_status(crate::ui::app::StatusKind::Error, "Nothing to export — import a PDF first");
+                        app.set_status(
+                            crate::ui::app::StatusKind::Error,
+                            "Nothing to export — import a PDF first",
+                        );
                     }
                 }
                 ui.close();
@@ -370,7 +379,10 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                     .changed()
                 {
                     app.ui.zoom = crate::domain::view::clamp_zoom(custom_zoom as f32 / 100.0);
-                    app.set_toast(crate::ui::app::StatusKind::Info, format!("Zoom {}%", custom_zoom));
+                    app.set_toast(
+                        crate::ui::app::StatusKind::Info,
+                        format!("Zoom {}%", custom_zoom),
+                    );
                 }
             });
             ui.separator();
@@ -399,7 +411,10 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                         .clicked()
                     {
                         app.ui.grid.spacing = s;
-                        app.set_status(crate::ui::app::StatusKind::Info, format!("Grid spacing → {s} pt"));
+                        app.set_status(
+                            crate::ui::app::StatusKind::Info,
+                            format!("Grid spacing → {s} pt"),
+                        );
                     }
                 }
             });
