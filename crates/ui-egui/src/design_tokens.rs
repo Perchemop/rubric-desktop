@@ -173,7 +173,7 @@ pub mod light {
     /// Placeholder text colour.
     pub const PLACEHOLDER_TEXT: Color = Color::from_rgb(160, 165, 180);
     /// Border / outline colour.
-    pub const BORDER: Color = Color::from_rgb(130, 130, 135);
+    pub const BORDER: Color = Color::from_rgb(100, 100, 105);
     /// Focus ring colour.
     pub const FOCUS_RING: Color = Color::from_rgb(228, 87, 46);
     /// Selection fill colour.
