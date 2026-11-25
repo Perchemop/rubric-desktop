@@ -7,7 +7,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::domain::workspace::{FloatState, Region, WorkspaceState};
+use crate::domain::workspace::{FloatState, PanelId, Region, WorkspaceState};
 
 /// Schema version for panel layout serialization.
 /// Increment when backwards-compatible changes are made; bump major for breaking changes.
@@ -30,68 +30,6 @@ pub enum DockLocation {
 impl Default for DockLocation {
     fn default() -> Self {
         Self::Left
-    }
-}
-
-/// Panel identifiers that can be docked, split, tabbed, or floated.
-///
-/// Based on the panel inventory in spec F-607 section 2.1.
-/// Extensible for future plugins via the `Other(String)` variant.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case", untagged)]
-pub enum PanelId {
-    /// Page Thumbnails panel.
-    Thumbnails,
-    /// Layers visibility/order panel.
-    Layers,
-    /// Tool Chest with stamp presets and custom tools.
-    ToolChest,
-    /// Markups List panel.
-    MarkupsList,
-    /// Properties panel for selected object.
-    Properties,
-    /// Stamps library panel.
-    Stamps,
-    /// Measurements list and calibration.
-    Measurements,
-    /// Extensible variant for plugin panels or future additions.
-    Other(String),
-}
-
-impl PanelId {
-    /// Returns the default keyboard shortcut for this panel (Ctrl+1..7).
-    /// Panels not in the primary 7 return None.
-    pub fn default_shortcut(&self) -> Option<u8> {
-        match self {
-            PanelId::Thumbnails => Some(1),
-            PanelId::Layers => Some(2),
-            PanelId::ToolChest => Some(3),
-            PanelId::MarkupsList => Some(4),
-            PanelId::Properties => Some(5),
-            PanelId::Stamps => Some(6),
-            PanelId::Measurements => Some(7),
-            PanelId::Other(_) => None,
-        }
-    }
-
-    /// Returns the display title for this panel.
-    pub fn title(&self) -> String {
-        match self {
-            PanelId::Thumbnails => "Thumbnails".to_string(),
-            PanelId::Layers => "Layers".to_string(),
-            PanelId::ToolChest => "Tool Chest".to_string(),
-            PanelId::MarkupsList => "Markups List".to_string(),
-            PanelId::Properties => "Properties".to_string(),
-            PanelId::Stamps => "Stamps".to_string(),
-            PanelId::Measurements => "Measurements".to_string(),
-            PanelId::Other(name) => name.clone(),
-        }
-    }
-}
-
-impl std::fmt::Display for PanelId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.title())
     }
 }
 
@@ -382,7 +320,6 @@ impl PanelLayout {
                     Region::Left => DockLocation::Left,
                     Region::Right => DockLocation::Right,
                     Region::Bottom => DockLocation::Bottom,
-                    Region::Float => DockLocation::Left, // Default, will be overridden by floating
                 };
 
                 // Add to appropriate strip
@@ -390,27 +327,13 @@ impl PanelLayout {
                     Region::Left => layout.left.push(docked),
                     Region::Right => layout.right.push(docked),
                     Region::Bottom => layout.bottom.push(docked),
-                    Region::Float => {
-                        // Convert FloatState to FloatingPanel if present
-                        if let Some(float_state) = workspace.floating.get(panel_id) {
-                            docked.floating = Some(FloatingPanel {
-                                panel_id: panel_id.clone(),
-                                position: [float_state.rect[0], float_state.rect[1]],
-                                size: [float_state.rect[2], float_state.rect[3]],
-                                mode: FloatingMode::Windowed,
-                                monitor: None,
-                            });
-                        }
-                        // Floating panels go to left strip by default but with floating state
-                        layout.left.push(docked);
-                    }
                 }
             }
         }
 
-        // Handle floating panels that might not have a region
+        // Handle floating panels from the floating map
         for (panel_id, float_state) in &workspace.floating {
-            if !workspace.region.contains_key(panel_id) && workspace.open.contains(panel_id) {
+            if workspace.open.contains(panel_id) {
                 let mut docked = DockedPanel::new(panel_id.clone());
                 docked.floating = Some(FloatingPanel {
                     panel_id: panel_id.clone(),

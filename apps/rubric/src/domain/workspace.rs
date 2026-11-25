@@ -11,28 +11,90 @@ use thiserror::Error;
 
 /// Panel identifiers that can be docked, floated, or closed.
 ///
-/// `Quantities` is feature‑flagged; it exists in the enum so the takeoff
-/// spec can add it without breaking the workspace serialisation contract.
+/// Extensible for future plugins via the `Other(String)` variant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", untagged)]
 pub enum PanelId {
-    Pages,
-    Tools,
+    /// Page Thumbnails panel.
+    Thumbnails,
+    /// Layers visibility/order panel.
+    Layers,
+    /// Tool Chest with stamp presets and custom tools.
     ToolChest,
-    Inspector,
+    /// Markups List panel.
     MarkupsList,
+    /// Properties panel for selected object.
+    Properties,
+    /// Stamps library panel.
+    Stamps,
+    /// Measurements list and calibration.
+    Measurements,
+    /// Quantities panel (takeoff feature).
     Quantities,
+    /// Page navigation panel.
+    Pages,
+    /// Tools panel (legacy alias for ToolChest).
+    Tools,
+    /// Inspector panel (legacy alias for Properties).
+    Inspector,
+    /// Extensible variant for plugin panels or future additions.
+    Other(String),
 }
 
 impl std::fmt::Display for PanelId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            PanelId::Thumbnails => write!(f, "Thumbnails"),
+            PanelId::Layers => write!(f, "Layers"),
+            PanelId::ToolChest => write!(f, "Tool Chest"),
+            PanelId::MarkupsList => write!(f, "Markups List"),
+            PanelId::Properties => write!(f, "Properties"),
+            PanelId::Stamps => write!(f, "Stamps"),
+            PanelId::Measurements => write!(f, "Measurements"),
+            PanelId::Quantities => write!(f, "Quantities"),
             PanelId::Pages => write!(f, "Pages"),
             PanelId::Tools => write!(f, "Tools"),
-            PanelId::ToolChest => write!(f, "ToolChest"),
             PanelId::Inspector => write!(f, "Inspector"),
-            PanelId::MarkupsList => write!(f, "MarkupsList"),
-            PanelId::Quantities => write!(f, "Quantities"),
+            PanelId::Other(name) => write!(f, "{}", name),
+        }
+    }
+}
+
+impl PanelId {
+    /// Returns the default keyboard shortcut for this panel (Ctrl+1..7).
+    /// Panels not in the primary 7 return None.
+    pub fn default_shortcut(&self) -> Option<u8> {
+        match self {
+            PanelId::Thumbnails => Some(1),
+            PanelId::Layers => Some(2),
+            PanelId::ToolChest => Some(3),
+            PanelId::MarkupsList => Some(4),
+            PanelId::Properties => Some(5),
+            PanelId::Stamps => Some(6),
+            PanelId::Measurements => Some(7),
+            PanelId::Quantities => None,
+            PanelId::Pages => None,
+            PanelId::Tools => None,
+            PanelId::Inspector => None,
+            PanelId::Other(_) => None,
+        }
+    }
+
+    /// Returns the display title for this panel.
+    pub fn title(&self) -> String {
+        match self {
+            PanelId::Thumbnails => "Thumbnails".to_string(),
+            PanelId::Layers => "Layers".to_string(),
+            PanelId::ToolChest => "Tool Chest".to_string(),
+            PanelId::MarkupsList => "Markups List".to_string(),
+            PanelId::Properties => "Properties".to_string(),
+            PanelId::Stamps => "Stamps".to_string(),
+            PanelId::Measurements => "Measurements".to_string(),
+            PanelId::Quantities => "Quantities".to_string(),
+            PanelId::Pages => "Pages".to_string(),
+            PanelId::Tools => "Tools".to_string(),
+            PanelId::Inspector => "Inspector".to_string(),
+            PanelId::Other(name) => name.clone(),
         }
     }
 }
@@ -259,17 +321,17 @@ impl Default for WorkspaceState {
     fn default() -> Self {
         // Open panels: everything except Quantities (lands with takeoff feature).
         let mut open = BTreeSet::new();
-        open.insert(PanelId::Pages);
-        open.insert(PanelId::Tools);
+        open.insert(PanelId::Thumbnails);
+        open.insert(PanelId::Layers);
         open.insert(PanelId::ToolChest);
-        open.insert(PanelId::Inspector);
+        open.insert(PanelId::Properties);
         open.insert(PanelId::MarkupsList);
 
         let mut region = BTreeMap::new();
-        region.insert(PanelId::Pages, Region::Left);
-        region.insert(PanelId::Tools, Region::Left);
+        region.insert(PanelId::Thumbnails, Region::Left);
+        region.insert(PanelId::Layers, Region::Left);
         region.insert(PanelId::ToolChest, Region::Left);
-        region.insert(PanelId::Inspector, Region::Right);
+        region.insert(PanelId::Properties, Region::Right);
         region.insert(PanelId::MarkupsList, Region::Bottom);
 
         let floating = BTreeMap::new();
@@ -314,13 +376,13 @@ mod tests {
     #[test]
     fn validate_refuses_empty_dock() {
         let mut ws = WorkspaceState::default();
-        // Close the last panel (Pages) — should refuse.
-        let ok = ws.close_panel(PanelId::Pages);
+        // Close the last panel (Thumbnails) — should refuse.
+        let ok = ws.close_panel(PanelId::Thumbnails);
         assert!(
             !ok,
-            "closing Pages should refuse when it would leave dock empty"
+            "closing Thumbnails should refuse when it would leave dock empty"
         );
-        // validate should still pass because default has Pages open.
+        // validate should still pass because default has Thumbnails open.
         let err = ws.validate();
         assert!(err.is_ok(), "default workspace should validate");
     }
@@ -328,12 +390,12 @@ mod tests {
     #[test]
     fn close_panel_refuses_last_panel() {
         let mut ws = WorkspaceState::default();
-        // Try closing Tools when only Pages and Tools are open.
-        let _ok = ws.close_panel(PanelId::Tools);
-        // After closing Tools, Pages and MarkupsList remain, so ok should be true.
-        // But if we then try closing Pages, it should refuse.
-        let pages_ok = ws.close_panel(PanelId::Pages);
-        assert!(!pages_ok, "closing Pages (last panel) should refuse");
+        // Try closing Layers when only Thumbnails and Layers are open.
+        let _ok = ws.close_panel(PanelId::Layers);
+        // After closing Layers, Thumbnails and MarkupsList remain, so ok should be true.
+        // But if we then try closing Thumbnails, it should refuse.
+        let thumbnails_ok = ws.close_panel(PanelId::Thumbnails);
+        assert!(!thumbnails_ok, "closing Thumbnails (last panel) should refuse");
     }
 
     #[test]
@@ -362,15 +424,15 @@ mod tests {
     fn float_rect_clamped() {
         let mut ws = WorkspaceState::default();
         // Rect with negative coords and tiny size.
-        let result = ws.float_panel(PanelId::Inspector, [-100.0, -50.0, 100.0, 50.0]);
+        let result = ws.float_panel(PanelId::Properties, [-100.0, -50.0, 100.0, 50.0]);
         assert!(result.is_ok(), "float_panel should accept and clamp");
-        // After floating, Inspector should not be in open set.
+        // After floating, Properties should not be in open set.
         assert!(
-            !ws.open.contains(&PanelId::Inspector),
+            !ws.open.contains(&PanelId::Properties),
             "floated panel removed from open"
         );
         // Rect should be clamped: x/y >= 0, w/h >= 200.
-        let fs = ws.floating.get(&PanelId::Inspector).unwrap();
+        let fs = ws.floating.get(&PanelId::Properties).unwrap();
         assert!(fs.rect[0] >= 0.0, "x clamped to >= 0");
         assert!(fs.rect[1] >= 0.0, "y clamped to >= 0");
         assert!(fs.rect[2] >= 200.0, "w clamped to >= 200");
@@ -392,26 +454,26 @@ mod tests {
             Err(WorkspaceError::PanelNotOpen(PanelId::Quantities))
         ));
         // Moving an open panel should succeed.
-        ws.move_panel(PanelId::Inspector, Region::Right)
+        ws.move_panel(PanelId::Properties, Region::Right)
             .expect("move open panel");
-        assert_eq!(ws.region[&PanelId::Inspector], Region::Right);
+        assert_eq!(ws.region[&PanelId::Properties], Region::Right);
     }
 
     #[test]
     fn floating_panel_survives_move_to_region() {
         let mut ws = WorkspaceState::default();
-        // Float Inspector first.
-        ws.float_panel(PanelId::Inspector, [100.0, 100.0, 300.0, 200.0])
-            .expect("float Inspector");
-        assert!(!ws.open.contains(&PanelId::Inspector));
+        // Float Properties first.
+        ws.float_panel(PanelId::Properties, [100.0, 100.0, 300.0, 200.0])
+            .expect("float Properties");
+        assert!(!ws.open.contains(&PanelId::Properties));
         // Move it to a dock region — should dock it and remove from floating.
-        ws.move_panel(PanelId::Inspector, Region::Left)
+        ws.move_panel(PanelId::Properties, Region::Left)
             .expect("move floated panel to Left");
         // Should be open again.
-        assert!(ws.open.contains(&PanelId::Inspector));
+        assert!(ws.open.contains(&PanelId::Properties));
         // Should no longer be floating.
-        assert!(ws.floating.get(&PanelId::Inspector).is_none());
+        assert!(ws.floating.get(&PanelId::Properties).is_none());
         // Region should be Left.
-        assert_eq!(ws.region[&PanelId::Inspector], Region::Left);
+        assert_eq!(ws.region[&PanelId::Properties], Region::Left);
     }
 }
