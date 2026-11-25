@@ -280,12 +280,18 @@ fn test_event_label_command_palette_no_selection() {
 #[test]
 fn test_shortcut_label_all() {
     assert_eq!(shortcut_label(GlobalShortcut::F1Help), "F1");
-    assert_eq!(shortcut_label(GlobalShortcut::CtrlKCommandPalette), "Ctrl+K");
+    assert_eq!(
+        shortcut_label(GlobalShortcut::CtrlKCommandPalette),
+        "Ctrl+K"
+    );
     assert_eq!(shortcut_label(GlobalShortcut::CtrlViewSwitch(1)), "Ctrl+1");
     assert_eq!(shortcut_label(GlobalShortcut::CtrlViewSwitch(9)), "Ctrl+9");
     assert_eq!(shortcut_label(GlobalShortcut::AltDensity(1)), "Alt+1");
     assert_eq!(shortcut_label(GlobalShortcut::AltDensity(3)), "Alt+3");
-    assert_eq!(shortcut_label(GlobalShortcut::AltShiftDCycle), "Alt+Shift+D");
+    assert_eq!(
+        shortcut_label(GlobalShortcut::AltShiftDCycle),
+        "Alt+Shift+D"
+    );
 }
 
 #[test]
