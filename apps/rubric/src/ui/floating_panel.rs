@@ -81,6 +81,6 @@ impl FloatingPanelWindow {
             ui_content(ui);
         });
         self.state.open = open;
-        self.state.open
+        open
     }
 }

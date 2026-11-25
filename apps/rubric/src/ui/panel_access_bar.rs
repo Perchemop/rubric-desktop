@@ -71,7 +71,7 @@ impl PanelAccessBar {
 
         ui.vertical(|ui| {
             for p in panels {
-                let visible = manager.is_visible(*p);
+                let visible = manager.is_visible(p);
                 let label = if self.expanded {
                     p.to_string()
                 } else {
@@ -79,7 +79,7 @@ impl PanelAccessBar {
                 };
                 let btn = ui.selectable_label(visible, label);
                 if btn.clicked() {
-                    manager.toggle_panel(*p);
+                    manager.toggle_panel(p.clone());
                 }
                 btn.on_hover_text(format!("{} (toggle)", p));
             }

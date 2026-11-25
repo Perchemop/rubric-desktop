@@ -208,7 +208,7 @@ impl WorkspaceState {
         // If the panel is floating, dock it first (removes from floating, adds to open)
         if self.floating.contains_key(&id) {
             self.floating.remove(&id);
-            self.open.insert(id);
+            self.open.insert(id.clone());
         }
         if !self.open.contains(&id) {
             return Err(WorkspaceError::PanelNotOpen(id));
@@ -242,9 +242,9 @@ impl WorkspaceState {
         self.floating.remove(&id);
         // Ensure it's open and set region to Left if not already set.
         if !self.open.contains(&id) {
-            self.open.insert(id);
+            self.open.insert(id.clone());
         }
-        let region = self.region.entry(id).or_insert(Region::Left);
+        let region = self.region.entry(id.clone()).or_insert(Region::Left);
         // Ensure it's at least Left; if it was in another region we keep it.
         // (The spec says "docks a floating/other‑region panel"; we just ensure it's open.)
         _ = region;
@@ -292,7 +292,7 @@ impl WorkspaceState {
         // Every floating panel must also be open.
         for fid in self.floating.keys() {
             if !self.open.contains(fid) {
-                return Err(WorkspaceError::PanelNotOpen(*fid));
+                return Err(WorkspaceError::PanelNotOpen(fid.clone()));
             }
         }
         // Split count valid.
