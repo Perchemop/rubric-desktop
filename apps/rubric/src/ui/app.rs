@@ -14,7 +14,6 @@ use crate::data::{
     profile_store::ProfileStore,
     render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
-use crate::ui::profile_applicator::{get_active_profile_name, set_active_profile_name};
 use crate::domain::style::DefaultStyles;
 use crate::domain::units::calibrate_scale;
 use crate::domain::{

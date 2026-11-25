@@ -132,7 +132,7 @@ impl ProfileStore {
         let store = Self::new()?;
 
         // Write predefined profiles if they don't exist
-        for profile in predefined_profiles() {
+        for profile in predefined_profiles().iter() {
             let path = profile_path(&profile.name)
                 .ok_or_else(|| DataError::Path("invalid profile path".into()))?;
             if !path.exists() {

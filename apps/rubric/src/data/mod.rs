@@ -21,8 +21,7 @@ pub use pdf::{read_pdf_info, render_cache_dir, render_page_to_cache, PdfSourceIn
 pub use prefs::{load_prefs, prefs_config_path, save_prefs};
 pub use print::{print_command, print_image};
 pub use profile_store::{
-    build_profile_from_state, delete_profile, export_profile, import_profile,
-    initialize, list_profiles, load_profile, save_profile, ProfileStore,
+    build_profile_from_state, profile_path, profiles_dir, ProfileStore,
 };
 pub use recent::{load_recent, recent_config_path, save_recent};
 pub use render::rasterize_primitives;

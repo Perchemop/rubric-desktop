@@ -75,7 +75,7 @@ pub fn migrate(mut value: Value, from_version: u32, to_version: u32) -> Result<V
 pub fn migrate_profile(value: Value) -> Result<Value, DataError> {
     // Extract the schema version from the JSON
     let from_version = match value.get("schema_version") {
-        Some(v) => v.as_u32().unwrap_or(1),
+        Some(v) => v.as_u64().map(|u| u as u32).unwrap_or(1),
         None => 1, // Default assumption for files without version field
     };
 
