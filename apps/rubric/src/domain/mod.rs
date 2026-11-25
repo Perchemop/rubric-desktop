@@ -77,7 +77,6 @@ pub use style_preset::{
     export_set_json, import_set_json, PresetSet, StylePreset, StylePresetLibrary, ToolSetExport,
 };
 pub use takeoff::{QuantityRow, TakeoffCondition, TakeoffError, TakeoffSettings};
-pub use workspace::{PanelId, Region, WorkspaceState};
 pub use text_anchor::{GlyphBox, GlyphLine, GlyphRange};
 pub use theme::{AppPrefs, Theme};
 pub use thumb_render::{
@@ -93,3 +92,4 @@ pub use units::{
     clamp_precision, format_value, format_value_precise, MeasureKind, MeasureUnit, Scale,
     DEFAULT_PRECISION, MAX_PRECISION,
 };
+pub use workspace::{PanelId, Region, WorkspaceState};

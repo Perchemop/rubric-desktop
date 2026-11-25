@@ -7,9 +7,9 @@
 
 #![allow(clippy::too_many_arguments)]
 
-pub mod keyboard;
 pub mod design;
 pub mod design_tokens;
-pub use keyboard::*;
+pub mod keyboard;
 pub use design::*;
 pub use design_tokens::*;
+pub use keyboard::*;
