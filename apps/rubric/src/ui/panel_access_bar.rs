@@ -89,7 +89,7 @@ impl PanelAccessBar {
     pub fn show_ctx(&mut self, ctx: &Context, manager: &mut PanelManager, panels: &[PanelId]) {
         // Convenience: create a side panel.
         Panel::left("panel_access_bar")
-            .default_width(self.width())
+            .default_size(self.width())
             .show(ctx, |ui| {
                 self.show(ui, manager, panels);
             });
