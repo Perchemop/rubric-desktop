@@ -10,7 +10,8 @@ use crate::domain::geom::Pt;
 /// These describe how the *canvas* behaves, not what the document contains, so
 /// they never enter `.rubric.json` (the same machine-local reasoning as the
 /// theme decision in `DECISIONS.md`).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Grid {
     /// Distance between grid lines, in page points.
     pub spacing: f32,

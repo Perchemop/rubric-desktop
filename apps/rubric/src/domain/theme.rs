@@ -153,6 +153,7 @@ impl Default for AppPrefs {
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::default(),
             tool_chest_max_recents: default_max_recents(),
+            active_profile: String::new(),
             workspace: WorkspaceState::default(),
         }
     }
@@ -212,6 +213,7 @@ mod tests {
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::Inch,
             tool_chest_max_recents: 12,
+            active_profile: String::new(),
             workspace: WorkspaceState::default(),
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
@@ -247,6 +249,7 @@ mod tests {
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::Point,
             tool_chest_max_recents: 8,
+            active_profile: String::new(),
             workspace: WorkspaceState::default(),
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");

@@ -217,7 +217,8 @@ pub fn is_predefined_id(id: &Uuid) -> bool {
 
 /// Generate JSON string for all predefined profiles (for embedding in binary or debugging).
 pub fn serialize_predefined_profiles_json() -> Result<String, serde_json::Error> {
-    serde_json::to_string_pretty(predefined_profiles())
+    let profiles = predefined_profiles();
+    serde_json::to_string_pretty(&profiles)
 }
 
 #[cfg(test)]

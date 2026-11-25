@@ -334,7 +334,7 @@ pub struct PanelLayout {
     #[serde(default)]
     pub access_bar: PanelAccessBarState,
     /// Schema version for migration purposes.
-    #[serde(default = "PANEL_SCHEMA_VERSION")]
+    #[serde(default = "default_panel_schema_version")]
     pub schema_version: u32,
 }
 
@@ -347,6 +347,9 @@ fn default_strip_size_right() -> f32 {
 }
 fn default_strip_size_bottom() -> f32 {
     200.0
+}
+fn default_panel_schema_version() -> u32 {
+    PANEL_SCHEMA_VERSION
 }
 
 impl Default for PanelLayout {
