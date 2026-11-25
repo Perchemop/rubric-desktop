@@ -74,16 +74,16 @@ impl PanelId {
     }
 
     /// Returns the display title for this panel.
-    pub fn title(&self) -> &'static str {
+    pub fn title(&self) -> String {
         match self {
-            PanelId::Thumbnails => "Thumbnails",
-            PanelId::Layers => "Layers",
-            PanelId::ToolChest => "Tool Chest",
-            PanelId::MarkupsList => "Markups List",
-            PanelId::Properties => "Properties",
-            PanelId::Stamps => "Stamps",
-            PanelId::Measurements => "Measurements",
-            PanelId::Other(name) => name,
+            PanelId::Thumbnails => "Thumbnails".to_string(),
+            PanelId::Layers => "Layers".to_string(),
+            PanelId::ToolChest => "Tool Chest".to_string(),
+            PanelId::MarkupsList => "Markups List".to_string(),
+            PanelId::Properties => "Properties".to_string(),
+            PanelId::Stamps => "Stamps".to_string(),
+            PanelId::Measurements => "Measurements".to_string(),
+            PanelId::Other(name) => name.clone(),
         }
     }
 }
@@ -390,12 +390,13 @@ pub struct DockedPanel {
 impl DockedPanel {
     /// Creates a new docked panel entry.
     pub fn new(id: PanelId) -> Self {
+        let id_clone = id.clone();
         Self {
             id,
             visible: true,
             dock_location: DockLocation::Left,
             split_tree: None,
-            tab_order: vec![id.clone()],
+            tab_order: vec![id_clone],
             floating: None,
         }
     }

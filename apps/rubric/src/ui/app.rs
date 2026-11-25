@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use eframe::{App, CreationContext, Frame};
-use egui::{Pos2, TextureHandle, Ui, Vec2};
+use egui::{Id, Pos2, TextureHandle, Ui, Vec2};
 
 use crate::data::{
     autosave, autosave_due, load_prefs, load_project, load_recent, normalise_project_filename,

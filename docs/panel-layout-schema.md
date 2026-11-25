@@ -113,7 +113,7 @@ are not the same as the serde defaults for every field.
           "additionalProperties": false,
           "required": ["type", "content"],
           "properties": {
-            "type": { "const": "leaf" },
+            "type": { "const": "Leaf" },
             "content": { "$ref": "#/$defs/panelId" }
           }
         },
@@ -122,7 +122,7 @@ are not the same as the serde defaults for every field.
           "additionalProperties": false,
           "required": ["type", "content"],
           "properties": {
-            "type": { "const": "split" },
+            "type": { "const": "Split" },
             "content": {
               "type": "object",
               "additionalProperties": false,
@@ -287,13 +287,13 @@ not a field of `PanelLayout`. Group membership is represented there by
       "visible": true,
       "dock_location": "right",
       "split_tree": {
-        "type": "split",
+        "type": "Split",
         "content": {
           "orientation": "vertical",
           "ratio": 0.6,
           "children": [
-            { "type": "leaf", "content": "properties" },
-            { "type": "leaf", "content": "stamps" }
+            { "type": "Leaf", "content": "properties" },
+            { "type": "Leaf", "content": "stamps" }
           ]
         }
       },

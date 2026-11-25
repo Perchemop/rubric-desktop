@@ -85,18 +85,18 @@ deeper split reports `Maximum split depth (4) reached`.
 ```rust
 // Source-shaped example, not an applied setting.
 DockedPanel {
-    id: PanelId::BuiltIn(BuiltInPanel::Layers),
+    id: PanelId::Layers,
     visible: true,
     dock_location: DockLocation::Left,
     split_tree: Some(SplitTree::Split {
         orientation: SplitOrientation::Vertical,
         ratio: 0.55,
         children: [
-            SplitTree::Leaf(PanelId::BuiltIn(BuiltInPanel::Thumbnails)),
-            SplitTree::Leaf(PanelId::BuiltIn(BuiltInPanel::Layers)),
+            SplitTree::Leaf(PanelId::Thumbnails),
+            SplitTree::Leaf(PanelId::Layers),
         ],
     }),
-    tab_order: vec![PanelId::BuiltIn(BuiltInPanel::Layers)],
+    tab_order: vec![PanelId::Layers],
     floating: None,
 }
 ```

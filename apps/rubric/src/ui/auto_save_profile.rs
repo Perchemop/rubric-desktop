@@ -14,7 +14,7 @@ const OPEN_KEY: &str = "rubric.auto_save_profile.prompt_open";
 const PREF_KEY: &str = "rubric.auto_save_profile.preference"; // 0=unset,1=yes,2=no
 
 pub fn preference(ctx: &egui::Context) -> Option<bool> {
-    match ctx.data(|d| d.get_temp::<i32>(egui::Id::new(PREF_KEY)).unwrap_or(0)) {
+    match ctx.data(|d| d.get_temp::<i32>(Id::unique()).unwrap_or(0)) {
         1 => Some(true),
         2 => Some(false),
         _ => None,
@@ -27,16 +27,16 @@ pub fn set_preference(ctx: &egui::Context, value: Option<bool>) {
         Some(false) => 2,
         None => 0,
     };
-    ctx.data_mut(|d| d.insert_temp(egui::Id::new(PREF_KEY), v));
+    ctx.data_mut(|d| d.insert_temp(Id::unique(), v));
 }
 
 pub fn prompt_on_close(ctx: &egui::Context) {
-    ctx.data_mut(|d| d.insert_temp(egui::Id::new(OPEN_KEY), true));
+    ctx.data_mut(|d| d.insert_temp(Id::unique(), true));
 }
 
 pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
     let mut open = ctx
-        .data(|d| d.get_temp::<bool>(egui::Id::new(OPEN_KEY)))
+        .data(|d| d.get_temp::<bool>(Id::unique()))
         .unwrap_or(false);
     if !open {
         return;
@@ -74,11 +74,11 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
                 let profile = build_profile_from_state(
                     app.settings.active_profile.clone(),
                     "Auto-saved on close".to_string(),
-                    app.ui.panel_layout.clone(),
-                    None, // Toolbar profile config (not yet integrated)
+                    PanelLayout::default(), // Panel layout (not yet integrated)
+                    None,                   // Toolbar profile config (not yet integrated)
                     app.theme,
-                    app.ui.measurement_defaults.clone(),
-                    app.ui.canvas_settings.clone(),
+                    MeasurementDefaults::default(),
+                    CanvasSettings::default(),
                 );
                 if let Err(e) = app.profile_store.save_profile(&profile) {
                     app.set_status(
@@ -99,14 +99,14 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
     }
 
     if close || !open {
-        ctx.data_mut(|d| d.insert_temp(egui::Id::new(OPEN_KEY), false));
+        ctx.data_mut(|d| d.insert_temp(Id::unique(), false));
     }
 }
 
 /// Graceful shutdown save hook. Call from the app's close path when
 /// `auto_save_profile` is enabled. Currently a no-op placeholder until the
 /// domain layer lands.
-pub fn save_active_profile_on_close(app: &mut crate::ui::app::RubricApp) {
+pub fn save_active_profile_on_close(_app: &mut crate::ui::app::RubricApp) {
     // Check if auto-save is enabled (preference = true)
     // This would need to be called from the app's close path
     // For now, the preference is stored in egui temp storage

@@ -5,6 +5,7 @@
 //! Predefined profiles disable Delete/Rename. Integrates with ProfileStore.
 
 use crate::data::profile_store::{ProfileStore, ProfileSummary};
+use anyhow;
 use eframe::egui;
 
 const OPEN_KEY: &str = "rubric.profile_manager.open";

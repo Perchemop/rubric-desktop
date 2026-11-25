@@ -197,15 +197,17 @@ pub fn predefined_profiles() -> Vec<Profile> {
 }
 
 /// Find a predefined profile by its stable ID.
-pub fn find_predefined_by_id(id: &Uuid) -> Option<&'static Profile> {
-    predefined_profiles().iter().find(|p| &p.id == id)
+/// Find a predefined profile by ID.
+pub fn find_predefined_by_id(id: &Uuid) -> Option<Profile> {
+    predefined_profiles().iter().find(|p| &p.id == id).cloned()
 }
 
 /// Find a predefined profile by name (case-insensitive).
-pub fn find_predefined_by_name(name: &str) -> Option<&'static Profile> {
+pub fn find_predefined_by_name(name: &str) -> Option<Profile> {
     predefined_profiles()
         .iter()
         .find(|p| p.name.eq_ignore_ascii_case(name))
+        .cloned()
 }
 
 /// Check if a profile ID belongs to a predefined profile.

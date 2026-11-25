@@ -61,14 +61,13 @@ impl FloatingPanelWindow {
         let mut open = self.state.open;
         let title = self.state.panel.to_string();
         let mut window = Window::new(title)
-            .open(&mut open)
             .default_pos(self.state.pos)
             .default_size(self.state.size)
             .resizable(true);
         if self.state.mode == FloatMode::Overlay {
             window = window.title_bar(false);
         }
-        window.show(ctx, |ui| {
+        window.open(&mut open).show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label(self.state.panel.to_string());
                 if ui.small_button("Mode").clicked() {
