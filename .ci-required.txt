@@ -16,3 +16,9 @@ packaging-plan
 # PR authorship gate (guide II.26.7): fails for any author other than the Dev
 # account or Dependabot (rationale in DECISIONS.md 2026-11-22).
 pr-author-is-dev
+# Accessibility gates (CADENCE-ACCESSIBILITY Phase 1)
+a11y-contrast-tests
+a11y-harness-tests
+a11y-target-size-tests
+a11y-focus-ring-tests
+a11y-density-tests

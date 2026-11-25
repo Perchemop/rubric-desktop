@@ -117,6 +117,23 @@ so they do not move the 57-feature readiness table above.
       thread-locals into `UiState`, WCAG status text, M5 menu shortcut hints +
       Ctrl+A, Save-and-Quit
 
+### F-606 — Profile/Workspace System (draft; documentation only)
+
+Tracking entry for the draft spec at
+`docs/spec/profile-workspace-system.spec.md`. F-606 is `Draft — Pending Review`;
+no implementation, CI evidence, or shipped UI supports profiles yet. The
+57 accepted F-ID readiness counts above are unchanged.
+
+- [x] Draft schema reference recorded in `docs/profile-schema.md`, including
+      unresolved schema-version, key-naming, and theme-key conflicts.
+- [x] Planned user guide recorded in `docs/user-guide/profiles.md` with
+      screenshot placeholders and an explicit not-shipped notice.
+- [ ] Resolve spec/review conflicts and approve the F-606 contract.
+- [ ] Implement domain model, storage, migrations, predefined profiles, and UI
+      after F-607/F-608 are settled; verify headlessly and through CI.
+- [ ] Replace guide placeholders with reviewed evidence and mark F-606 done
+      only after spec approval, tests, and green CI.
+
 ### v1.0.0 — finished (guide §9)
 
 - [x] All 57 feature IDs done; all 18 requirement groups DONE (CI-verified)

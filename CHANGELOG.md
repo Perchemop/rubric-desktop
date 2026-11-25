@@ -4,6 +4,10 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ## [Unreleased]
 
+### Docs
+
+- Added draft F-606 Profile/Workspace System documentation: `docs/profile-schema.md` records the planned `.rubric-profile` JSON Schema, field references, examples, migration path, and unresolved contract conflicts; `docs/user-guide/profiles.md` is a planned-feature guide with screenshot placeholders. Documentation only: F-606 remains `Draft — Pending Review`, and no profile files, migrations, or Profiles menu are shipped.
+
 ## [0.5.0] - 2026-11-23
 
 ### Added

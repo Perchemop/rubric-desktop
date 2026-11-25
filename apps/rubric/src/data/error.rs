@@ -30,4 +30,20 @@ pub enum DataError {
         "project schema version {found} is not supported by this build (supported: 1..={supported})"
     )]
     UnsupportedSchema { found: u32, supported: u32 },
+
+    // Profile-related errors
+    #[error("Profile error: {0}")]
+    ProfileError(String),
+
+    #[error("Profile not found: {0}")]
+    ProfileNotFound(String),
+
+    #[error("Profile '{0}' already exists")]
+    ProfileDuplicate(String),
+
+    #[error("Profile '{0}' is read-only")]
+    ProfilePredefined(String),
+
+    #[error("Maximum {max} profiles reached ({current} already exist)")]
+    ProfileLimit { max: usize, current: usize },
 }

@@ -45,6 +45,62 @@ jobs:
     - name: Build release
       run: cargo build --release --locked
 
+  # --- CADENCE-ACCESSIBILITY Phase 1: accessibility gates ---
+  # Contrast token validation: run the WCAG 2.2 AA contrast audit on all
+  # semantic colour roles across Light, Dark, HighContrastLight, HighContrastDark.
+  a11y-contrast-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+    - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+    - name: Run contrast tests
+      run: cargo test -p ui-egui --test contrast_tests -- --nocapture
+
+  # AccessKit harness tests: verify focus order, role names, and accessible
+  # tree output from the egui AccessKit integration.
+  a11y-harness-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+    - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+    - name: Run harness tests
+      run: cargo test -p rubric -- a11y_harness -- --nocapture
+
+  # Target size tests: verify all interactive targets are ≥24pt (primary
+  # actions and destructive actions ≥32pt) on both Light and Dark themes.
+  a11y-target-size-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+    - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+    - name: Run target size tests
+      run: cargo test -p rubric -- target_size -- --nocapture
+
+  # Focus ring tests: verify focus ring visibility, trapping, and restoration
+  # when navigating with keyboard across all primary panels and dialogs.
+  a11y-focus-ring-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+    - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+    - name: Run focus ring tests
+      run: cargo test -p rubric -- focus_ring -- --nocapture
+
+  # Density tests: verify density cycling (standard/comfortable/compact),
+  # user preference announcement, and persistence across sessions.
+  a11y-density-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+    - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+    - name: Run density tests
+      run: cargo test -p rubric -- density -- --nocapture
+
   # kittest snapshot evidence (guide II.27.12, G4-2b): rendered PNG artefacts
   # via wgpu + snapshot features. On macOS runners a real GPU is available;
   # on Ubuntu runners we use software Vulkan (lavapipe) but this has been

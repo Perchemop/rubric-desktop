@@ -10,7 +10,8 @@ use egui::{Pos2, TextureHandle, Ui, Vec2};
 
 use crate::data::{
     autosave, autosave_due, load_prefs, load_project, load_recent, normalise_project_filename,
-    print_image, render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
+    print_image, profile_store::{ProfileStore, get_active_profile_name, set_active_profile_name},
+    render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
 };
 use crate::domain::style::DefaultStyles;
 use crate::domain::units::calibrate_scale;
@@ -522,6 +523,8 @@ pub struct RubricApp {
     /// Latest release tag from the most recent update check, used to
     /// construct the SHA256SUMS.txt URL when downloading an update.
     pub(crate) update_check_tag: Option<String>,
+    /// Profile store for managing UI workspace profiles.
+    pub(crate) profile_store: crate::data::profile_store::ProfileStore,
     /// Tool Chest preset library (v0.4 gap #7). App-level session state: it
     /// survives project switches (a tool chest belongs to the reviewer, not
     /// the project) and is not written into `.rubric.json` or prefs yet —
@@ -662,6 +665,8 @@ impl RubricApp {
             tool_chest_library: prefs.tool_chest_library.clone(),
             persisted_workspace: prefs.workspace.clone(),
             app_drawer_path: Self::get_app_drawer_path(),
+            profile_store: crate::data::profile_store::ProfileStore::new()
+                .expect("failed to initialize profile store"),
         }
     }
 
@@ -2726,6 +2731,9 @@ impl RubricApp {
         app_dialogs::draw_user_guide(self, ui.ctx());
         app_dialogs::draw_quit_confirm(self, ui.ctx());
         app_dialogs::draw_replace_unsaved(self, ui.ctx());
+        crate::ui::profile_manager_dialog::draw(self, ui.ctx());
+        crate::ui::save_profile_dialog::draw(self, ui.ctx());
+        crate::ui::auto_save_profile::draw(self, ui.ctx());
 
         // Report export dialog (session state only).
         let mut do_export = false;

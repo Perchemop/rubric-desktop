@@ -532,6 +532,41 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 }
             });
         });
+        ui.menu_button("Profiles", |ui| {
+            // Predefined profiles (★) and custom profiles (👤) would be
+            // populated from the ProfileStore (domain-dev) once available.
+            // Placeholder list keeps the menu functional and compilable.
+            let profiles: Vec<(&str, bool)> = vec![
+                ("Default", true),
+                ("Review", true),
+                ("Measurement", true),
+                ("Markup", true),
+            ];
+            for (name, predefined) in &profiles {
+                let icon = if *predefined { "★" } else { "👤" };
+                let label = format!("{} {}", icon, name);
+                let resp = ui.button(&label);
+                resp.clone().on_hover_text(format!(
+                    "{} — {} profile. Layout: panels, toolbars, theme, measurement defaults.",
+                    name,
+                    if *predefined { "predefined" } else { "custom" }
+                ));
+                if resp.clicked() {
+                    // Profile application via ProfileApplicator (to be wired).
+                    ui.close();
+                }
+            }
+            ui.separator();
+            if ui.button("Manage Profiles…").clicked() {
+                crate::ui::profile_manager_dialog::open(ui.ctx());
+                ui.close();
+            }
+            ui.separator();
+            if ui.button("Save Current Layout…").clicked() {
+                crate::ui::save_profile_dialog::open(ui.ctx());
+                ui.close();
+            }
+        });
         ui.menu_button("Help", |ui| {
             if ui.button("About Rubric").clicked() {
                 app.show_about = !app.show_about;

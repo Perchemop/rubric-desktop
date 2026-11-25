@@ -3,6 +3,7 @@
 pub mod a11y;
 pub mod action;
 pub mod bates;
+pub mod commands;
 pub mod diff;
 pub mod document;
 pub mod geom;
@@ -14,6 +15,9 @@ pub use markup_geometry::{text_box_rect, text_line_height, MarkupGeometry};
 pub mod markup_list;
 pub mod markup_measurement;
 pub mod markup_stamp;
+pub mod panel;
+pub mod profile;
+pub mod predefined_profiles;
 pub mod project;
 pub mod report;
 pub mod style;
@@ -23,15 +27,24 @@ pub mod text_anchor;
 pub mod theme;
 pub mod thumb_render;
 pub mod thumbs;
+pub mod toolbar;
 pub mod units;
 pub mod view;
 pub mod workspace;
 
 pub use a11y::{audit, contrast_ratio, meets, relative_luminance, A11yIssue, AuditPair, WcagLevel};
+pub use panel::{
+    DockLocation, DockedPanel, FloatingMode, FloatingPanel, PANEL_SCHEMA_VERSION,
+    PanelAccessBarState, PanelId, PanelLayout, SplitOrientation, SplitTree, TabGroup,
+};
 pub use action::EditorAction;
 pub use bates::{
     BatesConfig, BatesCorner, BatesRange, DEFAULT_BATES_DIGITS, MAX_BATES_DIGITS, MAX_BATES_START,
     MIN_BATES_DIGITS,
+};
+pub use commands::{
+    command_registry, commands_by_category, get_command, get_commands_for_category, get_all_command_ids,
+    has_command, command_count,
 };
 pub use diff::{diff_documents, diff_projects, DiffResult, MarkupChange, MarkupSummaryRow};
 pub use document::{Document, Layer, LayerError, Page};
@@ -44,6 +57,17 @@ pub use markup_comment::Comment;
 pub use markup_list::{MarkupGroupKey, MarkupList, MarkupListFilter, MarkupListSort, MarkupRow};
 pub use markup_measurement::Measurement;
 pub use markup_stamp::StampPreset;
+pub use panel::predefined_layouts;
+pub use profile::{
+    CanvasSettings, MAX_PROFILE_DESCRIPTION_LENGTH, MAX_PROFILE_NAME_LENGTH, MAX_PROFILES,
+    MeasurementDefaults, Profile, ProfileSummary, PROFILE_EXTENSION, CURRENT_PROFILE_SCHEMA_VERSION,
+    PROFILE_WARNING_THRESHOLD, ToolbarLayout,
+};
+pub use predefined_profiles::{
+    create_default_profile, create_markup_profile, create_measurement_profile, create_review_profile,
+    find_predefined_by_id, find_predefined_by_name, is_predefined_id, predefined_profiles,
+    serialize_predefined_profiles_json,
+};
 pub use project::{
     auto_save_interval_label, History, Project, ProjectSnapshot, RecentList, Settings, Tool,
     AUTO_SAVE_INTERVALS, CURRENT_SCHEMA_VERSION, MAX_RECENT, MIN_AUTO_SAVE_INTERVAL_SECS,
@@ -61,6 +85,7 @@ pub use thumb_render::{
     TextureLru, MAX_DISK_CACHE_AGE_SECS, MAX_DISK_CACHE_BYTES,
 };
 pub use thumbs::{thumb_layout, ThumbLayout};
+pub use toolbar::{CommandCategory, CommandId, CommandInfo, QuickAccessConfig, ToolbarConfig, ToolbarItem, ToolbarLockState, ToolbarProfileConfig};
 pub use units::{
     clamp_precision, format_value, format_value_precise, MeasureKind, MeasureUnit, Scale,
     DEFAULT_PRECISION, MAX_PRECISION,
