@@ -159,7 +159,7 @@ pub mod light {
     /// Window background colour (off-white).
     pub const WINDOW: Color = Color::from_rgb(252, 252, 253);
     /// Extreme background (page area far from chrome).
-    pub const EXTREME_BG: Color = Color::from_rgb(235, 238, 244);
+    pub const EXTREME_BG: Color = Color::from_rgb(220, 225, 240);
     /// Body text colour.
     pub const BODY_TEXT: Color = Color::from_rgb(32, 34, 48);
     /// Secondary/ muted text colour.
@@ -173,7 +173,7 @@ pub mod light {
     /// Placeholder text colour.
     pub const PLACEHOLDER_TEXT: Color = Color::from_rgb(160, 165, 180);
     /// Border / outline colour.
-    pub const BORDER: Color = Color::from_rgb(50, 50, 55);
+    pub const BORDER: Color = Color::from_rgb(130, 130, 135);
     /// Focus ring colour.
     pub const FOCUS_RING: Color = Color::from_rgb(228, 87, 46);
     /// Selection fill colour.
@@ -187,7 +187,7 @@ pub mod light {
     /// Hover background colour.
     pub const HOVER_BG: Color = Color::from_rgb(228, 231, 240);
     /// Elevated surface colour (cards, chips).
-    pub const ELEVATED_BG: Color = Color::from_rgb(255, 255, 255);
+    pub const ELEVATED_BG: Color = Color::from_rgb(240, 242, 250);
     /// Success colour.
     pub const SUCCESS: Color = Color::from_rgb(46, 168, 106);
     /// Warning colour.
