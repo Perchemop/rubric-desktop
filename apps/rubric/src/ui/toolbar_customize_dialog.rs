@@ -236,7 +236,8 @@ pub fn show(
                                     ui.small("(custom)");
                                 }
                                 if lock.global_locked && !tb.predefined {
-                                    let ov = lock.custom_overrides.get(&tb.id).copied().unwrap_or(false);
+                                    let ov =
+                                        lock.custom_overrides.get(&tb.id).copied().unwrap_or(false);
                                     let mut v = ov;
                                     if ui.checkbox(&mut v, "unlock").changed() {
                                         lock.custom_overrides.insert(tb.id.clone(), v);
