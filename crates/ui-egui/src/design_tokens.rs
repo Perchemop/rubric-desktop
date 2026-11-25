@@ -126,7 +126,10 @@ impl A11yIssue {
     pub fn describe(&self) -> String {
         format!(
             "{}: ratio {:.2}:1 is below the required {:.1}:1 ({})",
-            self.name, self.ratio, self.required, self.level.label()
+            self.name,
+            self.ratio,
+            self.required,
+            self.level.label()
         )
     }
 }

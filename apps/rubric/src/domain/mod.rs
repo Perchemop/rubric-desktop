@@ -76,8 +76,8 @@ pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
 pub use style_preset::{
     export_set_json, import_set_json, PresetSet, StylePreset, StylePresetLibrary, ToolSetExport,
 };
-pub use workspace::{PanelId, Region, WorkspaceState};
 pub use takeoff::{QuantityRow, TakeoffCondition, TakeoffError, TakeoffSettings};
+pub use workspace::{PanelId, Region, WorkspaceState};
 pub use text_anchor::{GlyphBox, GlyphLine, GlyphRange};
 pub use theme::{AppPrefs, Theme};
 pub use thumb_render::{

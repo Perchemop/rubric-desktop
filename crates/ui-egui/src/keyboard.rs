@@ -271,9 +271,12 @@ fn action_label_resources(action: &ResourcesAction) -> String {
 
 fn action_label_inspector(action: &InspectorAction) -> String {
     match action {
-        InspectorAction::Navigate { forward } => {
-            if *forward { "Focus next field" } else { "Focus previous field" }.to_string()
+        InspectorAction::Navigate { forward } => if *forward {
+            "Focus next field"
+        } else {
+            "Focus previous field"
         }
+        .to_string(),
         InspectorAction::ToggleDropdown => "Toggle dropdown".to_string(),
         InspectorAction::Confirm => "Confirm".to_string(),
         InspectorAction::Cancel => "Cancel".to_string(),
@@ -515,7 +518,11 @@ mod tests {
 
     #[test]
     fn test_modifiers_to_and_from_egui_roundtrip() {
-        let original = Modifiers { ctrl: true, shift: false, alt: true };
+        let original = Modifiers {
+            ctrl: true,
+            shift: false,
+            alt: true,
+        };
         let back: egui::Modifiers = original.into();
         let roundtrip: Modifiers = back.into();
         assert_eq!(roundtrip, original);
@@ -524,10 +531,16 @@ mod tests {
     #[test]
     fn test_shortcut_label() {
         assert_eq!(shortcut_label(GlobalShortcut::F1Help), "F1");
-        assert_eq!(shortcut_label(GlobalShortcut::CtrlKCommandPalette), "Ctrl+K");
+        assert_eq!(
+            shortcut_label(GlobalShortcut::CtrlKCommandPalette),
+            "Ctrl+K"
+        );
         assert_eq!(shortcut_label(GlobalShortcut::CtrlViewSwitch(1)), "Ctrl+1");
         assert_eq!(shortcut_label(GlobalShortcut::AltDensity(3)), "Alt+3");
-        assert_eq!(shortcut_label(GlobalShortcut::AltShiftDCycle), "Alt+Shift+D");
+        assert_eq!(
+            shortcut_label(GlobalShortcut::AltShiftDCycle),
+            "Alt+Shift+D"
+        );
     }
 
     #[test]
