@@ -357,4 +357,3 @@ fn test_modifiers_from_egui_roundtrip() {
     assert_eq!(back.shift, false);
     assert_eq!(back.alt, true);
 }
-
