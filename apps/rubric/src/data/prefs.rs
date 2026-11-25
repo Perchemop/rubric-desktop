@@ -126,6 +126,7 @@ mod tests {
             tool_chest_max_recents: 12,
             show_quantities: true,
             quantities_tab_selected: true,
+            active_profile: String::new(),
             workspace: crate::domain::workspace::WorkspaceState::default(),
         };
         save_prefs_to(&path, &prefs).expect("save");

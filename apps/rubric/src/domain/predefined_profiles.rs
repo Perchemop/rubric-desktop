@@ -286,7 +286,7 @@ mod tests {
     #[test]
     fn predefined_profiles_roundtrip() {
         let profiles = predefined_profiles();
-        let json = serde_json::to_string(profiles).expect("serialize");
+        let json = serde_json::to_string(&profiles).expect("serialize");
         let back: Vec<Profile> = serde_json::from_str(&json).expect("deserialize");
 
         for (original, restored) in profiles.iter().zip(back.iter()) {

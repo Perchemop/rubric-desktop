@@ -1162,7 +1162,7 @@ mod tests {
     }
 
     #[test]
-    fn get_commands_for_category() {
+    fn get_commands_for_category_test() {
         let cmds = get_commands_for_category(CommandCategory::SelectionNavigation);
         assert_eq!(cmds.len(), 10);
         assert!(cmds.iter().any(|c| c.0 == "select"));

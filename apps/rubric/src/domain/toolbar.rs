@@ -412,10 +412,22 @@ mod tests {
 
     #[test]
     fn quick_access_config_validation() {
-        let valid = QuickAccessConfig::new((0..12).map(CommandId::new).collect());
+        let valid = QuickAccessConfig::new(
+            vec!["select", "pan", "zoom_in", "zoom_out", "zoom_fit", "page_first",
+                 "page_prev", "page_next", "page_last", "jump_to_page", "highlight", "strikeout"]
+                .into_iter()
+                .map(CommandId::new)
+                .collect(),
+        );
         assert!(valid.is_valid());
 
-        let invalid = QuickAccessConfig::new((0..13).map(CommandId::new).collect());
+        let invalid = QuickAccessConfig::new(
+            vec!["select", "pan", "zoom_in", "zoom_out", "zoom_fit", "page_first",
+                 "page_prev", "page_next", "page_last", "jump_to_page", "highlight", "strikeout", "underline"]
+                .into_iter()
+                .map(CommandId::new)
+                .collect(),
+        );
         assert!(!invalid.is_valid());
     }
 
