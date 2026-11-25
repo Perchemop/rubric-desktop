@@ -387,41 +387,44 @@ pub fn show(
                 cols[2].group(|ui| {
                     ui.heading("Toolbars");
                     egui::ScrollArea::vertical().show(ui, |ui| {
-                        for tb in toolbars.iter() {
-                            ui.horizontal(|ui| {
-                                let mut vis = tb.visible;
+                        let ids: Vec<String> = toolbars.iter().map(|t| t.id.clone()).collect();
+                        for id in ids {
+                            if let Some(tb_idx) = toolbars.iter().position(|t| t.id == id) {
+                                let mut vis = toolbars[tb_idx].visible;
                                 if ui.checkbox(&mut vis, "").changed() {
-                                    // find mutable
-                                    if let Some(t) = toolbars.iter_mut().find(|x| x.id == tb.id) {
-                                        t.visible = vis;
-                                        changed = true;
+                                    toolbars[tb_idx].visible = vis;
+                                    changed = true;
+                                }
+                                let name = toolbars[tb_idx].name.clone();
+                                let predefined = toolbars[tb_idx].predefined;
+                                ui.horizontal(|ui| {
+                                    ui.checkbox(&mut vis, "");
+                                    ui.label(name);
+                                    if predefined {
+                                        ui.small("(predefined)");
+                                    } else {
+                                        ui.small("(custom)");
                                     }
-                                }
-                                ui.label(&tb.name);
-                                if tb.predefined {
-                                    ui.small("(predefined)");
-                                } else {
-                                    ui.small("(custom)");
-                                }
-                                if lock.global_locked && !tb.predefined {
-                                    let ov =
-                                        lock.custom_overrides.get(&tb.id).copied().unwrap_or(false);
-                                    let mut v = ov;
-                                    if ui.checkbox(&mut v, "unlock").changed() {
-                                        lock.custom_overrides.insert(tb.id.clone(), v);
-                                        changed = true;
+                                    if lock.global_locked && !predefined {
+                                        let ov =
+                                            lock.custom_overrides.get(&id).copied().unwrap_or(false);
+                                        let mut v = ov;
+                                        if ui.checkbox(&mut v, "unlock").changed() {
+                                            lock.custom_overrides.insert(id.clone(), v);
+                                            changed = true;
+                                        }
                                     }
+                                });
+                                if ui
+                                    .selectable_label(
+                                        state.selected_toolbar.as_deref() == Some(&id),
+                                        &id,
+                                    )
+                                    .clicked()
+                                {
+                                    state.selected_toolbar = Some(id);
+                                    state.selected_item = None;
                                 }
-                            });
-                            if ui
-                                .selectable_label(
-                                    state.selected_toolbar.as_deref() == Some(&tb.id),
-                                    &tb.name,
-                                )
-                                .clicked()
-                            {
-                                state.selected_toolbar = Some(tb.id.clone());
-                                state.selected_item = None;
                             }
                         }
                     });
