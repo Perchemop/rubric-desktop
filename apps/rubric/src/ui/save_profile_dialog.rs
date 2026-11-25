@@ -16,35 +16,35 @@ const ACTIVE_KEY: &str = "rubric.save_profile.active";
 
 pub fn open(ctx: &egui::Context) {
     ctx.data_mut(|d| {
-        d.insert_temp(Id::unique(), true);
-        if d.get_temp::<String>(Id::unique()).is_none() {
-            d.insert_temp(Id::unique(), String::new());
+        d.insert_temp(egui::Id::new(OPEN_KEY), true);
+        if d.get_temp::<String>(egui::Id::new(NAME_KEY)).is_none() {
+            d.insert_temp(egui::Id::new(NAME_KEY), String::new());
         }
-        if d.get_temp::<String>(Id::unique()).is_none() {
-            d.insert_temp(Id::unique(), String::new());
+        if d.get_temp::<String>(egui::Id::new(DESC_KEY)).is_none() {
+            d.insert_temp(egui::Id::new(DESC_KEY), String::new());
         }
-        if d.get_temp::<bool>(Id::unique()).is_none() {
-            d.insert_temp(Id::unique(), true);
+        if d.get_temp::<bool>(egui::Id::new(ACTIVE_KEY)).is_none() {
+            d.insert_temp(egui::Id::new(ACTIVE_KEY), true);
         }
     });
 }
 
 pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
     let mut open = ctx
-        .data(|d| d.get_temp::<bool>(Id::unique()))
+        .data(|d| d.get_temp::<bool>(egui::Id::new(OPEN_KEY)))
         .unwrap_or(false);
     if !open {
         return;
     }
 
     let mut name = ctx
-        .data(|d| d.get_temp::<String>(Id::unique()))
+        .data(|d| d.get_temp::<String>(egui::Id::new(NAME_KEY)))
         .unwrap_or_default();
     let mut desc = ctx
-        .data(|d| d.get_temp::<String>(Id::unique()))
+        .data(|d| d.get_temp::<String>(egui::Id::new(DESC_KEY)))
         .unwrap_or_default();
     let mut active = ctx
-        .data(|d| d.get_temp::<bool>(Id::unique()))
+        .data(|d| d.get_temp::<bool>(egui::Id::new(ACTIVE_KEY)))
         .unwrap_or(true);
 
     let mut close = false;
@@ -113,9 +113,9 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
         });
 
     ctx.data_mut(|d| {
-        d.insert_temp(Id::unique(), name.clone());
-        d.insert_temp(Id::unique(), desc.clone());
-        d.insert_temp(Id::unique(), active);
+        d.insert_temp(egui::Id::new(NAME_KEY), name.clone());
+        d.insert_temp(egui::Id::new(DESC_KEY), desc.clone());
+        d.insert_temp(egui::Id::new(ACTIVE_KEY), active);
     });
 
     if commit {
@@ -153,6 +153,6 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
     }
 
     if close || !open {
-        ctx.data_mut(|d| d.insert_temp(Id::unique(), false));
+        ctx.data_mut(|d| d.insert_temp(egui::Id::new(OPEN_KEY), false));
     }
 }

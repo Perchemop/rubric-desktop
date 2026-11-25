@@ -9,6 +9,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::workspace::{FloatState, PanelId, Region, WorkspaceState};
 
+/// Re-export PanelId for backward compatibility.
+pub use crate::domain::workspace::PanelId;
+
 /// Schema version for panel layout serialization.
 /// Increment when backwards-compatible changes are made; bump major for breaking changes.
 pub const PANEL_SCHEMA_VERSION: u32 = 1;

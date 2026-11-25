@@ -55,10 +55,10 @@ pub use markup_measurement::Measurement;
 pub use markup_stamp::StampPreset;
 pub use panel::predefined_layouts;
 pub use panel::{
-    DockLocation, DockedPanel, FloatingMode, FloatingPanel, PanelAccessBarState, PanelId,
+    DockLocation, DockedPanel, FloatingMode, FloatingPanel, PanelAccessBarState,
     PanelLayout, SplitOrientation, SplitTree, TabGroup, PANEL_SCHEMA_VERSION,
 };
-pub use workspace::{Region, WorkspaceState};
+pub use workspace::{PanelId, Region, WorkspaceState};
 pub use predefined_profiles::{
     create_default_profile, create_markup_profile, create_measurement_profile,
     create_review_profile, find_predefined_by_id, find_predefined_by_name, is_predefined_id,

@@ -12,7 +12,7 @@ use thiserror::Error;
 /// Panel identifiers that can be docked, floated, or closed.
 ///
 /// Extensible for future plugins via the `Other(String)` variant.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", untagged)]
 pub enum PanelId {
     /// Page Thumbnails panel.
