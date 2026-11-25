@@ -41,7 +41,10 @@ pub enum ViewEvent {
     /// Dialog navigation events.
     Dialog { action: DialogAction },
     /// Command palette fuzzy-search results.
-    CommandPalette { query: String, selected: Option<usize> },
+    CommandPalette {
+        query: String,
+        selected: Option<usize>,
+    },
 }
 
 /// Table cell/actions.
@@ -407,16 +410,16 @@ pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewE
         }
 
         // Gantt: Home/End.
-        egui::Key::Home => {
-            Some(ViewEvent::Gantt {
-                action: GanttAction::Jump { position: GanttJump::Start },
-            })
-        }
-        egui::Key::End => {
-            Some(ViewEvent::Gantt {
-                action: GanttAction::Jump { position: GanttJump::End },
-            })
-        }
+        egui::Key::Home => Some(ViewEvent::Gantt {
+            action: GanttAction::Jump {
+                position: GanttJump::Start,
+            },
+        }),
+        egui::Key::End => Some(ViewEvent::Gantt {
+            action: GanttAction::Jump {
+                position: GanttJump::End,
+            },
+        }),
 
         // Inspector: Tab/Shift+Tab navigate fields.
         egui::Key::Tab if !m.shift => Some(ViewEvent::Inspector {

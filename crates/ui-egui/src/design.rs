@@ -24,11 +24,7 @@ use crate::keyboard::FocusRingProperties;
 /// The focus ring uses the ACCENT colour (Rubric red-orange) which has
 /// been audited to meet WCAG AA-large (≥3:1) contrast against both light
 /// and dark theme surfaces.
-pub fn draw_focus_ring(
-    ui: &egui::Ui,
-    rect: Rect,
-    props: FocusRingProperties,
-) {
+pub fn draw_focus_ring(ui: &egui::Ui, rect: Rect, props: FocusRingProperties) {
     // The response from the last widget under the cursor.
     // We draw the focus ring as an overlay stroke after the widget.
     let painter = ui.painter();
