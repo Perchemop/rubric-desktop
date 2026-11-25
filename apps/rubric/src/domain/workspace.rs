@@ -396,9 +396,9 @@ mod tests {
         // But if we then try closing Thumbnails, it should refuse.
         let thumbnails_ok = ws.close_panel(PanelId::Thumbnails);
         assert!(
-    !thumbnails_ok,
-    "closing Thumbnails (last panel) should refuse"
-);
+            !thumbnails_ok,
+            "closing Thumbnails (last panel) should refuse"
+        );
     }
 
     #[test]

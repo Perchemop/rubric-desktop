@@ -63,7 +63,6 @@ pub use predefined_profiles::{
     create_review_profile, find_predefined_by_id, find_predefined_by_name, is_predefined_id,
     predefined_profiles, serialize_predefined_profiles_json,
 };
-pub use workspace::{PanelId, Region, WorkspaceState};
 pub use profile::{
     CanvasSettings, MeasurementDefaults, Profile, ProfileSummary, ToolbarLayout,
     CURRENT_PROFILE_SCHEMA_VERSION, MAX_PROFILES, MAX_PROFILE_DESCRIPTION_LENGTH,
@@ -94,3 +93,4 @@ pub use units::{
     clamp_precision, format_value, format_value_precise, MeasureKind, MeasureUnit, Scale,
     DEFAULT_PRECISION, MAX_PRECISION,
 };
+pub use workspace::{PanelId, Region, WorkspaceState};
