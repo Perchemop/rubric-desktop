@@ -173,15 +173,15 @@ pub mod light {
     /// Placeholder text colour.
     pub const PLACEHOLDER_TEXT: Color = Color::from_rgb(160, 165, 180);
     /// Border / outline colour.
-    pub const BORDER: Color = Color::from_rgb(180, 185, 200);
+    pub const BORDER: Color = Color::from_rgb(130, 130, 135);
     /// Focus ring colour.
-    pub const FOCUS_RING: Color = Color::from_rgb(228, 87, 46);
+    pub const FOCUS_RING: Color = Color::from_rgb(220, 220, 220);
     /// Selection fill colour.
-    pub const SELECTION_BG: Color = Color::from_rgb(228, 87, 46);
+    pub const SELECTION_BG: Color = Color::from_rgb(220, 220, 220);
     /// Selection text colour.
     pub const SELECTION_FG: Color = Color::from_rgb(255, 255, 255);
     /// Link colour.
-    pub const LINK: Color = Color::from_rgb(0, 122, 200);
+    pub const LINK: Color = Color::from_rgb(0, 110, 180);
     /// Background colour for forms/input areas.
     pub const INPUT_BG: Color = Color::from_rgb(255, 255, 255);
     /// Hover background colour.
@@ -223,9 +223,9 @@ pub mod dark {
     /// Border / outline colour.
     pub const BORDER: Color = Color::from_rgb(100, 105, 120);
     /// Focus ring colour.
-    pub const FOCUS_RING: Color = Color::from_rgb(228, 87, 46);
+    pub const FOCUS_RING: Color = Color::from_rgb(220, 220, 220);
     /// Selection fill colour.
-    pub const SELECTION_BG: Color = Color::from_rgb(228, 87, 46);
+    pub const SELECTION_BG: Color = Color::from_rgb(220, 220, 220);
     /// Selection text colour.
     pub const SELECTION_FG: Color = Color::from_rgb(255, 255, 255);
     /// Link colour.
