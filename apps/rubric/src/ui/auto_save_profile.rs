@@ -14,7 +14,7 @@ const OPEN_KEY: &str = "rubric.auto_save_profile.prompt_open";
 const PREF_KEY: &str = "rubric.auto_save_profile.preference"; // 0=unset,1=yes,2=no
 
 pub fn preference(ctx: &egui::Context) -> Option<bool> {
-    match ctx.data(|d| d.get_temp::<i32>(egui::Id::unique()).unwrap_or(0)) {
+    match ctx.data(|d| d.get_temp::<i32>(egui::Id::new("auto_save_pref")).unwrap_or(0)) {
         1 => Some(true),
         2 => Some(false),
         _ => None,
@@ -27,16 +27,16 @@ pub fn set_preference(ctx: &egui::Context, value: Option<bool>) {
         Some(false) => 2,
         None => 0,
     };
-    ctx.data_mut(|d| d.insert_temp(egui::Id::unique(), v));
+    ctx.data_mut(|d| d.insert_temp(egui::Id::new("auto_save_pref"), v));
 }
 
 pub fn prompt_on_close(ctx: &egui::Context) {
-    ctx.data_mut(|d| d.insert_temp(egui::Id::unique(), true));
+    ctx.data_mut(|d| d.insert_temp(egui::Id::new("auto_save_prompt"), true));
 }
 
 pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
     let mut open = ctx
-        .data(|d| d.get_temp::<bool>(egui::Id::unique()))
+        .data(|d| d.get_temp::<bool>(egui::Id::new("auto_save_prompt")))
         .unwrap_or(false);
     if !open {
         return;
@@ -72,7 +72,7 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
                 set_preference(ctx, Some(true));
                 // Auto-save enabled: serialize current UI state to active profile
                 let profile = build_profile_from_state(
-                    app.settings.active_profile.clone(),
+                    app.active_profile.clone(),
                     "Auto-saved on close".to_string(),
                     PanelLayout::default(), // Panel layout (not yet integrated)
                     None,                   // Toolbar profile config (not yet integrated)
@@ -99,7 +99,7 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
     }
 
     if close || !open {
-        ctx.data_mut(|d| d.insert_temp(egui::Id::unique(), false));
+        ctx.data_mut(|d| d.insert_temp(egui::Id::new("auto_save_prompt"), false));
     }
 }
 

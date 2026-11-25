@@ -88,7 +88,7 @@ impl PanelAccessBar {
 
     pub fn show_ctx(&mut self, ctx: &Context, manager: &mut PanelManager, panels: &[PanelId]) {
         // Convenience: create a side panel.
-        egui::SidePanel::left("panel_access_bar")
+        SidePanel::left("panel_access_bar")
             .default_width(self.width())
             .show(ctx, |ui| {
                 self.show(ui, manager, panels);
