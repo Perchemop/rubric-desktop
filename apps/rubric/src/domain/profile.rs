@@ -14,8 +14,8 @@ use uuid::Uuid;
 
 use super::grid::Grid;
 use super::panel::{
-    DockLocation, DockedPanel, FloatingMode, PanelAccessBarState, PanelLayout,
-    SplitOrientation, SplitTree, TabGroup,
+    DockLocation, DockedPanel, FloatingMode, PanelAccessBarState, PanelLayout, SplitOrientation,
+    SplitTree, TabGroup,
 };
 use super::theme::Theme;
 use super::units::{MeasureUnit, Scale};
