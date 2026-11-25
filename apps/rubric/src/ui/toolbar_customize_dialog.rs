@@ -296,7 +296,8 @@ pub fn show(
                                 if !name.is_empty() {
                                     let id =
                                         format!("custom_{}", name.to_lowercase().replace(' ', "_"));
-                                    let exists = toolbars.iter().any(|t| t.name.eq_ignore_ascii_case(&name));
+                                    let exists =
+                                        toolbars.iter().any(|t| t.name.eq_ignore_ascii_case(&name));
                                     if exists {
                                         // error: duplicate
                                     } else if toolbars.iter().filter(|t| !t.predefined).count() >= 20 {
@@ -398,10 +399,10 @@ pub fn show(
                                         );
                                     }
                                 }
-                            if items_clone.is_empty() {
-                                ui.label("(empty)");
-                            }
-                        });
+                                if items_clone.is_empty() {
+                                    ui.label("(empty)");
+                                }
+                            });
                     });
                     if let Some(payload) = drop_resp.payload::<String>() {
                         let p = payload.clone();
