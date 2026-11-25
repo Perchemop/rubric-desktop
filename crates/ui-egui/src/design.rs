@@ -11,7 +11,7 @@
 //! - Colour: Rubric ACCENT (228, 87, 46), which meets AA-large contrast
 //!   against both light and dark theme surfaces.
 
-use egui::{pos2, Rect, Stroke};
+use egui::{pos2, Rect, Stroke, Vec2, Response, Color32};
 
 use crate::keyboard::FocusRingProperties;
 
@@ -28,30 +28,26 @@ pub fn draw_focus_ring(
     ui: &egui::Ui,
     rect: Rect,
     props: FocusRingProperties,
-) -> egui::Response {
+) -> Response {
     // The response from the last widget under the cursor.
     // We draw the focus ring as an overlay stroke after the widget.
     let painter = ui.painter();
 
     // Calculate the outer rect for the focus ring, offset from the widget edge.
-    let outer_min = rect.min - vec2(props.offset, props.offset);
-    let outer_max = rect.max + vec2(props.offset, props.offset);
-    let outer_rect = Rect::from_two_points(outer_min, outer_max);
+    let outer_min = rect.min - Vec2::new(props.offset, props.offset);
+    let outer_max = rect.max + Vec2::new(props.offset, props.offset);
+    let outer_rect = Rect::from_min_max(outer_min, outer_max);
 
     // Draw the focus ring stroke.
-    painter.line_segment(
-        [
-            pos2(outer_rect.min.x, outer_rect.min.y),
-            pos2(outer_rect.max.x, outer_rect.min.y),
-            pos2(outer_rect.max.x, outer_rect.max.y),
-            pos2(outer_rect.min.x, outer_rect.max.y),
-            pos2(outer_rect.min.x, outer_rect.min.y),
-        ],
+    painter.rect_stroke(
+        outer_rect,
+        0.0,
         Stroke::new(props.thickness, props.colour),
+        egui::StrokeKind::Outside,
     );
 
     // Return a dummy response; the actual widget response is upstream.
-    egui::Response::default()
+    Response::default()
 }
 
 /// Default focus ring properties (2px thickness, 2px offset, ACCENT colour).

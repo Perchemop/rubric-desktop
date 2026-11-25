@@ -199,8 +199,7 @@ impl From<Modifiers> for egui::Modifiers {
             ctrl: m.ctrl,
             shift: m.shift,
             alt: m.alt,
-            // Other fields default/unspecified.
-            ..
+            ..Default::default()
         }
     }
 }
@@ -237,13 +236,13 @@ pub fn event_label(event: &ViewEvent) -> String {
 fn action_label(action: &TableAction) -> String {
     match action {
         TableAction::Navigate { dx, dy } => format!("Navigate ({}, {})", dx, dy),
-        TableAction::Edit => "Edit",
-        TableAction::Select => "Select",
-        TableAction::SelectAll => "Select All",
-        TableAction::Delete => "Delete",
-        TableAction::Copy => "Copy",
-        TableAction::Paste => "Paste",
-        TableAction::Cut => "Cut",
+        TableAction::Edit => "Edit".to_string(),
+        TableAction::Select => "Select".to_string(),
+        TableAction::SelectAll => "Select All".to_string(),
+        TableAction::Delete => "Delete".to_string(),
+        TableAction::Copy => "Copy".to_string(),
+        TableAction::Paste => "Paste".to_string(),
+        TableAction::Cut => "Cut".to_string(),
     }
 }
 
@@ -252,38 +251,38 @@ fn action_label_gantt(action: &GanttAction) -> String {
         GanttAction::Pan { dx, dy } => format!("Pan ({}, {})", dx, dy),
         GanttAction::Zoom { factor } => format!("Zoom {:.1}x", factor),
         GanttAction::Jump { position } => match position {
-            GanttJump::Start => "Jump to start",
-            GanttJump::End => "Jump to end",
+            GanttJump::Start => "Jump to start".to_string(),
+            GanttJump::End => "Jump to end".to_string(),
         },
-        GanttAction::Select { .. } => "Select",
+        GanttAction::Select { .. } => "Select".to_string(),
     }
 }
 
 fn action_label_resources(action: &ResourcesAction) -> String {
     match action {
         ResourcesAction::Navigate { dy } => format!("Navigate vertically {}", dy),
-        ResourcesAction::EditAssignment => "Edit assignment",
-        ResourcesAction::Remove => "Remove",
+        ResourcesAction::EditAssignment => "Edit assignment".to_string(),
+        ResourcesAction::Remove => "Remove".to_string(),
     }
 }
 
 fn action_label_inspector(action: &InspectorAction) -> String {
     match action {
         InspectorAction::Navigate { forward } => {
-            if *forward { "Focus next field" } else { "Focus previous field" }.into()
+            if *forward { "Focus next field" } else { "Focus previous field" }.to_string()
         }
-        InspectorAction::ToggleDropdown => "Toggle dropdown",
-        InspectorAction::Confirm => "Confirm",
-        InspectorAction::Cancel => "Cancel",
+        InspectorAction::ToggleDropdown => "Toggle dropdown".to_string(),
+        InspectorAction::Confirm => "Confirm".to_string(),
+        InspectorAction::Cancel => "Cancel".to_string(),
     }
 }
 
 fn action_label_dialog(action: &DialogAction) -> String {
     match action {
-        DialogAction::FocusNext => "Focus next",
-        DialogAction::FocusPrev => "Focus prev",
-        DialogAction::Close => "Close",
-        DialogAction::Default => "Default action",
+        DialogAction::FocusNext => "Focus next".to_string(),
+        DialogAction::FocusPrev => "Focus prev".to_string(),
+        DialogAction::Close => "Close".to_string(),
+        DialogAction::Default => "Default action".to_string(),
     }
 }
 
