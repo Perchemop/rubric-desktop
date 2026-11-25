@@ -56,8 +56,8 @@ pub use markup_stamp::StampPreset;
 pub use panel::{
     DockLocation, DockedPanel, FloatingMode, FloatingPanel, PanelAccessBarState,
     PanelLayout, SplitOrientation, SplitTree, TabGroup, PANEL_SCHEMA_VERSION,
+    predefined_layouts,
 };
-pub use panel::predefined_layouts;
 pub use workspace::{PanelId, Region, WorkspaceState};
 pub use predefined_profiles::{
     create_default_profile, create_markup_profile, create_measurement_profile,

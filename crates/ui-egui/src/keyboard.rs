@@ -27,7 +27,7 @@ pub enum GlobalShortcut {
 }
 
 /// View-specific navigation events, re-emitted by the UI layer.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum ViewEvent {
     /// Table navigation: arrow keys move focus, Enter edits, Space selects.
