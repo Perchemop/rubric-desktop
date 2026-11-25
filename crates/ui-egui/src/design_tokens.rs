@@ -181,7 +181,7 @@ pub mod light {
     /// Selection text colour.
     pub const SELECTION_FG: Color = Color::from_rgb(255, 255, 255);
     /// Link colour.
-    pub const LINK: Color = Color::from_rgb(0, 130, 210);
+    pub const LINK: Color = Color::from_rgb(0, 110, 190);
     /// Background colour for forms/input areas.
     pub const INPUT_BG: Color = Color::from_rgb(255, 255, 255);
     /// Hover background colour.
