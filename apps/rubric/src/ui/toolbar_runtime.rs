@@ -189,7 +189,12 @@ impl ToolbarManager {
     }
 
     /// Render custom toolbars (dockable). Caller positions them.
-    pub fn render_custom_toolbar(&self, ui: &mut Ui, id: &str, _active_command: &mut Option<String>) -> bool {
+    pub fn render_custom_toolbar(
+        &self,
+        ui: &mut Ui,
+        id: &str,
+        _active_command: &mut Option<String>,
+    ) -> bool {
         let mut clicked = false;
         let cfg = self.toolbars.iter().find(|t| t.id == id);
         let Some(cfg) = cfg else { return false };

@@ -245,7 +245,13 @@ pub fn show(
                                     }
                                 }
                             });
-                            if ui.selectable_label(state.selected_toolbar.as_deref() == Some(&tb.id), &tb.name).clicked() {
+                            if ui
+                                .selectable_label(
+                                    state.selected_toolbar.as_deref() == Some(&tb.id),
+                                    &tb.name,
+                                )
+                                .clicked()
+                            {
                                 state.selected_toolbar = Some(tb.id.clone());
                                 state.selected_item = None;
                             }
@@ -273,7 +279,10 @@ pub fn show(
                                 .unwrap_or_default();
                         }
                         let del_enabled = !sel_predefined && state.selected_toolbar.is_some();
-                        if ui.add_enabled(del_enabled, egui::Button::new("Delete")).clicked() {
+                        if ui
+                            .add_enabled(del_enabled, egui::Button::new("Delete"))
+                            .clicked()
+                        {
                             state.show_delete_confirm = true;
                         }
                     });
@@ -285,7 +294,8 @@ pub fn show(
                             if ui.button("Create").clicked() {
                                 let name = state.name_buffer.trim().to_string();
                                 if !name.is_empty() {
-                                    let id = format!("custom_{}", name.to_lowercase().replace(' ', "_"));
+                                    let id =
+                                        format!("custom_{}", name.to_lowercase().replace(' ', "_"));
                                     let exists = toolbars.iter().any(|t| t.name.eq_ignore_ascii_case(&name));
                                     if exists {
                                         // error: duplicate
@@ -360,24 +370,34 @@ pub fn show(
                     let is_properties = selected_id.as_deref() == Some("properties");
 
                     // Drop zone for commands -> items
-                    let drop_resp = ui.dnd_drop_zone::<String, _>(egui::Frame::canvas(ui.style()), |ui| {
-                        egui::ScrollArea::vertical().show(ui, |ui| {
-                            for (idx, item) in items_clone.iter().enumerate() {
-                                let label = match item {
-                                    crate::ui::toolbar_runtime::ToolbarItem::Tool(id) => id.clone(),
-                                    crate::ui::toolbar_runtime::ToolbarItem::Divider => "— Divider —".to_string(),
-                                    crate::ui::toolbar_runtime::ToolbarItem::Spacer => "Spacer".to_string(),
-                                };
-                                let sel = state.selected_item == Some(idx);
-                                let resp = ui.selectable_label(sel, label);
-                                if resp.clicked() {
-                                    state.selected_item = Some(idx);
+                    let drop_resp =
+                        ui.dnd_drop_zone::<String, _>(egui::Frame::canvas(ui.style()), |ui| {
+                            egui::ScrollArea::vertical().show(ui, |ui| {
+                                for (idx, item) in items_clone.iter().enumerate() {
+                                    let label = match item {
+                                        crate::ui::toolbar_runtime::ToolbarItem::Tool(id) => {
+                                            id.clone()
+                                        }
+                                        crate::ui::toolbar_runtime::ToolbarItem::Divider => {
+                                            "— Divider —".to_string()
+                                        }
+                                        crate::ui::toolbar_runtime::ToolbarItem::Spacer => {
+                                            "Spacer".to_string()
+                                        }
+                                    };
+                                    let sel = state.selected_item == Some(idx);
+                                    let resp = ui.selectable_label(sel, label);
+                                    if resp.clicked() {
+                                        state.selected_item = Some(idx);
+                                    }
+                                    // drag source for reorder/remove
+                                    if resp.drag_started() {
+                                        egui::DragAndDrop::set_payload(
+                                            ctx,
+                                            format!("item:{}", idx),
+                                        );
+                                    }
                                 }
-                                // drag source for reorder/remove
-                                if resp.drag_started() {
-                                    egui::DragAndDrop::set_payload(ctx, format!("item:{}", idx));
-                                }
-                            }
                             if items_clone.is_empty() {
                                 ui.label("(empty)");
                             }
