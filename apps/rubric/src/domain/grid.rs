@@ -4,6 +4,7 @@
 //! the rules stay testable without a display.
 
 use crate::domain::geom::Pt;
+use serde::{Deserialize, Serialize};
 
 /// Canvas grid settings.
 ///
