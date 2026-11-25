@@ -7,6 +7,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::domain::workspace::{FloatState, Region, WorkspaceState};
+
 /// Schema version for panel layout serialization.
 /// Increment when backwards-compatible changes are made; bump major for breaking changes.
 pub const PANEL_SCHEMA_VERSION: u32 = 1;
@@ -364,6 +366,116 @@ impl Default for PanelLayout {
             access_bar: PanelAccessBarState::default(),
             schema_version: PANEL_SCHEMA_VERSION,
         }
+    }
+}
+
+impl PanelLayout {
+    /// Convert from WorkspaceState (live domain state) to PanelLayout (profile format).
+    pub fn from_workspace(workspace: &WorkspaceState) -> Self {
+        let mut layout = Self::default();
+
+        // Convert open panels with their regions into dock strips
+        for (panel_id, region) in &workspace.region {
+            if workspace.open.contains(panel_id) {
+                let mut docked = DockedPanel::new(panel_id.clone());
+                docked.dock_location = match region {
+                    Region::Left => DockLocation::Left,
+                    Region::Right => DockLocation::Right,
+                    Region::Bottom => DockLocation::Bottom,
+                    Region::Float => DockLocation::Left, // Default, will be overridden by floating
+                };
+
+                // Add to appropriate strip
+                match region {
+                    Region::Left => layout.left.push(docked),
+                    Region::Right => layout.right.push(docked),
+                    Region::Bottom => layout.bottom.push(docked),
+                    Region::Float => {
+                        // Convert FloatState to FloatingPanel if present
+                        if let Some(float_state) = workspace.floating.get(panel_id) {
+                            docked.floating = Some(FloatingPanel {
+                                panel_id: panel_id.clone(),
+                                position: [float_state.rect[0], float_state.rect[1]],
+                                size: [float_state.rect[2], float_state.rect[3]],
+                                mode: FloatingMode::Windowed,
+                                monitor: None,
+                            });
+                        }
+                        // Floating panels go to left strip by default but with floating state
+                        layout.left.push(docked);
+                    }
+                }
+            }
+        }
+
+        // Handle floating panels that might not have a region
+        for (panel_id, float_state) in &workspace.floating {
+            if !workspace.region.contains_key(panel_id) && workspace.open.contains(panel_id) {
+                let mut docked = DockedPanel::new(panel_id.clone());
+                docked.floating = Some(FloatingPanel {
+                    panel_id: panel_id.clone(),
+                    position: [float_state.rect[0], float_state.rect[1]],
+                    size: [float_state.rect[2], float_state.rect[3]],
+                    mode: FloatingMode::Windowed,
+                    monitor: None,
+                });
+                docked.dock_location = DockLocation::Left;
+                layout.left.push(docked);
+            }
+        }
+
+        layout
+    }
+
+    /// Convert PanelLayout (profile format) to WorkspaceState (live domain state).
+    pub fn to_workspace(&self) -> WorkspaceState {
+        let mut workspace = WorkspaceState::default();
+
+        // Collect all panels from all strips
+        for docked in &self.left {
+            if docked.visible {
+                workspace.open.insert(docked.id.clone());
+                workspace.region.insert(docked.id.clone(), Region::Left);
+                if let Some(floating) = &docked.floating {
+                    workspace.floating.insert(
+                        docked.id.clone(),
+                        FloatState {
+                            rect: [floating.position[0], floating.position[1], floating.size[0], floating.size[1]],
+                        },
+                    );
+                }
+            }
+        }
+        for docked in &self.right {
+            if docked.visible {
+                workspace.open.insert(docked.id.clone());
+                workspace.region.insert(docked.id.clone(), Region::Right);
+                if let Some(floating) = &docked.floating {
+                    workspace.floating.insert(
+                        docked.id.clone(),
+                        FloatState {
+                            rect: [floating.position[0], floating.position[1], floating.size[0], floating.size[1]],
+                        },
+                    );
+                }
+            }
+        }
+        for docked in &self.bottom {
+            if docked.visible {
+                workspace.open.insert(docked.id.clone());
+                workspace.region.insert(docked.id.clone(), Region::Bottom);
+                if let Some(floating) = &docked.floating {
+                    workspace.floating.insert(
+                        docked.id.clone(),
+                        FloatState {
+                            rect: [floating.position[0], floating.position[1], floating.size[0], floating.size[1]],
+                        },
+                    );
+                }
+            }
+        }
+
+        workspace
     }
 }
 

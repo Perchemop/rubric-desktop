@@ -3,9 +3,8 @@
 //! Thin UI-side coordinator over the pure domain `WorkspaceState`. All layout
 //! mutations go through here so UI components never touch domain state directly.
 
-use crate::domain::panel::PanelLayout;
+use crate::domain::{DockLocation, PanelLayout, Region, WorkspaceState};
 use crate::domain::workspace::PanelId;
-use crate::domain::workspace::{Region, WorkspaceState};
 use egui::Context;
 
 /// A 4-zone split target used by the Split Wheel overlay.
@@ -50,13 +49,7 @@ impl Default for PanelManager {
 
 impl PanelManager {
     pub fn new(workspace: WorkspaceState) -> Self {
-        let panel_layout = PanelLayout {
-            open_panels: workspace.open.clone(),
-            regions: workspace.region.clone(),
-            split: workspace.split,
-            floating: workspace.floating.clone(),
-            tab_order: std::collections::BTreeMap::new(),
-        };
+        let panel_layout = PanelLayout::from_workspace(&workspace);
         Self {
             workspace,
             panel_layout,
@@ -69,14 +62,11 @@ impl PanelManager {
         let _ = self.workspace.move_panel(panel, edge);
         self.workspace.open.insert(panel);
         self.workspace.region.insert(panel, edge);
-        self.sync_layout();
+        self.panel_layout = PanelLayout::from_workspace(&self.workspace);
     }
 
     fn sync_layout(&mut self) {
-        self.panel_layout.open_panels = self.workspace.open.clone();
-        self.panel_layout.regions = self.workspace.region.clone();
-        self.panel_layout.split = self.workspace.split;
-        self.panel_layout.floating = self.workspace.floating.clone();
+        self.panel_layout = PanelLayout::from_workspace(&self.workspace);
     }
 
     /// Split a target panel, placing `dragged` in the given zone.
@@ -120,23 +110,14 @@ impl PanelManager {
 
     /// Apply a full layout (from profile).
     pub fn apply_layout(&mut self, layout: PanelLayout) {
-        // Convert PanelLayout -> WorkspaceState for the live domain state.
-        self.workspace.open = layout.open_panels.clone();
-        self.workspace.region = layout.regions.clone();
-        self.workspace.split = layout.split;
-        self.workspace.floating = layout.floating.clone();
+        // Convert PanelLayout (profile) -> WorkspaceState (live domain state).
+        self.workspace = layout.to_workspace();
         self.panel_layout = layout;
     }
 
-    /// Serialize current layout.
+    /// Serialize current layout to PanelLayout (profile format).
     pub fn serialize_layout(&self) -> PanelLayout {
-        PanelLayout {
-            open_panels: self.workspace.open.clone(),
-            regions: self.workspace.region.clone(),
-            split: self.workspace.split,
-            floating: self.workspace.floating.clone(),
-            tab_order: self.panel_layout.tab_order.clone(),
-        }
+        PanelLayout::from_workspace(&self.workspace)
     }
 
     /// Begin a drag.

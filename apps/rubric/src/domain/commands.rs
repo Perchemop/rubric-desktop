@@ -1058,7 +1058,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn command_count() {
+    fn command_count_test() {
         // 10 + 16 + 9 + 6 + 8 + 7 + 9 + 5 = 70 commands
         assert_eq!(command_count(), 70);
     }
@@ -1170,7 +1170,7 @@ mod tests {
     }
 
     #[test]
-    fn get_all_command_ids() {
+    fn get_all_command_ids_test() {
         let all_ids = get_all_command_ids();
         assert_eq!(all_ids.len(), 70);
         assert!(all_ids.iter().any(|c| c.0 == "select"));
