@@ -134,7 +134,7 @@ impl PanelManager {
     /// Commit a drop on a zone.
     pub fn commit_drop(&mut self, target: PanelId, zone: SplitZone) {
         if let Some(dragged) = self.dragging.take() {
-            self.split_panel(target, dragged, zone);
+            self.split_panel(target.clone(), dragged, zone);
         }
         self.split_wheel_visible = false;
         self.active_zone = None;

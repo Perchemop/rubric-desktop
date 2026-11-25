@@ -2,8 +2,7 @@
 
 use crate::domain::workspace::PanelId;
 use crate::ui::panel_manager::PanelManager;
-use egui::{Context, Ui};
-use egui::panel::SidePanel;
+use egui::{Context, Ui, SidePanel};
 use std::time::{Duration, Instant};
 
 pub struct PanelAccessBar {

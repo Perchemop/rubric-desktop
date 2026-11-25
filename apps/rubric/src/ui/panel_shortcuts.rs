@@ -47,7 +47,7 @@ impl Default for PanelShortcutRegistry {
         ];
         let mut shortcuts = BTreeMap::new();
         for (i, p) in panels.iter().enumerate() {
-            shortcuts.insert(*p, PanelShortcut::ctrl_digit(*p, i + 1));
+            shortcuts.insert(p.clone(), PanelShortcut::ctrl_digit(p.clone(), i + 1));
         }
         // Stamps is not in PanelId enum; skip (domain gap).
         Self { shortcuts }
@@ -64,7 +64,7 @@ impl PanelShortcutRegistry {
                 if entries[i].1.key == entries[j].1.key
                     && entries[i].1.modifiers == entries[j].1.modifiers
                 {
-                    out.push((*entries[i].0, *entries[j].0));
+                    out.push((entries[i].0.clone(), entries[j].0.clone()));
                 }
             }
         }
@@ -77,16 +77,16 @@ impl PanelShortcutRegistry {
             for (panel, sc) in &self.shortcuts {
                 if input.key_pressed(sc.key) && input.modifiers == sc.modifiers {
                     // toggle behavior: hidden->show, visible->focus, focused->hide
-                    if manager.is_visible(*panel) {
+                    if manager.is_visible(panel.clone()) {
                         if focused.as_ref() == Some(panel) {
-                            manager.toggle_panel(*panel);
+                            manager.toggle_panel(panel.clone());
                             *focused = None;
                         } else {
-                            *focused = Some(*panel);
+                            *focused = Some(panel.clone());
                         }
                     } else {
-                        manager.toggle_panel(*panel);
-                        *focused = Some(*panel);
+                        manager.toggle_panel(panel.clone());
+                        *focused = Some(panel.clone());
                     }
                 }
             }
