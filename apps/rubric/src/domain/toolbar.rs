@@ -455,7 +455,7 @@ mod tests {
             .collect(),
         );
         assert!(!invalid.is_valid());
-    }    }
+    }
 
     #[test]
     fn toolbar_lock_state_behavior() {
