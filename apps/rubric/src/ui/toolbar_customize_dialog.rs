@@ -297,10 +297,17 @@ pub fn show(
                                     let id =
                                         format!("custom_{}", name.to_lowercase().replace(' ', "_"));
                                     let exists =
-                                        toolbars.iter().any(|t| t.name.eq_ignore_ascii_case(&name));
+                                        toolbars
+                                            .iter()
+                                            .any(|t| t.name.eq_ignore_ascii_case(&name));
                                     if exists {
                                         // error: duplicate
-                                    } else if toolbars.iter().filter(|t| !t.predefined).count() >= 20 {
+                                    } else if toolbars
+                                        .iter()
+                                        .filter(|t| !t.predefined)
+                                        .count()
+                                        >= 20
+                                    {
                                         // max reached
                                     } else {
                                         toolbars.push(crate::ui::toolbar_runtime::ToolbarConfig {
@@ -403,7 +410,7 @@ pub fn show(
                                     ui.label("(empty)");
                                 }
                             });
-                    });
+                        });
                     if let Some(payload) = drop_resp.payload::<String>() {
                         let p = payload.clone();
                         if let Some(id) = state.selected_toolbar.clone() {
