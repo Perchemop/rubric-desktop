@@ -165,7 +165,7 @@ pub mod light {
     /// Secondary/ muted text colour.
     pub const SECONDARY_TEXT: Color = Color::from_rgb(100, 105, 120);
     /// Accent colour (Rubric red-orange).
-    pub const ACCENT: Color = Color::from_rgb(228, 87, 46);
+    pub const ACCENT: Color = Color::from_rgb(205, 60, 25);
     /// Accent 2 (link colour in dark theme).
     pub const ACCENT_2: Color = Color::from_rgb(255, 122, 69);
     /// Disabled text colour.
@@ -213,7 +213,7 @@ pub mod dark {
     /// Secondary/ muted text colour.
     pub const SECONDARY_TEXT: Color = Color::from_rgb(180, 185, 200);
     /// Accent colour (Rubric red-orange).
-    pub const ACCENT: Color = Color::from_rgb(228, 87, 46);
+    pub const ACCENT: Color = Color::from_rgb(205, 60, 25);
     /// Accent 2 (link colour in dark theme).
     pub const ACCENT_2: Color = Color::from_rgb(255, 122, 69);
     /// Disabled text colour.
