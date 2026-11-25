@@ -38,10 +38,10 @@ pub struct PanelShortcutRegistry {
 impl Default for PanelShortcutRegistry {
     fn default() -> Self {
         let panels = [
-            PanelId::Pages,
-            PanelId::Tools,
+            PanelId::Thumbnails,
+            PanelId::Layers,
             PanelId::ToolChest,
-            PanelId::Inspector,
+            PanelId::Properties,
             PanelId::MarkupsList,
             PanelId::Quantities,
         ];

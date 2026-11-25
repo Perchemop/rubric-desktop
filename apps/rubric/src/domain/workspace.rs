@@ -177,14 +177,14 @@ impl WorkspaceState {
     }
 
     /// Close a panel.  Returns `false` if closing would leave the dock empty
-    /// (the canvas/ Pages panel cannot be closed).
+    /// (the canvas/ Thumbnails panel cannot be closed).
     ///
     /// # Failure
     ///
     /// Returns `false` when `open` would become empty; the panel stays open.
     pub fn close_panel(&mut self, id: PanelId) -> bool {
-        // The canvas / Pages panel is never closable.
-        if id == PanelId::Pages || id == PanelId::Quantities {
+        // The canvas / Thumbnails panel is never closable.
+        if id == PanelId::Thumbnails || id == PanelId::Quantities {
             return false;
         }
         let retained = self.open.remove(&id);

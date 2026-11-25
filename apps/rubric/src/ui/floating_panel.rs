@@ -22,7 +22,7 @@ pub struct FloatingPanelState {
 impl Default for FloatingPanelState {
     fn default() -> Self {
         Self {
-            panel: PanelId::Inspector,
+            panel: PanelId::Properties,
             mode: FloatMode::Windowed,
             pos: egui::Pos2::new(100.0, 100.0),
             size: egui::Vec2::new(320.0, 240.0),
