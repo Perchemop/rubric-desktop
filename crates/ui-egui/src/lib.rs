@@ -9,5 +9,7 @@
 
 pub mod keyboard;
 pub mod design;
+pub mod design_tokens;
 pub use keyboard::*;
 pub use design::*;
+pub use design_tokens::*;
