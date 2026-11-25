@@ -569,7 +569,9 @@ mod tests {
         assert_eq!(event_label(&event), "Gantt: Zoom 1.3x");
 
         let event = ViewEvent::Gantt {
-            action: GanttAction::Jump { position: GanttJump::Start },
+            action: GanttAction::Jump {
+                position: GanttJump::Start,
+            },
         };
         assert_eq!(event_label(&event), "Gantt: Jump to start");
     }
