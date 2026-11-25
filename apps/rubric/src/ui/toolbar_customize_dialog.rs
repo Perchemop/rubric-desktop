@@ -296,10 +296,9 @@ pub fn show(
                                 if !name.is_empty() {
                                     let id =
                                         format!("custom_{}", name.to_lowercase().replace(' ', "_"));
-                                    let exists =
-                                        toolbars
-                                            .iter()
-                                            .any(|t| t.name.eq_ignore_ascii_case(&name));
+                                    let exists = toolbars
+                                        .iter()
+                                        .any(|t| t.name.eq_ignore_ascii_case(&name));
                                     if exists {
                                         // error: duplicate
                                     } else if toolbars
