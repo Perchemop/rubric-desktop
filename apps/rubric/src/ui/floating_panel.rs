@@ -67,6 +67,7 @@ impl FloatingPanelWindow {
         if self.state.mode == FloatMode::Overlay {
             window = window.title_bar(false);
         }
+        let mut should_close = false;
         window.open(&mut open).show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label(self.state.panel.to_string());
@@ -74,12 +75,15 @@ impl FloatingPanelWindow {
                     self.toggle_mode();
                 }
                 if ui.small_button("Close").clicked() {
-                    open = false;
+                    should_close = true;
                 }
             });
             ui.separator();
             ui_content(ui);
         });
+        if should_close {
+            open = false;
+        }
         self.state.open = open;
         open
     }

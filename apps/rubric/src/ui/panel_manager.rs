@@ -59,8 +59,8 @@ impl PanelManager {
 
     /// Dock a panel into the given region (edge docking).
     pub fn dock_panel(&mut self, panel: PanelId, edge: Region) {
-        let _ = self.workspace.move_panel(panel, edge);
-        self.workspace.open.insert(panel);
+        let _ = self.workspace.move_panel(panel.clone(), edge);
+        self.workspace.open.insert(panel.clone());
         self.workspace.region.insert(panel, edge);
         self.panel_layout = PanelLayout::from_workspace(&self.workspace);
     }
@@ -74,24 +74,24 @@ impl PanelManager {
         // Domain layer only models a single split ratio today; record the intent
         // by docking the dragged panel into a neighbouring region. Full recursive
         // split tree lands with domain-dev PanelLayout.
-        self.workspace.open.insert(dragged);
+        self.workspace.open.insert(dragged.clone());
         let region = self
             .workspace
             .region
             .get(&_target)
-            .copied()
+            .cloned()
             .unwrap_or(Region::Right);
         self.workspace.region.insert(dragged, region);
     }
 
     /// Add `dragged` as a tab of `target`.
     pub fn tab_panel(&mut self, _target: PanelId, dragged: PanelId) {
-        self.workspace.open.insert(dragged);
+        self.workspace.open.insert(dragged.clone());
     }
 
     /// Float a panel (overlay/windowed mode handled by caller).
     pub fn float_panel(&mut self, panel: PanelId, rect: [f32; 4]) {
-        let _ = self.workspace.float_panel(panel, rect);
+        let _ = self.workspace.float_panel(panel.clone(), rect);
         self.sync_layout();
     }
 
@@ -102,7 +102,7 @@ impl PanelManager {
             self.workspace.open.remove(&panel);
             self.workspace.floating.remove(&panel);
         } else {
-            self.workspace.open.insert(panel);
+            self.workspace.open.insert(panel.clone());
             self.workspace.region.entry(panel).or_insert(Region::Left);
         }
         self.sync_layout();

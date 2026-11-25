@@ -2,7 +2,8 @@
 
 use crate::domain::workspace::PanelId;
 use crate::ui::panel_manager::PanelManager;
-use egui::{Context, Ui, SidePanel};
+use egui::{Context, Ui};
+use egui::panel::SidePanel;
 use std::time::{Duration, Instant};
 
 pub struct PanelAccessBar {
@@ -71,7 +72,7 @@ impl PanelAccessBar {
 
         ui.vertical(|ui| {
             for p in panels {
-                let visible = manager.is_visible(p);
+                let visible = manager.is_visible(p.clone());
                 let label = if self.expanded {
                     p.to_string()
                 } else {
