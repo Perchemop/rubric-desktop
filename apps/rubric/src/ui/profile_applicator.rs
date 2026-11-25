@@ -23,10 +23,10 @@ impl RubricApp {
 
 /// Helper to get the active profile name from settings.
 pub fn get_active_profile_name(app: &RubricApp) -> String {
-    app.settings.active_profile.clone()
+    app.active_profile.clone()
 }
 
 /// Helper to set the active profile name in settings.
 pub fn set_active_profile_name(app: &mut RubricApp, name: String) {
-    app.settings.active_profile = name;
+    app.active_profile = name;
 }

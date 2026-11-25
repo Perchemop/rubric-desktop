@@ -522,6 +522,8 @@ pub struct RubricApp {
     /// The persisted workspace layout (docking/split state) loaded from prefs.
     /// Updated only when a workspace editor writes it in a later slice.
     pub(crate) persisted_workspace: crate::domain::workspace::WorkspaceState,
+    /// Active profile name for UI layout persistence.
+    pub(crate) active_profile: String,
     /// Latest release tag from the most recent update check, used to
     /// construct the SHA256SUMS.txt URL when downloading an update.
     pub(crate) update_check_tag: Option<String>,
@@ -666,6 +668,7 @@ impl RubricApp {
             update_check_tag: None,
             tool_chest_library: prefs.tool_chest_library.clone(),
             persisted_workspace: prefs.workspace.clone(),
+            active_profile: prefs.active_profile.clone(),
             app_drawer_path: Self::get_app_drawer_path(),
             profile_store: crate::data::profile_store::ProfileStore::new()
                 .expect("failed to initialize profile store"),
@@ -1965,6 +1968,7 @@ impl RubricApp {
             default_styles: self.ui.default_styles.clone(),
             default_measure_unit: self.ui.unit,
             tool_chest_max_recents: self.ui.tool_chest_max_recents.clamp(1, 32),
+            active_profile: self.active_profile.clone(),
             workspace: self.persisted_workspace.clone(),
         }
     }

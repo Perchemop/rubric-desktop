@@ -308,7 +308,8 @@ mod tests {
 
     #[test]
     fn profile_names_are_unique() {
-        let names: std::collections::HashSet<_> = predefined_profiles()
+        let profiles = predefined_profiles();
+        let names: std::collections::HashSet<_> = profiles
             .iter()
             .map(|p| p.name.as_str())
             .collect();

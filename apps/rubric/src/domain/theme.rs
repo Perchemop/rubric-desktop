@@ -106,6 +106,9 @@ pub struct AppPrefs {
     /// (gap #3: Recent Tools). Session-temporary list; the cap is persisted.
     #[serde(default = "default_max_recents")]
     pub tool_chest_max_recents: usize,
+    /// Active profile name for UI layout persistence.
+    #[serde(default)]
+    pub active_profile: String,
     /// Persisted workspace state — dock regions, floating panels, split view.
     /// `#[serde(default)]` ensures legacy preference files that omit this key
     /// load unchanged; the default layout matches `WorkspaceState::default()`.

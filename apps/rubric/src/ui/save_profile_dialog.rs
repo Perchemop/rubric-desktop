@@ -138,7 +138,7 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
             );
         } else if active {
             // Set as active profile
-            app.settings.active_profile = name.clone();
+            app.active_profile = name.clone();
             app.set_status(
                 crate::ui::app::StatusKind::Success,
                 format!(
