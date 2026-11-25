@@ -1899,7 +1899,6 @@ impl RubricApp {
         } else {
             self.set_status(StatusKind::Success, msg.to_string());
         }
-        }
     }
 
     /// Build an [`AppPrefs`] snapshot from the current app-level state.
