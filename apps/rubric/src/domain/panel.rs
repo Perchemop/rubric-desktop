@@ -36,7 +36,7 @@ impl Default for DockLocation {
 /// Based on the panel inventory in spec F-607 section 2.1.
 /// Extensible for future plugins via the `Other(String)` variant.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", untagged)]
 pub enum PanelId {
     /// Page Thumbnails panel.
     Thumbnails,
@@ -53,7 +53,6 @@ pub enum PanelId {
     /// Measurements list and calibration.
     Measurements,
     /// Extensible variant for plugin panels or future additions.
-    #[serde(other)]
     Other(String),
 }
 
