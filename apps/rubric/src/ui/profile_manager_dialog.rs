@@ -4,8 +4,8 @@
 //! and actions: New, Duplicate, Rename, Delete, Import, Export, Set Default.
 //! Predefined profiles disable Delete/Rename. Integrates with ProfileStore.
 
-use eframe::egui;
 use crate::data::profile_store::{ProfileStore, ProfileSummary};
+use eframe::egui;
 
 const OPEN_KEY: &str = "rubric.profile_manager.open";
 const SEARCH_KEY: &str = "rubric.profile_manager.search";
@@ -57,7 +57,10 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
             let profiles = match app.profile_store.list_profiles() {
                 Ok(p) => p,
                 Err(e) => {
-                    ui.colored_label(ui.visuals().error_fg_color, format!("Failed to load profiles: {}", e));
+                    ui.colored_label(
+                        ui.visuals().error_fg_color,
+                        format!("Failed to load profiles: {}", e),
+                    );
                     Vec::new()
                 }
             };
@@ -94,7 +97,10 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
                                         .clicked()
                                     {
                                         ctx.data_mut(|d| {
-                                            d.insert_temp(egui::Id::new(RENAME_KEY), p.name.clone());
+                                            d.insert_temp(
+                                                egui::Id::new(RENAME_KEY),
+                                                p.name.clone(),
+                                            );
                                         });
                                     }
                                     if ui
@@ -154,23 +160,35 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
     // Handle actions
     if let Some(name) = delete_target {
         if let Err(e) = app.profile_store.delete_profile(&name) {
-            app.set_status(crate::ui::app::StatusKind::Error, format!("Delete failed: {}", e));
+            app.set_status(
+                crate::ui::app::StatusKind::Error,
+                format!("Delete failed: {}", e),
+            );
         }
     }
     if let Some((old_name, new_name)) = rename_target {
         // Implemented via ProfileStore rename (delete + save with new name)
         if let Err(e) = rename_profile(&mut app.profile_store, &old_name, &new_name) {
-            app.set_status(crate::ui::app::StatusKind::Error, format!("Rename failed: {}", e));
+            app.set_status(
+                crate::ui::app::StatusKind::Error,
+                format!("Rename failed: {}", e),
+            );
         }
     }
     if let Some(name) = duplicate_target {
         if let Err(e) = duplicate_profile(&mut app.profile_store, &name) {
-            app.set_status(crate::ui::app::StatusKind::Error, format!("Duplicate failed: {}", e));
+            app.set_status(
+                crate::ui::app::StatusKind::Error,
+                format!("Duplicate failed: {}", e),
+            );
         }
     }
     if let Some(name) = export_target {
         if let Err(e) = export_profile_dialog(&app.profile_store, &name) {
-            app.set_status(crate::ui::app::StatusKind::Error, format!("Export failed: {}", e));
+            app.set_status(
+                crate::ui::app::StatusKind::Error,
+                format!("Export failed: {}", e),
+            );
         }
     }
     if let Some(_path) = import_path {
@@ -181,7 +199,11 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
     }
 }
 
-fn rename_profile(store: &mut crate::data::profile_store::ProfileStore, old_name: &str, new_name: &str) -> anyhow::Result<()> {
+fn rename_profile(
+    store: &mut crate::data::profile_store::ProfileStore,
+    old_name: &str,
+    new_name: &str,
+) -> anyhow::Result<()> {
     let mut profile = store.load_profile(old_name)?;
     profile.name = new_name.to_string();
     profile.is_predefined = false;
@@ -190,7 +212,10 @@ fn rename_profile(store: &mut crate::data::profile_store::ProfileStore, old_name
     Ok(())
 }
 
-fn duplicate_profile(store: &mut crate::data::profile_store::ProfileStore, name: &str) -> anyhow::Result<()> {
+fn duplicate_profile(
+    store: &mut crate::data::profile_store::ProfileStore,
+    name: &str,
+) -> anyhow::Result<()> {
     let mut profile = store.load_profile(name)?;
     let base = profile.name.clone();
     let mut new_name = format!("{} (copy)", base);
@@ -205,7 +230,10 @@ fn duplicate_profile(store: &mut crate::data::profile_store::ProfileStore, name:
     Ok(())
 }
 
-fn export_profile_dialog(store: &crate::data::profile_store::ProfileStore, name: &str) -> anyhow::Result<()> {
+fn export_profile_dialog(
+    store: &crate::data::profile_store::ProfileStore,
+    name: &str,
+) -> anyhow::Result<()> {
     use rfd::FileDialog;
     if let Some(path) = FileDialog::new()
         .add_filter("Rubric Profile", &["rubric-profile"])
@@ -216,4 +244,3 @@ fn export_profile_dialog(store: &crate::data::profile_store::ProfileStore, name:
     }
     Ok(())
 }
-

@@ -98,7 +98,8 @@ impl SplitWheelOverlay {
             return;
         }
         let rect = Rect::from_center_size(self.center, Vec2::splat(self.size));
-        ui.painter().rect_stroke(rect, 4.0, (1.0, egui::Color32::from_rgb(80, 140, 220)));
+        ui.painter()
+            .rect_stroke(rect, 4.0, (1.0, egui::Color32::from_rgb(80, 140, 220)));
         // zone labels
         ui.painter().text(
             rect.left_center(),

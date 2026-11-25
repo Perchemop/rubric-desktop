@@ -141,7 +141,12 @@ impl SplitTree {
     }
 
     /// Creates a split with a specific ratio.
-    pub fn split_with_ratio(orientation: SplitOrientation, ratio: f32, left: SplitTree, right: SplitTree) -> Self {
+    pub fn split_with_ratio(
+        orientation: SplitOrientation,
+        ratio: f32,
+        left: SplitTree,
+        right: SplitTree,
+    ) -> Self {
         SplitTree::Split {
             orientation,
             ratio: ratio.clamp(0.05, 0.95),
@@ -163,7 +168,11 @@ impl SplitTree {
     pub fn panels(&self) -> Vec<PanelId> {
         match self {
             SplitTree::Leaf(id) => vec![id.clone()],
-            SplitTree::Split { orientation: _, ratio: _, children } => {
+            SplitTree::Split {
+                orientation: _,
+                ratio: _,
+                children,
+            } => {
                 let mut panels = Vec::new();
                 // Left then right for consistent ordering
                 panels.extend(children[0].panels());
@@ -331,9 +340,15 @@ pub struct PanelLayout {
 }
 
 // Default strip sizes
-fn default_strip_size_left() -> f32 { 200.0 }
-fn default_strip_size_right() -> f32 { 260.0 }
-fn default_strip_size_bottom() -> f32 { 200.0 }
+fn default_strip_size_left() -> f32 {
+    200.0
+}
+fn default_strip_size_right() -> f32 {
+    260.0
+}
+fn default_strip_size_bottom() -> f32 {
+    200.0
+}
 
 impl Default for PanelLayout {
     fn default() -> Self {
@@ -426,16 +441,14 @@ pub mod predefined_layouts {
                 DockedPanel::new(PanelId::Stamps),
                 DockedPanel::new(PanelId::Measurements),
             ],
-            bottom: vec![
-                DockedPanel {
-                    id: PanelId::MarkupsList,
-                    visible: true,
-                    dock_location: DockLocation::Bottom,
-                    split_tree: None,
-                    tab_order: vec![PanelId::MarkupsList],
-                    floating: None,
-                },
-            ],
+            bottom: vec![DockedPanel {
+                id: PanelId::MarkupsList,
+                visible: true,
+                dock_location: DockLocation::Bottom,
+                split_tree: None,
+                tab_order: vec![PanelId::MarkupsList],
+                floating: None,
+            }],
             strip_size_left: 200.0,
             strip_size_right: 260.0,
             strip_size_bottom: 200.0,
@@ -459,16 +472,14 @@ pub mod predefined_layouts {
     pub fn review() -> PanelLayout {
         // Note: spec mentions Bookmarks tab but that's handled via tab_order
         PanelLayout {
-            left: vec![
-                DockedPanel {
-                    id: PanelId::Thumbnails,
-                    visible: true,
-                    dock_location: DockLocation::Left,
-                    split_tree: None,
-                    tab_order: vec![PanelId::Thumbnails, PanelId::Other("bookmarks".to_string())],
-                    floating: None,
-                },
-            ],
+            left: vec![DockedPanel {
+                id: PanelId::Thumbnails,
+                visible: true,
+                dock_location: DockLocation::Left,
+                split_tree: None,
+                tab_order: vec![PanelId::Thumbnails, PanelId::Other("bookmarks".to_string())],
+                floating: None,
+            }],
             right: vec![
                 DockedPanel {
                     id: PanelId::MarkupsList,
@@ -629,7 +640,10 @@ mod tests {
         assert_eq!(PanelId::Properties.default_shortcut(), Some(5));
         assert_eq!(PanelId::Stamps.default_shortcut(), Some(6));
         assert_eq!(PanelId::Measurements.default_shortcut(), Some(7));
-        assert_eq!(PanelId::Other("custom".to_string()).default_shortcut(), None);
+        assert_eq!(
+            PanelId::Other("custom".to_string()).default_shortcut(),
+            None
+        );
     }
 
     #[test]
@@ -645,8 +659,14 @@ mod tests {
         let left = SplitTree::leaf(PanelId::Thumbnails);
         let right = SplitTree::leaf(PanelId::Layers);
         let split = SplitTree::split(SplitOrientation::Horizontal, left, right);
-        
-        assert!(matches!(split, SplitTree::Split { orientation: SplitOrientation::Horizontal, .. }));
+
+        assert!(matches!(
+            split,
+            SplitTree::Split {
+                orientation: SplitOrientation::Horizontal,
+                ..
+            }
+        ));
         assert_eq!(split.depth(), 1);
         assert_eq!(split.panels(), vec![PanelId::Thumbnails, PanelId::Layers]);
     }
@@ -659,7 +679,7 @@ mod tests {
             SplitTree::leaf(PanelId::Layers),
             SplitTree::leaf(PanelId::Properties),
         );
-        
+
         if let SplitTree::Split { ratio, .. } = split {
             assert!((ratio - 0.3).abs() < 1e-6);
         } else {
@@ -675,7 +695,7 @@ mod tests {
             SplitTree::leaf(PanelId::Thumbnails),
             SplitTree::leaf(PanelId::Layers),
         );
-        
+
         if let SplitTree::Split { ratio, .. } = split {
             assert!((ratio - 0.95).abs() < 1e-6);
         } else {
@@ -715,7 +735,7 @@ mod tests {
             tabs: vec![PanelId::Thumbnails, PanelId::Layers, PanelId::Properties],
             active_index: 1,
         };
-        
+
         let closed = group.close_tab(1);
         assert_eq!(closed, Some(PanelId::Layers));
         assert_eq!(group.tabs, vec![PanelId::Thumbnails, PanelId::Properties]);
@@ -735,7 +755,7 @@ mod tests {
         fp.position = [-100.0, -50.0];
         fp.size = [100.0, 50.0];
         fp.clamp();
-        
+
         assert!(fp.position[0] >= 0.0);
         assert!(fp.position[1] >= 0.0);
         assert!(fp.size[0] >= 200.0);
@@ -757,7 +777,7 @@ mod tests {
     fn docked_panel_floating_check() {
         let docked = DockedPanel::new(PanelId::Properties);
         assert!(!docked.is_floating());
-        
+
         let mut floating = DockedPanel::new(PanelId::MarkupsList);
         floating.dock_location = DockLocation::Floating;
         assert!(floating.is_floating());

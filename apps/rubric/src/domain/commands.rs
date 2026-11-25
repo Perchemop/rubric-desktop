@@ -1087,30 +1087,78 @@ mod tests {
     #[test]
     fn commands_by_category_counts() {
         let by_cat = commands_by_category();
-        
+
         // Selection & Navigation: 10 commands
-        assert_eq!(by_cat.get(&CommandCategory::SelectionNavigation).map(|v| v.len()).unwrap_or(0), 10);
-        
+        assert_eq!(
+            by_cat
+                .get(&CommandCategory::SelectionNavigation)
+                .map(|v| v.len())
+                .unwrap_or(0),
+            10
+        );
+
         // Markup Tools: 15 commands
-        assert_eq!(by_cat.get(&CommandCategory::MarkupTools).map(|v| v.len()).unwrap_or(0), 15);
-        
+        assert_eq!(
+            by_cat
+                .get(&CommandCategory::MarkupTools)
+                .map(|v| v.len())
+                .unwrap_or(0),
+            15
+        );
+
         // Measurement Tools: 9 commands
-        assert_eq!(by_cat.get(&CommandCategory::MeasurementTools).map(|v| v.len()).unwrap_or(0), 9);
-        
+        assert_eq!(
+            by_cat
+                .get(&CommandCategory::MeasurementTools)
+                .map(|v| v.len())
+                .unwrap_or(0),
+            9
+        );
+
         // Review & Comment: 6 commands
-        assert_eq!(by_cat.get(&CommandCategory::ReviewComment).map(|v| v.len()).unwrap_or(0), 6);
-        
+        assert_eq!(
+            by_cat
+                .get(&CommandCategory::ReviewComment)
+                .map(|v| v.len())
+                .unwrap_or(0),
+            6
+        );
+
         // Edit & Modify: 8 commands
-        assert_eq!(by_cat.get(&CommandCategory::EditModify).map(|v| v.len()).unwrap_or(0), 8);
-        
+        assert_eq!(
+            by_cat
+                .get(&CommandCategory::EditModify)
+                .map(|v| v.len())
+                .unwrap_or(0),
+            8
+        );
+
         // View & Display: 7 commands
-        assert_eq!(by_cat.get(&CommandCategory::ViewDisplay).map(|v| v.len()).unwrap_or(0), 7);
-        
+        assert_eq!(
+            by_cat
+                .get(&CommandCategory::ViewDisplay)
+                .map(|v| v.len())
+                .unwrap_or(0),
+            7
+        );
+
         // File & Project: 9 commands
-        assert_eq!(by_cat.get(&CommandCategory::FileProject).map(|v| v.len()).unwrap_or(0), 9);
-        
+        assert_eq!(
+            by_cat
+                .get(&CommandCategory::FileProject)
+                .map(|v| v.len())
+                .unwrap_or(0),
+            9
+        );
+
         // Advanced: 5 commands
-        assert_eq!(by_cat.get(&CommandCategory::Advanced).map(|v| v.len()).unwrap_or(0), 5);
+        assert_eq!(
+            by_cat
+                .get(&CommandCategory::Advanced)
+                .map(|v| v.len())
+                .unwrap_or(0),
+            5
+        );
     }
 
     #[test]
@@ -1132,9 +1180,15 @@ mod tests {
     #[test]
     fn command_category_labels() {
         use crate::domain::toolbar::CommandCategory;
-        assert_eq!(CommandCategory::SelectionNavigation.label(), "Selection & Navigation");
+        assert_eq!(
+            CommandCategory::SelectionNavigation.label(),
+            "Selection & Navigation"
+        );
         assert_eq!(CommandCategory::MarkupTools.label(), "Markup Tools");
-        assert_eq!(CommandCategory::MeasurementTools.label(), "Measurement Tools");
+        assert_eq!(
+            CommandCategory::MeasurementTools.label(),
+            "Measurement Tools"
+        );
         assert_eq!(CommandCategory::ReviewComment.label(), "Review & Comment");
         assert_eq!(CommandCategory::EditModify.label(), "Edit & Modify");
         assert_eq!(CommandCategory::ViewDisplay.label(), "View & Display");
@@ -1167,7 +1221,7 @@ mod tests {
         use std::collections::HashSet;
         let registry = command_registry();
         let mut shortcuts = HashSet::new();
-        
+
         for info in registry.values() {
             if !info.shortcut.is_empty() {
                 // Shortcuts can be same if they map to same key (e.g., Ctrl+C vs C)
@@ -1183,13 +1237,22 @@ mod tests {
     fn category_membership_consistency() {
         let registry = command_registry();
         let by_cat = commands_by_category();
-        
+
         for (cat, ids) in &by_cat {
             for cmd_id in ids {
                 let info = registry.get(&cmd_id.0);
-                assert!(info.is_some(), "Command {} in category {:?} not found in registry", cmd_id.0, cat);
+                assert!(
+                    info.is_some(),
+                    "Command {} in category {:?} not found in registry",
+                    cmd_id.0,
+                    cat
+                );
                 if let Some(info) = info {
-                    assert_eq!(info.category, *cat, "Command {} category mismatch", cmd_id.0);
+                    assert_eq!(
+                        info.category, *cat,
+                        "Command {} category mismatch",
+                        cmd_id.0
+                    );
                 }
             }
         }
@@ -1205,7 +1268,7 @@ mod tests {
             CommandCategory::MarkupTools,
             "Test description",
         );
-        
+
         let json = serde_json::to_string(&info).expect("serialize");
         let restored: CommandInfo = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(restored, info);

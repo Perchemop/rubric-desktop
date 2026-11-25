@@ -2,12 +2,12 @@
 //!
 //! Saves current UI layout to a new profile via ProfileStore.
 
-use eframe::egui;
 use crate::data::profile_store::{build_profile_from_state, ProfileStore};
 use crate::domain::profile::PanelLayout;
 use crate::domain::theme::Theme;
 use crate::domain::workspace::MeasurementDefaults;
-use crate::domain::{CanvasSettings};
+use crate::domain::CanvasSettings;
+use eframe::egui;
 
 const OPEN_KEY: &str = "rubric.save_profile.open";
 const NAME_KEY: &str = "rubric.save_profile.name";
@@ -68,10 +68,15 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
             let name_empty = name_trimmed.is_empty();
             let name_too_long = name_trimmed.chars().count() > 64;
             if name_empty {
-                ui.small(egui::RichText::new("Name cannot be empty").color(ui.visuals().error_fg_color));
+                ui.small(
+                    egui::RichText::new("Name cannot be empty").color(ui.visuals().error_fg_color),
+                );
             }
             if name_too_long {
-                ui.small(egui::RichText::new("Name exceeds 64 characters").color(ui.visuals().error_fg_color));
+                ui.small(
+                    egui::RichText::new("Name exceeds 64 characters")
+                        .color(ui.visuals().error_fg_color),
+                );
             }
 
             ui.label("Description (optional, max 256 chars)");
@@ -81,7 +86,10 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
                     .desired_rows(3),
             );
             if desc.chars().count() > 256 {
-                ui.small(egui::RichText::new("Description exceeds 256 characters").color(ui.visuals().error_fg_color));
+                ui.small(
+                    egui::RichText::new("Description exceeds 256 characters")
+                        .color(ui.visuals().error_fg_color),
+                );
             }
 
             ui.checkbox(&mut active, "Set as active profile");
@@ -92,7 +100,10 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
             ui.separator();
             ui.horizontal(|ui| {
                 let can_commit = !name_empty && !name_too_long && desc.chars().count() <= 256;
-                if ui.add_enabled(can_commit, egui::Button::new("OK")).clicked() {
+                if ui
+                    .add_enabled(can_commit, egui::Button::new("OK"))
+                    .clicked()
+                {
                     commit = true;
                 }
                 if ui.button("Cancel").clicked() {
@@ -114,20 +125,30 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
             name.clone(),
             desc.clone(),
             app.ui.panel_layout.clone(), // Panel layout
-            None, // Toolbar profile config (not yet integrated)
+            None,                        // Toolbar profile config (not yet integrated)
             app.theme,
             app.ui.measurement_defaults.clone(),
             app.ui.canvas_settings.clone(),
         );
-        
+
         if let Err(e) = app.profile_store.save_profile(&profile) {
-            app.set_status(crate::ui::app::StatusKind::Error, format!("Save failed: {}", e));
+            app.set_status(
+                crate::ui::app::StatusKind::Error,
+                format!("Save failed: {}", e),
+            );
         } else if active {
             // Set as active profile
             app.settings.active_profile = name.clone();
-            app.set_status(crate::ui::app::StatusKind::Success, format!("Profile '{}' saved{}", name, if active { " and set active" } else { "" }));
+            app.set_status(
+                crate::ui::app::StatusKind::Success,
+                format!(
+                    "Profile '{}' saved{}",
+                    name,
+                    if active { " and set active" } else { "" }
+                ),
+            );
         }
-        
+
         close = true;
     }
 

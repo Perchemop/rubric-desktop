@@ -3,12 +3,12 @@
 //! Setting: `auto_save_profile: Option<bool>` (None = unprompted). First close
 //! prompts with Yes / No / Don't Ask Again. Preference persisted in AppSettings.
 
-use eframe::egui;
 use crate::data::profile_store::{build_profile_from_state, ProfileStore};
 use crate::domain::profile::PanelLayout;
 use crate::domain::theme::Theme;
 use crate::domain::workspace::MeasurementDefaults;
-use crate::domain::{CanvasSettings};
+use crate::domain::CanvasSettings;
+use eframe::egui;
 
 const OPEN_KEY: &str = "rubric.auto_save_profile.prompt_open";
 const PREF_KEY: &str = "rubric.auto_save_profile.preference"; // 0=unset,1=yes,2=no
@@ -81,7 +81,10 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
                     app.ui.canvas_settings.clone(),
                 );
                 if let Err(e) = app.profile_store.save_profile(&profile) {
-                    app.set_status(crate::ui::app::StatusKind::Error, format!("Auto-save failed: {}", e));
+                    app.set_status(
+                        crate::ui::app::StatusKind::Error,
+                        format!("Auto-save failed: {}", e),
+                    );
                 }
             }
             Some(false) => {

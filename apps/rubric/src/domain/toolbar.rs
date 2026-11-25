@@ -317,7 +317,7 @@ mod tests {
     fn command_id_new_and_from_str() {
         let id = CommandId::new("select");
         assert_eq!(id.0, "select");
-        
+
         let id2: CommandId = "pan".into();
         assert_eq!(id2.0, "pan");
     }
@@ -336,9 +336,15 @@ mod tests {
 
     #[test]
     fn command_category_labels() {
-        assert_eq!(CommandCategory::SelectionNavigation.label(), "Selection & Navigation");
+        assert_eq!(
+            CommandCategory::SelectionNavigation.label(),
+            "Selection & Navigation"
+        );
         assert_eq!(CommandCategory::MarkupTools.label(), "Markup Tools");
-        assert_eq!(CommandCategory::MeasurementTools.label(), "Measurement Tools");
+        assert_eq!(
+            CommandCategory::MeasurementTools.label(),
+            "Measurement Tools"
+        );
         assert_eq!(CommandCategory::ReviewComment.label(), "Review & Comment");
         assert_eq!(CommandCategory::EditModify.label(), "Edit & Modify");
         assert_eq!(CommandCategory::ViewDisplay.label(), "View & Display");
@@ -373,10 +379,10 @@ mod tests {
     fn toolbar_item_tool_creation() {
         let item = ToolbarItem::tool("zoom_in");
         assert!(matches!(item, ToolbarItem::Tool(ref id) if id.0 == "zoom_in"));
-        
+
         let item2 = ToolbarItem::Divider;
         assert!(matches!(item2, ToolbarItem::Divider));
-        
+
         let item3 = ToolbarItem::Spacer;
         assert!(matches!(item3, ToolbarItem::Spacer));
     }
@@ -416,18 +422,18 @@ mod tests {
     #[test]
     fn toolbar_lock_state_behavior() {
         let mut lock_state = ToolbarLockState::new();
-        
+
         // Initially unlocked
         assert!(!lock_state.is_locked("main"));
-        
+
         // After global lock
         lock_state.set_global_locked(true);
         assert!(lock_state.is_locked("main"));
-        
+
         // Override unlocks specific toolbar
         lock_state.set_override("custom1".to_string(), false);
         assert!(!lock_state.is_locked("custom1"));
-        
+
         // Override keeps it locked
         lock_state.set_override("custom2".to_string(), true);
         assert!(lock_state.is_locked("custom2"));
@@ -481,7 +487,7 @@ mod tests {
             CommandId::new("length"),
             CommandId::new("area"),
         ]);
-        
+
         let json = serde_json::to_string(&config).expect("serialize");
         let restored: QuickAccessConfig = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(restored, config);
@@ -492,7 +498,7 @@ mod tests {
         let mut state = ToolbarLockState::new();
         state.global_locked = true;
         state.custom_overrides.insert("custom1".to_string(), false);
-        
+
         let json = serde_json::to_string(&state).expect("serialize");
         let restored: ToolbarLockState = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(restored, state);

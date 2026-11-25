@@ -7,8 +7,8 @@
 
 use serde::json::Value;
 
-use crate::domain::profile::CURRENT_PROFILE_SCHEMA_VERSION;
 use super::DataError;
+use crate::domain::profile::CURRENT_PROFILE_SCHEMA_VERSION;
 
 /// Type alias for a migration function.
 /// Takes a JSON Value and returns a migrated JSON Value.
@@ -47,11 +47,12 @@ pub fn migrate(mut value: Value, from_version: u32, to_version: u32) -> Result<V
     // Apply migrations in sequence
     let mut current_version = from_version;
     while current_version < to_version {
-        let migration = get_migration(current_version)
-            .ok_or_else(|| DataError::ProfileError(format!(
+        let migration = get_migration(current_version).ok_or_else(|| {
+            DataError::ProfileError(format!(
                 "No migration path from v{} to v{}",
                 current_version, to_version
-            )))?;
+            ))
+        })?;
 
         value = migration(value)?;
         current_version += 1;
@@ -59,7 +60,10 @@ pub fn migrate(mut value: Value, from_version: u32, to_version: u32) -> Result<V
 
     // Update schema version in the result
     if let Value::Object(ref mut obj) = value {
-        obj.insert("schema_version".to_string(), Value::Number(to_version.into()));
+        obj.insert(
+            "schema_version".to_string(),
+            Value::Number(to_version.into()),
+        );
     }
 
     Ok(value)

@@ -11,11 +11,11 @@ use std::collections::BTreeMap;
 use uuid::Uuid;
 
 use super::grid::Grid;
-use super::panel::predefined_layouts::{default as default_panel_layout, markup, measurement, review};
-use super::panel::PanelLayout;
-use super::profile::{
-    CanvasSettings, MeasurementDefaults, Profile, ToolbarLayout,
+use super::panel::predefined_layouts::{
+    default as default_panel_layout, markup, measurement, review,
 };
+use super::panel::PanelLayout;
+use super::profile::{CanvasSettings, MeasurementDefaults, Profile, ToolbarLayout};
 use super::theme::Theme;
 use super::units::{MeasureUnit, Scale};
 
@@ -31,7 +31,9 @@ pub mod ids {
 }
 
 fn now() -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z").unwrap().with_timezone(&Utc)
+    DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+        .unwrap()
+        .with_timezone(&Utc)
 }
 
 /// Create the Default profile with balanced layout.
@@ -76,7 +78,8 @@ pub fn create_review_profile() -> Profile {
         schema_version: super::profile::CURRENT_PROFILE_SCHEMA_VERSION,
         id: ids::REVIEW,
         name: "Review".into(),
-        description: "Optimized for reviewing markups: Thumbnails + Markups List + Properties".into(),
+        description: "Optimized for reviewing markups: Thumbnails + Markups List + Properties"
+            .into(),
         created_at: now(),
         modified_at: now(),
         is_predefined: true,
@@ -281,8 +284,7 @@ mod tests {
     fn predefined_profiles_roundtrip() {
         let profiles = predefined_profiles();
         let json = serde_json::to_string(profiles).expect("serialize");
-        let back: Vec<Profile> =
-            serde_json::from_str(&json).expect("deserialize");
+        let back: Vec<Profile> = serde_json::from_str(&json).expect("deserialize");
 
         for (original, restored) in profiles.iter().zip(back.iter()) {
             assert_eq!(original.id, restored.id);

@@ -103,30 +103,198 @@ pub fn default_commands() -> Vec<CommandEntry> {
             category: cat,
         });
     };
-    push(&mut v, "select", "Select", "sel", "V", CommandCategory::SelectionNavigation);
-    push(&mut v, "pan", "Pan", "pan", "H", CommandCategory::SelectionNavigation);
-    push(&mut v, "zoom_in", "Zoom In", "zi", "+", CommandCategory::SelectionNavigation);
-    push(&mut v, "zoom_out", "Zoom Out", "zo", "-", CommandCategory::SelectionNavigation);
-    push(&mut v, "zoom_fit", "Zoom Fit", "zf", "F", CommandCategory::SelectionNavigation);
-    push(&mut v, "highlight", "Highlight", "hl", "", CommandCategory::MarkupTools);
-    push(&mut v, "strikeout", "Strikeout", "sk", "", CommandCategory::MarkupTools);
-    push(&mut v, "underline", "Underline", "ul", "", CommandCategory::MarkupTools);
-    push(&mut v, "rectangle", "Rectangle", "rc", "", CommandCategory::MarkupTools);
-    push(&mut v, "ellipse", "Ellipse", "el", "", CommandCategory::MarkupTools);
-    push(&mut v, "length", "Length", "ln", "", CommandCategory::MeasurementTools);
-    push(&mut v, "area", "Area", "ar", "", CommandCategory::MeasurementTools);
-    push(&mut v, "calibrate", "Calibrate Scale", "ca", "", CommandCategory::MeasurementTools);
-    push(&mut v, "add_comment", "Add Comment", "cm", "", CommandCategory::ReviewComment);
-    push(&mut v, "status", "Status Dropdown", "st", "", CommandCategory::ReviewComment);
-    push(&mut v, "copy_props", "Copy Properties", "cp", "", CommandCategory::EditModify);
-    push(&mut v, "paste_props", "Paste Properties", "pp", "", CommandCategory::EditModify);
-    push(&mut v, "theme_toggle", "Theme Toggle", "tt", "", CommandCategory::ViewDisplay);
-    push(&mut v, "grid", "Show/Hide Grid", "gr", "", CommandCategory::ViewDisplay);
-    push(&mut v, "new", "New", "nw", "Ctrl+N", CommandCategory::FileProject);
-    push(&mut v, "open", "Open", "op", "Ctrl+O", CommandCategory::FileProject);
-    push(&mut v, "save", "Save", "sv", "Ctrl+S", CommandCategory::FileProject);
-    push(&mut v, "prefs", "Preferences", "pf", "", CommandCategory::Advanced);
-    push(&mut v, "profiles", "Profiles Management", "pr", "", CommandCategory::Advanced);
+    push(
+        &mut v,
+        "select",
+        "Select",
+        "sel",
+        "V",
+        CommandCategory::SelectionNavigation,
+    );
+    push(
+        &mut v,
+        "pan",
+        "Pan",
+        "pan",
+        "H",
+        CommandCategory::SelectionNavigation,
+    );
+    push(
+        &mut v,
+        "zoom_in",
+        "Zoom In",
+        "zi",
+        "+",
+        CommandCategory::SelectionNavigation,
+    );
+    push(
+        &mut v,
+        "zoom_out",
+        "Zoom Out",
+        "zo",
+        "-",
+        CommandCategory::SelectionNavigation,
+    );
+    push(
+        &mut v,
+        "zoom_fit",
+        "Zoom Fit",
+        "zf",
+        "F",
+        CommandCategory::SelectionNavigation,
+    );
+    push(
+        &mut v,
+        "highlight",
+        "Highlight",
+        "hl",
+        "",
+        CommandCategory::MarkupTools,
+    );
+    push(
+        &mut v,
+        "strikeout",
+        "Strikeout",
+        "sk",
+        "",
+        CommandCategory::MarkupTools,
+    );
+    push(
+        &mut v,
+        "underline",
+        "Underline",
+        "ul",
+        "",
+        CommandCategory::MarkupTools,
+    );
+    push(
+        &mut v,
+        "rectangle",
+        "Rectangle",
+        "rc",
+        "",
+        CommandCategory::MarkupTools,
+    );
+    push(
+        &mut v,
+        "ellipse",
+        "Ellipse",
+        "el",
+        "",
+        CommandCategory::MarkupTools,
+    );
+    push(
+        &mut v,
+        "length",
+        "Length",
+        "ln",
+        "",
+        CommandCategory::MeasurementTools,
+    );
+    push(
+        &mut v,
+        "area",
+        "Area",
+        "ar",
+        "",
+        CommandCategory::MeasurementTools,
+    );
+    push(
+        &mut v,
+        "calibrate",
+        "Calibrate Scale",
+        "ca",
+        "",
+        CommandCategory::MeasurementTools,
+    );
+    push(
+        &mut v,
+        "add_comment",
+        "Add Comment",
+        "cm",
+        "",
+        CommandCategory::ReviewComment,
+    );
+    push(
+        &mut v,
+        "status",
+        "Status Dropdown",
+        "st",
+        "",
+        CommandCategory::ReviewComment,
+    );
+    push(
+        &mut v,
+        "copy_props",
+        "Copy Properties",
+        "cp",
+        "",
+        CommandCategory::EditModify,
+    );
+    push(
+        &mut v,
+        "paste_props",
+        "Paste Properties",
+        "pp",
+        "",
+        CommandCategory::EditModify,
+    );
+    push(
+        &mut v,
+        "theme_toggle",
+        "Theme Toggle",
+        "tt",
+        "",
+        CommandCategory::ViewDisplay,
+    );
+    push(
+        &mut v,
+        "grid",
+        "Show/Hide Grid",
+        "gr",
+        "",
+        CommandCategory::ViewDisplay,
+    );
+    push(
+        &mut v,
+        "new",
+        "New",
+        "nw",
+        "Ctrl+N",
+        CommandCategory::FileProject,
+    );
+    push(
+        &mut v,
+        "open",
+        "Open",
+        "op",
+        "Ctrl+O",
+        CommandCategory::FileProject,
+    );
+    push(
+        &mut v,
+        "save",
+        "Save",
+        "sv",
+        "Ctrl+S",
+        CommandCategory::FileProject,
+    );
+    push(
+        &mut v,
+        "prefs",
+        "Preferences",
+        "pf",
+        "",
+        CommandCategory::Advanced,
+    );
+    push(
+        &mut v,
+        "profiles",
+        "Profiles Management",
+        "pr",
+        "",
+        CommandCategory::Advanced,
+    );
     // Divider pseudo-command (always available).
     v.push(CommandEntry {
         id: "divider".into(),
@@ -296,10 +464,13 @@ pub fn show(
                                 if !name.is_empty() {
                                     let id =
                                         format!("custom_{}", name.to_lowercase().replace(' ', "_"));
-                                    let exists = toolbars.iter().any(|t| t.name.eq_ignore_ascii_case(&name));
+                                    let exists =
+                                        toolbars.iter().any(|t| t.name.eq_ignore_ascii_case(&name));
                                     if exists {
                                         // error: duplicate
-                                    } else if toolbars.iter().filter(|t| !t.predefined).count() >= 20 {
+                                    } else if toolbars.iter().filter(|t| !t.predefined).count()
+                                        >= 20
+                                    {
                                         // max reached
                                     } else {
                                         toolbars.push(crate::ui::toolbar_runtime::ToolbarConfig {

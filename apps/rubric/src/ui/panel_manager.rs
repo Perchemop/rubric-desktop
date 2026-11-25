@@ -4,8 +4,8 @@
 //! mutations go through here so UI components never touch domain state directly.
 
 use crate::domain::profile::PanelLayout;
-use crate::domain::workspace::{Region, WorkspaceState};
 use crate::domain::workspace::PanelId;
+use crate::domain::workspace::{Region, WorkspaceState};
 use egui::Context;
 
 /// A 4-zone split target used by the Split Wheel overlay.

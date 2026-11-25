@@ -109,7 +109,8 @@ pub fn split_divider(ui: &mut Ui, vertical: bool, ratio: &mut f32) {
         }
     }
     let _ = id;
-    ui.painter().rect_filled(rect, 0.0, ui.visuals().widgets.inactive.bg_fill);
+    ui.painter()
+        .rect_filled(rect, 0.0, ui.visuals().widgets.inactive.bg_fill);
 }
 
 /// Recursive split rendering placeholder (depth-limited).

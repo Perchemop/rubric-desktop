@@ -12,13 +12,12 @@ use directories::ProjectDirs;
 use uuid::Uuid;
 
 use crate::domain::{
-    predefined_profiles, find_predefined_by_name, is_predefined_id,
+    find_predefined_by_name, is_predefined_id, predefined_profiles, toolbar::ToolbarProfileConfig,
     CanvasSettings, MeasurementDefaults, Profile, ProfileSummary, ToolbarLayout,
-    toolbar::ToolbarProfileConfig,
 };
 
-use super::DataError;
 use super::profile_migration::migrate_profile;
+use super::DataError;
 
 /// Path to the profiles directory.
 /// Created on first run if missing.
@@ -37,7 +36,11 @@ pub fn profiles_dir() -> Option<PathBuf> {
 pub fn profile_path(name: &str) -> Option<PathBuf> {
     profiles_dir().map(|d| {
         let safe_name = Profile::sanitize_filename(name);
-        d.join(format!("{}.{}", safe_name, crate::domain::PROFILE_EXTENSION))
+        d.join(format!(
+            "{}.{}",
+            safe_name,
+            crate::domain::PROFILE_EXTENSION
+        ))
     })
 }
 
@@ -57,21 +60,39 @@ pub fn build_profile_from_state(
     let toolbar_layout = if let Some(tp) = toolbar_profile {
         crate::domain::profile::ToolbarLayout {
             visible: tp.main_toolbar.visible,
-            tool_order: tp.main_toolbar.items.iter().filter_map(|i| i.command_id()).map(|c| c.0.clone()).collect(),
+            tool_order: tp
+                .main_toolbar
+                .items
+                .iter()
+                .filter_map(|i| i.command_id())
+                .map(|c| c.0.clone())
+                .collect(),
             locked: tp.lock_state.global_locked,
-            custom_toolbars: tp.custom_toolbars.iter().map(|tb| {
-                (tb.id.clone(), crate::domain::profile::CustomToolbar {
-                    name: tb.name.clone(),
-                    tools: tb.items.iter().filter_map(|i| i.command_id()).map(|c| c.0.clone()).collect(),
-                    visible: tb.visible,
+            custom_toolbars: tp
+                .custom_toolbars
+                .iter()
+                .map(|tb| {
+                    (
+                        tb.id.clone(),
+                        crate::domain::profile::CustomToolbar {
+                            name: tb.name.clone(),
+                            tools: tb
+                                .items
+                                .iter()
+                                .filter_map(|i| i.command_id())
+                                .map(|c| c.0.clone())
+                                .collect(),
+                            visible: tb.visible,
+                        },
+                    )
                 })
-            }).collect(),
+                .collect(),
         }
     } else {
         // Default toolbar layout
         crate::domain::profile::ToolbarLayout::default()
     };
-    
+
     let now = chrono::Utc::now();
     crate::domain::profile::Profile {
         schema_version: crate::domain::profile::CURRENT_PROFILE_SCHEMA_VERSION,
@@ -97,9 +118,8 @@ pub struct ProfileStore {
 impl ProfileStore {
     /// Create a new ProfileStore, initializing the directory if needed.
     pub fn new() -> Result<Self, DataError> {
-        let dir = profiles_dir().ok_or_else(|| DataError::Path(
-            "no config directory available for profiles".into()
-        ))?;
+        let dir = profiles_dir()
+            .ok_or_else(|| DataError::Path("no config directory available for profiles".into()))?;
 
         fs::create_dir_all(&dir)?;
 
@@ -112,9 +132,8 @@ impl ProfileStore {
 
         // Write predefined profiles if they don't exist
         for profile in predefined_profiles() {
-            let path = profile_path(&profile.name).ok_or_else(|| DataError::Path(
-                "invalid profile path".into()
-            ))?;
+            let path = profile_path(&profile.name)
+                .ok_or_else(|| DataError::Path("invalid profile path".into()))?;
             if !path.exists() {
                 store.save_profile_to_path(profile, &path)?;
             }
@@ -136,19 +155,20 @@ impl ProfileStore {
         if let Ok(entries) = fs::read_dir(&self.profiles_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.extension().map_or(false, |ext| ext == "rubric-profile") {
+                if path
+                    .extension()
+                    .map_or(false, |ext| ext == "rubric-profile")
+                {
                     if let Some(name) = path.file_stem() {
                         let name_str = name.to_string_lossy().to_string();
-                        
+
                         // Check if it's a predefined profile by checking if name matches
                         if find_predefined_by_name(&name_str).is_none() {
                             // Try to read the file for modified_at
                             let modified = fs::metadata(&path)
                                 .ok()
                                 .and_then(|m| m.modified().ok())
-                                .map(|t| {
-                                    chrono::DateTime::<Utc>::from(t)
-                                });
+                                .map(|t| chrono::DateTime::<Utc>::from(t));
 
                             profiles.push(ProfileSummary {
                                 name: name_str,
@@ -192,7 +212,8 @@ impl ProfileStore {
         }
 
         // Load from disk
-        let path = profile_path(name).ok_or_else(|| DataError::ProfileNotFound(name.to_string()))?;
+        let path =
+            profile_path(name).ok_or_else(|| DataError::ProfileNotFound(name.to_string()))?;
         let content = fs::read(&path).map_err(DataError::Io)?;
 
         // Parse and migrate if needed
@@ -219,13 +240,11 @@ impl ProfileStore {
         let json = serde_json::to_string_pretty(profile)?;
 
         // Atomic write: write to temp file, then rename
-        let temp_path = path.with_extension(
-            format!(
-                "{}.tmp.{}",
-                path.file_name().unwrap().to_string_lossy(),
-                std::process::id()
-            )
-        );
+        let temp_path = path.with_extension(format!(
+            "{}.tmp.{}",
+            path.file_name().unwrap().to_string_lossy(),
+            std::process::id()
+        ));
 
         {
             let mut file = File::create(&temp_path)?;
@@ -245,8 +264,8 @@ impl ProfileStore {
             return Err(DataError::ProfilePredefined(name.to_string()));
         }
 
-        let path = profile_path(name)
-            .ok_or_else(|| DataError::ProfileNotFound(name.to_string()))?;
+        let path =
+            profile_path(name).ok_or_else(|| DataError::ProfileNotFound(name.to_string()))?;
 
         fs::remove_file(&path)?;
 
@@ -282,9 +301,12 @@ impl ProfileStore {
         let content = fs::read(path).map_err(DataError::Io)?;
 
         // Check if it has the required schema_version field
-        let value: serde_json::Value = serde_json::from_slice(&content).map_err(DataError::Serde)?;
+        let value: serde_json::Value =
+            serde_json::from_slice(&content).map_err(DataError::Serde)?;
         if !value.get("schema_version").is_some() {
-            return Err(DataError::Profile("Selected file is not a valid Rubric profile (missing schema_version)".into()));
+            return Err(DataError::Profile(
+                "Selected file is not a valid Rubric profile (missing schema_version)".into(),
+            ));
         }
 
         // Migrate if needed
@@ -325,7 +347,9 @@ impl Default for ProfileStore {
                     std::env::var_os("HOME")
                         .map(PathBuf::from)
                         .unwrap_or_default()
-                        .join(".config").join("rubric").join("profiles")
+                        .join(".config")
+                        .join("rubric")
+                        .join("profiles")
                 }),
         })
     }
@@ -368,7 +392,7 @@ mod tests {
     fn profile_store_creates_directory() {
         let temp_dir = temp_profiles_dir();
         let _ = fs::remove_dir_all(&temp_dir);
-        
+
         let store = ProfileStore::new().ok();
         // If the temp dir was deleted, this test verifies the pattern
         drop(store);
