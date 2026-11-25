@@ -177,7 +177,7 @@ pub mod light {
     /// Focus ring colour.
     pub const FOCUS_RING: Color = Color::from_rgb(220, 220, 220);
     /// Selection fill colour.
-    pub const SELECTION_BG: Color = Color::from_rgb(220, 220, 220);
+    pub const SELECTION_BG: Color = Color::from_rgb(200, 200, 200);
     /// Selection text colour.
     pub const SELECTION_FG: Color = Color::from_rgb(255, 255, 255);
     /// Link colour.
@@ -225,7 +225,7 @@ pub mod dark {
     /// Focus ring colour.
     pub const FOCUS_RING: Color = Color::from_rgb(220, 220, 220);
     /// Selection fill colour.
-    pub const SELECTION_BG: Color = Color::from_rgb(220, 220, 220);
+    pub const SELECTION_BG: Color = Color::from_rgb(200, 200, 200);
     /// Selection text colour.
     pub const SELECTION_FG: Color = Color::from_rgb(255, 255, 255);
     /// Link colour.
