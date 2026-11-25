@@ -5,11 +5,9 @@
 use eframe::egui;
 use crate::data::profile_store::{build_profile_from_state, ProfileStore};
 use crate::domain::profile::PanelLayout;
-use crate::domain::toolbar::ToolbarConfig;
 use crate::domain::theme::Theme;
-use crate::domain::units::Unit;
 use crate::domain::workspace::MeasurementDefaults;
-use crate::domain::{CanvasSettings, ToolbarConfig};
+use crate::domain::{CanvasSettings};
 
 const OPEN_KEY: &str = "rubric.save_profile.open";
 const NAME_KEY: &str = "rubric.save_profile.name";
@@ -111,11 +109,12 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
 
     if commit {
         // Build profile from current UI state
+        // Note: Toolbar profile config not yet integrated; passing None for now
         let profile = build_profile_from_state(
             name.clone(),
             desc.clone(),
             app.ui.panel_layout.clone(), // Panel layout
-            app.ui.toolbar_config.clone(), // Toolbar config
+            None, // Toolbar profile config (not yet integrated)
             app.theme,
             app.ui.measurement_defaults.clone(),
             app.ui.canvas_settings.clone(),

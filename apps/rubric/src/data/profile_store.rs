@@ -14,6 +14,7 @@ use uuid::Uuid;
 use crate::domain::{
     predefined_profiles, find_predefined_by_name, is_predefined_id,
     CanvasSettings, MeasurementDefaults, Profile, ProfileSummary, ToolbarLayout,
+    toolbar::ToolbarProfileConfig,
 };
 
 use super::DataError;
@@ -38,6 +39,54 @@ pub fn profile_path(name: &str) -> Option<PathBuf> {
         let safe_name = Profile::sanitize_filename(name);
         d.join(format!("{}.{}", safe_name, crate::domain::PROFILE_EXTENSION))
     })
+}
+
+/// Build a Profile from the current application UI state.
+/// This is used when saving a profile from the current UI layout.
+pub fn build_profile_from_state(
+    name: String,
+    description: String,
+    panel_layout: crate::domain::panel::PanelLayout,
+    toolbar_profile: Option<crate::domain::toolbar::ToolbarProfileConfig>,
+    theme: crate::domain::theme::Theme,
+    measurement_defaults: crate::domain::workspace::MeasurementDefaults,
+    canvas_settings: crate::domain::CanvasSettings,
+) -> crate::domain::profile::Profile {
+    let now = chrono::Utc::now();
+    // Convert ToolbarProfileConfig to ToolbarLayout for profile storage
+    let toolbar_layout = if let Some(tp) = toolbar_profile {
+        crate::domain::profile::ToolbarLayout {
+            visible: tp.main_toolbar.visible,
+            tool_order: tp.main_toolbar.items.iter().filter_map(|i| i.command_id()).map(|c| c.0.clone()).collect(),
+            locked: tp.lock_state.global_locked,
+            custom_toolbars: tp.custom_toolbars.iter().map(|tb| {
+                (tb.id.clone(), crate::domain::profile::CustomToolbar {
+                    name: tb.name.clone(),
+                    tools: tb.items.iter().filter_map(|i| i.command_id()).map(|c| c.0.clone()).collect(),
+                    visible: tb.visible,
+                })
+            }).collect(),
+        }
+    } else {
+        // Default toolbar layout
+        crate::domain::profile::ToolbarLayout::default()
+    };
+    
+    let now = chrono::Utc::now();
+    crate::domain::profile::Profile {
+        schema_version: crate::domain::profile::CURRENT_PROFILE_SCHEMA_VERSION,
+        id: uuid::Uuid::new_v4(),
+        name,
+        description,
+        created_at: now,
+        modified_at: now,
+        is_predefined: false,
+        panel_layout,
+        toolbar_layout,
+        measurement_defaults,
+        canvas_settings,
+        theme_override: Some(theme),
+    }
 }
 
 /// ProfileStore manages profile persistence.

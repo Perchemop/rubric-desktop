@@ -152,6 +152,14 @@ impl ToolbarItem {
     pub fn tool(id: impl Into<String>) -> Self {
         ToolbarItem::Tool(CommandId::new(id))
     }
+
+    /// Get the command ID if this item is a Tool variant.
+    pub fn command_id(&self) -> Option<&CommandId> {
+        match self {
+            ToolbarItem::Tool(id) => Some(id),
+            ToolbarItem::Divider | ToolbarItem::Spacer => None,
+        }
+    }
 }
 
 /// Visibility + configuration for one toolbar.

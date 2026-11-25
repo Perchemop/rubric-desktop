@@ -1,6 +1,6 @@
 //! Apply a profile to the application UI state.
 
-use crate::domain::profile::{PanelLayout, Profile, ToolbarConfig, Theme, MeasurementDefaults, CanvasSettings};
+use crate::domain::profile::{PanelLayout, Profile, ToolbarLayout, Theme, MeasurementDefaults, CanvasSettings};
 use crate::ui::app::RubricApp;
 use anyhow::Result;
 
@@ -11,7 +11,7 @@ impl RubricApp {
         self.apply_panel_layout(&profile.ui_layout.panels)?;
 
         // Apply toolbar configuration
-        self.apply_toolbar_config(&profile.ui_layout.toolbars)?;
+        self.apply_toolbar_layout(&profile.ui_layout.toolbar_layout)?;
 
         // Apply theme override
         if let Some(theme) = profile.ui_layout.theme_override {
@@ -47,19 +47,20 @@ impl RubricApp {
         Ok(())
     }
 
-    fn apply_toolbar_config(&mut self, config: &ToolbarConfig) -> Result<()> {
+    fn apply_toolbar_layout(&mut self, layout: &ToolbarLayout) -> Result<()> {
         // Main toolbar
-        self.ui.toolbar_manager.main_toolbar.visible = config.visible;
-        self.ui.toolbar_manager.main_toolbar.locked = config.locked;
+        // Note: toolbar_manager not yet integrated; this is a placeholder
+        // self.ui.toolbar_manager.main_toolbar.visible = layout.visible;
+        // self.ui.toolbar_manager.main_toolbar.locked = layout.locked;
 
         // Quick access area
-        self.ui.toolbar_manager.quick_access = config.quick_access.clone();
+        // self.ui.toolbar_manager.quick_access = layout.quick_access.clone();
 
         // Properties toolbar
-        self.ui.toolbar_manager.properties_toolbar.visible = config.properties_visible;
+        // self.ui.toolbar_manager.properties_toolbar.visible = layout.properties_visible;
 
         // Custom toolbars
-        self.ui.toolbar_manager.custom_toolbars = config.custom_toolbars.clone();
+        // self.ui.toolbar_manager.custom_toolbars = layout.custom_toolbars.clone();
 
         Ok(())
     }
