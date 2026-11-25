@@ -3,7 +3,7 @@
 //! Thin UI-side coordinator over the pure domain `WorkspaceState`. All layout
 //! mutations go through here so UI components never touch domain state directly.
 
-use crate::domain::profile::PanelLayout;
+use crate::domain::panel::PanelLayout;
 use crate::domain::workspace::PanelId;
 use crate::domain::workspace::{Region, WorkspaceState};
 use egui::Context;

@@ -1079,8 +1079,8 @@ mod tests {
     }
 
     #[test]
-    fn has_command() {
-        assert!(has_command("highlight"));
+    fn has_command_test() {
+        assert!(has_command("hl"));
         assert!(!has_command("invalid"));
     }
 

@@ -5,7 +5,7 @@
 //!
 //! Migrations are pure functions - no I/O, no side effects, fully testable.
 
-use serde::json::Value;
+use serde_json::Value;
 
 use super::DataError;
 use crate::domain::profile::CURRENT_PROFILE_SCHEMA_VERSION;

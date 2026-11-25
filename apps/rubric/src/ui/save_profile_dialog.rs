@@ -3,9 +3,9 @@
 //! Saves current UI layout to a new profile via ProfileStore.
 
 use crate::data::profile_store::{build_profile_from_state, ProfileStore};
-use crate::domain::profile::PanelLayout;
+use crate::domain::panel::PanelLayout;
 use crate::domain::theme::Theme;
-use crate::domain::workspace::MeasurementDefaults;
+use crate::domain::profile::MeasurementDefaults;
 use crate::domain::CanvasSettings;
 use eframe::egui;
 

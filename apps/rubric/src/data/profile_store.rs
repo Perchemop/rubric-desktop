@@ -7,13 +7,14 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use anyhow;
 use chrono::Utc;
 use directories::ProjectDirs;
 use uuid::Uuid;
 
 use crate::domain::{
     find_predefined_by_name, is_predefined_id, predefined_profiles, toolbar::ToolbarProfileConfig,
-    CanvasSettings, MeasurementDefaults, Profile, ProfileSummary, ToolbarLayout,
+    CanvasSettings, Profile, ProfileSummary, ToolbarLayout,
 };
 
 use super::profile_migration::migrate_profile;
@@ -52,7 +53,7 @@ pub fn build_profile_from_state(
     panel_layout: crate::domain::panel::PanelLayout,
     toolbar_profile: Option<crate::domain::toolbar::ToolbarProfileConfig>,
     theme: crate::domain::theme::Theme,
-    measurement_defaults: crate::domain::workspace::MeasurementDefaults,
+    measurement_defaults: crate::domain::MeasurementDefaults,
     canvas_settings: crate::domain::CanvasSettings,
 ) -> crate::domain::profile::Profile {
     let now = chrono::Utc::now();
@@ -202,7 +203,7 @@ impl ProfileStore {
                 created_at: profile.created_at,
                 modified_at: profile.modified_at,
                 is_predefined: true,
-                schema_version: super::profile::CURRENT_PROFILE_SCHEMA_VERSION,
+                schema_version: crate::domain::profile::CURRENT_PROFILE_SCHEMA_VERSION,
                 panel_layout: profile.panel_layout.clone(),
                 toolbar_layout: profile.toolbar_layout.clone(),
                 measurement_defaults: profile.measurement_defaults.clone(),
@@ -304,7 +305,7 @@ impl ProfileStore {
         let value: serde_json::Value =
             serde_json::from_slice(&content).map_err(DataError::Serde)?;
         if !value.get("schema_version").is_some() {
-            return Err(DataError::Profile(
+            return Err(DataError::ProfileError(
                 "Selected file is not a valid Rubric profile (missing schema_version)".into(),
             ));
         }
@@ -341,7 +342,7 @@ impl ProfileStore {
 impl Default for ProfileStore {
     fn default() -> Self {
         Self::new().unwrap_or_else(|_| Self {
-            profiles_dir: dirs::ProjectDirs::from("dev", "Rubric", "Rubric")
+            profiles_dir: directories::ProjectDirs::from("dev", "Rubric", "Rubric")
                 .map(|pd| pd.data_dir().to_path_buf())
                 .unwrap_or_else(|| {
                     std::env::var_os("HOME")
