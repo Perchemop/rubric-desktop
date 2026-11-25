@@ -3,8 +3,8 @@
 //! Thin UI-side coordinator over the pure domain `WorkspaceState`. All layout
 //! mutations go through here so UI components never touch domain state directly.
 
-use crate::domain::{DockLocation, PanelLayout, Region, WorkspaceState};
 use crate::domain::workspace::PanelId;
+use crate::domain::{DockLocation, PanelLayout, Region, WorkspaceState};
 use egui::Context;
 
 /// A 4-zone split target used by the Split Wheel overlay.

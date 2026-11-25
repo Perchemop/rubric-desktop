@@ -7,7 +7,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::domain::workspace::{FloatState, Region, WorkspaceState, PanelId};
+use crate::domain::workspace::{FloatState, PanelId, Region, WorkspaceState};
 
 /// Schema version for panel layout serialization.
 /// Increment when backwards-compatible changes are made; bump major for breaking changes.

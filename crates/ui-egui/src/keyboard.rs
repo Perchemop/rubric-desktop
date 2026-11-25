@@ -67,7 +67,7 @@ pub enum TableAction {
 }
 
 /// Gantt chart actions.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum GanttAction {
     /// Pan the view by (dx, dy) points.
@@ -130,7 +130,7 @@ pub enum DialogAction {
 }
 
 /// Focus ring visual properties.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FocusRingProperties {
     /// Thickness in pixels.
     pub thickness: f32,
@@ -333,7 +333,7 @@ pub fn resolve_global_shortcut(key: egui::Key, mods: egui::Modifiers) -> Option<
 pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewEvent> {
     let m = Modifiers::from(mods);
 
-    // Table navigation arrows.
+    // Table navigation with shift: arrow keys move focus.
     // egui::Key::ArrowUp/Down/Left/Right
     match key {
         egui::Key::ArrowUp if m.shift => Some(ViewEvent::Table {
@@ -349,7 +349,7 @@ pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewE
             action: TableAction::Navigate { dx: 1, dy: 0 },
         }),
 
-        // Table navigation without shift: Enter=Edit, Space=Select.
+        // Table: Enter=Edit, Space=Select.
         egui::Key::Enter => Some(ViewEvent::Table {
             action: TableAction::Edit,
         }),
@@ -378,7 +378,7 @@ pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewE
             action: TableAction::Cut,
         }),
 
-        // Gantt: Arrow keys for pan.
+        // Gantt: Arrow keys for pan (no shift = pan).
         egui::Key::ArrowUp => Some(ViewEvent::Gantt {
             action: GanttAction::Pan { dx: 0.0, dy: -8.0 },
         }),
@@ -418,29 +418,6 @@ pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewE
             })
         }
 
-        // Gantt: Space select.
-        egui::Key::Space => {
-            Some(ViewEvent::Gantt {
-                action: GanttAction::Select { id: "gantt-task".into() },
-            })
-        }
-
-        // Resources: Arrow keys navigate.
-        egui::Key::ArrowUp => Some(ViewEvent::Resources {
-            action: ResourcesAction::Navigate { dy: -1 },
-        }),
-        egui::Key::ArrowDown => Some(ViewEvent::Resources {
-            action: ResourcesAction::Navigate { dy: 1 },
-        }),
-
-        // Resources: Enter = edit assignment, Delete = remove.
-        egui::Key::Enter => Some(ViewEvent::Resources {
-            action: ResourcesAction::EditAssignment,
-        }),
-        egui::Key::Delete => Some(ViewEvent::Resources {
-            action: ResourcesAction::Remove,
-        }),
-
         // Inspector: Tab/Shift+Tab navigate fields.
         egui::Key::Tab if !m.shift => Some(ViewEvent::Inspector {
             action: InspectorAction::Navigate { forward: true },
@@ -449,28 +426,9 @@ pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewE
             action: InspectorAction::Navigate { forward: false },
         }),
 
-        // Inspector: Enter confirm, Escape cancel.
-        egui::Key::Enter => Some(ViewEvent::Inspector {
-            action: InspectorAction::Confirm,
-        }),
+        // Inspector: Escape cancel.
         egui::Key::Escape => Some(ViewEvent::Inspector {
             action: InspectorAction::Cancel,
-        }),
-
-        // Dialog: Tab navigation.
-        egui::Key::Tab if !m.shift => Some(ViewEvent::Dialog {
-            action: DialogAction::FocusNext,
-        }),
-        egui::Key::Tab if m.shift => Some(ViewEvent::Dialog {
-            action: DialogAction::FocusPrev,
-        }),
-
-        // Dialog: Escape close, Enter default.
-        egui::Key::Escape => Some(ViewEvent::Dialog {
-            action: DialogAction::Close,
-        }),
-        egui::Key::Enter => Some(ViewEvent::Dialog {
-            action: DialogAction::Default,
         }),
 
         _ => None,
@@ -480,17 +438,16 @@ pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewE
 /// Extract the numeric part from a number key (1..9).
 fn key_to_number(key: egui::Key) -> Option<u8> {
     // egui key codes for digit keys vary by platform; we match the most common.
-    use egui::Key::*;
     match key {
-        Digit(1) => Some(1),
-        Digit(2) => Some(2),
-        Digit(3) => Some(3),
-        Digit(4) => Some(4),
-        Digit(5) => Some(5),
-        Digit(6) => Some(6),
-        Digit(7) => Some(7),
-        Digit(8) => Some(8),
-        Digit(9) => Some(9),
+        egui::Key::Digit(1) => Some(1),
+        egui::Key::Digit(2) => Some(2),
+        egui::Key::Digit(3) => Some(3),
+        egui::Key::Digit(4) => Some(4),
+        egui::Key::Digit(5) => Some(5),
+        egui::Key::Digit(6) => Some(6),
+        egui::Key::Digit(7) => Some(7),
+        egui::Key::Digit(8) => Some(8),
+        egui::Key::Digit(9) => Some(9),
         _ => None,
     }
 }
