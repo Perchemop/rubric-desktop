@@ -51,7 +51,7 @@ fn linearise(channel: u8) -> f64 {
 
 /// Relative luminance of an sRGB colour (WCAG 2.x). Alpha is ignored.
 pub fn relative_luminance(col: Color32) -> f64 {
-    0.2126 * linearise(col.r) + 0.7152 * linearise(col.g) + 0.0722 * linearise(col.b)
+    0.2126 * linearise(col.r()) + 0.7152 * linearise(col.g()) + 0.0722 * linearise(col.b())
 }
 
 /// WCAG contrast ratio between two opaque colours, always ≥ 1.
