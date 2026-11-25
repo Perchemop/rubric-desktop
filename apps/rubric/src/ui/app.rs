@@ -2059,7 +2059,6 @@ impl RubricApp {
             Err(e) => {
                 self.set_status(StatusKind::Error, format!("Export failed: {e}"));
             }
-            }
         }
     }
 
