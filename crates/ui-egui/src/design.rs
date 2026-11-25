@@ -11,7 +11,7 @@
 //! - Colour: Rubric ACCENT (228, 87, 46), which meets AA-large contrast
 //!   against both light and dark theme surfaces.
 
-use egui::{pos2, Rect, Stroke, Vec2, Response, Color32};
+use egui::{pos2, Rect, Stroke, Vec2, Response, Color32, ShapeIdx};
 
 use crate::keyboard::FocusRingProperties;
 
@@ -39,7 +39,7 @@ pub fn draw_focus_ring(
     let outer_rect = Rect::from_min_max(outer_min, outer_max);
 
     // Draw the focus ring stroke.
-    painter.rect_stroke(
+    let shape_idx = painter.rect_stroke(
         outer_rect,
         0.0,
         Stroke::new(props.thickness, props.colour),
@@ -56,7 +56,7 @@ pub fn default_focus_ring_props() -> FocusRingProperties {
 }
 
 /// Convenience wrapper that draws the focus ring using default properties.
-pub fn draw_default_focus_ring(ui: &egui::Ui, rect: Rect) -> egui::Response {
+pub fn draw_default_focus_ring(ui: &egui::Ui, rect: Rect) -> Response {
     let props = default_focus_ring_props();
     draw_focus_ring(ui, rect, props)
 }

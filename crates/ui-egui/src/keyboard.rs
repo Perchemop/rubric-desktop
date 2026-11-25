@@ -350,7 +350,7 @@ pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewE
         }),
 
         // Table navigation without shift: Enter=Edit, Space=Select.
-        egui::Key::Return => Some(ViewEvent::Table {
+        egui::Key::Enter => Some(ViewEvent::Table {
             action: TableAction::Edit,
         }),
         egui::Key::Space => Some(ViewEvent::Table {
@@ -393,15 +393,17 @@ pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewE
         }),
 
         // Gantt: Zoom +/-
-        egui::Key::Equal | egui::Key::Plus => {
-            Some(ViewEvent::Gantt {
-                action: GanttAction::Zoom { factor: 1.25 },
-            })
-        }
-        egui::Key::Minus | egui::Key::Underscore => {
-            Some(ViewEvent::Gantt {
-                action: GanttAction::Zoom { factor: 0.80 },
-            })
+        // egui 0.37: Key::Equals (unshifted) and with shift for +
+        egui::Key::Equals => {
+            if m.shift {
+                Some(ViewEvent::Gantt {
+                    action: GanttAction::Zoom { factor: 1.25 },
+                })
+            } else {
+                Some(ViewEvent::Gantt {
+                    action: GanttAction::Zoom { factor: 0.80 },
+                })
+            }
         }
 
         // Gantt: Home/End.
@@ -432,7 +434,7 @@ pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewE
         }),
 
         // Resources: Enter = edit assignment, Delete = remove.
-        egui::Key::Return => Some(ViewEvent::Resources {
+        egui::Key::Enter => Some(ViewEvent::Resources {
             action: ResourcesAction::EditAssignment,
         }),
         egui::Key::Delete => Some(ViewEvent::Resources {
@@ -443,12 +445,12 @@ pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewE
         egui::Key::Tab if !m.shift => Some(ViewEvent::Inspector {
             action: InspectorAction::Navigate { forward: true },
         }),
-        egui::Key::ShiftTab => Some(ViewEvent::Inspector {
+        egui::Key::Tab if m.shift => Some(ViewEvent::Inspector {
             action: InspectorAction::Navigate { forward: false },
         }),
 
         // Inspector: Enter confirm, Escape cancel.
-        egui::Key::Return => Some(ViewEvent::Inspector {
+        egui::Key::Enter => Some(ViewEvent::Inspector {
             action: InspectorAction::Confirm,
         }),
         egui::Key::Escape => Some(ViewEvent::Inspector {
@@ -459,7 +461,7 @@ pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewE
         egui::Key::Tab if !m.shift => Some(ViewEvent::Dialog {
             action: DialogAction::FocusNext,
         }),
-        egui::Key::ShiftTab => Some(ViewEvent::Dialog {
+        egui::Key::Tab if m.shift => Some(ViewEvent::Dialog {
             action: DialogAction::FocusPrev,
         }),
 
@@ -467,7 +469,7 @@ pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewE
         egui::Key::Escape => Some(ViewEvent::Dialog {
             action: DialogAction::Close,
         }),
-        egui::Key::Return => Some(ViewEvent::Dialog {
+        egui::Key::Enter => Some(ViewEvent::Dialog {
             action: DialogAction::Default,
         }),
 
