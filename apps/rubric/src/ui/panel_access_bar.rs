@@ -2,7 +2,7 @@
 
 use crate::domain::workspace::PanelId;
 use crate::ui::panel_manager::PanelManager;
-use egui::{Context, Ui, Panel};
+use egui::Ui;
 use std::time::{Duration, Instant};
 
 pub struct PanelAccessBar {
@@ -85,15 +85,4 @@ impl PanelAccessBar {
             }
         });
     }
-
-    pub fn show_ctx(&mut self, ctx: &Context, manager: &mut PanelManager, panels: &[PanelId]) {
-        // Convenience: create a side panel.
-        Panel::left("panel_access_bar")
-            .default_size(self.width())
-            .show(ctx, |ui| {
-                self.show(ui, manager, panels);
-            });
-    }
 }
-
-// Context already imported above.
