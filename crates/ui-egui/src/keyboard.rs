@@ -437,17 +437,17 @@ pub fn resolve_view_event(key: egui::Key, mods: egui::Modifiers) -> Option<ViewE
 
 /// Extract the numeric part from a number key (1..9).
 fn key_to_number(key: egui::Key) -> Option<u8> {
-    // egui key codes for digit keys vary by platform; we match the most common.
+    // egui 0.36 uses Num0..Num9 for digit keys (from main row or numpad).
     match key {
-        egui::Key::Digit(1) => Some(1),
-        egui::Key::Digit(2) => Some(2),
-        egui::Key::Digit(3) => Some(3),
-        egui::Key::Digit(4) => Some(4),
-        egui::Key::Digit(5) => Some(5),
-        egui::Key::Digit(6) => Some(6),
-        egui::Key::Digit(7) => Some(7),
-        egui::Key::Digit(8) => Some(8),
-        egui::Key::Digit(9) => Some(9),
+        egui::Key::Num1 => Some(1),
+        egui::Key::Num2 => Some(2),
+        egui::Key::Num3 => Some(3),
+        egui::Key::Num4 => Some(4),
+        egui::Key::Num5 => Some(5),
+        egui::Key::Num6 => Some(6),
+        egui::Key::Num7 => Some(7),
+        egui::Key::Num8 => Some(8),
+        egui::Key::Num9 => Some(9),
         _ => None,
     }
 }
