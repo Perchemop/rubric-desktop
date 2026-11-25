@@ -411,7 +411,6 @@ mod tests {
     }
 
     #[test]
-        #[test]
     fn quick_access_config_validation() {
         let valid = QuickAccessConfig::new(
             vec![

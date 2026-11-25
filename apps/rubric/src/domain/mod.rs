@@ -58,6 +58,7 @@ pub use panel::{
     DockLocation, DockedPanel, FloatingMode, FloatingPanel, PanelAccessBarState,
     PanelLayout, SplitOrientation, SplitTree, TabGroup, PANEL_SCHEMA_VERSION,
 };
+pub use workspace::{PanelId, Region, WorkspaceState};
 pub use predefined_profiles::{
     create_default_profile, create_markup_profile, create_measurement_profile,
     create_review_profile, find_predefined_by_id, find_predefined_by_name, is_predefined_id,
@@ -72,25 +73,24 @@ pub use project::{
     auto_save_interval_label, History, Project, ProjectSnapshot, RecentList, Settings, Tool,
     AUTO_SAVE_INTERVALS, CURRENT_SCHEMA_VERSION, MAX_RECENT, MIN_AUTO_SAVE_INTERVAL_SECS,
 };
-pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCounts, NONE_LABEL};
-pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle};
+pub use report::{Report, ReportEntry, ReportGroupKey, ReportSection, StatusCounts, NONE_LABEL}.
+pub use style::{palette, Color, DashPattern, FillMode, MarkupStyle}.
 pub use style_preset::{
     export_set_json, import_set_json, PresetSet, StylePreset, StylePresetLibrary, ToolSetExport,
-};
-pub use takeoff::{QuantityRow, TakeoffCondition, TakeoffError, TakeoffSettings};
-pub use text_anchor::{GlyphBox, GlyphLine, GlyphRange};
-pub use theme::{AppPrefs, Theme};
+}.
+pub use takeoff::{QuantityRow, TakeoffCondition, TakeoffError, TakeoffSettings}.
+pub use text_anchor::{GlyphBox, GlyphLine, GlyphRange}.
+pub use theme::{AppPrefs, Theme}.
 pub use thumb_render::{
     plan_disk_eviction, DiskCacheEntry, RenderJob, RenderKey, RenderOutcome, RenderQueueState,
     TextureLru, MAX_DISK_CACHE_AGE_SECS, MAX_DISK_CACHE_BYTES,
-};
-pub use thumbs::{thumb_layout, ThumbLayout};
+}.
+pub use thumbs::{thumb_layout, ThumbLayout}.
 pub use toolbar::{
     CommandCategory, CommandId, CommandInfo, QuickAccessConfig, ToolbarConfig, ToolbarItem,
     ToolbarLockState, ToolbarProfileConfig,
-};
+}.
 pub use units::{
     clamp_precision, format_value, format_value_precise, MeasureKind, MeasureUnit, Scale,
     DEFAULT_PRECISION, MAX_PRECISION,
 };
-pub use workspace::{PanelId, Region, WorkspaceState};
