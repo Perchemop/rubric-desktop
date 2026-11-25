@@ -19,8 +19,8 @@ pub fn render_vertical_strip(
         .workspace
         .open
         .iter()
-        .copied()
-        .filter(|p| manager.workspace.region.get(p).copied() == Some(region))
+        .cloned()
+        .filter(|p| manager.workspace.region.get(p).cloned() == Some(region))
         .collect();
 
     if panels.is_empty() {
@@ -54,8 +54,8 @@ pub fn render_bottom_strip(ui: &mut Ui, manager: &mut PanelManager) {
         .workspace
         .open
         .iter()
-        .copied()
-        .filter(|p| manager.workspace.region.get(p).copied() == Some(Region::Bottom))
+        .cloned()
+        .filter(|p| manager.workspace.region.get(p).cloned() == Some(Region::Bottom))
         .collect();
 
     if panels.is_empty() {

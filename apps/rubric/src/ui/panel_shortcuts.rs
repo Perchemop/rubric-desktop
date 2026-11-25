@@ -5,7 +5,7 @@ use crate::ui::panel_manager::PanelManager;
 use egui::{Context, Key, Modifiers};
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PanelShortcut {
     pub panel: PanelId,
     pub key: Key,

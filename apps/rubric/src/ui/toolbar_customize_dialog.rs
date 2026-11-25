@@ -94,7 +94,7 @@ impl ToolbarCustomizeDialogState {
 /// UI-side fallback so the dialog is populated even before domain ships.
 pub fn default_commands() -> Vec<CommandEntry> {
     let mut v = Vec::new();
-    let push = |v: &mut Vec<CommandEntry>, id, name, icon, shortcut, cat| {
+    let push = |v: &mut Vec<CommandEntry>, id: &str, name: &str, icon: &str, shortcut: &str, cat: CommandCategory| {
         v.push(CommandEntry {
             id: id.into(),
             name: name.into(),
@@ -574,8 +574,8 @@ pub fn show(
                                 }
                             });
                         });
-                    if let Some(payload) = drop_resp.payload::<String>() {
-                        let p = payload.clone();
+                    if let Some(payload) = &drop_resp.1 {
+                        let p = payload.as_ref().clone();
                         if let Some(id) = state.selected_toolbar.clone() {
                             if let Some(tb) = toolbars.iter_mut().find(|t| t.id == id) {
                                 if is_properties {
