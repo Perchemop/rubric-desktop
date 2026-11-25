@@ -296,17 +296,10 @@ pub fn show(
                                 if !name.is_empty() {
                                     let id =
                                         format!("custom_{}", name.to_lowercase().replace(' ', "_"));
-                                    let exists = toolbars
-                                        .iter()
-                                        .any(|t| t.name.eq_ignore_ascii_case(&name));
+                                    let exists = toolbars.iter().any(|t| t.name.eq_ignore_ascii_case(&name));
                                     if exists {
                                         // error: duplicate
-                                    } else if toolbars
-                                        .iter()
-                                        .filter(|t| !t.predefined)
-                                        .count()
-                                        >= 20
-                                    {
+                                    } else if toolbars.iter().filter(|t| !t.predefined).count() >= 20 {
                                         // max reached
                                     } else {
                                         toolbars.push(crate::ui::toolbar_runtime::ToolbarConfig {

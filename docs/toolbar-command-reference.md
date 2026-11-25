@@ -10,7 +10,7 @@
 
 The registry currently defines **70 commands** across **eight categories**. The
 F-608 specification says “7 command categories,” but its own category table and
-`CommandCategory::ALL` include a eighth row, `Advanced`. This document preserves
+`CommandCategory::ALL` include an eighth row, `Advanced`. This document preserves
 the registry and source state rather than silently resolving that conflict.
 
 | Field | Meaning |
@@ -19,6 +19,7 @@ the registry and source state rather than silently resolving that conflict.
 | Name | The `CommandInfo::name` string intended for display. |
 | Icon | The `CommandInfo::icon` key from the `icon` module. |
 | Shortcut | The `CommandInfo::shortcut` string recorded in source. An empty cell means the source stores `""`. |
+| Category | The `CommandCategory::label()` string recorded in source. |
 | Description | The `CommandInfo::description` string recorded in source. |
 
 Shortcut strings are metadata. Duplicate strings are retained exactly as
@@ -29,116 +30,116 @@ build. Four strings contain a trailing space in source: `Ctrl+Shift+] `,
 
 ## 1. Selection & Navigation
 
-| ID | Name | Icon | Shortcut | Description |
-|---|---|---|---|---|
-| `sel` | Select | `sel` | `V` | Select, move and resize markups |
-| `pan` | Pan | `pan` | `H` | Pan the canvas |
-| `zi` | Zoom In | `zi` | `+` | Zoom in on the canvas |
-| `zo` | Zoom Out | `zo` | `-` | Zoom out on the canvas |
-| `zf` | Zoom Fit | `zf` | `F` | Fit page to canvas |
-| `pf` | First Page | `pf` | `Ctrl+Home` | Go to first page |
-| `pp` | Previous Page | `pp` | `Page Up` | Go to previous page |
-| `pn` | Next Page | `pn` | `Page Down` | Go to next page |
-| `pl` | Last Page | `pl` | `Ctrl+End` | Go to last page |
-| `jmp` | Jump to Page | `jmp` | `Ctrl+G` | Jump to a specific page |
+| ID | Name | Icon | Shortcut | Category | Description |
+|---|---|---|---|---|---|
+| `sel` | Select | `sel` | `V` | Selection & Navigation | Select, move and resize markups |
+| `pan` | Pan | `pan` | `H` | Selection & Navigation | Pan the canvas |
+| `zi` | Zoom In | `zi` | `+` | Selection & Navigation | Zoom in on the canvas |
+| `zo` | Zoom Out | `zo` | `-` | Selection & Navigation | Zoom out on the canvas |
+| `zf` | Zoom Fit | `zf` | `F` | Selection & Navigation | Fit page to canvas |
+| `pf` | First Page | `pf` | `Ctrl+Home` | Selection & Navigation | Go to first page |
+| `pp` | Previous Page | `pp` | `Page Up` | Selection & Navigation | Go to previous page |
+| `pn` | Next Page | `pn` | `Page Down` | Selection & Navigation | Go to next page |
+| `pl` | Last Page | `pl` | `Ctrl+End` | Selection & Navigation | Go to last page |
+| `jmp` | Jump to Page | `jmp` | `Ctrl+G` | Selection & Navigation | Jump to a specific page |
 
 ## 2. Markup Tools
 
-| ID | Name | Icon | Shortcut | Description |
-|---|---|---|---|---|
-| `hl` | Highlight | `hl` | `H` | Draw highlight markup |
-| `sk` | Strikeout | `sk` | `S` | Draw strikeout markup |
-| `ul` | Underline | `ul` | `U` | Draw underline markup |
-| `sq` | Squiggly | `sq` | `Q` | Draw squiggly underline markup |
-| `txt` | Text Box | `txt` | `T` | Draw a text box |
-| `co` | Callout | `co` | `C` | Draw a callout box |
-| `note` | Sticky Note | `note` | `N` | Add a sticky note |
-| `stamp` | Stamp Presets | `stamp` | `M` | Apply stamp presets |
-| `rect` | Rectangle | `rect` | `R` | Draw a rectangle |
-| `ell` | Ellipse | `ell` | `O` | Draw an ellipse |
-| `cld` | Cloud | `cld` | `D` | Draw a cloud callout |
-| `pline` | Polyline | `pline` | `Y` | Draw a polyline |
-| `poly` | Polygon | `poly` | `P` | Draw a polygon |
-| `line` | Line | `line` | `L` | Draw a line |
-| `arrow` | Arrow | `arrow` | `A` | Draw an arrow |
-| `ink` | Pen | `ink` | `I` | Freehand ink drawing |
+| ID | Name | Icon | Shortcut | Category | Description |
+|---|---|---|---|---|---|
+| `hl` | Highlight | `hl` | `H` | Markup Tools | Draw highlight markup |
+| `sk` | Strikeout | `sk` | `S` | Markup Tools | Draw strikeout markup |
+| `ul` | Underline | `ul` | `U` | Markup Tools | Draw underline markup |
+| `sq` | Squiggly | `sq` | `Q` | Markup Tools | Draw squiggly underline markup |
+| `txt` | Text Box | `txt` | `T` | Markup Tools | Draw a text box |
+| `co` | Callout | `co` | `C` | Markup Tools | Draw a callout box |
+| `note` | Sticky Note | `note` | `N` | Markup Tools | Add a sticky note |
+| `stamp` | Stamp Presets | `stamp` | `M` | Markup Tools | Apply stamp presets |
+| `rect` | Rectangle | `rect` | `R` | Markup Tools | Draw a rectangle |
+| `ell` | Ellipse | `ell` | `O` | Markup Tools | Draw an ellipse |
+| `cld` | Cloud | `cld` | `D` | Markup Tools | Draw a cloud callout |
+| `pline` | Polyline | `pline` | `Y` | Markup Tools | Draw a polyline |
+| `poly` | Polygon | `poly` | `P` | Markup Tools | Draw a polygon |
+| `line` | Line | `line` | `L` | Markup Tools | Draw a line |
+| `arrow` | Arrow | `arrow` | `A` | Markup Tools | Draw an arrow |
+| `ink` | Pen | `ink` | `I` | Markup Tools | Freehand ink drawing |
 
 Source note: some comments and tests describe Markup Tools as 15 commands, but
 `commands_by_category()` returns 16 entries, including `stamp` / Stamp Presets.
 
 ## 3. Measurement Tools
 
-| ID | Name | Icon | Shortcut | Description |
-|---|---|---|---|---|
-| `ln` | Length | `ln` | `1` | Measure length |
-| `perim` | Perimeter | `perim` | `2` | Measure perimeter |
-| `ar` | Area | `ar` | `3` | Measure area |
-| `ang` | Angle | `ang` | `4` | Measure angle |
-| `dia` | Diameter | `dia` | `5` | Measure diameter |
-| `rad` | Radius | `rad` | `6` | Measure radius |
-| `cnt` | Count | `cnt` | `7` | Count markups |
-| `cal` | Calibrate Scale | `cal` | `K` | Calibrate page scale with known distance |
-| `unit` | Unit Selector | `unit` |  | Change measurement units |
+| ID | Name | Icon | Shortcut | Category | Description |
+|---|---|---|---|---|---|
+| `ln` | Length | `ln` | `1` | Measurement Tools | Measure length |
+| `perim` | Perimeter | `perim` | `2` | Measurement Tools | Measure perimeter |
+| `ar` | Area | `ar` | `3` | Measurement Tools | Measure area |
+| `ang` | Angle | `ang` | `4` | Measurement Tools | Measure angle |
+| `dia` | Diameter | `dia` | `5` | Measurement Tools | Measure diameter |
+| `rad` | Radius | `rad` | `6` | Measurement Tools | Measure radius |
+| `cnt` | Count | `cnt` | `7` | Measurement Tools | Count markups |
+| `cal` | Calibrate Scale | `cal` | `K` | Measurement Tools | Calibrate page scale with known distance |
+| `unit` | Unit Selector | `unit` |  | Measurement Tools | Change measurement units |
 
 ## 4. Review & Comment
 
-| ID | Name | Icon | Shortcut | Description |
-|---|---|---|---|---|
-| `status` | Status Dropdown | `status` |  | Set markup review status |
-| `add_cm` | Add Comment | `add_cm` |  | Add a comment to selection |
-| `show_cm` | Show Comments | `show_cm` |  | Toggle marks list visibility |
-| `author` | Author Filter | `author` |  | Filter markups by author |
-| `report` | Summary Report | `report` |  | Generate markup summary report |
-| `review` | Review Status | `review` |  | Show review status filter |
+| ID | Name | Icon | Shortcut | Category | Description |
+|---|---|---|---|---|---|
+| `status` | Status Dropdown | `status` |  | Review & Comment | Set markup review status |
+| `add_cm` | Add Comment | `add_cm` |  | Review & Comment | Add a comment to selection |
+| `show_cm` | Show Comments | `show_cm` |  | Review & Comment | Toggle marks list visibility |
+| `author` | Author Filter | `author` |  | Review & Comment | Filter markups by author |
+| `report` | Summary Report | `report` |  | Review & Comment | Generate markup summary report |
+| `review` | Review Status | `review` |  | Review & Comment | Show review status filter |
 
 ## 5. Edit & Modify
 
-| ID | Name | Icon | Shortcut | Description |
-|---|---|---|---|---|
-| `copy_prop` | Copy Properties | `copy_prop` | `Ctrl+Shift+C` | Copy markup properties |
-| `paste_prop` | Paste Properties | `paste_prop` | `Ctrl+Shift+V` | Paste markup properties |
-| `bring_fwd` | Bring Forward | `bring_fwd` | `Ctrl+Shift+] ` | Bring selected markups forward |
-| `send_back` | Send Backward | `send_back` | `Ctrl+Shift+[ ` | Send selected markups backward |
-| `bring_front` | Bring to Front | `bring_front` | `Ctrl+] ` | Bring selected markups to front |
-| `send_back_bt` | Send to Back | `send_back_bt` | `Ctrl+[ ` | Send selected markups to back |
-| `toggle_lock` | Toggle Lock | `toggle_lock` | `Ctrl+L` | Lock or unlock selected markups |
-| `layer` | Layer Visibility | `layer` |  | Toggle layer visibility |
+| ID | Name | Icon | Shortcut | Category | Description |
+|---|---|---|---|---|---|
+| `copy_prop` | Copy Properties | `copy_prop` | `Ctrl+Shift+C` | Edit & Modify | Copy markup properties |
+| `paste_prop` | Paste Properties | `paste_prop` | `Ctrl+Shift+V` | Edit & Modify | Paste markup properties |
+| `bring_fwd` | Bring Forward | `bring_fwd` | `Ctrl+Shift+] ` | Edit & Modify | Bring selected markups forward |
+| `send_back` | Send Backward | `send_back` | `Ctrl+Shift+[ ` | Edit & Modify | Send selected markups backward |
+| `bring_front` | Bring to Front | `bring_front` | `Ctrl+] ` | Edit & Modify | Bring selected markups to front |
+| `send_back_bt` | Send to Back | `send_back_bt` | `Ctrl+[ ` | Edit & Modify | Send selected markups to back |
+| `toggle_lock` | Toggle Lock | `toggle_lock` | `Ctrl+L` | Edit & Modify | Lock or unlock selected markups |
+| `layer` | Layer Visibility | `layer` |  | Edit & Modify | Toggle layer visibility |
 
 ## 6. View & Display
 
-| ID | Name | Icon | Shortcut | Description |
-|---|---|---|---|---|
-| `theme` | Theme Toggle | `theme` |  | Toggle between light and dark theme |
-| `grid` | Show/Hide Grid | `grid` |  | Toggle grid visibility |
-| `snap` | Snap to Grid | `snap` |  | Toggle snapping to grid |
-| `grid_spc` | Grid Spacing | `grid_spc` |  | Adjust grid spacing |
-| `ru` | Show/Hide Rulers | `ru` | `Ctrl+R` | Toggle rulers visibility |
-| `fs` | Full Screen | `fs` | `F11` | Toggle full screen mode |
-| `panel` | Panel Visibility | `panel` |  | Show or hide side panels |
+| ID | Name | Icon | Shortcut | Category | Description |
+|---|---|---|---|---|---|
+| `theme` | Theme Toggle | `theme` |  | View & Display | Toggle between light and dark theme |
+| `grid` | Show/Hide Grid | `grid` |  | View & Display | Toggle grid visibility |
+| `snap` | Snap to Grid | `snap` |  | View & Display | Toggle snapping to grid |
+| `grid_spc` | Grid Spacing | `grid_spc` |  | View & Display | Adjust grid spacing |
+| `ru` | Show/Hide Rulers | `ru` | `Ctrl+R` | View & Display | Toggle rulers visibility |
+| `fs` | Full Screen | `fs` | `F11` | View & Display | Toggle full screen mode |
+| `panel` | Panel Visibility | `panel` |  | View & Display | Show or hide side panels |
 
 ## 7. File & Project
 
-| ID | Name | Icon | Shortcut | Description |
-|---|---|---|---|---|
-| `new` | New | `new` | `Ctrl+N` | Create a new project |
-| `open` | Open | `open` | `Ctrl+O` | Open an existing project |
-| `save` | Save | `save` | `Ctrl+S` | Save the current project |
-| `save_as` | Save As | `save_as` | `Ctrl+Shift+S` | Save the current project as a new file |
-| `import` | Import PDF | `import` |  | Import a PDF file |
-| `export` | Export Image | `export` | `Ctrl+E` | Export markups as image |
-| `print` | Print | `print` | `Ctrl+P` | Print the current view |
-| `recent` | Recent Files | `recent` |  | Open a recently used file |
-| `settings` | Project Settings | `settings` |  | Configure project settings |
+| ID | Name | Icon | Shortcut | Category | Description |
+|---|---|---|---|---|---|
+| `new` | New | `new` | `Ctrl+N` | File & Project | Create a new project |
+| `open` | Open | `open` | `Ctrl+O` | File & Project | Open an existing project |
+| `save` | Save | `save` | `Ctrl+S` | File & Project | Save the current project |
+| `save_as` | Save As | `save_as` | `Ctrl+Shift+S` | File & Project | Save the current project as a new file |
+| `import` | Import PDF | `import` |  | File & Project | Import a PDF file |
+| `export` | Export Image | `export` | `Ctrl+E` | File & Project | Export markups as image |
+| `print` | Print | `print` | `Ctrl+P` | File & Project | Print the current view |
+| `recent` | Recent Files | `recent` |  | File & Project | Open a recently used file |
+| `settings` | Project Settings | `settings` |  | File & Project | Configure project settings |
 
 ## 8. Advanced
 
-| ID | Name | Icon | Shortcut | Description |
-|---|---|---|---|---|
-| `bates` | Bates Numbering Config | `bates` |  | Configure Bates numbering for markups |
-| `cal_dlg` | Calibration Dialog | `cal_dlg` |  | Open calibration dialog |
-| `prefs` | Preferences | `prefs` | `Ctrl+,` | Open preferences dialog |
-| `kb` | Keyboard Shortcuts | `kb` | `Ctrl+K` | Show keyboard shortcuts reference |
-| `profiles` | Profiles Management | `profiles` |  | Manage user profiles |
+| ID | Name | Icon | Shortcut | Category | Description |
+|---|---|---|---|---|---|
+| `bates` | Bates Numbering Config | `bates` |  | Advanced | Configure Bates numbering for markups |
+| `cal_dlg` | Calibration Dialog | `cal_dlg` |  | Advanced | Open calibration dialog |
+| `prefs` | Preferences | `prefs` | `Ctrl+,` | Advanced | Open preferences dialog |
+| `kb` | Keyboard Shortcuts | `kb` | `Ctrl+K` | Advanced | Show keyboard shortcuts reference |
+| `profiles` | Profiles Management | `profiles` |  | Advanced | Manage user profiles |
 
 ## Source differences preserved
 
