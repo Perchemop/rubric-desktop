@@ -58,12 +58,12 @@ pub use panel::{
     DockLocation, DockedPanel, FloatingMode, FloatingPanel, PanelAccessBarState,
     PanelLayout, SplitOrientation, SplitTree, TabGroup, PANEL_SCHEMA_VERSION,
 };
-pub use workspace::{PanelId, Region, WorkspaceState};
 pub use predefined_profiles::{
     create_default_profile, create_markup_profile, create_measurement_profile,
     create_review_profile, find_predefined_by_id, find_predefined_by_name, is_predefined_id,
     predefined_profiles, serialize_predefined_profiles_json,
 };
+pub use workspace::{PanelId, Region, WorkspaceState};
 pub use profile::{
     CanvasSettings, MeasurementDefaults, Profile, ProfileSummary, ToolbarLayout,
     CURRENT_PROFILE_SCHEMA_VERSION, MAX_PROFILES, MAX_PROFILE_DESCRIPTION_LENGTH,

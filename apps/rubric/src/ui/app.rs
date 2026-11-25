@@ -10,9 +10,8 @@ use egui::{Id, Pos2, TextureHandle, Ui, Vec2};
 
 use crate::data::{
     autosave, autosave_due, load_prefs, load_project, load_recent, normalise_project_filename,
-    print_image,
-    profile_store::ProfileStore,
-    render_page_to_png_bytes, save_prefs, save_project, save_recent, DataError,
+    print_image, profile_store::ProfileStore, render_page_to_png_bytes, save_prefs, save_project,
+    save_recent, DataError,
 };
 use crate::domain::style::DefaultStyles;
 use crate::domain::units::calibrate_scale;

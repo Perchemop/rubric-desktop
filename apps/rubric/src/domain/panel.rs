@@ -364,7 +364,12 @@ impl PanelLayout {
                     workspace.floating.insert(
                         docked.id.clone(),
                         FloatState {
-                            rect: [floating.position[0], floating.position[1], floating.size[0], floating.size[1]],
+                            rect: [
+                                floating.position[0],
+                                floating.position[1],
+                                floating.size[0],
+                                floating.size[1],
+                            ],
                         },
                     );
                 }
@@ -378,7 +383,12 @@ impl PanelLayout {
                     workspace.floating.insert(
                         docked.id.clone(),
                         FloatState {
-                            rect: [floating.position[0], floating.position[1], floating.size[0], floating.size[1]],
+                            rect: [
+                                floating.position[0],
+                                floating.position[1],
+                                floating.size[0],
+                                floating.size[1],
+                            ],
                         },
                     );
                 }
@@ -392,7 +402,12 @@ impl PanelLayout {
                     workspace.floating.insert(
                         docked.id.clone(),
                         FloatState {
-                            rect: [floating.position[0], floating.position[1], floating.size[0], floating.size[1]],
+                            rect: [
+                                floating.position[0],
+                                floating.position[1],
+                                floating.size[0],
+                                floating.size[1],
+                            ],
                         },
                     );
                 }

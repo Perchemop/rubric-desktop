@@ -94,7 +94,12 @@ impl ToolbarCustomizeDialogState {
 /// UI-side fallback so the dialog is populated even before domain ships.
 pub fn default_commands() -> Vec<CommandEntry> {
     let mut v = Vec::new();
-    let push = |v: &mut Vec<CommandEntry>, id: &str, name: &str, icon: &str, shortcut: &str, cat: CommandCategory| {
+    let push = |v: &mut Vec<CommandEntry>,
+                id: &str,
+                name: &str,
+                icon: &str,
+                shortcut: &str,
+                cat: CommandCategory| {
         v.push(CommandEntry {
             id: id.into(),
             name: name.into(),
@@ -406,8 +411,11 @@ pub fn show(
                                         ui.small("(custom)");
                                     }
                                     if lock.global_locked && !predefined {
-                                        let ov =
-                                            lock.custom_overrides.get(&id).copied().unwrap_or(false);
+                                        let ov = lock
+                                            .custom_overrides
+                                            .get(&id)
+                                            .copied()
+                                            .unwrap_or(false);
                                         let mut v = ov;
                                         if ui.checkbox(&mut v, "unlock").changed() {
                                             lock.custom_overrides.insert(id.clone(), v);

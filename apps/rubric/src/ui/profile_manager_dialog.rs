@@ -86,12 +86,9 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
                             ui.end_row();
                             for p in &filtered {
                                 ui.label(&p.name);
-                                ui.label(if p.predefined {
-                                    "Predefined"
-                                } else {
-                                    "Custom"
-                                });
-                                let modified = p.modified_at
+                                ui.label(if p.predefined { "Predefined" } else { "Custom" });
+                                let modified = p
+                                    .modified_at
                                     .as_ref()
                                     .map(|t| t.to_rfc3339())
                                     .unwrap_or_else(|| "—".to_string());
