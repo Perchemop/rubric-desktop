@@ -1,0 +1,7 @@
+# rustfmt configuration for Rubric project
+# Configures contrast_tests.rs tuple formatting
+
+version = "One"
+
+[settings]
+max_width = 120
