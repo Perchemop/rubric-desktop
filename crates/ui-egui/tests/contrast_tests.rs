@@ -62,18 +62,58 @@ fn semantic_color_pairs_meet_wcag_aa_across_themes() {
 
     // === High-contrast Light theme pairs ===
     let hc_light_pairs = vec![
-        ("body text on white", high_contrast_light::TEXT, high_contrast_light::BACKGROUND, WcagLevel::AaaNormal),
-        ("link on white", high_contrast_light::LINK, high_contrast_light::BACKGROUND, WcagLevel::AaNormal),
-        ("disabled on white", high_contrast_light::DISABLED, high_contrast_light::BACKGROUND, WcagLevel::AaLarge),
-        ("focus ring on white", high_contrast_light::FOCUS_RING, high_contrast_light::BACKGROUND, WcagLevel::AaLarge),
+        (
+            "body text on white",
+            high_contrast_light::TEXT,
+            high_contrast_light::BACKGROUND,
+            WcagLevel::AaaNormal,
+        ),
+        (
+            "link on white",
+            high_contrast_light::LINK,
+            high_contrast_light::BACKGROUND,
+            WcagLevel::AaNormal,
+        ),
+        (
+            "disabled on white",
+            high_contrast_light::DISABLED,
+            high_contrast_light::BACKGROUND,
+            WcagLevel::AaLarge,
+        ),
+        (
+            "focus ring on white",
+            high_contrast_light::FOCUS_RING,
+            high_contrast_light::BACKGROUND,
+            WcagLevel::AaLarge,
+        ),
     ];
 
     // === High-contrast Dark theme pairs ===
     let hc_dark_pairs = vec![
-        ("body text on black", high_contrast_dark::TEXT, high_contrast_dark::BACKGROUND, WcagLevel::AaaNormal),
-        ("link on black", high_contrast_dark::LINK, high_contrast_dark::BACKGROUND, WcagLevel::AaNormal),
-        ("disabled on black", high_contrast_dark::DISABLED, high_contrast_dark::BACKGROUND, WcagLevel::AaLarge),
-        ("focus ring on black", high_contrast_dark::FOCUS_RING, high_contrast_dark::BACKGROUND, WcagLevel::AaLarge),
+        (
+            "body text on black",
+            high_contrast_dark::TEXT,
+            high_contrast_dark::BACKGROUND,
+            WcagLevel::AaaNormal,
+        ),
+        (
+            "link on black",
+            high_contrast_dark::LINK,
+            high_contrast_dark::BACKGROUND,
+            WcagLevel::AaNormal,
+        ),
+        (
+            "disabled on black",
+            high_contrast_dark::DISABLED,
+            high_contrast_dark::BACKGROUND,
+            WcagLevel::AaLarge,
+        ),
+        (
+            "focus ring on black",
+            high_contrast_dark::FOCUS_RING,
+            high_contrast_dark::BACKGROUND,
+            WcagLevel::AaLarge,
+        ),
     ];
 
     fn assert_group_pairs(pairs: &[(&str, Color, Color, WcagLevel)]) {
