@@ -1,0 +1,6 @@
+# rustfmt configuration for Rubric project
+
+version = "Two"
+
+[settings]
+max_width = 120
