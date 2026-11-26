@@ -134,22 +134,27 @@ fn semantic_color_pairs_meet_wcag_aa_across_themes() {
         ),
     ];
 
+    fn assert_group_pairs(pairs: &[(&str, Color, Color, WcagLevel)]) {
+        let audit_pairs: Vec<_> = pairs
+            .iter()
+            .map(|(name, fg, bg, level)| AuditPair::new(*name, *fg, *bg, *level))
+            .collect();
+        let issues = audit(&audit_pairs);
+        if !issues.is_empty() {
+            eprintln!("WCAG failures:");
+            for issue in &issues {
+                eprintln!(
+                    "{}: ratio {:.2}:1 is below the required {:.1}:1 ({})",
+                    issue.name, issue.ratio, issue.required, issue.level.label()
+                );
+            }
+            panic!("test semantic_color_pairs_meet_wcag_aa_across_themes ... FAILED");
+        }
+    }
+
+    // Run all groups
     assert_group_pairs(&light_pairs);
     assert_group_pairs(&dark_pairs);
     assert_group_pairs(&hc_light_pairs);
     assert_group_pairs(&hc_dark_pairs);
-}
-
-fn assert_group_pairs(pairs: &[AuditPair]) {
-    let issues = audit(pairs);
-    if !issues.is_empty() {
-        eprintln!("WCAG failures:");
-        for issue in &issues {
-            eprintln!(
-                "{}: ratio {:.2}:1 is below the required {:.1}:1 ({})",
-                issue.name, issue.ratio, issue.required, issue.level.label()
-            );
-        }
-        panic!("test semantic_color_pairs_meet_wcag_aa_across_themes ... FAILED");
-    }
 }
