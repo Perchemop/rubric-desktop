@@ -163,8 +163,6 @@ impl TabGroup {
     }
 }
 
-}
-
 /// Floating panel state with position, size, and mode.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FloatingPanel {
@@ -208,7 +206,8 @@ impl FloatingPanel {
 pub enum FloatingMode {
     /// Native OS window with title bar and taskbar entry.
     #[default]
-    Windowed,    /// Frameless, always-on-top overlay over the main window.
+    Windowed,
+    /// Frameless, always-on-top overlay over the main window.
     Overlay,
 }
 
@@ -221,8 +220,6 @@ pub struct PanelAccessBarState {
     /// List of panel IDs whose icons are visible in the bar.
     #[serde(default)]
     pub visible_icons: Vec<PanelId>,
-}
-
 }
 
 /// Complete panel layout state for profile serialization.
