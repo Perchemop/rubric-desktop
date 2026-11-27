@@ -95,10 +95,10 @@ fn semantic_color_pairs_meet_wcag_aa_across_themes() {
     ];
 
     // Helper to assert a group passes
-    fn assert_group_pairs(pairs: &[(String, Color, Color, WcagLevel)]) {
+    fn assert_group_pairs(pairs: &[(&str, Color, Color, WcagLevel)]) {
         let audit_pairs: Vec<_> = pairs
             .iter()
-            .map(|(name, fg, bg, level)| AuditPair::new(*name, *fg, *bg, *level))
+            .map(|(name, fg, bg, level)| AuditPair::new(name.clone(), *fg, *bg, *level))
             .collect();
         let issues = &audit(&audit_pairs);
         assert!(
