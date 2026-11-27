@@ -184,6 +184,10 @@ pub struct Modifiers {
     pub shift: bool,
     /// Alt was held.
     pub alt: bool,
+    /// Cmd was held (Mac).
+    pub command: bool,
+    /// Cmd was held (Windows).
+    pub mac_cmd: bool,
 }
 
 impl From<egui::Modifiers> for Modifiers {
@@ -192,6 +196,8 @@ impl From<egui::Modifiers> for Modifiers {
             ctrl: m.ctrl,
             shift: m.shift,
             alt: m.alt,
+            command: m.command,
+            mac_cmd: m.mac_cmd,
         }
     }
 }
@@ -202,7 +208,8 @@ impl From<Modifiers> for egui::Modifiers {
             ctrl: m.ctrl,
             shift: m.shift,
             alt: m.alt,
-            ..Default::default()
+            command: m.command,
+            mac_cmd: m.mac_cmd,
         }
     }
 }
@@ -522,6 +529,8 @@ mod tests {
             ctrl: true,
             shift: false,
             alt: true,
+            command: false,
+            mac_cmd: false,
         };
         let back: egui::Modifiers = original.into();
         let roundtrip: Modifiers = back.into();
