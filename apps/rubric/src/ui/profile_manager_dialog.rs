@@ -234,7 +234,7 @@ fn export_profile_dialog(
     use rfd::FileDialog;
     if let Some(path) = FileDialog::new()
         .add_filter("Rubric Profile", &["rubric-profile"])
-        .set_file_name(&format!("{}.rubric-profile", name))
+        .set_file_name(format!("{}.rubric-profile", name))
         .save_file()
     {
         store.export_profile(name, &path)?;

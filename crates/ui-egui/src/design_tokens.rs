@@ -152,7 +152,7 @@ pub fn audit(pairs: &[AuditPair]) -> Vec<A11yIssue> {
 
 /// Default light theme semantic colour roles (RGB values, alpha ignored for contrast).
 pub mod light {
-    use super::{Color, WcagLevel};
+    use super::Color;
 
     /// Panel surface colour (light indigo off-white).
     pub const PANEL: Color = Color::from_rgb(250, 250, 252);
@@ -200,7 +200,7 @@ pub mod light {
 
 /// Default dark theme semantic colour roles (RGB values, alpha ignored for contrast).
 pub mod dark {
-    use super::{Color, WcagLevel};
+    use super::Color;
 
     /// Panel surface colour (deep indigo).
     pub const PANEL: Color = Color::from_rgb(20, 23, 43);
@@ -248,7 +248,7 @@ pub mod dark {
 
 /// High-contrast light theme semantic colour roles (pure black/white).
 pub mod high_contrast_light {
-    use super::{Color, WcagLevel};
+    use super::Color;
 
     pub const TEXT: Color = Color::from_rgb(0, 0, 0);
     pub const SELECTION_BG: Color = Color::from_rgb(0, 0, 180);
@@ -262,7 +262,7 @@ pub mod high_contrast_light {
 
 /// High-contrast dark theme semantic colour roles (pure black/white).
 pub mod high_contrast_dark {
-    use super::{Color, WcagLevel};
+    use super::Color;
 
     pub const TEXT: Color = Color::from_rgb(255, 255, 255);
     pub const SELECTION_BG: Color = Color::from_rgb(255, 214, 0);

@@ -167,7 +167,7 @@ impl ProfileStore {
                             let modified = fs::metadata(&path)
                                 .ok()
                                 .and_then(|m| m.modified().ok())
-                                .map(|t| chrono::DateTime::<Utc>::from(t));
+                                .map(chrono::DateTime::<Utc>::from);
 
                             profiles.push(ProfileSummary {
                                 name: name_str,
