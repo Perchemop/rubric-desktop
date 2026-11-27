@@ -268,4 +268,3 @@ fn semantic_color_pairs_meet_wcag_aa_across_themes() {
     assert_group_pairs(&hc_light_pairs);
     assert_group_pairs(&hc_dark_pairs);
 }
-EOF
