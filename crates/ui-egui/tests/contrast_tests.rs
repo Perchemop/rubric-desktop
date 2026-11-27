@@ -1,5 +1,5 @@
 //! Contrast validation tests for Rubric UI design tokens.
-//! Tests all 22 semantic colour role pairs against WCAG 2.2 AA requirements:
+//! Tests all 22 semantic colour role pairs against WCAG 2.2 AA requirements.
 //! - 4.5:1 minimum for body text on all surfaces
 //! - 3:1 minimum for UI boundaries, focus rings, and interactive targets
 //! - Tested on Light, Dark, HighContrastLight, and HighContrastDark themes.
@@ -15,16 +15,15 @@ use ui_egui::design_tokens::{
     AuditPair, Color, WcagLevel, audit, dark, high_contrast_dark, high_contrast_light, light,
 }
 
-// Test all 22 semantic colour role pairs for WCAG AA contrast.
-//
+/// Test all 22 semantic colour role pairs for WCAG AA contrast.
 // The 22 pairs cover:
 // - Body text on all 4 light/dark/high-contrast backgrounds (8 pairs)
 // - UI boundaries on all 4 themes (8 pairs)
 // - Focus ring contrast on Light and Dark (4 pairs)
 // - Additional critical UI colour pairs (2 pairs)
-//
-// Each pair is asserted to meet the required contrast level
-// (4.5:1 for normal text, 3:1 for UI components).
+//!
+//! Each pair is asserted to meet the required contrast level
+//! (4.5:1 for normal text, 3:1 for UI components).
 #[test]
 fn semantic_color_pairs_meet_wcag_aa_across_themes() {
     use WcagLevel::AaNormal;
