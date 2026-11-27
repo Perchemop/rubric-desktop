@@ -1,6 +1,6 @@
 //! Dock strips (left/right/bottom) with tab bars, split dividers, recursive splits.
 
-use crate::domain::workspace::{PanelId, Region, WorkspaceState};
+use crate::domain::workspace::{PanelId, Region};
 use crate::ui::panel_manager::PanelManager;
 use egui::{Ui, Vec2};
 

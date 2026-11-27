@@ -3,10 +3,9 @@
 //! Setting: `auto_save_profile: Option<bool>` (None = unprompted). First close
 //! prompts with Yes / No / Don't Ask Again. Preference persisted in AppSettings.
 
-use crate::data::profile_store::{build_profile_from_state, ProfileStore};
+use crate::data::profile_store::build_profile_from_state;
 use crate::domain::panel::PanelLayout;
 use crate::domain::profile::MeasurementDefaults;
-use crate::domain::theme::Theme;
 use crate::domain::CanvasSettings;
 use eframe::egui;
 

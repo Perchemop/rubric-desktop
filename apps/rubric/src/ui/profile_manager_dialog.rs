@@ -4,7 +4,6 @@
 //! and actions: New, Duplicate, Rename, Delete, Import, Export, Set Default.
 //! Predefined profiles disable Delete/Rename. Integrates with ProfileStore.
 
-use crate::data::profile_store::ProfileStore;
 use crate::domain::profile::ProfileSummary;
 use anyhow;
 use eframe::egui;

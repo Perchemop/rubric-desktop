@@ -1,8 +1,8 @@
 //! Toolbar Customization Dialog (spec F-608): 4-pane modal
 //! (Categories, Commands, Toolbars, Items) with drag-drop, live preview hooks.
 
-use eframe::egui::{self, Ui};
-use std::collections::{HashMap, HashSet};
+use eframe::egui;
+use std::collections::HashSet;
 
 /// Command category (7 total per spec).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

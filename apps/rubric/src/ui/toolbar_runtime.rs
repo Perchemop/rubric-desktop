@@ -5,9 +5,9 @@
 //! runtime calls `on_change`-style callbacks via the `ToolbarManager::dirty`
 //! flag so the app shell can debounce-save to the profile.
 
-use eframe::egui::{self, Ui};
+use eframe::egui;
+use eframe::egui::Ui;
 use std::collections::HashMap;
-
 /// A single entry in a toolbar.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ToolbarItem {

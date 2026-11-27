@@ -7,14 +7,12 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use anyhow;
 use chrono::Utc;
 use directories::ProjectDirs;
 use uuid::Uuid;
 
 use crate::domain::{
-    find_predefined_by_name, is_predefined_id, predefined_profiles, toolbar::ToolbarProfileConfig,
-    CanvasSettings, Profile, ProfileSummary, ToolbarLayout,
+    find_predefined_by_name, is_predefined_id, predefined_profiles, Profile, ProfileSummary,
 };
 
 use super::profile_migration::migrate_profile;

@@ -13,15 +13,8 @@ use std::collections::BTreeMap;
 use uuid::Uuid;
 
 use super::grid::Grid;
-use super::panel::{
-    DockLocation, DockedPanel, FloatingMode, PanelAccessBarState, PanelLayout, SplitOrientation,
-    SplitTree, TabGroup,
-};
 use super::theme::Theme;
 use super::units::{MeasureUnit, Scale};
-use super::workspace::{
-    FloatState, FloatState as WorkspaceFloatState, PanelId, Region, SplitState, WorkspaceState,
-};
 
 /// Current profile schema version.
 ///

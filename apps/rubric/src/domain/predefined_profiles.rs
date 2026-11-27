@@ -7,16 +7,13 @@
 //! - Markup: Full canvas for creating markups
 
 use chrono::{DateTime, Utc};
-use std::collections::BTreeMap;
 use uuid::Uuid;
 
 use super::grid::Grid;
 use super::panel::predefined_layouts::{
     default as default_panel_layout, markup, measurement, review,
 };
-use super::panel::PanelLayout;
 use super::profile::{CanvasSettings, MeasurementDefaults, Profile, ToolbarLayout};
-use super::theme::Theme;
 use super::units::{MeasureUnit, Scale};
 
 /// Predefined profile IDs (for reliable identification).
