@@ -14,7 +14,19 @@ use crate::domain::workspace::{FloatState, PanelId, Region, WorkspaceState};
 pub const PANEL_SCHEMA_VERSION: u32 = 1;
 
 /// Dock location for a panel.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    Default,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum DockLocation {
     /// Panel is docked in the left strip.
