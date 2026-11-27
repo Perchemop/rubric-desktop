@@ -7,18 +7,22 @@
 //! > **Note:** The `keyboard.rs` module is pure Rust — no egui RenderContext
 //!   or OS input is needed. Tests can run on any CI runner.
 
-use super::*;
-use egui::Modifiers;
+use ui_egui::keyboard::{
+    GlobalShortcut, ViewEvent, TableAction, GanttAction, GanttJump, ResourcesAction,
+    InspectorAction, DialogAction, FocusRingProperties, KeyboardError, KeyPress,
+    resolve_global_shortcut, event_label,
+};
+use egui::Modifiers as EguiModifiers;
 
 #[test]
 fn test_resolve_f1_help() {
-    let result = resolve_global_shortcut(egui::Key::F1, Modifiers::default());
+    let result = resolve_global_shortcut(egui::Key::F1, EguiModifiers::default());
     assert_eq!(result, Some(GlobalShortcut::F1Help));
 }
 
 #[test]
 fn test_resolve_ctrl_k() {
-    let mut mods = Modifiers::default();
+    let mut mods = EguiModifiers::default();
     mods.ctrl = true;
     let result = resolve_global_shortcut(egui::Key::K, mods);
     assert_eq!(result, Some(GlobalShortcut::CtrlKCommandPalette));
@@ -26,7 +30,7 @@ fn test_resolve_ctrl_k() {
 
 #[test]
 fn test_resolve_ctrl_view_switch_1() {
-    let mut mods = Modifiers::default();
+    let mut mods = EguiModifiers::default();
     mods.ctrl = true;
     let result = resolve_global_shortcut(egui::Key::Num1, mods);
     assert_eq!(result, Some(GlobalShortcut::CtrlViewSwitch(1)));
@@ -34,7 +38,7 @@ fn test_resolve_ctrl_view_switch_1() {
 
 #[test]
 fn test_resolve_ctrl_view_switch_9() {
-    let mut mods = Modifiers::default();
+    let mut mods = EguiModifiers::default();
     mods.ctrl = true;
     let result = resolve_global_shortcut(egui::Key::Num9, mods);
     assert_eq!(result, Some(GlobalShortcut::CtrlViewSwitch(9)));
@@ -42,7 +46,7 @@ fn test_resolve_ctrl_view_switch_9() {
 
 #[test]
 fn test_resolve_alt_density_1() {
-    let mut mods = Modifiers::default();
+    let mut mods = EguiModifiers::default();
     mods.alt = true;
     let result = resolve_global_shortcut(egui::Key::Num1, mods);
     assert_eq!(result, Some(GlobalShortcut::AltDensity(1)));
@@ -50,7 +54,7 @@ fn test_resolve_alt_density_1() {
 
 #[test]
 fn test_resolve_alt_density_3() {
-    let mut mods = Modifiers::default();
+    let mut mods = EguiModifiers::default();
     mods.alt = true;
     let result = resolve_global_shortcut(egui::Key::Num3, mods);
     assert_eq!(result, Some(GlobalShortcut::AltDensity(3)));
@@ -58,7 +62,7 @@ fn test_resolve_alt_density_3() {
 
 #[test]
 fn test_resolve_alt_shift_d_cycle() {
-    let mut mods = Modifiers::default();
+    let mut mods = EguiModifiers::default();
     mods.alt = true;
     mods.shift = true;
     let result = resolve_global_shortcut(egui::Key::D, mods);
@@ -68,7 +72,7 @@ fn test_resolve_alt_shift_d_cycle() {
 #[test]
 fn test_resolve_no_shortcut() {
     // Pressing 'A' with no modifiers should not match any global shortcut.
-    let result = resolve_global_shortcut(egui::Key::A, Modifiers::default());
+    let result = resolve_global_shortcut(egui::Key::A, EguiModifiers::default());
     assert_eq!(result, None);
 }
 
@@ -345,13 +349,13 @@ fn test_keyboard_error_messages() {
 
 #[test]
 fn test_modifiers_from_egui_roundtrip() {
-    let egui_mods = Modifiers {
+    let egui_mods = EguiModifiers {
         ctrl: true,
         shift: false,
         alt: true,
         ..Default::default()
     };
-    let m: Modifiers = egui_mods.into();
+    let m: ui_egui::keyboard::Modifiers = egui_mods.into();
     let back: egui::Modifiers = m.into();
     assert_eq!(back.ctrl, true);
     assert_eq!(back.shift, false);
