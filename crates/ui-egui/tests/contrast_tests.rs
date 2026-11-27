@@ -16,8 +16,7 @@ use ui_egui::design_tokens::{
 }
 
 // Test all 22 semantic colour role pairs for WCAG AA contrast.
-///
-/// The 22 pairs cover:
+// The 22 pairs cover:
 /// - Body text on all 4 light/dark/high-contrast backgrounds (8 pairs)
 /// - UI boundaries on all 4 themes (8 pairs)
 /// - Focus ring contrast on Light and Dark (4 pairs)
