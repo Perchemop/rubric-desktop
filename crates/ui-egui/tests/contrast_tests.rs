@@ -7,9 +7,9 @@
 //!
 //! # How it works
 //!
-//! The test constructs `AuditPair` entries from the `ui_egui::design_tokens`
+//! The test constructs `AuditPair` entries from the `ui-egui::design_tokens`
 //! module's semantic colour roles and runs the headless `audit()` function
-//! from `ui_egui::design_tokens`. No display or egui rendering context is
+//! from `ui-egui::design_tokens`. No display or egui rendering context is
 //! required, so these tests run in CI headlessly.
 
 use ui_egui::design_tokens::{
@@ -32,214 +32,66 @@ fn semantic_color_pairs_meet_wcag_aa_across_themes() {
 
     // === Light theme pairs (4.5:1 for body text, 3:1 for UI boundaries) ===
     let light_pairs = vec![
-        (
-            "body text on panel",
-            light::BODY_TEXT,
-            light::PANEL,
-            AaNormal,
-        ),
-        (
-            "body text on window",
-            light::BODY_TEXT,
-            light::WINDOW,
-            AaNormal,
-        ),
-        (
-            "body text on extreme bg",
-            light::BODY_TEXT,
-            light::EXTREME_BG,
-            AaNormal,
-        ),
-        (
-            "body text on elevated bg",
-            light::BODY_TEXT,
-            light::ELEVATED_BG,
-            AaNormal,
-        ),
+        // Body text on surfaces (4.5:1)
+        ("body text on panel", light::BODY_TEXT, light::PANEL, AaNormal),
+        ("body text on window", light::BODY_TEXT, light::WINDOW, AaNormal),
+        ("body text on extreme bg", light::BODY_TEXT, light::EXTREME_BG, AaNormal),
+        ("body text on elevated bg", light::BODY_TEXT, light::ELEVATED_BG, AaNormal),
         // UI boundaries (3:1)
-        (
-            "UI boundary on panel",
-            light::BORDER,
-            light::PANEL,
-            WcagLevel::AaLarge,
-        ),
-        (
-            "UI boundary on window",
-            light::BORDER,
-            light::WINDOW,
-            WcagLevel::AaLarge,
-        ),
-        (
-            "UI boundary on extreme bg",
-            light::BORDER,
-            light::EXTREME_BG,
-            WcagLevel::AaLarge,
-        ),
-        (
-            "UI boundary on elevated bg",
-            light::BORDER,
-            light::ELEVATED_BG,
-            WcagLevel::AaLarge,
-        ),
+        ("UI boundary on panel", light::BORDER, light::PANEL, WcagLevel::AaLarge),
+        ("UI boundary on window", light::BORDER, light::WINDOW, WcagLevel::AaLarge),
+        ("UI boundary on extreme bg", light::BORDER, light::EXTREME_BG, WcagLevel::AaLarge),
+        ("UI boundary on elevated bg", light::BORDER, light::ELEVATED_BG, WcagLevel::AaLarge),
         // Accent on selection (3:1 AA-large)
-        (
-            "accent on selection",
-            light::ACCENT,
-            light::SELECTION_BG,
-            WcagLevel::AaLarge,
-        ),
+        ("accent on selection", light::ACCENT, light::SELECTION_BG, WcagLevel::AaLarge),
         // Link on panel (4.5:1)
-        (
-            "link on panel",
-            light::LINK,
-            light::PANEL,
-            AaNormal,
-        ),
+        ("link on panel", light::LINK, light::PANEL, AaNormal),
         // Disabled text (3:1)
-        (
-            "disabled text",
-            light::DISABLED_TEXT,
-            light::PANEL,
-            WcagLevel::AaLarge,
-        ),
+        ("disabled text", light::DISABLED_TEXT, light::PANEL, WcagLevel::AaLarge),
     ];
 
     // === Dark theme pairs (4.5:1 for body text, 3:1 for UI boundaries) ===
     let dark_pairs = vec![
-        (
-            "body text on panel",
-            dark::BODY_TEXT,
-            dark::PANEL,
-            AaNormal,
-        ),
-        (
-            "body text on window",
-            dark::BODY_TEXT,
-            dark::WINDOW,
-            AaNormal,
-        ),
-        (
-            "body text on extreme bg",
-            dark::BODY_TEXT,
-            dark::EXTREME_BG,
-            AaNormal,
-        ),
-        (
-            "body text on elevated bg",
-            dark::BODY_TEXT,
-            dark::ELEVATED_BG,
-            AaNormal,
-        ),
+        // Body text on surfaces (4.5:1)
+        ("body text on panel", dark::BODY_TEXT, dark::PANEL, AaNormal),
+        ("body text on window", dark::BODY_TEXT, dark::WINDOW, AaNormal),
+        ("body text on extreme bg", dark::BODY_TEXT, dark::EXTREME_BG, AaNormal),
+        ("body text on elevated bg", dark::BODY_TEXT, dark::ELEVATED_BG, AaNormal),
         // UI boundaries (3:1)
-        (
-            "UI boundary on panel",
-            dark::BORDER,
-            dark::PANEL,
-            WcagLevel::AaLarge,
-        ),
-        (
-            "UI boundary on window",
-            dark::BORDER,
-            dark::WINDOW,
-            WcagLevel::AaLarge,
-        ),
-        (
-            "UI boundary on extreme bg",
-            dark::BORDER,
-            dark::EXTREME_BG,
-            WcagLevel::AaLarge,
-        ),
-        (
-            "UI boundary on elevated bg",
-            dark::BORDER,
-            dark::ELEVATED_BG,
-            WcagLevel::AaLarge,
-        ),
+        ("UI boundary on panel", dark::BORDER, dark::PANEL, WcagLevel::AaLarge),
+        ("UI boundary on window", dark::BORDER, dark::WINDOW, WcagLevel::AaLarge),
+        ("UI boundary on extreme bg", dark::BORDER, dark::EXTREME_BG, WcagLevel::AaLarge),
+        ("UI boundary on elevated bg", dark::BORDER, dark::ELEVATED_BG, WcagLevel::AaLarge),
         // Accent on selection (3:1 AA-large)
-        (
-            "accent on selection",
-            dark::ACCENT,
-            dark::SELECTION_BG,
-            WcagLevel::AaLarge,
-        ),
+        ("accent on selection", dark::ACCENT, dark::SELECTION_BG, WcagLevel::AaLarge),
         // Link on panel (4.5:1)
-        (
-            "link on panel",
-            dark::LINK,
-            dark::PANEL,
-            AaNormal,
-        ),
+        ("link on panel", dark::LINK, dark::PANEL, AaNormal),
         // Disabled text (3:1)
-        (
-            "disabled text",
-            dark::DISABLED_TEXT,
-            dark::PANEL,
-            WcagLevel::AaLarge,
-        ),
+        ("disabled text", dark::DISABLED_TEXT, dark::PANEL, WcagLevel::AaLarge),
     ];
 
     // === High-contrast Light theme pairs ===
     let hc_light_pairs = vec![
         // Body text on white (AAA)
-        (
-            "body text on white",
-            high_contrast_light::TEXT,
-            high_contrast_light::BACKGROUND,
-            WcagLevel::AaaNormal,
-        ),
+        ("body text on white", high_contrast_light::TEXT, high_contrast_light::BACKGROUND, WcagLevel::AaaNormal),
         // Link on white (AA)
-        (
-            "link on white",
-            high_contrast_light::LINK,
-            high_contrast_light::BACKGROUND,
-            WcagLevel::AaNormal,
-        ),
+        ("link on white", high_contrast_light::LINK, high_contrast_light::BACKGROUND, WcagLevel::AaNormal),
         // Disabled text (3:1)
-        (
-            "disabled text",
-            high_contrast_light::DISABLED,
-            high_contrast_light::BACKGROUND,
-            WcagLevel::AaLarge,
-        ),
+        ("disabled text", high_contrast_light::DISABLED, high_contrast_light::BACKGROUND, WcagLevel::AaLarge),
         // Focus ring on black (3:1)
-        (
-            "focus ring on black",
-            high_contrast_light::FOCUS_RING,
-            high_contrast_light::BACKGROUND,
-            WcagLevel::AaLarge,
-        ),
+        ("focus ring on black", high_contrast_light::FOCUS_RING, high_contrast_light::BACKGROUND, WcagLevel::AaLarge),
     ];
 
     // === High-contrast Dark theme pairs ===
     let hc_dark_pairs = vec![
         // Body text on black (AAA)
-        (
-            "body text on black",
-            high_contrast_dark::TEXT,
-            high_contrast_dark::BACKGROUND,
-            WcagLevel::AaaNormal,
-        ),
+        ("body text on black", high_contrast_dark::TEXT, high_contrast_dark::BACKGROUND, WcagLevel::AaaNormal),
         // Link on black (AA)
-        (
-            "link on black",
-            high_contrast_dark::LINK,
-            high_contrast_dark::BACKGROUND,
-            WcagLevel::AaNormal,
-        ),
+        ("link on black", high_contrast_dark::LINK, high_contrast_dark::BACKGROUND, WcagLevel::AaNormal),
         // Disabled text (3:1)
-        (
-            "disabled text",
-            high_contrast_dark::DISABLED,
-            high_contrast_dark::BACKGROUND,
-            WcagLevel::AaLarge,
-        ),
+        ("disabled text", high_contrast_dark::DISABLED, high_contrast_dark::BACKGROUND, WcagLevel::AaLarge),
         // Focus ring on white (3:1)
-        (
-            "focus ring on white",
-            high_contrast_dark::FOCUS_RING,
-            high_contrast_dark::BACKGROUND,
-            WcagLevel::AaLarge,
-        ),
+        ("focus ring on white", high_contrast_dark::FOCUS_RING, high_contrast_dark::BACKGROUND, WcagLevel::AaLarge),
     ];
 
     // Helper to assert a group passes
