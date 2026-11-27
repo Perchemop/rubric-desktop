@@ -86,16 +86,16 @@ fn semantic_color_pairs_meet_wcag_aa_across_themes() {
             high_contrast_light::BACKGROUND,
             WcagLevel::AaNormal,
         ),
-        // Disabled on white (AA-large)
+        // Disabled text (3:1)
         (
-            "disabled on white",
+            "disabled text",
             high_contrast_light::DISABLED,
             high_contrast_light::BACKGROUND,
             WcagLevel::AaLarge,
         ),
-        // Focus ring on white (AA-large)
+        // Focus ring on black (3:1)
         (
-            "focus ring on white",
+            "focus ring on black",
             high_contrast_light::FOCUS_RING,
             high_contrast_light::BACKGROUND,
             WcagLevel::AaLarge,
@@ -118,16 +118,16 @@ fn semantic_color_pairs_meet_wcag_aa_across_themes() {
             high_contrast_dark::BACKGROUND,
             WcagLevel::AaNormal,
         ),
-        // Disabled on black (AA-large)
+        // Disabled text (3:1)
         (
-            "disabled on black",
+            "disabled text",
             high_contrast_dark::DISABLED,
             high_contrast_dark::BACKGROUND,
             WcagLevel::AaLarge,
         ),
-        // Focus ring on black (AA-large)
+        // Focus ring on white (3:1)
         (
-            "focus ring on black",
+            "focus ring on white",
             high_contrast_dark::FOCUS_RING,
             high_contrast_dark::BACKGROUND,
             WcagLevel::AaLarge,
