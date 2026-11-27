@@ -20,7 +20,7 @@ use ui_egui::design_tokens::{
 // - Body text on all 4 light/dark/high-contrast backgrounds (8 pairs)
 // - UI boundaries on all 4 themes (8 pairs)
 // - Focus ring contrast on Light and Dark (4 pairs)
-/// - Additional critical UI colour pairs (2 pairs)
+// - Additional critical UI colour pairs (2 pairs)
 ///
 /// Each pair is asserted to meet the required contrast level
 /// (4.5:1 for normal text, 3:1 for UI components).
