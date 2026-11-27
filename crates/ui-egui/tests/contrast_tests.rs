@@ -13,7 +13,8 @@
 //! required, so these tests run in CI headlessly.
 
 use ui_egui::design_tokens::{
-    AuditPair, Color, WcagLevel, audit, dark, high_contrast_dark, high_contrast_light, light, meets,
+    audit, dark, high_contrast_dark, high_contrast_light, light, meets, AuditPair, Color,
+    WcagLevel,
 };
 
 /// Test all 22 semantic colour role pairs for WCAG AA contrast.
