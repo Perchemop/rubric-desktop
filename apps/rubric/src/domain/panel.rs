@@ -14,10 +14,11 @@ use crate::domain::workspace::{FloatState, PanelId, Region, WorkspaceState};
 pub const PANEL_SCHEMA_VERSION: u32 = 1;
 
 /// Dock location for a panel.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum DockLocation {
     /// Panel is docked in the left strip.
+    #[default]
     Left,
     /// Panel is docked in the right strip.
     Right,
@@ -25,12 +26,6 @@ pub enum DockLocation {
     Bottom,
     /// Panel is floating (not in any dock strip).
     Floating,
-}
-
-impl Default for DockLocation {
-    fn default() -> Self {
-        Self::Left
-    }
 }
 
 /// Split orientation for recursive panel splits.
@@ -124,6 +119,7 @@ impl SplitTree {
 
 /// Tab group containing multiple panels that share a tab bar.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct TabGroup {
     /// Panel IDs in tab order (leftmost tab = index 0).
     pub tabs: Vec<PanelId>,
@@ -167,13 +163,6 @@ impl TabGroup {
     }
 }
 
-impl Default for TabGroup {
-    fn default() -> Self {
-        Self {
-            tabs: Vec::new(),
-            active_index: 0,
-        }
-    }
 }
 
 /// Floating panel state with position, size, and mode.
@@ -208,29 +197,23 @@ impl FloatingPanel {
     pub fn clamp(&mut self) {
         self.position[0] = self.position[0].clamp(0.0, 4096.0);
         self.position[1] = self.position[1].clamp(0.0, 4096.0);
-        self.size[0] = self.size[0].max(200.0).min(4096.0);
-        self.size[1] = self.size[1].max(150.0).min(4096.0);
+        self.size[0] = self.size[0].clamp(200.0, 4096.0);
+        self.size[1] = self.size[1].clamp(150.0, 4096.0);
     }
 }
 
 /// Floating window mode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum FloatingMode {
     /// Native OS window with title bar and taskbar entry.
-    Windowed,
-    /// Frameless, always-on-top overlay over the main window.
+    #[default]
+    Windowed,    /// Frameless, always-on-top overlay over the main window.
     Overlay,
 }
 
-impl Default for FloatingMode {
-    fn default() -> Self {
-        Self::Windowed
-    }
-}
-
 /// State for the Panel Access Bar (left-edge icon strip).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct PanelAccessBarState {
     /// Whether the bar is in auto-hide mode (collapsed until hovered).
     #[serde(default)]
@@ -240,13 +223,6 @@ pub struct PanelAccessBarState {
     pub visible_icons: Vec<PanelId>,
 }
 
-impl Default for PanelAccessBarState {
-    fn default() -> Self {
-        Self {
-            auto_hide: false,
-            visible_icons: Vec::new(),
-        }
-    }
 }
 
 /// Complete panel layout state for profile serialization.

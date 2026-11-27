@@ -128,8 +128,6 @@ impl Profile {
             .map(|c| {
                 if c.is_ascii_alphanumeric() {
                     c
-                } else if c.is_whitespace() {
-                    '-'
                 } else {
                     '-'
                 }

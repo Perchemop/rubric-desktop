@@ -12,6 +12,7 @@ const OPEN_KEY: &str = "rubric.profile_manager.open";
 const SEARCH_KEY: &str = "rubric.profile_manager.search";
 const RENAME_KEY: &str = "rubric.profile_manager.rename";
 
+#[allow(deprecated)]
 pub fn open(ctx: &egui::Context) {
     ctx.data_mut(|d| d.insert_temp(egui::Id::new(OPEN_KEY), true));
 }
@@ -31,7 +32,7 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
 
     let mut close = false;
     let mut delete_target: Option<String> = None;
-    let mut rename_target: Option<(String, String)> = None; // (old_name, new_name)
+    let rename_target: Option<(String, String)> = None; // (old_name, new_name)
     let mut duplicate_target: Option<String> = None;
     let mut export_target: Option<String> = None;
     let mut import_path: Option<String> = None;
@@ -232,7 +233,7 @@ fn export_profile_dialog(
 ) -> anyhow::Result<()> {
     use rfd::FileDialog;
     if let Some(path) = FileDialog::new()
-        .add_filter("Rubric Profile", &["rubric-profile"])
+        .add_filter("Rubric Profile", ["rubric-profile"])
         .set_file_name(&format!("{}.rubric-profile", name))
         .save_file()
     {

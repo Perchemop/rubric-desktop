@@ -109,8 +109,7 @@ pub fn create_review_profile() -> Profile {
 /// Layout: Left = Layers + Tool Chest | Right = Properties + Measurements
 /// Also: Rulers visible, Grid enabled with snap
 pub fn create_measurement_profile() -> Profile {
-    let mut grid = Grid::default();
-    grid.snap = true;
+    let grid = Grid { snap: true, ..Grid::default() };
 
     Profile {
         schema_version: super::profile::CURRENT_PROFILE_SCHEMA_VERSION,

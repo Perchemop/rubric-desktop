@@ -155,7 +155,8 @@ impl ProfileStore {
                 let path = entry.path();
                 if path
                     .extension()
-                    .map_or(false, |ext| ext == "rubric-profile")
+                    .map(|ext| ext == "rubric-profile")
+                    .unwrap_or(false)
                 {
                     if let Some(name) = path.file_stem() {
                         let name_str = name.to_string_lossy().to_string();

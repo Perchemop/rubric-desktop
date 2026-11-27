@@ -19,8 +19,9 @@ pub fn render_vertical_strip(
         .workspace
         .open
         .iter()
-        .cloned()
         .filter(|p| manager.workspace.region.get(p).cloned() == Some(region))
+        .cloned()
+        .collect();
         .collect();
 
     if panels.is_empty() {
@@ -54,8 +55,8 @@ pub fn render_bottom_strip(ui: &mut Ui, manager: &mut PanelManager) {
         .workspace
         .open
         .iter()
-        .cloned()
         .filter(|p| manager.workspace.region.get(p).cloned() == Some(Region::Bottom))
+        .cloned()
         .collect();
 
     if panels.is_empty() {
