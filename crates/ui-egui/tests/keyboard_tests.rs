@@ -8,9 +8,9 @@
 //!   or OS input is needed. Tests can run on any CI runner.
 
 use ui_egui::keyboard::{
-    GlobalShortcut, ViewEvent, TableAction, GanttAction, GanttJump, ResourcesAction,
-    InspectorAction, DialogAction, FocusRingProperties, KeyboardError, KeyPress,
-    resolve_global_shortcut, event_label,
+    DialogAction, FocusRingProperties, GanttAction, GanttJump, GlobalShortcut, InspectorAction,
+    KeyPress, KeyboardError, ResourcesAction, TableAction, ViewEvent, event_label,
+    resolve_global_shortcut,
 };
 use egui::Modifiers as EguiModifiers;
 
