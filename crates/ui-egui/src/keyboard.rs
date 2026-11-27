@@ -310,14 +310,14 @@ pub fn resolve_global_shortcut(key: egui::Key, mods: egui::Modifiers) -> Option<
     }
 
     // Ctrl+1..9 for view switching.
-    if m.ctrl {
-        if let Some(num_key) = key_to_number(key).filter(|n| (1..=9).contains(n)) {
+    if let Some(num_key) = key_to_number(key) {
+        if m.ctrl && (1..=9).contains(&num_key) {
             return Some(GlobalShortcut::CtrlViewSwitch(num_key));
         }
     }
     // Alt+1/2/3 for density.
-    if m.alt {
-        if let Some(num_key) = key_to_number(key).filter(|n| (1..=3).contains(n)) {
+    if let Some(num_key) = key_to_number(key) {
+        if m.alt && (1..=3).contains(&num_key) {
             return Some(GlobalShortcut::AltDensity(num_key));
         }
     }
