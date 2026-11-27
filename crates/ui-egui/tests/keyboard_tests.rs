@@ -28,7 +28,7 @@ fn test_resolve_ctrl_k() {
 fn test_resolve_ctrl_view_switch_1() {
     let mut mods = Modifiers::default();
     mods.ctrl = true;
-    let result = resolve_global_shortcut(egui::Key::Digit(1), mods);
+    let result = resolve_global_shortcut(egui::Key::Num1, mods);
     assert_eq!(result, Some(GlobalShortcut::CtrlViewSwitch(1)));
 }
 
@@ -36,7 +36,7 @@ fn test_resolve_ctrl_view_switch_1() {
 fn test_resolve_ctrl_view_switch_9() {
     let mut mods = Modifiers::default();
     mods.ctrl = true;
-    let result = resolve_global_shortcut(egui::Key::Digit(9), mods);
+    let result = resolve_global_shortcut(egui::Key::Num9, mods);
     assert_eq!(result, Some(GlobalShortcut::CtrlViewSwitch(9)));
 }
 
@@ -44,7 +44,7 @@ fn test_resolve_ctrl_view_switch_9() {
 fn test_resolve_alt_density_1() {
     let mut mods = Modifiers::default();
     mods.alt = true;
-    let result = resolve_global_shortcut(egui::Key::Digit(1), mods);
+    let result = resolve_global_shortcut(egui::Key::Num1, mods);
     assert_eq!(result, Some(GlobalShortcut::AltDensity(1)));
 }
 
@@ -52,7 +52,7 @@ fn test_resolve_alt_density_1() {
 fn test_resolve_alt_density_3() {
     let mut mods = Modifiers::default();
     mods.alt = true;
-    let result = resolve_global_shortcut(egui::Key::Digit(3), mods);
+    let result = resolve_global_shortcut(egui::Key::Num3, mods);
     assert_eq!(result, Some(GlobalShortcut::AltDensity(3)));
 }
 
@@ -296,9 +296,9 @@ fn test_shortcut_label_all() {
 
 #[test]
 fn test_key_to_number() {
-    assert_eq!(key_to_number(egui::Key::Digit(1)), Some(1));
-    assert_eq!(key_to_number(egui::Key::Digit(5)), Some(5));
-    assert_eq!(key_to_number(egui::Key::Digit(9)), Some(9));
+    assert_eq!(key_to_number(egui::Key::Num1), Some(1));
+    assert_eq!(key_to_number(egui::Key::Num5), Some(5));
+    assert_eq!(key_to_number(egui::Key::Num9), Some(9));
     assert_eq!(key_to_number(egui::Key::Escape), None);
     assert_eq!(key_to_number(egui::Key::F1), None);
 }
