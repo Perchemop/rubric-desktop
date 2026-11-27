@@ -118,8 +118,7 @@ impl SplitTree {
 }
 
 /// Tab group containing multiple panels that share a tab bar.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct TabGroup {
     /// Panel IDs in tab order (leftmost tab = index 0).
     pub tabs: Vec<PanelId>,
