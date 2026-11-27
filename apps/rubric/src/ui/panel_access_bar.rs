@@ -41,7 +41,7 @@ impl PanelAccessBar {
         // Right-click toggles auto-hide.
         let resp = ui.interact(
             ui.available_rect_before_wrap(),
-            ui.id().with("access_bar"),
+            ui.scope_id().with("access_bar"),
             egui::Sense::click(),
         );
         if resp.secondary_clicked() {

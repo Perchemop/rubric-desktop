@@ -82,7 +82,7 @@ pub fn render_bottom_strip(ui: &mut Ui, manager: &mut PanelManager) {
 
 /// Draggable split divider helper. Returns new ratio if dragged.
 pub fn split_divider(ui: &mut Ui, vertical: bool, ratio: &mut f32) {
-    let id = ui.id().with("split_divider");
+    let id = ui.scope_id().with("split_divider");
     let (rect, response) = ui.allocate_exact_size(
         if vertical {
             Vec2::new(6.0, ui.available_height())

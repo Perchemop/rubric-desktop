@@ -28,6 +28,7 @@ use uuid::Uuid;
 pub(crate) const USER_GUIDE: &str = include_str!("../../../../USER_GUIDE.md");
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub(crate) enum DrawState {
     /// No active draft.
     Idle,
@@ -73,6 +74,7 @@ pub(crate) enum DrawState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub(crate) enum InspectorMode {
     Selection,
     Properties,

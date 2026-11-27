@@ -54,7 +54,6 @@ pub fn build_profile_from_state(
     measurement_defaults: crate::domain::MeasurementDefaults,
     canvas_settings: crate::domain::CanvasSettings,
 ) -> crate::domain::profile::Profile {
-    let now = chrono::Utc::now();
     // Convert ToolbarProfileConfig to ToolbarLayout for profile storage
     let toolbar_layout = if let Some(tp) = toolbar_profile {
         crate::domain::profile::ToolbarLayout {

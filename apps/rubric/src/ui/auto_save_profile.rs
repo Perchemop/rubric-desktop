@@ -9,9 +9,7 @@ use crate::domain::profile::MeasurementDefaults;
 use crate::domain::CanvasSettings;
 use eframe::egui;
 
-const OPEN_KEY: &str = "rubric.auto_save_profile.prompt_open";
-const PREF_KEY: &str = "rubric.auto_save_profile.preference"; // 0=unset,1=yes,2=no
-
+#[allow(deprecated)]
 pub fn preference(ctx: &egui::Context) -> Option<bool> {
     match ctx.data(|d| {
         d.get_temp::<i32>(egui::Id::new("auto_save_pref"))
@@ -23,6 +21,7 @@ pub fn preference(ctx: &egui::Context) -> Option<bool> {
     }
 }
 
+#[allow(deprecated)]
 pub fn set_preference(ctx: &egui::Context, value: Option<bool>) {
     let v = match value {
         Some(true) => 1,
@@ -32,10 +31,12 @@ pub fn set_preference(ctx: &egui::Context, value: Option<bool>) {
     ctx.data_mut(|d| d.insert_temp(egui::Id::new("auto_save_pref"), v));
 }
 
+#[allow(deprecated)]
 pub fn prompt_on_close(ctx: &egui::Context) {
     ctx.data_mut(|d| d.insert_temp(egui::Id::new("auto_save_prompt"), true));
 }
 
+#[allow(deprecated)]
 pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
     let mut open = ctx
         .data(|d| d.get_temp::<bool>(egui::Id::new("auto_save_prompt")))

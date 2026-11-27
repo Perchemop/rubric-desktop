@@ -544,7 +544,7 @@ pub fn show(
                     ui.heading("Items");
                     // Determine selected toolbar items
                     let selected_id = state.selected_toolbar.clone();
-                    let mut items_clone: Vec<crate::ui::toolbar_runtime::ToolbarItem> = selected_id
+                    let items_clone: Vec<crate::ui::toolbar_runtime::ToolbarItem> = selected_id
                         .as_ref()
                         .and_then(|id| toolbars.iter().find(|t| &t.id == id))
                         .map(|t| t.items.clone())

@@ -12,17 +12,11 @@ const OPEN_KEY: &str = "rubric.profile_manager.open";
 const SEARCH_KEY: &str = "rubric.profile_manager.search";
 const RENAME_KEY: &str = "rubric.profile_manager.rename";
 
-#[derive(Clone, Default)]
-struct ProfileRow {
-    name: String,
-    predefined: bool,
-    modified: String,
-}
-
 pub fn open(ctx: &egui::Context) {
     ctx.data_mut(|d| d.insert_temp(egui::Id::new(OPEN_KEY), true));
 }
 
+#[allow(deprecated)]
 pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
     let mut open = ctx
         .data(|d| d.get_temp::<bool>(egui::Id::new(OPEN_KEY)))

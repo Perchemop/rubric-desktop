@@ -13,6 +13,7 @@ const NAME_KEY: &str = "rubric.save_profile.name";
 const DESC_KEY: &str = "rubric.save_profile.desc";
 const ACTIVE_KEY: &str = "rubric.save_profile.active";
 
+#[allow(deprecated)]
 pub fn open(ctx: &egui::Context) {
     ctx.data_mut(|d| {
         d.insert_temp(egui::Id::new(OPEN_KEY), true);
@@ -28,6 +29,7 @@ pub fn open(ctx: &egui::Context) {
     });
 }
 
+#[allow(deprecated)]
 pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
     let mut open = ctx
         .data(|d| d.get_temp::<bool>(egui::Id::new(OPEN_KEY)))

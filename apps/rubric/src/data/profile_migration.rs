@@ -94,6 +94,7 @@ pub fn migrate_profile(value: Value) -> Result<Value, DataError> {
 }
 
 /// Default v1 -> v2 migration: adds `is_predefined` field.
+#[allow(dead_code)]
 fn migrate_v1_to_v2(mut value: Value) -> Result<Value, DataError> {
     if let Value::Object(ref mut obj) = value {
         // Add missing fields with defaults
