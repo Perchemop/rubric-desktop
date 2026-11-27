@@ -89,12 +89,7 @@ fn semantic_color_pairs_meet_wcag_aa_across_themes() {
             WcagLevel::AaLarge,
         ),
         // Link on panel (4.5:1)
-        (
-            "link on panel",
-            light::LINK,
-            light::PANEL,
-            AaNormal,
-        ),
+        ("link on panel", light::LINK, light::PANEL, AaNormal),
         // Disabled text (3:1)
         (
             "disabled text",
@@ -106,12 +101,7 @@ fn semantic_color_pairs_meet_wcag_aa_across_themes() {
 
     // === Dark theme pairs (4.5:1 for body text, 3:1 for UI boundaries) ===
     let dark_pairs = vec![
-        (
-            "body text on panel",
-            dark::BODY_TEXT,
-            dark::PANEL,
-            AaNormal,
-        ),
+        ("body text on panel", dark::BODY_TEXT, dark::PANEL, AaNormal),
         (
             "body text on window",
             dark::BODY_TEXT,
@@ -163,12 +153,7 @@ fn semantic_color_pairs_meet_wcag_aa_across_themes() {
             WcagLevel::AaLarge,
         ),
         // Link on panel (4.5:1)
-        (
-            "link on panel",
-            dark::LINK,
-            dark::PANEL,
-            AaNormal,
-        ),
+        ("link on panel", dark::LINK, dark::PANEL, AaNormal),
         // Disabled text (3:1)
         (
             "disabled text",
