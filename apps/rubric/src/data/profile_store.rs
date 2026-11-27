@@ -367,7 +367,6 @@ impl ProfileSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
 
     fn temp_profiles_dir() -> PathBuf {
         let dir = std::env::temp_dir().join(format!(

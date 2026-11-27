@@ -22,7 +22,6 @@ pub fn render_vertical_strip(
         .filter(|p| manager.workspace.region.get(p).cloned() == Some(region))
         .cloned()
         .collect();
-        .collect();
 
     if panels.is_empty() {
         return;

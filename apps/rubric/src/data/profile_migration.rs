@@ -108,8 +108,6 @@ fn migrate_v1_to_v2(mut value: Value) -> Result<Value, DataError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::panel::PanelLayout;
-    use crate::domain::profile::Profile;
     use serde_json::json;
 
     #[test]
