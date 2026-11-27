@@ -296,6 +296,7 @@ fn action_label_dialog(action: &DialogAction) -> String {
 ///
 /// This is a pure function — no I/O, no UI state — so it can be tested
 /// headlessly and used in CI tests without a display.
+#[allow(clippy::collapsible_if)]
 pub fn resolve_global_shortcut(key: egui::Key, mods: egui::Modifiers) -> Option<GlobalShortcut> {
     let m = Modifiers::from(mods);
 
@@ -310,15 +311,19 @@ pub fn resolve_global_shortcut(key: egui::Key, mods: egui::Modifiers) -> Option<
     }
 
     // Ctrl+1..9 for view switching.
-    if let Some(num_key) = key_to_number(key) {
-        if m.ctrl && (1..=9).contains(&num_key) {
-            return Some(GlobalShortcut::CtrlViewSwitch(num_key));
+    if m.ctrl {
+        if let Some(num_key) = key_to_number(key) {
+            if (1..=9).contains(&num_key) {
+                return Some(GlobalShortcut::CtrlViewSwitch(num_key));
+            }
         }
     }
     // Alt+1/2/3 for density.
-    if let Some(num_key) = key_to_number(key) {
-        if m.alt && (1..=3).contains(&num_key) {
-            return Some(GlobalShortcut::AltDensity(num_key));
+    if m.alt {
+        if let Some(num_key) = key_to_number(key) {
+            if (1..=3).contains(&num_key) {
+                return Some(GlobalShortcut::AltDensity(num_key));
+            }
         }
     }
 
