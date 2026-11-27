@@ -1,16 +1,15 @@
-#!/ Contrast validation tests for Rubric UI design tokens.
-#!
-#! Tests all 22 semantic colour role pairs against WCAG 2.2 AA requirements:
-#! - 4.5:1 minimum for body text on all surfaces
-#! - 3:1 minimum for UI boundaries, focus rings, and interactive targets
-#! - Tested on Light, Dark, HighContrastLight, and HighContrastDark themes.
-#!
-#! # How it works
-#!
-#! The test constructs `AuditPair` entries from the `ui_egui::design_tokens`
-#! module's semantic colour roles and runs the headless `audit()` function
-#! from `ui_egui::design_tokens`. No display or egui rendering context is
-#! required, so these tests run in CI headlessly.
+//! Contrast validation tests for Rubric UI design tokens.
+//! Tests all 22 semantic colour role pairs against WCAG 2.2 AA requirements:
+//! - 4.5:1 minimum for body text on all surfaces
+//! - 3:1 minimum for UI boundaries, focus rings, and interactive targets
+//! - Tested on Light, Dark, HighContrastLight, and HighContrastDark themes.
+//!
+//! # How it works
+//!
+//! The test constructs `AuditPair` entries from the `ui_egui::design_tokens`
+//! module's semantic colour roles and runs the headless `audit()` function
+//! from `ui_egui::design_tokens`. No display or egui rendering context is
+//! required, so these tests run in CI headlessly.
 
 use ui_egui::design_tokens::{
     AuditPair, Color, WcagLevel, audit, dark, high_contrast_dark, high_contrast_light, light,
