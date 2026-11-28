@@ -575,7 +575,8 @@ mod tests {
         let event = ViewEvent::Gantt {
             action: GanttAction::Zoom { factor: 1.25 },
         };
-        assert_eq!(event_label(&event), "Gantt: Zoom 1.3x");
+        // `{:.1}` rounds half to even, so 1.25 formats as "1.2".
+        assert_eq!(event_label(&event), "Gantt: Zoom 1.2x");
 
         let event = ViewEvent::Gantt {
             action: GanttAction::Jump {
@@ -643,7 +644,7 @@ mod tests {
     #[test]
     fn test_keyboard_error_variants() {
         let err = KeyboardError::UnknownShortcut { key: "F2".into() };
-        assert!(err.to_string().contains("UnknownShortcut"));
+        assert!(err.to_string().contains("Unknown shortcut"));
 
         let err = KeyboardError::FocusRingNotConfigured;
         assert!(err.to_string().contains("Focus ring not configured"));

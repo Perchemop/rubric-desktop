@@ -336,7 +336,7 @@ fn test_focus_ring_stroke_colour_contrast() {
 #[test]
 fn test_keyboard_error_messages() {
     let err = KeyboardError::UnknownShortcut { key: "F2".into() };
-    assert!(err.to_string().contains("UnknownShortcut"));
+    assert!(err.to_string().contains("Unknown shortcut"));
 
     let err = KeyboardError::FocusRingNotConfigured;
     assert!(err.to_string().contains("Focus ring not configured"));
