@@ -54,6 +54,7 @@ impl ThumbCache {
         } else {
             self.failed.insert(key_str.to_owned());
         }
+    }
 
     /// Classify a thumbnail key as ready, pending (in flight / not yet
     /// submitted) or failed. Pure logic, no display — kept testable.
@@ -65,6 +66,7 @@ impl ThumbCache {
         } else {
             ThumbState::Pending
         }
+    }
 }
 
 /// Minimum width of one thumbnail cell, and the gutter between cells.
