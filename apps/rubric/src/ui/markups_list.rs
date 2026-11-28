@@ -20,7 +20,7 @@ use crate::domain::{
     MarkupGroupKey, MarkupKind, MarkupList, MarkupListFilter, MarkupListSort, Project,
     ReviewStatus, NONE_LABEL,
 };
-use crate::ui::app::{MarkupLayerFilter, UiState};
+use crate::ui::app::{MarkupLayerFilter, StatusKind, UiState};
 
 /// A column shown in the Markups List table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -174,6 +174,17 @@ fn format_date(created: chrono::DateTime<chrono::Utc>) -> String {
     created.format("%Y-%m-%d").to_string()
 }
 
+/// Reset every markup filter control to its default (All / blank).
+pub(crate) fn clear_markup_filters(state: &mut UiState) {
+    state.markup_search.clear();
+    state.markup_status = None;
+    state.markup_author = None;
+    state.markup_subject = None;
+    state.markup_kind = None;
+    state.markup_page = None;
+    state.markup_layer = MarkupLayerFilter::All;
+}
+
 /// Draw the Markups List panel. Returns a selection request when a row is
 /// clicked; the app owns selection/page changes and their snapshot policy.
 pub(crate) fn draw_markups_list(
@@ -213,14 +224,8 @@ pub(crate) fn draw_markups_list(
         ui.label(format!("{} markup{plural}", all.len()));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             if ui.button("Clear filters").clicked() {
-                state.markup_search.clear();
-                state.markup_status = None;
-                state.markup_author = None;
-                state.markup_subject = None;
-                state.markup_kind = None;
-                state.markup_page = None;
-                state.markup_layer = MarkupLayerFilter::All;
-                state.status = "Markup filters cleared".to_string();
+                clear_markup_filters(state);
+                state.set_status(StatusKind::Info, "Markup filters cleared");
             }
             ui.separator();
             ui.menu_button("Columns…", |ui| {
@@ -482,10 +487,13 @@ pub(crate) fn draw_markups_list(
                                     doc.touch();
                                 }
                                 status_changed = true;
-                                state.status = format!(
+                                state.set_status(
+                                    StatusKind::Success,
+                                    format!(
                                     "Batch status → {} for {} markup(s)",
                                     s.label(),
                                     selected_count
+                                );
                                 );
                             }
                         });
@@ -508,6 +516,10 @@ pub(crate) fn draw_markups_list(
             ui.label("No markups yet. Draw a markup on the canvas to see it here.");
         } else {
             ui.label("No markups match the current filters.");
+            if ui.button("Clear filters").clicked() {
+                clear_markup_filters(state);
+                state.set_status(StatusKind::Info, "Markup filters cleared");
+            }
         }
         return (None, status_changed);
     }
@@ -647,7 +659,7 @@ fn render_rows(
                             ui.painter().rect_stroke(
                                 rect,
                                 2.0,
-                                egui::Stroke::new(1.0, egui::Color32::from_black_alpha(80)),
+                                ui.visuals().widgets.inactive.bg_stroke,
                                 egui::StrokeKind::Middle,
                             );
                             resp.on_hover_text(format!(
@@ -730,8 +742,10 @@ fn render_rows(
                                         doc.apply_status_to(&[row.id], new_status);
                                     }
                                     *status_changed = true;
-                                    state.status =
-                                        format!("Status → {} for 1 markup", new_status.label());
+                                    state.set_status(
+                                        StatusKind::Success,
+                                        format!("Status → {} for 1 markup", new_status.label()),
+                                    );
                                 }
                             } else {
                                 ui.label(
@@ -831,7 +845,7 @@ fn export_csv(project: &Project, filtered: &MarkupList, state: &mut UiState) {
         return;
     };
     let Some(doc) = project.active() else {
-        state.status = "No active document.".to_string();
+        state.set_status(StatusKind::Error, "No active document.");
         return;
     };
     let mut out = String::new();
@@ -872,8 +886,8 @@ fn export_csv(project: &Project, filtered: &MarkupList, state: &mut UiState) {
         out.push('\n');
     }
     match std::fs::write(&path, out) {
-        Ok(_) => state.status = format!("Exported {} row(s) to {}", filtered.len(), path.display()),
-        Err(e) => state.status = format!("CSV export failed: {e}"),
+        Ok(_) => state.set_status(StatusKind::Success, format!("Exported {} row(s) to {}", filtered.len(), path.display())),
+        Err(e) => state.set_status(StatusKind::Error, format!("CSV export failed: {e}")),
     }
 }
 
@@ -972,6 +986,28 @@ mod tests {
         assert_eq!(MarkupListColumn::Date.label(), "Date");
         assert_eq!(MarkupListColumn::Colour.label(), "Colour");
         assert_eq!(MarkupListColumn::Layer.label(), "Layer");
+    }
+
+    #[test]
+    fn clear_markup_filters_resets_every_control() {
+        let mut state = UiState::default();
+        state.markup_search = "roof".to_string();
+        state.markup_status = Some(ReviewStatus::Approved);
+        state.markup_author = Some("Alice".to_string());
+        state.markup_subject = Some("Roof".to_string());
+        state.markup_kind = Some(MarkupKind::MeasureLength);
+        state.markup_page = Some(2);
+        state.markup_layer = MarkupLayerFilter::Layer(Uuid::new_v4());
+
+        clear_markup_filters(&mut state);
+
+        assert!(state.markup_search.is_empty());
+        assert!(state.markup_status.is_none());
+        assert!(state.markup_author.is_none());
+        assert!(state.markup_subject.is_none());
+        assert!(state.markup_kind.is_none());
+        assert!(state.markup_page.is_none());
+        assert!(matches!(state.markup_layer, MarkupLayerFilter::All));
     }
 
     #[test]

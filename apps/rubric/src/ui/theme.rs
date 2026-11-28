@@ -55,7 +55,7 @@ pub fn egui_stroke(c: Color, w: f32) -> Stroke {
 }
 
 /// Brand accent (Rubric red-orange) used for selection and highlights.
-const ACCENT: Color32 = Color32::from_rgb(228, 87, 46);
+pub(crate) const ACCENT: Color32 = Color32::from_rgb(228, 87, 46);
 /// Lighter brand accent (brand "Accent 2") used as the dark-theme link colour
 /// so link text clears WCAG AA on the deep-indigo surface.
 const ACCENT_2: Color32 = Color32::from_rgb(255, 122, 69);
@@ -445,6 +445,43 @@ mod tests {
                 WcagLevel::AaLarge,
             ),
         ];
+
+        let issues = audit(&pairs);
+        let report = issues
+            .iter()
+            .map(|i| i.describe())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(issues.is_empty(), "WCAG failures:\n{report}");
+    }
+
+    /// UI audit: severity status/toast text must clear WCAG AA (4.5:1) on the
+    /// panel fill of both themes (guide II.30.7.1).
+    #[test]
+    fn severity_status_colors_meet_wcag() {
+        use crate::domain::a11y::{audit, AuditPair, WcagLevel};
+        use crate::ui::app_status::severity_text_color_for;
+        use crate::ui::app::StatusKind;
+
+        let light_panel = Color32::from_rgb(250, 250, 252);
+        let dark_panel = Color32::from_rgb(31, 36, 64);
+
+        let kinds = [StatusKind::Success, StatusKind::Warning, StatusKind::Error];
+        let mut pairs = Vec::new();
+        for kind in kinds {
+            pairs.push(AuditPair::new(
+                "severity on light panel",
+                from_color32(severity_text_color_for(kind, false)),
+                from_color32(light_panel),
+                WcagLevel::AaNormal,
+            ));
+            pairs.push(AuditPair::new(
+                "severity on dark panel",
+                from_color32(severity_text_color_for(kind, true)),
+                from_color32(dark_panel),
+                WcagLevel::AaNormal,
+            ));
+        }
 
         let issues = audit(&pairs);
         let report = issues

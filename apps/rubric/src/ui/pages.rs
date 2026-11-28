@@ -23,6 +23,14 @@ pub(crate) struct ThumbCache {
     pending: std::collections::HashSet<String>,
 }
 
+/// Render state of a single thumbnail cell, derived from the cache.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ThumbState {
+    Ready,
+    Pending,
+    Failed,
+}
+
 impl ThumbCache {
     /// Absorb one drained worker result for `key_str`: clear the pending
     /// marker, then upload the texture on success or poison the key on
@@ -46,7 +54,17 @@ impl ThumbCache {
         } else {
             self.failed.insert(key_str.to_owned());
         }
-    }
+
+    /// Classify a thumbnail key as ready, pending (in flight / not yet
+    /// submitted) or failed. Pure logic, no display — kept testable.
+    pub(crate) fn state(&self, key_str: &str) -> ThumbState {
+        if self.textures.contains_key(key_str) {
+            ThumbState::Ready
+        } else if self.failed.contains(key_str) {
+            ThumbState::Failed
+        } else {
+            ThumbState::Pending
+        }
 }
 
 /// Minimum width of one thumbnail cell, and the gutter between cells.
@@ -104,15 +122,33 @@ pub(crate) fn draw_pages(
 
                     let thumb_rect = Rect::from_min_size(rect.min, Vec2::new(cell_w, thumb_h));
                     let is_current = index == current_page;
+                    // A failed thumbnail is visually distinct from a pending one:
+                    // error-tinted stroke + faint fill instead of the neutral
+                    // placeholder look.
+                    let page_failed = source_pdf.map_or(false, |path| {
+                        let key = RenderKey {
+                            pdf_id: path.display().to_string(),
+                            page: index,
+                            width_px: THUMB_WIDTH_PX,
+                        };
+                        cache.failed.contains(&key.to_string())
+                    });
                     let stroke = if is_current {
                         egui::Stroke::new(2.0, ui.visuals().selection.bg_fill)
+                    } else if page_failed {
+                        egui::Stroke::new(1.0, ui.visuals().error_fg_color)
                     } else {
                         egui::Stroke::new(1.0, ui.visuals().widgets.inactive.bg_fill)
+                    };
+                    let fill = if page_failed {
+                        ui.visuals().faint_bg_color
+                    } else {
+                        ui.visuals().extreme_bg_color
                     };
                     ui.painter().rect(
                         thumb_rect,
                         3.0,
-                        ui.visuals().extreme_bg_color,
+                        fill,
                         stroke,
                         StrokeKind::Middle,
                     );
@@ -150,13 +186,23 @@ pub(crate) fn draw_pages(
                             }
                             None => {
                                 let centre = thumb_rect.center();
-                                ui.painter().text(
-                                    centre,
-                                    egui::Align2::CENTER_CENTER,
-                                    format!("{}", index + 1),
-                                    FontId::proportional(thumb_h * 0.45),
-                                    ui.visuals().text_color(),
-                                );
+                                if page_failed {
+                                    ui.painter().text(
+                                        centre,
+                                        egui::Align2::CENTER_CENTER,
+                                        "Failed",
+                                        FontId::proportional(thumb_h * 0.25),
+                                        ui.visuals().error_fg_color,
+                                    );
+                                } else {
+                                    ui.painter().text(
+                                        centre,
+                                        egui::Align2::CENTER_CENTER,
+                                        format!("{}", index + 1),
+                                        FontId::proportional(thumb_h * 0.45),
+                                        ui.visuals().text_color(),
+                                    );
+                                }
                             }
                         }
                     }
@@ -177,6 +223,11 @@ pub(crate) fn draw_pages(
                         FontId::proportional(11.0),
                         caption_colour,
                     );
+                    if page_failed {
+                        response.on_hover_text(
+                            "Thumbnail failed to render. It retries when the page is shown again.",
+                        );
+                    }
                     if response.clicked() && !is_current {
                         jumped = Some(index);
                         ui.ctx().request_repaint();
@@ -184,7 +235,25 @@ pub(crate) fn draw_pages(
                 }
             });
             ui.add_space(GAP as f32);
-        }
-    });
+        });
     jumped
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn thumb_state_classifies_pending_failed() {
+    let mut cache = ThumbCache::default();
+    // Unknown key starts pending.
+    assert_eq!(cache.state("k"), ThumbState::Pending);
+    // Poisoning marks it failed.
+    cache.failed.insert("k".to_string());
+    assert_eq!(cache.state("k"), ThumbState::Failed);
+    // Clearing the failed set without a pending texture leaves the key
+    // in a clean state; re‑poisoning returns it to Failed.
+    cache.failed.clear();
+    cache.failed.insert("k".to_string());
+    assert_eq!(cache.state("k"), ThumbState::Failed);
+    }

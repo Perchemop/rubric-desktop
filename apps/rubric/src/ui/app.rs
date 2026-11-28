@@ -357,6 +357,18 @@ pub(crate) struct UiState {
     pub(crate) tool_chest_max_recents: usize,
 }
 
+impl UiState {
+    /// Route status text through a single path so the severity colour
+    /// (`status_kind`) stays in sync with the message (UI audit P1-1).
+    /// Every panel writes status through this method; a bare `status =`
+    /// assignment leaves a stale severity colour behind.
+    pub(crate) fn set_status(&mut self, kind: StatusKind, msg: impl Into<String>) {
+        self.status_kind = kind;
+        self.status.clear();
+        self.status.push_str(msg.into().as_str());
+    }
+}
+
 impl Default for UiState {
     fn default() -> Self {
         Self {
@@ -831,10 +843,9 @@ impl RubricApp {
     pub(crate) fn close_document_tab(&mut self, doc_id: Uuid) {
         if self.ui.dirty {
             self.set_status(
-                StatusKind::Error,
+                StatusKind::Warning,
                 "Close blocked: unsaved changes - save first",
             );
-            self.ui.status_kind = StatusKind::Warning;
             return;
         }
         if self.history.current_mut().close_document(doc_id) {
@@ -1781,9 +1792,12 @@ impl RubricApp {
 
     /// Set status text with visual severity (UI audit P1-1).
     pub(crate) fn set_status(&mut self, kind: StatusKind, msg: impl Into<String>) {
-        self.ui.status_kind = kind;
-        self.ui.status = msg.into();
+        self.ui.set_status(kind, msg);
     }
+
+    /// Single source of truth for how long a toast stays visible (UI audit
+    /// P1-1-b). Used by both the show/alpha math and the auto-clear path.
+    pub(crate) const TOAST_DURATION_SECS: f32 = 3.0;
 
     /// Set a transient toast notification (UI audit P1-1): shown briefly with
     /// severity colour then auto-cleared after 3 seconds.

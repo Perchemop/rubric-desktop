@@ -17,6 +17,22 @@ use crate::domain::{
 
 use super::theme::to_color32;
 
+/// Paper-white page background painted when no PDF texture is available.
+/// Dark mode keeps the page paper-white by design (theme.rs); only the
+/// surrounding chrome follows the theme.
+const PAGE_BG: Color32 = Color32::WHITE;
+/// Outline stroke drawn around the page rectangle.
+const PAGE_BORDER: Color32 = Color32::from_rgb(200, 206, 218);
+/// Fixed dark ink used on the always-paper-white page. Equals the theme's
+/// `LIGHT_TEXT` (32, 34, 48) so empty-state copy stays legible on the sheet.
+const PAGE_INK: Color32 = Color32::from_rgb(32, 34, 48);
+/// Muted ink for secondary copy on the paper-white page.
+const PAGE_INK_MUTED: Color32 = Color32::from_rgb(110, 116, 132);
+/// First-run empty-state card background (paper white, 96% opacity at site).
+const CARD_BG: Color32 = Color32::WHITE;
+/// Draft bounding-box stroke used for empty text markups.
+const DRAFT_BBOX: Color32 = Color32::from_rgba_unmultiplied(30, 144, 255, 89);
+
 use crate::ui::canvas_draw::{
     draw_bates_overlay, draw_grid, draw_measure_badge, draw_minimap, draw_rulers, draw_selection,
 };
@@ -40,7 +56,7 @@ fn creation_allowed(project: &Project, ui_state: &mut super::app::UiState) -> bo
         .is_some_and(|l| l.locked);
     let allowed = has_document && !locked;
     if has_document && locked {
-        ui_state.status = "Layer locked — new markups cannot be created".to_string();
+        ui_state.set_status(super::app::StatusKind::Warning, "Layer locked — new markups cannot be created");
     }
     allowed
 }
@@ -490,7 +506,7 @@ fn draw_markup(
                 painter.rect_stroke(
                     sr,
                     egui::CornerRadius::same(4),
-                    egui::Stroke::new(1.0, Color32::from_rgba_unmultiplied(30, 144, 255, 89)),
+                    egui::Stroke::new(1.0, DRAFT_BBOX),
                     egui::StrokeKind::Middle,
                 );
             } else {
@@ -713,7 +729,7 @@ pub(crate) fn commit_text_edit(ui_state: &mut super::app::UiState, project: &mut
             }
             doc.touch();
         }
-        ui_state.status = "Text updated".to_string();
+        ui_state.set_status(super::app::StatusKind::Success, "Text updated");
     }
     // A fresh Text/Callout that never received any text is removed on cancel/
     // commit so no empty markup is left behind.
@@ -723,7 +739,7 @@ pub(crate) fn commit_text_edit(ui_state: &mut super::app::UiState, project: &mut
             doc.remove_markup(id);
             doc.touch();
         }
-        ui_state.status = "Text edit cancelled".to_string();
+        ui_state.set_status(super::app::StatusKind::Info, "Text edit cancelled");
     }
     ui_state.text_edit = None;
     if fresh_empty {
@@ -934,7 +950,7 @@ pub(crate) fn draw_canvas(
                                     failed_page_textures.insert(attempt_key.clone());
                                     let msg = format!("PDF background unavailable: {e}");
                                     if bg_error.as_ref() != Some(&msg) {
-                                        ui_state.status = msg.clone();
+                                        ui_state.set_status(super::app::StatusKind::Error, msg.clone());
                                         *bg_error = Some(msg);
                                     }
                                 }
@@ -943,7 +959,7 @@ pub(crate) fn draw_canvas(
                                 failed_page_textures.insert(attempt_key.clone());
                                 let msg = format!("PDF background unavailable: {e}");
                                 if bg_error.as_ref() != Some(&msg) {
-                                    ui_state.status = msg.clone();
+                                    ui_state.set_status(super::app::StatusKind::Error, msg.clone());
                                     *bg_error = Some(msg);
                                 }
                             }
@@ -1012,7 +1028,7 @@ pub(crate) fn draw_canvas(
                     failed_page_textures.insert(attempt_key.clone());
                     let msg = format!("PDF background unavailable: {e}");
                     if bg_error.as_ref() != Some(&msg) {
-                        ui_state.status = msg.clone();
+                        ui_state.set_status(super::app::StatusKind::Error, msg.clone());
                         *bg_error = Some(msg);
                     }
                 }
@@ -1020,7 +1036,7 @@ pub(crate) fn draw_canvas(
         }
     }
     if !painted_texture {
-        painter.rect_filled(page_rect, egui::CornerRadius::same(12), Color32::WHITE);
+        painter.rect_filled(page_rect, egui::CornerRadius::same(12), PAGE_BG);
     }
     if show_pending_hint {
         let muted = ui.visuals().weak_text_color();
@@ -1036,7 +1052,7 @@ pub(crate) fn draw_canvas(
         painter.rect_stroke(
             page_rect,
             egui::CornerRadius::same(12),
-            egui::Stroke::new(1.0, Color32::from_rgb(200, 206, 218)),
+            egui::Stroke::new(1.0, PAGE_BORDER),
             egui::StrokeKind::Middle,
         );
     }
@@ -1077,16 +1093,16 @@ pub(crate) fn draw_canvas(
         painter.rect_filled(
             card,
             egui::CornerRadius::same(8),
-            Color32::WHITE.gamma_multiply(0.96),
+            CARD_BG.gamma_multiply(0.96),
         );
         painter.rect_stroke(
             card,
             egui::CornerRadius::same(8),
-            egui::Stroke::new(1.0, Color32::from_rgb(200, 206, 218)),
+            egui::Stroke::new(1.0, PAGE_BORDER),
             egui::StrokeKind::Middle,
         );
-        let paper_ink = Color32::from_rgb(32, 34, 48);
-        let muted_ink = Color32::from_rgb(110, 116, 132);
+        let paper_ink = PAGE_INK;
+        let muted_ink = PAGE_INK_MUTED;
         painter.text(
             card.left_top() + Vec2::new(card.width() / 2.0, 22.0),
             Align2::CENTER_CENTER,
@@ -1312,7 +1328,7 @@ pub(crate) fn draw_canvas(
             painter.rect_stroke(
                 popover,
                 egui::CornerRadius::default(),
-                egui::Stroke::new(1.0, Color32::from_gray(150)),
+                egui::Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color),
                 egui::StrokeKind::Middle,
             );
             let popover_resp = ui.interact(
@@ -1374,7 +1390,7 @@ pub(crate) fn draw_canvas(
                             .is_some()
                         {
                             ui_state.note_draft.clear();
-                            ui_state.status = "Comment added".to_string();
+                            ui_state.set_status(super::app::StatusKind::Success, "Comment added");
                             m.touch();
                             doc.touch();
                         }
@@ -1805,17 +1821,15 @@ pub(crate) fn draw_canvas(
                             // Shift+click toggles selection without clearing.
                             if ui_state.selected.contains(&id) {
                                 ui_state.selected.remove(&id);
-                                ui_state.status =
-                                    format!("Selected {} markup(s)", ui_state.selected.len());
+                                ui_state.set_status(super::app::StatusKind::Info, format!("Selected {} markup(s)", ui_state.selected.len()));
                             } else {
                                 ui_state.selected.insert(id);
-                                ui_state.status =
-                                    format!("Selected {} markup(s)", ui_state.selected.len());
+                                ui_state.set_status(super::app::StatusKind::Info, format!("Selected {} markup(s)", ui_state.selected.len()));
                             }
                         } else {
                             ui_state.selected.clear();
                             ui_state.selected.insert(id);
-                            ui_state.status = "Selected 1 markup".to_string();
+                            ui_state.set_status(super::app::StatusKind::Info, "Selected 1 markup");
                         }
                         // Note pins open a floating comment popover (F-103);
                         // selecting anything else closes an open one.
@@ -1856,7 +1870,7 @@ pub(crate) fn draw_canvas(
                             };
                             if kind_ok {
                                 if !editable {
-                                    ui_state.status = "Locked layer — edits disabled".to_string();
+                                    ui_state.set_status(super::app::StatusKind::Warning, "Locked layer — edits disabled");
                                 } else if !visible {
                                     // not pickable when hidden; nothing to do
                                 } else {
@@ -1866,7 +1880,7 @@ pub(crate) fn draw_canvas(
                                         text: original,
                                         focus_requested: false,
                                     });
-                                    ui_state.status = "Editing text".to_string();
+                                    ui_state.set_status(super::app::StatusKind::Info, "Editing text");
                                 }
                             }
                         }
@@ -1919,10 +1933,9 @@ pub(crate) fn draw_canvas(
                     }
                     let n = ui_state.selected.len();
                     if n > 0 {
-                        ui_state.status =
-                            format!("Selected {} markup{}", n, if n == 1 { "" } else { "s" });
+                        ui_state.set_status(super::app::StatusKind::Info, format!("Selected {} markup{}", n, if n == 1 { "" } else { "s" }));
                     } else {
-                        ui_state.status = "Nothing selected".to_string();
+                        ui_state.set_status(super::app::StatusKind::Info, "Nothing selected");
                     }
                 }
             } else if let Some(kind) = ui_state.active_tool.to_kind() {
@@ -1968,7 +1981,7 @@ pub(crate) fn draw_canvas(
                             crate::ui::tool_chest::record_recent(ui_state, &m);
                             doc.add_markup(m);
                         }
-                        ui_state.status = format!("Placed '{}'", preset.name);
+                        ui_state.set_status(super::app::StatusKind::Success, format!("Placed '{}'", preset.name));
                         mutated = true;
                     }
                 } else if is_path_kind(kind) {
@@ -1995,7 +2008,7 @@ pub(crate) fn draw_canvas(
                                 crate::ui::tool_chest::record_recent(ui_state, &m);
                                 doc.add_markup(m);
                             }
-                            ui_state.status = format!("Added {}", kind.label());
+                            ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
                             mutated = true;
                         }
                         *draw_state = super::app::DrawState::Idle;
@@ -2043,7 +2056,7 @@ pub(crate) fn draw_canvas(
                                     crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                                 }
-                                ui_state.status = format!("Added {}", kind.label());
+                                ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
                                 mutated = true;
                             }
                             *draw_state = super::app::DrawState::Idle;
@@ -2134,7 +2147,7 @@ pub(crate) fn draw_canvas(
                         crate::ui::tool_chest::record_recent(ui_state, &m);
                         doc.add_markup(m);
                     }
-                    ui_state.status = format!("Added {}", kind.label());
+                    ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
                     mutated = true;
                     if is_text {
                         ui_state.text_edit = Some(super::app::TextEditState {
@@ -2143,12 +2156,12 @@ pub(crate) fn draw_canvas(
                             text: String::new(),
                             focus_requested: false,
                         });
-                        ui_state.status = "Editing text".to_string();
+                        ui_state.set_status(super::app::StatusKind::Info, "Editing text");
                     }
                     if kind == MarkupKind::Note {
                         ui_state.note_popover = Some(new_id);
                         ui_state.note_draft.clear();
-                        ui_state.status = "Note added — add a comment".to_string();
+                        ui_state.set_status(super::app::StatusKind::Success, "Note added — add a comment");
                     }
                 }
             } else if ui_state.active_tool == Tool::Calibrate {
@@ -2173,8 +2186,7 @@ pub(crate) fn draw_canvas(
                             // A zero-length reference calibrates nothing:
                             // cancel without a snapshot.
                             *draw_state = super::app::DrawState::Idle;
-                            ui_state.status =
-                                "Calibration cancelled — segment too short".to_string();
+                            ui_state.set_status(super::app::StatusKind::Warning, "Calibration cancelled — segment too short");
                         } else {
                             let measured = page.scale.points_to_units(f64::from(len));
                             ui_state.calibration = Some(super::app::CalibrationDialog {
@@ -2184,7 +2196,7 @@ pub(crate) fn draw_canvas(
                                 unit: page.scale.unit,
                             });
                             *draw_state = super::app::DrawState::Idle;
-                            ui_state.status = "Calibrating — enter the real distance".to_string();
+                            ui_state.set_status(super::app::StatusKind::Info, "Calibrating — enter the real distance");
                         }
                     } else {
                         // First click anchors the known-distance segment.
@@ -2192,8 +2204,7 @@ pub(crate) fn draw_canvas(
                             start: Some(pp),
                             end: pp,
                         };
-                        ui_state.status =
-                            "Calibrate: click the second point of the known distance".to_string();
+                        ui_state.set_status(super::app::StatusKind::Info, "Calibrate: click the second point of the known distance");
                     }
                 }
             }
@@ -2229,7 +2240,7 @@ pub(crate) fn draw_canvas(
                         crate::ui::tool_chest::record_recent(ui_state, &m);
                         doc.add_markup(m);
                     }
-                    ui_state.status = format!("Added {}", kind.label());
+                    ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
                     mutated = true;
                 }
                 *draw_state = super::app::DrawState::Idle;
@@ -2256,7 +2267,7 @@ pub(crate) fn draw_canvas(
                             crate::ui::tool_chest::record_recent(ui_state, &m);
                             doc.add_markup(m);
                         }
-                        ui_state.status = format!("Added {}", kind.label());
+                        ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
                         mutated = true;
                     }
                 }
@@ -2266,7 +2277,7 @@ pub(crate) fn draw_canvas(
                 // Right-click abandons the reference segment (no snapshot);
                 // the context menu stays closed while a draft is in progress.
                 *draw_state = super::app::DrawState::Idle;
-                ui_state.status = "Calibration cancelled".to_string();
+                ui_state.set_status(super::app::StatusKind::Info, "Calibration cancelled");
             }
             _ => {}
         }
@@ -2295,7 +2306,7 @@ pub(crate) fn draw_canvas(
                         crate::ui::tool_chest::record_recent(ui_state, &m);
                         doc.add_markup(m);
                     }
-                    ui_state.status = format!("Added {}", kind.label());
+                    ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
                     mutated = true;
                 }
                 *draw_state = super::app::DrawState::Idle;
@@ -2321,7 +2332,7 @@ pub(crate) fn draw_canvas(
                             crate::ui::tool_chest::record_recent(ui_state, &m);
                             doc.add_markup(m);
                         }
-                        ui_state.status = format!("Added {}", kind.label());
+                        ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
                         mutated = true;
                     }
                 }
@@ -2515,7 +2526,7 @@ pub(crate) fn draw_canvas(
                                 crate::ui::tool_chest::record_recent(ui_state, &m);
                                 doc.add_markup(m);
                             }
-                            ui_state.status = format!("Added {}", kind.label());
+                            ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
                             mutated = true;
                             if is_text {
                                 ui_state.text_edit = Some(super::app::TextEditState {
@@ -2524,12 +2535,12 @@ pub(crate) fn draw_canvas(
                                     text: String::new(),
                                     focus_requested: false,
                                 });
-                                ui_state.status = "Editing text".to_string();
+                                ui_state.set_status(super::app::StatusKind::Info, "Editing text");
                             }
                             if kind == MarkupKind::Note {
                                 ui_state.note_popover = Some(new_id);
                                 ui_state.note_draft.clear();
-                                ui_state.status = "Note added — add a comment".to_string();
+                                ui_state.set_status(super::app::StatusKind::Success, "Note added — add a comment");
                             }
                         }
                     }
@@ -2546,7 +2557,7 @@ pub(crate) fn draw_canvas(
                                 crate::ui::tool_chest::record_recent(ui_state, &m);
                                 doc.add_markup(m);
                             }
-                            ui_state.status = format!("Added {}", kind.label());
+                            ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
                             mutated = true;
                         }
                     }
@@ -2574,7 +2585,7 @@ pub(crate) fn draw_canvas(
                             crate::ui::tool_chest::record_recent(ui_state, &m);
                             doc.add_markup(m);
                         }
-                        ui_state.status = format!("Added {}", kind.label());
+                        ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
                         mutated = true;
                     }
                     super::app::DrawState::Ink {
@@ -2594,7 +2605,7 @@ pub(crate) fn draw_canvas(
                                 crate::ui::tool_chest::record_recent(ui_state, &m);
                                 doc.add_markup(m);
                             }
-                            ui_state.status = "Added Ink".to_string();
+                            ui_state.set_status(super::app::StatusKind::Success, "Added Ink");
                             mutated = true;
                         }
                     }
@@ -2869,7 +2880,7 @@ pub(crate) fn draw_canvas(
             }
             ui_state.text_edit = None;
             mutated = true;
-            ui_state.status = "Text edit cancelled".to_string();
+            ui_state.set_status(super::app::StatusKind::Info, "Text edit cancelled");
             ui.ctx()
                 .input_mut(|i| i.consume_key(egui::Modifiers::default(), egui::Key::Escape));
         }

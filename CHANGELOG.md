@@ -4,6 +4,39 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ## [Unreleased]
 
+### Changed
+
+- **Status severity has one colour source** (`ui/app_status.rs`): a theme-aware
+  `severity_text_color` replaces the duplicated severity maps in the status bar
+  and the toast; all severity colours now clear WCAG 4.5:1 on their panel
+  surface in both themes (proved by `severity_status_colors_meet_wcag` in
+  `ui/theme.rs` tests). Toast duration hoisted to a single
+  `TOAST_DURATION_SECS` constant and toasts carry a text severity prefix
+  ("Success: ", "Warning: ", "Error: ") so severity is never colour-only.
+- **Every panel routes status through `UiState::set_status`** (P1-1
+  completion): the ~90 direct `status` writes in canvas, inspector, markups
+  list, quantities, tool chest, pages and menus now set the severity alongside
+  the message, so a stale error colour can no longer survive a later success
+  message. `App::set_status` delegates to the same method.
+- **Page-drawing colours are named constants** (`ui/canvas.rs`): paper, ink,
+  border, card and draft-bbox literals collected under documented consts
+  (values unchanged); the accent used by canvas drawing now comes from
+  `theme::ACCENT` (single source).
+- **High-contrast readability in panels**: tool-chest captions use
+  `weak_text_color()` instead of hard-coded grey; markup/quantity swatch
+  borders and selection tints derive from egui visuals; failed page thumbnails
+  render a distinct error state with a recovery hint instead of looking
+  identical to pending ones.
+- **Empty states carry a next step**: a filtered-empty Markups List gains an
+  inline "Clear filters" action; the comments empty state names the real
+  "Add Comment" action.
+- **Profiles menu shows real data** (`ui/app_menu.rs`): the hard-coded fake
+  profile list (with ★/👤 glyphs) is replaced by real saved profiles from the
+  ProfileStore, applied through the existing applicator path; the no-op
+  Import/Set Default buttons are removed from Manage Profiles until F-606
+  completion; the Rename action is now actually wired (prompt, duplicate-name
+  validation, success/error status) instead of storing to unread state.
+
 ### Docs
 
 - Added draft F-606 Profile/Workspace System documentation: `docs/profile-schema.md` records the planned `.rubric-profile` JSON Schema, field references, examples, migration path, and unresolved contract conflicts; `docs/user-guide/profiles.md` is a planned-feature guide with screenshot placeholders. Documentation only: F-606 remains `Draft — Pending Review`, and no profile files, migrations, or Profiles menu are shipped.

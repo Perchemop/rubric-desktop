@@ -2572,3 +2572,26 @@ Both notes are in `docs/research/` with status **"Proposed — pending human gat
   43838935919/43838935943 green).
 - Guide §12.3 sync recorded in `docs/current-model-map.md` (guide 2026-11-16
   read in full; §22 pstack added to the global ruleset).
+
+### UI audit polish — severity single-source + status routing + panel states (polish/ui-audit-fixes)
+- P1-1 completion: `UiState::set_status` is the single status path; ~90 direct
+  `status` writes across canvas/inspector/markups-list/quantities/tool-chest/
+  pages/menus now set severity with the message (stale-error-colour defect
+  closed). One severity-colour source (`app_status::severity_text_color`),
+  theme-aware, WCAG 4.5:1 asserted on both panel surfaces by
+  `severity_status_colors_meet_wcag` (old hard-coded green/amber failed on
+  light panels). Toast: single `TOAST_DURATION_SECS`, text severity prefix.
+- Panel states: failed page thumbnails distinct (error tint + caption +
+  recovery hint, headless `ThumbState` classification test); filtered-empty
+  Markups List gained an inline Clear-filters action (shared
+  `clear_markup_filters`, tested); comments empty state names the real action.
+- Readability: tool-chest captions `weak_text_color()` (HC-safe); swatch
+  borders/tints from egui visuals; page-drawing literals named consts
+  (`PAGE_INK` etc., values unchanged); canvas accent single-sourced from
+  `theme::ACCENT`.
+- Profiles: fake hard-coded menu list (★/👤) replaced with real ProfileStore
+  entries applied via the existing applicator; Manage Profiles Import/Set
+  Default removed until F-606 completion; Rename wired end-to-end (prompt,
+  duplicate validation, success/error status); delete/duplicate now report
+  success. (Impeccable polish pass + 4-partition subagent audit, 2026-11-28.)
+- CI evidence: <to be filled by the merge session with the green run ID>.
