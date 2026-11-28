@@ -231,8 +231,8 @@ pub(crate) fn draw_pages(
                     }
                 }
             });
+            ui.add_space(GAP as f32);
         }
-        ui.add_space(GAP as f32);
     });
     jumped
 }

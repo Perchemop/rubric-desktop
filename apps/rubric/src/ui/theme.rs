@@ -460,8 +460,8 @@ mod tests {
     #[test]
     fn severity_status_colors_meet_wcag() {
         use crate::domain::a11y::{audit, AuditPair, WcagLevel};
-        use crate::ui::app_status::severity_text_color_for;
         use crate::ui::app::StatusKind;
+        use crate::ui::app_status::severity_text_color_for;
 
         let light_panel = Color32::from_rgb(250, 250, 252);
         let dark_panel = Color32::from_rgb(31, 36, 64);
