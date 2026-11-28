@@ -221,7 +221,7 @@ pub(crate) fn draw_pages(
                         caption_colour,
                     );
                     if page_failed {
-                        response.on_hover_text(
+                        response.clone().on_hover_text(
                             "Thumbnail failed to render. It retries when the page is shown again.",
                         );
                     }

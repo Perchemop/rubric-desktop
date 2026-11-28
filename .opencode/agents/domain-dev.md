@@ -2,6 +2,9 @@
 description: Implements Rubric domain features (pure Rust types, logic, unit tests) — first stage of every vertical slice
 mode: subagent
 model: opencode/deepseek-v4.1-flash-free#high
+skills:
+  - poteto-mode
+  - ponytail
 permissions:
   - action: edit
     resource: "*"

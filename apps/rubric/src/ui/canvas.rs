@@ -31,7 +31,7 @@ const PAGE_INK_MUTED: Color32 = Color32::from_rgb(110, 116, 132);
 /// First-run empty-state card background (paper white, 96% opacity at site).
 const CARD_BG: Color32 = Color32::WHITE;
 /// Draft bounding-box stroke used for empty text markups.
-const DRAFT_BBOX: Color32 = Color32::from_rgba_unmultiplied(30, 144, 255, 89);
+const DRAFT_BBOX: Color32 = Color32::from_rgba_const(30, 144, 255, 89);
 
 use crate::ui::canvas_draw::{
     draw_bates_overlay, draw_grid, draw_measure_badge, draw_minimap, draw_rulers, draw_selection,
