@@ -40,7 +40,7 @@ pub fn draw(app: &mut crate::ui::app::RubricApp, ctx: &egui::Context) {
     // (old_name, new_name) confirmed by the rename prompt below.
     let mut rename_target: Option<(String, String)> = None;
     // Profile whose Rename button was pressed; drives the rename prompt.
-    let rename_pending: Option<String> = ctx
+    let mut rename_pending: Option<String> = ctx
         .data(|d| d.get_temp::<String>(egui::Id::new(RENAME_KEY)))
         .into();
     let mut rename_input = ctx
