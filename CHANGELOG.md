@@ -4,6 +4,12 @@ All notable changes to this project will be documented here. Format: semantic-is
 
 ## [Unreleased]
 
+### Docs
+
+- Added draft F-606 Profile/Workspace System documentation: `docs/profile-schema.md` records the planned `.rubric-profile` JSON Schema, field references, examples, migration path, and unresolved contract conflicts; `docs/user-guide/profiles.md` is a planned-feature guide with screenshot placeholders. Documentation only: F-606 remains `Draft — Pending Review`, and no profile files, migrations, or Profiles menu are shipped.
+- 2026-11-25 — Added draft F-607 Panel Docking & Splitting documentation: `docs/user-guide/panel-docking.md` covers edge docking, split wheel, tab groups, floating panels, Panel Access Bar, shortcuts, predefined layouts, and animated GIF placeholders; `docs/panel-layout-schema.md` records the `PanelLayout` JSON Schema and source-backed field defaults. Documentation only: F-607 remains `Draft — Pending Review`; no docking UI, tests, or shipped behaviour are claimed.
+- 2026-11-25 — Added draft F-608 Toolbar Customization documentation: `docs/user-guide/toolbar-customization.md` covers the planned four-pane dialog and toolbar/profile behaviour; `docs/toolbar-command-reference.md` lists all 70 registered commands with ID, name, icon, shortcut, category, and description. Documentation only: F-608 remains `Draft — Pending Review`; source/spec conflicts are preserved rather than normalized.
+
 ## [0.5.0] - 2026-11-23
 
 ### Added

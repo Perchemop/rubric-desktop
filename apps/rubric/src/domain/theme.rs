@@ -106,6 +106,9 @@ pub struct AppPrefs {
     /// (gap #3: Recent Tools). Session-temporary list; the cap is persisted.
     #[serde(default = "default_max_recents")]
     pub tool_chest_max_recents: usize,
+    /// Active profile name for UI layout persistence.
+    #[serde(default)]
+    pub active_profile: String,
     /// Persisted workspace state — dock regions, floating panels, split view.
     /// `#[serde(default)]` ensures legacy preference files that omit this key
     /// load unchanged; the default layout matches `WorkspaceState::default()`.
@@ -150,6 +153,7 @@ impl Default for AppPrefs {
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::default(),
             tool_chest_max_recents: default_max_recents(),
+            active_profile: String::new(),
             workspace: WorkspaceState::default(),
         }
     }
@@ -209,6 +213,7 @@ mod tests {
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::Inch,
             tool_chest_max_recents: 12,
+            active_profile: String::new(),
             workspace: WorkspaceState::default(),
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");
@@ -244,6 +249,7 @@ mod tests {
             default_styles: DefaultStyles::default(),
             default_measure_unit: MeasureUnit::Point,
             tool_chest_max_recents: 8,
+            active_profile: String::new(),
             workspace: WorkspaceState::default(),
         };
         let json = serde_json::to_string_pretty(&prefs).expect("serialize");

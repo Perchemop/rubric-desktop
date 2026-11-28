@@ -117,6 +117,73 @@ so they do not move the 57-feature readiness table above.
       thread-locals into `UiState`, WCAG status text, M5 menu shortcut hints +
       Ctrl+A, Save-and-Quit
 
+### F-606 — Profile/Workspace System (draft; documentation only)
+
+Tracking entry for the draft spec at
+`docs/spec/profile-workspace-system.spec.md`. F-606 is `Draft — Pending Review`;
+no implementation, CI evidence, or shipped UI supports profiles yet. The
+57 accepted F-ID readiness counts above are unchanged.
+
+- [x] Draft schema reference recorded in `docs/profile-schema.md`, including
+      unresolved schema-version, key-naming, and theme-key conflicts.
+- [x] Planned user guide recorded in `docs/user-guide/profiles.md` with
+      screenshot placeholders and an explicit not-shipped notice.
+- [ ] Resolve spec/review conflicts and approve the F-606 contract.
+- [ ] Implement domain model, storage, migrations, predefined profiles, and UI
+      after F-607/F-608 are settled; verify headlessly and through CI.
+- [ ] Replace guide placeholders with reviewed evidence and mark F-606 done
+      only after spec approval, tests, and green CI.
+
+### F-607 — Panel Docking & Splitting (draft; documentation complete, not shipped)
+
+Documentation added 2026-11-25 from the draft spec at
+`docs/spec/panel-docking-splitting.spec.md`. F-607 remains
+`Draft — Pending Review`; the 57 accepted F-ID readiness counts above are
+unchanged. These entries mean the docs exist, not that the feature is
+implemented or verified.
+
+- [x] Planned user guide recorded in `docs/user-guide/panel-docking.md`, with
+      edge docking, split wheel, tab groups, floating panels, Panel Access Bar,
+      `Ctrl+1`–`Ctrl+7`, predefined layouts, multi-monitor presentation context,
+      tables/code blocks, and animated GIF placeholders.
+- [x] `docs/panel-layout-schema.md` records the `PanelLayout` JSON Schema from
+      `domain/panel.rs`, including `DockedPanel`, `SplitTree`, `FloatingPanel`,
+      `PanelAccessBarState`, and `schema_version: 1`.
+- [x] Source/spec differences are retained: `bookmarks` is an `Other` panel ID,
+      `PanelId::default_shortcut()` and `PanelShortcutRegistry::default()`
+      disagree, and presentation floating panels belong to `Profile` rather than
+      `PanelLayout`.
+- [ ] Resolve spec/review conflicts and approve the F-607 contract.
+- [ ] Implement domain/UI operations, persistence, and keyboard handling; verify
+      headlessly and through CI.
+- [ ] Replace animated GIF placeholders with reviewed evidence and mark F-607
+      done only after spec approval, tests, and green CI.
+
+### F-608 — Toolbar Customization Dialog (draft; documentation complete, not shipped)
+
+Documentation added 2026-11-25 from the draft spec at
+`docs/spec/toolbar-customization.spec.md`. F-608 remains
+`Draft — Pending Review`; the 57 accepted F-ID readiness counts above are
+unchanged. These entries mean the docs exist, not that the dialog is
+implemented or verified.
+
+- [x] Planned user guide recorded in `docs/user-guide/toolbar-customization.md`,
+      covering `Ctrl+Shift+T`, the four-pane dialog, add/remove/reorder,
+      custom toolbars, Quick Access Area, fixed Properties Toolbar, global lock
+      with per-custom override, profiles, shortcuts, tables/code blocks, and
+      screenshot placeholders.
+- [x] `docs/toolbar-command-reference.md` lists all 70 registered commands from
+      `domain/commands.rs` with ID, name, icon key, shortcut, category, and
+      description.
+- [x] Source/spec differences are retained: eight registry categories versus the
+      spec's “7 categories” wording, Markup Tools containing `stamp`, differing
+      test/UI IDs, and duplicate or trailing-space shortcut strings.
+- [ ] Resolve spec/review conflicts and approve the F-608 contract.
+- [ ] Implement the toolbar domain model, registry-driven dialog, persistence,
+      and keyboard handling; verify headlessly and through CI.
+- [ ] Replace screenshot placeholders with reviewed evidence and mark F-608
+      done only after spec approval, tests, and green CI.
+
 ### v1.0.0 — finished (guide §9)
 
 - [x] All 57 feature IDs done; all 18 requirement groups DONE (CI-verified)

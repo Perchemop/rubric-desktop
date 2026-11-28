@@ -11,7 +11,7 @@ This requirement set is **original material authored for Rubric**. It is derived
 - **ID groups**: F-1xx markups/tools · F-2xx measurements/scale · F-3xx review workflow · F-4xx navigation/pages · F-5xx persistence/I/O · F-6xx UI/UX polish · F-7xx packaging · F-8xx Bates numbering.
 - **Priority** maps to `IMPLEMENTATION_PLAN.md`: `MVP` = core of Phases 2–3 (first usable release); `Ph 4` / `Ph 5` / `Ph 6` = scheduled in that phase; `later` = after Phase 6 / optional.
 - **Traceability**: `REQUIREMENTS_TRACEABILITY.md` maps each area to R-S-001…R-S-018 and to the planned modules.
-- **Feature count**: 57 feature IDs across eight groups (52 original + F-801–F-805 Bates numbering).
+- **Feature count**: 57 accepted feature IDs across eight groups (52 original + F-801–F-805 Bates numbering). Draft specs appended for tracking (currently F-606) are not included in the accepted count or readiness totals until reviewed and verified.
 - Notes column records current state at adoption (2026-10-19).
 
 ## Feature inventory
@@ -93,6 +93,7 @@ This requirement set is **original material authored for Rubric**. It is derived
 | F-603 | Context menus (canvas + inspector) | Ph 6 | done (shared menu: tool submenu, delete/clear, undo/redo/zoom) |
 | F-604 | Undo/redo (bounded history, 128 snapshots) | MVP | done |
 | F-605 | Accessibility (readable contrast, keyboard-reachable controls) | later | done (WCAG contrast audit test, audited body-text colours, keyboard shortcuts, icon-button tooltips; see `docs/a11y.md`) |
+| F-606 | Profile/Workspace System (named UI layouts, predefined profiles, import/export, auto-save) | Draft (Ph 6.1) | draft spec — docs only (`docs/profile-schema.md`, `docs/user-guide/profiles.md`); not shipped, not counted in 57 accepted IDs; F-607/F-608 dependencies also draft |
 
 ### F-7xx — Packaging
 

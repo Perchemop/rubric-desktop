@@ -101,15 +101,24 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                                 &bates,
                             ) {
                                 Ok(()) => {
-                                    app.ui.status = format!("PDF exported to {}", path.display());
+                                    app.set_status(
+                                        crate::ui::app::StatusKind::Success,
+                                        format!("PDF exported to {}", path.display()),
+                                    );
                                 }
                                 Err(e) => {
-                                    app.ui.status = format!("PDF export failed: {e}");
+                                    app.set_status(
+                                        crate::ui::app::StatusKind::Error,
+                                        format!("PDF export failed: {e}"),
+                                    );
                                 }
                             }
                         }
                     } else {
-                        app.ui.status = "Nothing to export — import a PDF first".to_string();
+                        app.set_status(
+                            crate::ui::app::StatusKind::Error,
+                            "Nothing to export — import a PDF first",
+                        );
                     }
                 }
                 ui.close();
@@ -169,9 +178,15 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                         recent.clear();
                         // Report the real outcome: don't claim success when
                         // the recents file could not be rewritten (audit M2).
-                        app.ui.status = match crate::data::save_recent(&recent) {
-                            Ok(()) => "Recent list cleared".to_string(),
-                            Err(e) => format!("Could not clear the recent list: {e}"),
+                        match crate::data::save_recent(&recent) {
+                            Ok(()) => app.set_status(
+                                crate::ui::app::StatusKind::Success,
+                                "Recent list cleared",
+                            ),
+                            Err(e) => app.set_status(
+                                crate::ui::app::StatusKind::Error,
+                                format!("Could not clear the recent list: {e}"),
+                            ),
                         };
                         ui.close();
                     }
@@ -191,11 +206,14 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 let mut enabled = app.history.current().settings.auto_save;
                 if ui.checkbox(&mut enabled, "Enable Auto-save").changed() {
                     app.history.current_mut().settings.auto_save = enabled;
-                    app.ui.status = if enabled {
-                        "Auto-save on".to_string()
-                    } else {
-                        "Auto-save off".to_string()
-                    };
+                    app.set_status(
+                        crate::ui::app::StatusKind::Success,
+                        if enabled {
+                            "Auto-save on"
+                        } else {
+                            "Auto-save off"
+                        },
+                    );
                     app.push_snapshot_quiet();
                 }
                 ui.separator();
@@ -215,9 +233,12 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 }
                 if chosen != current {
                     app.history.current_mut().settings.auto_save_interval_secs = chosen;
-                    app.ui.status = format!(
-                        "Auto-save every {}",
-                        crate::domain::auto_save_interval_label(chosen)
+                    app.set_status(
+                        crate::ui::app::StatusKind::Success,
+                        format!(
+                            "Auto-save every {}",
+                            crate::domain::auto_save_interval_label(chosen)
+                        ),
                     );
                     app.push_snapshot_quiet();
                 }
@@ -323,18 +344,21 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 app.ui.fullscreen = !fullscreen;
                 ui.ctx()
                     .send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
-                app.ui.status = if app.ui.fullscreen {
-                    "Full screen on (Esc-exit via the View menu)".to_string()
-                } else {
-                    "Full screen off".to_string()
-                };
+                app.set_status(
+                    crate::ui::app::StatusKind::Info,
+                    if app.ui.fullscreen {
+                        "Full screen on (Esc-exit via the View menu)"
+                    } else {
+                        "Full screen off"
+                    },
+                );
             }
             ui.separator();
             for pct in crate::domain::view::ZOOM_PRESETS {
                 let zoom = pct as f32 / 100.0;
                 if ui.button(format!("{}%", pct)).clicked() {
                     app.ui.zoom = crate::domain::view::clamp_zoom(zoom);
-                    app.ui.status = format!("Zoom {}%", pct);
+                    app.set_toast(crate::ui::app::StatusKind::Info, format!("Zoom {}%", pct));
                 }
             }
             ui.separator();
@@ -355,7 +379,10 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                     .changed()
                 {
                     app.ui.zoom = crate::domain::view::clamp_zoom(custom_zoom as f32 / 100.0);
-                    app.ui.status = format!("Zoom {}%", custom_zoom);
+                    app.set_toast(
+                        crate::ui::app::StatusKind::Info,
+                        format!("Zoom {}%", custom_zoom),
+                    );
                 }
             });
             ui.separator();
@@ -367,11 +394,14 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 app.ui.grid.visible = grid_visible;
             }
             if ui.checkbox(&mut app.ui.grid.snap, "Snap to Grid").clicked() {
-                app.ui.status = if app.ui.grid.snap {
-                    "Snap to grid on".to_string()
-                } else {
-                    "Snap to grid off".to_string()
-                };
+                app.set_status(
+                    crate::ui::app::StatusKind::Info,
+                    if app.ui.grid.snap {
+                        "Snap to grid on"
+                    } else {
+                        "Snap to grid off"
+                    },
+                );
             }
             ui.menu_button("Grid Spacing", |ui| {
                 let mut spacing = app.ui.grid.spacing;
@@ -381,7 +411,10 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                         .clicked()
                     {
                         app.ui.grid.spacing = s;
-                        app.ui.status = format!("Grid spacing → {s} pt");
+                        app.set_status(
+                            crate::ui::app::StatusKind::Info,
+                            format!("Grid spacing → {s} pt"),
+                        );
                     }
                 }
             });
@@ -393,11 +426,14 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                     .changed()
                 {
                     app.history.current_mut().settings.show_measurements = show_measurements;
-                    app.ui.status = if show_measurements {
-                        "Measurements shown".to_string()
-                    } else {
-                        "Measurements hidden".to_string()
-                    };
+                    app.set_status(
+                        crate::ui::app::StatusKind::Info,
+                        if show_measurements {
+                            "Measurements shown"
+                        } else {
+                            "Measurements hidden"
+                        },
+                    );
                     app.push_snapshot_quiet();
                 }
             }
@@ -427,11 +463,14 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
             // tabs (UI redesign T1), so the per-panel toggles below replace
             // the old "Show Tool Chest"/"Show Pages" checkboxes.
             if ui.checkbox(&mut app.ui.focus_mode, "Focus Mode").changed() {
-                app.ui.status = if app.ui.focus_mode {
-                    "Focus mode on — panels hidden".to_string()
-                } else {
-                    "Focus mode off".to_string()
-                };
+                app.set_status(
+                    crate::ui::app::StatusKind::Info,
+                    if app.ui.focus_mode {
+                        "Focus mode on — panels hidden"
+                    } else {
+                        "Focus mode off"
+                    },
+                );
                 app.save_app_prefs();
             }
             if ui
@@ -439,11 +478,14 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 .changed()
             {
                 app.ui.focus_mode = false;
-                app.ui.status = if app.ui.left_panel_visible {
-                    "Left panel shown".to_string()
-                } else {
-                    "Left panel hidden".to_string()
-                };
+                app.set_status(
+                    crate::ui::app::StatusKind::Info,
+                    if app.ui.left_panel_visible {
+                        "Left panel shown"
+                    } else {
+                        "Left panel hidden"
+                    },
+                );
                 app.save_app_prefs();
             }
             if ui
@@ -451,11 +493,14 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 .changed()
             {
                 app.ui.focus_mode = false;
-                app.ui.status = if app.ui.inspector_visible {
-                    "Inspector shown".to_string()
-                } else {
-                    "Inspector hidden".to_string()
-                };
+                app.set_status(
+                    crate::ui::app::StatusKind::Info,
+                    if app.ui.inspector_visible {
+                        "Inspector shown"
+                    } else {
+                        "Inspector hidden"
+                    },
+                );
                 app.save_app_prefs();
             }
             if ui
@@ -466,11 +511,14 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 .changed()
             {
                 app.ui.focus_mode = false;
-                app.ui.status = if app.ui.bottom_panel_visible {
-                    "Bottom panel shown".to_string()
-                } else {
-                    "Bottom panel hidden".to_string()
-                };
+                app.set_status(
+                    crate::ui::app::StatusKind::Info,
+                    if app.ui.bottom_panel_visible {
+                        "Bottom panel shown"
+                    } else {
+                        "Bottom panel hidden"
+                    },
+                );
                 app.save_app_prefs();
             }
             ui.separator();
@@ -499,13 +547,48 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
                 }
             });
         });
+        ui.menu_button("Profiles", |ui| {
+            // Predefined profiles (★) and custom profiles (👤) would be
+            // populated from the ProfileStore (domain-dev) once available.
+            // Placeholder list keeps the menu functional and compilable.
+            let profiles: Vec<(&str, bool)> = vec![
+                ("Default", true),
+                ("Review", true),
+                ("Measurement", true),
+                ("Markup", true),
+            ];
+            for (name, predefined) in &profiles {
+                let icon = if *predefined { "★" } else { "👤" };
+                let label = format!("{} {}", icon, name);
+                let resp = ui.button(&label);
+                resp.clone().on_hover_text(format!(
+                    "{} — {} profile. Layout: panels, toolbars, theme, measurement defaults.",
+                    name,
+                    if *predefined { "predefined" } else { "custom" }
+                ));
+                if resp.clicked() {
+                    // Profile application via ProfileApplicator (to be wired).
+                    ui.close();
+                }
+            }
+            ui.separator();
+            if ui.button("Manage Profiles…").clicked() {
+                crate::ui::profile_manager_dialog::open(ui.ctx());
+                ui.close();
+            }
+            ui.separator();
+            if ui.button("Save Current Layout…").clicked() {
+                crate::ui::save_profile_dialog::open(ui.ctx());
+                ui.close();
+            }
+        });
         ui.menu_button("Help", |ui| {
             if ui.button("About Rubric").clicked() {
                 app.show_about = !app.show_about;
                 ui.close();
             }
             if ui.button("Check for Updates…").clicked() {
-                app.ui.status = "Checking for updates…".to_string();
+                app.set_status(crate::ui::app::StatusKind::Info, "Checking for updates…");
                 app.begin_update_check(ui.ctx());
                 ui.close();
             }

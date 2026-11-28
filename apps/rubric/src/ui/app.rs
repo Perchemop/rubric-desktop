@@ -27,8 +27,8 @@ use uuid::Uuid;
 /// relative path would not resolve.
 pub(crate) const USER_GUIDE: &str = include_str!("../../../../USER_GUIDE.md");
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub(crate) enum DrawState {
     /// No active draft.
     Idle,
@@ -73,8 +73,8 @@ pub(crate) enum DrawState {
     Calibrate { start: Option<Pt>, end: Pt },
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub(crate) enum InspectorMode {
     Selection,
     Properties,
@@ -103,7 +103,6 @@ pub(crate) enum MarkupLayerFilter {
     Layer(Uuid),
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct TextEditState {
     pub(crate) id: Uuid,
@@ -162,14 +161,12 @@ pub(crate) struct TakeoffDialogState {
     pub(crate) show_delete_confirm: bool,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ReportExportFormat {
     Text,
     Json,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ReportExportUi {
     pub(crate) group_key: ReportGroupKey,
@@ -178,7 +175,6 @@ pub(crate) struct ReportExportUi {
     pub(crate) total_markups: usize,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct UiState {
     pub(crate) selected: HashSet<uuid::Uuid>,
@@ -525,9 +521,13 @@ pub struct RubricApp {
     /// The persisted workspace layout (docking/split state) loaded from prefs.
     /// Updated only when a workspace editor writes it in a later slice.
     pub(crate) persisted_workspace: crate::domain::workspace::WorkspaceState,
+    /// Active profile name for UI layout persistence.
+    pub(crate) active_profile: String,
     /// Latest release tag from the most recent update check, used to
     /// construct the SHA256SUMS.txt URL when downloading an update.
     pub(crate) update_check_tag: Option<String>,
+    /// Profile store for managing UI workspace profiles.
+    pub(crate) profile_store: crate::data::profile_store::ProfileStore,
     /// Tool Chest preset library (v0.4 gap #7). App-level session state: it
     /// survives project switches (a tool chest belongs to the reviewer, not
     /// the project) and is not written into `.rubric.json` or prefs yet —
@@ -667,7 +667,10 @@ impl RubricApp {
             update_check_tag: None,
             tool_chest_library: prefs.tool_chest_library.clone(),
             persisted_workspace: prefs.workspace.clone(),
+            active_profile: prefs.active_profile.clone(),
             app_drawer_path: Self::get_app_drawer_path(),
+            profile_store: crate::data::profile_store::ProfileStore::new()
+                .expect("failed to initialize profile store"),
         }
     }
 
@@ -735,8 +738,10 @@ impl RubricApp {
                 self.failed_page_textures.insert(key_str);
                 // Same wording as the legacy synchronous fallback in
                 // `ui/canvas.rs` so the status surface stays consistent.
-                self.ui.status = format!("PDF background unavailable: {msg}");
-                self.ui.status_kind = StatusKind::Error;
+                self.set_status(
+                    StatusKind::Error,
+                    format!("PDF background unavailable: {msg}"),
+                );
                 self.bg_error = Some(msg);
             }
         }
@@ -825,7 +830,10 @@ impl RubricApp {
 
     pub(crate) fn close_document_tab(&mut self, doc_id: Uuid) {
         if self.ui.dirty {
-            self.ui.status = "Close blocked: unsaved changes - save first".to_string();
+            self.set_status(
+                StatusKind::Error,
+                "Close blocked: unsaved changes - save first",
+            );
             self.ui.status_kind = StatusKind::Warning;
             return;
         }
@@ -867,7 +875,7 @@ impl RubricApp {
             self.clear_selection();
             self.push_snapshot("delete markups");
         } else {
-            self.ui.status = "Selection is locked".to_string();
+            self.set_status(StatusKind::Error, "Selection is locked");
         }
     }
 
@@ -883,12 +891,15 @@ impl RubricApp {
             .map(|doc| doc.duplicate_markups(&ids, (12.0, 12.0)))
             .unwrap_or_default();
         if new_ids.is_empty() {
-            self.ui.status = "Selection is locked".to_string();
+            self.set_status(StatusKind::Error, "Selection is locked");
         } else {
             self.ui.selected = new_ids.iter().copied().collect();
             self.push_snapshot("duplicate markups");
             let n = new_ids.len();
-            self.ui.status = format!("Duplicated {n} markup{}", if n == 1 { "" } else { "s" });
+            self.set_status(
+                StatusKind::Success,
+                format!("Duplicated {n} markup{}", if n == 1 { "" } else { "s" }),
+            );
         }
     }
 
@@ -899,9 +910,9 @@ impl RubricApp {
         match action {
             EditorAction::Undo => {
                 if self.ui.text_edit.is_some() {
-                    self.ui.status = "Finish or cancel text edit first".to_string();
+                    self.set_toast(StatusKind::Warning, "Finish or cancel text edit first");
                 } else if self.history.undo() {
-                    self.ui.status = "Undo".to_string();
+                    self.set_status(StatusKind::Success, "Undo");
                     // Undo/redo change the in-memory project, so it is unsaved.
                     self.ui.dirty = true;
                     self.clear_selection();
@@ -909,30 +920,30 @@ impl RubricApp {
             }
             EditorAction::Redo => {
                 if self.ui.text_edit.is_some() {
-                    self.ui.status = "Finish or cancel text edit first".to_string();
+                    self.set_toast(StatusKind::Warning, "Finish or cancel text edit first");
                 } else if self.history.redo() {
-                    self.ui.status = "Redo".to_string();
+                    self.set_status(StatusKind::Success, "Redo");
                     self.ui.dirty = true;
                     self.clear_selection();
                 }
             }
             EditorAction::DeleteSelection => {
                 if self.ui.text_edit.is_some() {
-                    self.ui.status = "Finish or cancel text edit first".to_string();
+                    self.set_toast(StatusKind::Warning, "Finish or cancel text edit first");
                 } else {
                     self.delete_selected();
                 }
             }
             EditorAction::Duplicate => {
                 if self.ui.text_edit.is_some() {
-                    self.ui.status = "Finish or cancel text edit first".to_string();
+                    self.set_toast(StatusKind::Warning, "Finish or cancel text edit first");
                 } else {
                     self.duplicate_selected();
                 }
             }
             EditorAction::ClearSelection => {
                 self.clear_selection();
-                self.ui.status = "Selection cleared".to_string();
+                self.set_status(StatusKind::Info, "Selection cleared");
             }
             EditorAction::CopyProperties => self.copy_selected_style(),
             EditorAction::PasteProperties => self.paste_selected_style(),
@@ -974,7 +985,10 @@ impl RubricApp {
     /// Set the canvas zoom level, clamped to valid bounds, and update status.
     pub(crate) fn set_zoom_level(&mut self, zoom: f32) {
         self.ui.zoom = zoom.clamp(view::MIN_ZOOM, view::MAX_ZOOM);
-        self.ui.status = format!("Zoom {:.0}%", self.ui.zoom * 100.0);
+        self.set_toast(
+            StatusKind::Info,
+            format!("Zoom {:.0}%", self.ui.zoom * 100.0),
+        );
         self.save_app_prefs();
     }
 
@@ -995,7 +1009,7 @@ impl RubricApp {
             self.ui.zoom = 1.0;
         }
         self.ui.pan = Vec2::ZERO;
-        self.ui.status = "Fit page".to_string();
+        self.set_toast(StatusKind::Info, "Fit page");
         self.save_app_prefs();
     }
 
@@ -1003,7 +1017,10 @@ impl RubricApp {
     fn apply_batch_status(&mut self, status: ReviewStatus) {
         let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
         if ids.is_empty() {
-            self.ui.status = "Select at least one markup to change status".to_string();
+            self.set_status(
+                StatusKind::Error,
+                "Select at least one markup to change status",
+            );
             return;
         }
         let changed = self
@@ -1011,14 +1028,17 @@ impl RubricApp {
             .map(|doc| doc.apply_status_to(&ids, status))
             .unwrap_or(0);
         if changed == 0 {
-            self.ui.status = "No editable markups selected".to_string();
+            self.set_status(StatusKind::Error, "No editable markups selected");
         } else {
             self.push_snapshot("batch status");
-            self.ui.status = format!(
-                "Status set to {} for {} markup{}",
-                status.label(),
-                changed,
-                if changed == 1 { "" } else { "s" }
+            self.set_status(
+                StatusKind::Success,
+                format!(
+                    "Status set to {} for {} markup{}",
+                    status.label(),
+                    changed,
+                    if changed == 1 { "" } else { "s" }
+                ),
             );
         }
     }
@@ -1028,7 +1048,10 @@ impl RubricApp {
     fn apply_toggle_lock(&mut self) {
         let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
         if ids.is_empty() {
-            self.ui.status = "Select at least one markup to lock or unlock".to_string();
+            self.set_status(
+                StatusKind::Error,
+                "Select at least one markup to lock or unlock",
+            );
             return;
         }
         let mut changed = 0;
@@ -1050,14 +1073,17 @@ impl RubricApp {
             }
         }
         if changed == 0 {
-            self.ui.status = "No markups found".to_string();
+            self.set_status(StatusKind::Error, "No markups found");
         } else {
             let unlocked = changed - now_locked;
-            self.ui.status = format!(
-                "Locked {} markup{}, unlocked {}",
-                now_locked,
-                if now_locked == 1 { "" } else { "s" },
-                unlocked,
+            self.set_status(
+                StatusKind::Success,
+                format!(
+                    "Locked {} markup{}, unlocked {}",
+                    now_locked,
+                    if now_locked == 1 { "" } else { "s" },
+                    unlocked,
+                ),
             );
         }
     }
@@ -1069,7 +1095,10 @@ impl RubricApp {
     fn apply_set_as_default(&mut self) {
         let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
         if ids.is_empty() {
-            self.ui.status = "Select at least one markup to set as default".to_string();
+            self.set_status(
+                StatusKind::Error,
+                "Select at least one markup to set as default",
+            );
             return;
         }
         // Collect the styles first: the document lookup and the prefs write are
@@ -1083,7 +1112,7 @@ impl RubricApp {
             }
         }
         if defaults.is_empty() {
-            self.ui.status = "No markups found".to_string();
+            self.set_status(StatusKind::Error, "No markups found");
             return;
         }
         let count = defaults.len();
@@ -1093,9 +1122,15 @@ impl RubricApp {
         }
         self.save_app_prefs();
         if count == 1 {
-            self.ui.status = format!("Default style set for {}", first_kind.label());
+            self.set_status(
+                StatusKind::Success,
+                format!("Default style set for {}", first_kind.label()),
+            );
         } else {
-            self.ui.status = format!("Default styles set from {} markups", count);
+            self.set_status(
+                StatusKind::Success,
+                format!("Default styles set from {} markups", count),
+            );
         }
     }
 
@@ -1103,7 +1138,7 @@ impl RubricApp {
     fn apply_assign_condition(&mut self, condition_id: Uuid) {
         let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
         if ids.is_empty() {
-            self.ui.status = "Select at least one markup to assign".to_string();
+            self.set_status(StatusKind::Error, "Select at least one markup to assign");
             return;
         }
         match self
@@ -1124,18 +1159,21 @@ impl RubricApp {
                         .find(|c| c.id == condition_id)
                         .map(|c| c.name.as_str())
                         .unwrap_or("condition");
-                    self.ui.status = format!(
-                        "Assigned {} markup{} to '{}'",
-                        assigned,
-                        if assigned == 1 { "" } else { "s" },
-                        cond_name
+                    self.set_status(
+                        StatusKind::Success,
+                        format!(
+                            "Assigned {} markup{} to '{}'",
+                            assigned,
+                            if assigned == 1 { "" } else { "s" },
+                            cond_name
+                        ),
                     );
                 } else {
-                    self.ui.status = "No compatible markups selected".to_string();
+                    self.set_status(StatusKind::Error, "No compatible markups selected");
                 }
             }
             Err(e) => {
-                self.ui.status = format!("Assignment failed: {}", e);
+                self.set_status(StatusKind::Error, format!("Assignment failed: {}", e));
             }
         }
     }
@@ -1144,19 +1182,22 @@ impl RubricApp {
     fn apply_unassign_condition(&mut self) {
         let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
         if ids.is_empty() {
-            self.ui.status = "Select at least one markup to unassign".to_string();
+            self.set_status(StatusKind::Error, "Select at least one markup to unassign");
             return;
         }
         let unassigned = self.history.current_mut().unassign_from_conditions(&ids);
         if unassigned > 0 {
             self.push_snapshot("unassign condition");
-            self.ui.status = format!(
-                "Unassigned {} markup{}",
-                unassigned,
-                if unassigned == 1 { "" } else { "s" }
+            self.set_status(
+                StatusKind::Success,
+                format!(
+                    "Unassigned {} markup{}",
+                    unassigned,
+                    if unassigned == 1 { "" } else { "s" }
+                ),
             );
         } else {
-            self.ui.status = "No markups were assigned".to_string();
+            self.set_status(StatusKind::Error, "No markups were assigned");
         }
     }
 
@@ -1177,10 +1218,13 @@ impl RubricApp {
             .unwrap_or_default();
         self.ui.selected = ids.into_iter().collect();
         let n = self.ui.selected.len();
-        self.ui.status = if n == 0 {
-            "Nothing to select on this page".to_string()
+        if n == 0 {
+            self.set_status(StatusKind::Info, "Nothing to select on this page");
         } else {
-            format!("Selected {n} markup{}", if n == 1 { "" } else { "s" })
+            self.set_toast(
+                StatusKind::Info,
+                format!("Selected {n} markup{}", if n == 1 { "" } else { "s" }),
+            );
         };
     }
 
@@ -1194,7 +1238,10 @@ impl RubricApp {
     /// Copy the selected markup's visual style into the session clipboard.
     fn copy_selected_style(&mut self) {
         let Some(id) = self.single_selected() else {
-            self.ui.status = "Select exactly one markup to copy properties".to_string();
+            self.set_status(
+                StatusKind::Error,
+                "Select exactly one markup to copy properties",
+            );
             return;
         };
         let style = self
@@ -1204,21 +1251,24 @@ impl RubricApp {
         match style {
             Some(style) => {
                 self.ui.style_clipboard = Some(style);
-                self.ui.status = "Properties copied".to_string();
+                self.set_status(StatusKind::Success, "Properties copied");
             }
-            None => self.ui.status = "Markup not found".to_string(),
+            None => self.set_status(StatusKind::Error, "Markup not found"),
         }
     }
 
     /// Apply the copied visual style to every selected editable markup.
     fn paste_selected_style(&mut self) {
         let Some(style) = self.ui.style_clipboard else {
-            self.ui.status = "Copy properties first".to_string();
+            self.set_status(StatusKind::Error, "Copy properties first");
             return;
         };
         let ids: Vec<Uuid> = self.ui.selected.iter().copied().collect();
         if ids.is_empty() {
-            self.ui.status = "Select at least one markup to paste properties".to_string();
+            self.set_status(
+                StatusKind::Error,
+                "Select at least one markup to paste properties",
+            );
             return;
         }
         let changed = match self.active_doc_mut() {
@@ -1226,17 +1276,23 @@ impl RubricApp {
             None => 0,
         };
         if changed == 0 {
-            self.ui.status = "No editable markups selected".to_string();
+            self.set_status(StatusKind::Error, "No editable markups selected");
         } else {
             self.push_snapshot("paste properties");
-            self.ui.status = format!("Properties applied to {changed} markup(s)");
+            self.set_status(
+                StatusKind::Success,
+                format!("Properties applied to {changed} markup(s)"),
+            );
         }
     }
 
     /// Move the single selected markup in its page's paint order.
     fn apply_z_order(&mut self, action: EditorAction) {
         let Some(id) = self.single_selected() else {
-            self.ui.status = "Select exactly one markup to change its order".to_string();
+            self.set_status(
+                StatusKind::Error,
+                "Select exactly one markup to change its order",
+            );
             return;
         };
         let result = match self.active_doc_mut() {
@@ -1271,10 +1327,10 @@ impl RubricApp {
         match result {
             Ok(true) => {
                 self.push_snapshot(action.label());
-                self.ui.status = changed_message.to_string();
+                self.set_toast(StatusKind::Success, changed_message);
             }
-            Ok(false) => self.ui.status = edge_message.to_string(),
-            Err(message) => self.ui.status = message.to_string(),
+            Ok(false) => self.set_toast(StatusKind::Info, edge_message),
+            Err(message) => self.set_status(StatusKind::Error, message),
         }
     }
 
@@ -1574,7 +1630,7 @@ impl RubricApp {
         match action {
             Some(BugReportAction::Cancel) => {
                 self.report = None;
-                self.ui.status = "Bug report cancelled — nothing was sent".to_string();
+                self.set_status(StatusKind::Info, "Bug report cancelled — nothing was sent");
             }
             Some(BugReportAction::Send) => {
                 let report_ui = self.report.as_ref().expect("report open");
@@ -1584,18 +1640,21 @@ impl RubricApp {
                 if report_ui.open_in_browser {
                     let url = issue.new_issue_url(&self.repo);
                     let _ = open_url(&url);
-                    self.ui.status = "Opening the pre-filled issue in your browser".to_string();
+                    self.set_status(
+                        StatusKind::Info,
+                        "Opening the pre-filled issue in your browser",
+                    );
                     self.report = None;
                 } else {
                     let token = report_ui.token.clone();
                     let repo = self.repo.clone();
                     match crash_report::submit(&repo, &issue, Some(&token)) {
                         Ok(()) => {
-                            self.ui.status = "Bug report sent — thank you".to_string();
+                            self.set_status(StatusKind::Success, "Bug report sent — thank you");
                             self.report = None;
                         }
                         Err(e) => {
-                            self.ui.status = format!("Could not send: {e}");
+                            self.set_status(StatusKind::Error, format!("Could not send: {e}"));
                             // Keep the dialog open so nothing the user typed is lost.
                         }
                     }
@@ -1609,7 +1668,7 @@ impl RubricApp {
     /// nothing was committed.
     fn cancel_calibration(&mut self) {
         if self.ui.calibration.take().is_some() {
-            self.ui.status = "Calibration cancelled".to_string();
+            self.set_toast(StatusKind::Info, "Calibration cancelled");
             self.draw = DrawState::Idle;
         }
     }
@@ -1622,7 +1681,7 @@ impl RubricApp {
         if !dialog.real_units.is_finite() || dialog.real_units <= 0.0 {
             // Rejected: keep the dialog open so the typed value can be fixed.
             self.ui.calibration = Some(dialog);
-            self.ui.status = "Scale value must be positive".to_string();
+            self.set_status(StatusKind::Error, "Scale value must be positive");
             return;
         }
         self.ui.calibration = None;
@@ -1642,7 +1701,10 @@ impl RubricApp {
             }
             doc.touch();
         }
-        self.ui.status = format!("Scale calibrated → {}", new_scale.describe());
+        self.set_status(
+            StatusKind::Success,
+            format!("Scale calibrated → {}", new_scale.describe()),
+        );
         self.push_snapshot_quiet();
         self.draw = DrawState::Idle;
     }
@@ -1725,7 +1787,6 @@ impl RubricApp {
 
     /// Set a transient toast notification (UI audit P1-1): shown briefly with
     /// severity colour then auto-cleared after 3 seconds.
-    #[allow(dead_code)]
     pub(crate) fn set_toast(&mut self, kind: StatusKind, msg: impl Into<String>) {
         self.toast = Some((kind, msg.into(), Instant::now()));
     }
@@ -1759,8 +1820,10 @@ impl RubricApp {
                 current_path,
                 status,
             });
-            self.ui.status =
-                "Unsaved changes — save first (Ctrl+S) or confirm to replace".to_string();
+            self.set_status(
+                StatusKind::Warning,
+                "Unsaved changes — save first (Ctrl+S) or confirm to replace",
+            );
             return false;
         }
         self.install_project_now(project, current_path, status);
@@ -1778,7 +1841,7 @@ impl RubricApp {
         self.ui = UiState::default();
         self.draw = DrawState::Idle;
         self.current_path = current_path;
-        self.ui.status = status;
+        self.set_status(StatusKind::Info, status);
         self.title_dirty = true;
         // A freshly installed project has never been autosaved this session.
         self.last_autosave = None;
@@ -1813,7 +1876,7 @@ impl RubricApp {
     /// user what happened instead of silently discarding their choice.
     pub(crate) fn cancel_pending_replace(&mut self) {
         if self.pending_replace.take().is_some() {
-            self.ui.status = "Replace cancelled — current project kept".to_string();
+            self.set_status(StatusKind::Info, "Replace cancelled — current project kept");
         }
     }
 
@@ -1825,7 +1888,7 @@ impl RubricApp {
             // Audit M9: a 0-page PDF used to report "Imported 1 page(s)"
             // and fabricate an unrenderable page.
             Ok(info) if info.page_sizes.is_empty() => {
-                self.ui.status = "Import failed: the PDF has no pages".to_string();
+                self.set_status(StatusKind::Error, "Import failed: the PDF has no pages");
             }
             Ok(info) => {
                 let stem = path
@@ -1860,8 +1923,11 @@ impl RubricApp {
         self.theme = theme;
         theme::apply_theme(ctx, theme, self.high_contrast);
         match save_prefs(&self.build_prefs()) {
-            Ok(()) => self.ui.status = format!("Theme: {}", theme.label()),
-            Err(e) => self.ui.status = format!("Theme changed, but saving failed: {e}"),
+            Ok(()) => self.set_status(StatusKind::Success, format!("Theme: {}", theme.label())),
+            Err(e) => self.set_status(
+                StatusKind::Error,
+                format!("Theme changed, but saving failed: {e}"),
+            ),
         }
     }
 
@@ -1870,13 +1936,15 @@ impl RubricApp {
     pub(crate) fn set_high_contrast(&mut self, ctx: &egui::Context, enabled: bool) {
         self.high_contrast = enabled;
         theme::apply_theme(ctx, self.theme, enabled);
-        self.ui.status = if enabled {
-            "High contrast on".to_string()
+        let msg = if enabled {
+            "High contrast on"
         } else {
-            "High contrast off".to_string()
+            "High contrast off"
         };
         if let Err(e) = save_prefs(&self.build_prefs()) {
-            self.ui.status = format!("High contrast set, but saving failed: {e}");
+            self.set_status(StatusKind::Error, format!("{msg}, but saving failed: {e}"));
+        } else {
+            self.set_status(StatusKind::Success, msg.to_string());
         }
     }
 
@@ -1899,6 +1967,7 @@ impl RubricApp {
             default_styles: self.ui.default_styles.clone(),
             default_measure_unit: self.ui.unit,
             tool_chest_max_recents: self.ui.tool_chest_max_recents.clamp(1, 32),
+            active_profile: self.active_profile.clone(),
             workspace: self.persisted_workspace.clone(),
         }
     }
@@ -1907,7 +1976,10 @@ impl RubricApp {
     pub(crate) fn save_app_prefs(&mut self) {
         let prefs = self.build_prefs();
         if let Err(e) = save_prefs(&prefs) {
-            self.ui.status = format!("Workspace saved, but preferences write failed: {e}");
+            self.set_status(
+                StatusKind::Error,
+                format!("Workspace saved, but preferences write failed: {e}"),
+            );
         }
     }
 
@@ -1932,12 +2004,15 @@ impl RubricApp {
         };
         match std::fs::write(&path, &bytes) {
             Ok(()) => {
-                self.ui.status = format!("Page image exported: {}", path.display());
+                self.set_status(
+                    StatusKind::Success,
+                    format!("Page image exported: {}", path.display()),
+                );
                 Ok(())
             }
             Err(e) => {
                 let err = DataError::Io(e);
-                self.ui.status = format!("Export failed: {err}");
+                self.set_status(StatusKind::Error, format!("Export failed: {err}"));
                 Err(err)
             }
         }
@@ -1993,7 +2068,7 @@ impl RubricApp {
     /// line stays untouched.
     pub(crate) fn export_current_page_to_pdf(&mut self) {
         let Some(doc) = self.active_doc() else {
-            self.ui.status = "Export failed: no document is open".to_string();
+            self.set_status(StatusKind::Error, "Export failed: no document is open");
             return;
         };
         let page = self.ui.current_page;
@@ -2009,7 +2084,10 @@ impl RubricApp {
             .clone()
             .unwrap_or_default();
         if source_pdf.is_empty() {
-            self.ui.status = "Export failed: import a PDF before flattening a page".to_string();
+            self.set_status(
+                StatusKind::Error,
+                "Export failed: import a PDF before flattening a page",
+            );
             return;
         }
         let bates = self.history.current().settings.bates.clone();
@@ -2029,10 +2107,13 @@ impl RubricApp {
             &bates,
         ) {
             Ok(()) => {
-                self.ui.status = format!("Flattened page {} to PDF: {}", page + 1, path.display());
+                self.set_status(
+                    StatusKind::Success,
+                    format!("Flattened page {} to PDF: {}", page + 1, path.display()),
+                );
             }
             Err(e) => {
-                self.ui.status = format!("Export failed: {e}");
+                self.set_status(StatusKind::Error, format!("Export failed: {e}"));
             }
         }
     }
@@ -2047,11 +2128,14 @@ impl RubricApp {
             .clone()
             .unwrap_or_default();
         if source_pdf.is_empty() {
-            self.ui.status = "Export failed: import a PDF before flattening pages".to_string();
+            self.set_status(
+                StatusKind::Error,
+                "Export failed: import a PDF before flattening pages",
+            );
             return;
         }
         let Some(doc) = self.active_doc() else {
-            self.ui.status = "Export failed: no document is open".to_string();
+            self.set_status(StatusKind::Error, "Export failed: no document is open");
             return;
         };
         let Some(path) = rfd::FileDialog::new()
@@ -2069,10 +2153,13 @@ impl RubricApp {
             &bates,
         ) {
             Ok(()) => {
-                self.ui.status = format!("Flattened all pages to PDF: {}", path.display());
+                self.set_status(
+                    StatusKind::Success,
+                    format!("Flattened all pages to PDF: {}", path.display()),
+                );
             }
             Err(e) => {
-                self.ui.status = format!("Export failed: {e}");
+                self.set_status(StatusKind::Error, format!("Export failed: {e}"));
             }
         }
     }
@@ -2107,7 +2194,7 @@ impl RubricApp {
             // not project state — no undo snapshot, and a read-only config
             // dir must not turn this into an open failure.
             let pstr = path.to_string_lossy().to_string();
-            self.ui.status = format!("Missing: {pstr}");
+            self.set_status(StatusKind::Error, format!("Missing: {pstr}"));
             let mut recent = load_recent();
             recent.remove(&pstr);
             let _ = save_recent(&recent);
@@ -2149,7 +2236,7 @@ impl RubricApp {
             Ok(_) => {
                 self.current_path = Some(path.clone());
                 self.ui.dirty = false;
-                self.ui.status = "Saved".to_string();
+                self.set_status(StatusKind::Success, "Saved");
                 self.title_dirty = true;
                 // Record the save in the app-level recents store. App state,
                 // not project state — no undo snapshot, and a failed save
@@ -2189,7 +2276,10 @@ impl RubricApp {
                 // project stays dirty — clearing the flag here suppressed the
                 // Quit confirmation while the real `.rubric.json` was stale.
                 // Only `save_project_to` may clear `dirty`.
-                self.ui.status = format!("Recovery snapshot saved: {}", path.display());
+                self.set_status(
+                    StatusKind::Success,
+                    format!("Recovery snapshot saved: {}", path.display()),
+                );
             }
             Ok(None) => {
                 // No writable location (no project path and no data dir). Leave
@@ -2266,7 +2356,7 @@ impl RubricApp {
             .shortcut_key()
             .map(|k| k.to_ascii_uppercase())
             .unwrap_or('-');
-        self.ui.status = format!("{} ({key})", tool.label());
+        self.set_toast(StatusKind::Info, format!("{} ({key})", tool.label()));
     }
 }
 
@@ -2407,7 +2497,7 @@ impl RubricApp {
                 // creation would leave a stale `text_edit` pointing at a
                 // markup that no longer exists.
                 if self.ui.text_edit.is_some() {
-                    self.ui.status = "Finish or cancel text edit first".to_string();
+                    self.set_toast(StatusKind::Warning, "Finish or cancel text edit first");
                 } else if self.history.undo() {
                     self.ui.dirty = true;
                     self.clear_selection();
@@ -2415,7 +2505,7 @@ impl RubricApp {
             }
             if i.modifiers.command && i.key_pressed(egui::Key::Y) && !wants_kb {
                 if self.ui.text_edit.is_some() {
-                    self.ui.status = "Finish or cancel text edit first".to_string();
+                    self.set_toast(StatusKind::Warning, "Finish or cancel text edit first");
                 } else if self.history.redo() {
                     self.ui.dirty = true;
                     self.clear_selection();
@@ -2461,35 +2551,44 @@ impl RubricApp {
             if i.modifiers.command && i.key_pressed(egui::Key::Num1) && !wants_kb {
                 self.ui.focus_mode = false;
                 self.ui.left_panel_visible = !self.ui.left_panel_visible;
-                self.ui.status = if self.ui.left_panel_visible {
-                    "Left panel shown".to_string()
-                } else {
-                    "Left panel hidden".to_string()
-                };
+                self.set_toast(
+                    StatusKind::Info,
+                    if self.ui.left_panel_visible {
+                        "Left panel shown"
+                    } else {
+                        "Left panel hidden"
+                    },
+                );
             }
             if i.modifiers.command && i.key_pressed(egui::Key::Num2) && !wants_kb {
                 self.ui.focus_mode = false;
                 self.ui.inspector_visible = !self.ui.inspector_visible;
-                self.ui.status = if self.ui.inspector_visible {
-                    "Inspector shown".to_string()
-                } else {
-                    "Inspector hidden".to_string()
-                };
+                self.set_toast(
+                    StatusKind::Info,
+                    if self.ui.inspector_visible {
+                        "Inspector shown"
+                    } else {
+                        "Inspector hidden"
+                    },
+                );
             }
             if i.modifiers.command && i.key_pressed(egui::Key::Num3) && !wants_kb {
                 self.ui.focus_mode = false;
                 self.ui.bottom_panel_visible = !self.ui.bottom_panel_visible;
-                self.ui.status = if self.ui.bottom_panel_visible {
-                    "Bottom panel shown".to_string()
-                } else {
-                    "Bottom panel hidden".to_string()
-                };
+                self.set_toast(
+                    StatusKind::Info,
+                    if self.ui.bottom_panel_visible {
+                        "Bottom panel shown"
+                    } else {
+                        "Bottom panel hidden"
+                    },
+                );
             }
             if i.modifiers.command && i.key_pressed(egui::Key::A) && !wants_kb {
                 // Select All on the current page (full-app audit M5/M10); the
                 // same path as Edit ▸ Select All.
                 if self.ui.text_edit.is_some() {
-                    self.ui.status = "Finish or cancel text edit first".to_string();
+                    self.set_toast(StatusKind::Warning, "Finish or cancel text edit first");
                 } else {
                     self.select_all_on_page();
                 }
@@ -2497,7 +2596,7 @@ impl RubricApp {
             if i.modifiers.command && i.key_pressed(egui::Key::D) && !wants_kb {
                 // Duplicate the selection (v0.4 gap #6); same path as the menu.
                 if self.ui.text_edit.is_some() {
-                    self.ui.status = "Finish or cancel text edit first".to_string();
+                    self.set_toast(StatusKind::Warning, "Finish or cancel text edit first");
                 } else {
                     self.duplicate_selected();
                 }
@@ -2517,7 +2616,7 @@ impl RubricApp {
                 // Never switch pages mid-edit: the edit context would be lost
                 // and the text could be committed onto the wrong page.
                 if self.ui.text_edit.is_some() {
-                    self.ui.status = "Finish or cancel text edit first".to_string();
+                    self.set_toast(StatusKind::Warning, "Finish or cancel text edit first");
                 } else if self.ui.current_page > 0 {
                     self.jump_to_page(self.ui.current_page - 1);
                 }
@@ -2526,7 +2625,7 @@ impl RubricApp {
                 // Never switch pages mid-edit: the edit context would be lost
                 // and the text could be committed onto the wrong page.
                 if self.ui.text_edit.is_some() {
-                    self.ui.status = "Finish or cancel text edit first".to_string();
+                    self.set_toast(StatusKind::Warning, "Finish or cancel text edit first");
                 } else {
                     let count = self.active_doc().map(|d| d.page_count()).unwrap_or(0);
                     if count > 0 && self.ui.current_page + 1 < count {
@@ -2544,7 +2643,7 @@ impl RubricApp {
                 } else if self.ui.text_edit.is_some() {
                     // Discard the in-progress text edit, no snapshot.
                     self.ui.text_edit = None;
-                    self.ui.status = "Text edit cancelled".to_string();
+                    self.set_toast(StatusKind::Info, "Text edit cancelled");
                 } else {
                     // Abort the draft and consume the current (still held) drag, so
                     // canvas.rs does not immediately start a new one.
@@ -2591,7 +2690,10 @@ impl RubricApp {
         if close_requested && self.ui.dirty && !self.force_close {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             self.ui.quit_confirm = true;
-            self.ui.status = "The project has unsaved changes — save or confirm to quit".into();
+            self.set_status(
+                StatusKind::Warning,
+                "The project has unsaved changes — save or confirm to quit",
+            );
         }
         self.force_close = false;
     }
@@ -2692,6 +2794,9 @@ impl RubricApp {
         app_dialogs::draw_user_guide(self, ui.ctx());
         app_dialogs::draw_quit_confirm(self, ui.ctx());
         app_dialogs::draw_replace_unsaved(self, ui.ctx());
+        crate::ui::profile_manager_dialog::draw(self, ui.ctx());
+        crate::ui::save_profile_dialog::draw(self, ui.ctx());
+        crate::ui::auto_save_profile::draw(self, ui.ctx());
 
         // Report export dialog (session state only).
         let mut do_export = false;
@@ -2750,11 +2855,14 @@ impl RubricApp {
                     };
                     match result {
                         Ok(()) => {
-                            self.ui.status = format!("Report exported: {}", path.display());
+                            self.set_status(
+                                StatusKind::Success,
+                                format!("Report exported: {}", path.display()),
+                            );
                             self.report_export = None;
                         }
                         Err(e) => {
-                            self.ui.status = format!("Export failed: {e}");
+                            self.set_status(StatusKind::Error, format!("Export failed: {e}"));
                         }
                     }
                 } else {

@@ -7,6 +7,7 @@ members = [
     "apps/rubric",
     "crates/crash-report",
     "crates/update-check",
+    "crates/ui-egui",
 ]
 
 # One shared profile keeps release artefacts identical across the suite.

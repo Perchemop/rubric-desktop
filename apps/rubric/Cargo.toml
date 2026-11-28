@@ -21,8 +21,10 @@ thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 directories = "6"
+dirs = "6"
 chrono = { version = "0.4", features = ["serde"] }
 rfd = "0.18"
+anyhow = "1"
 # MIT OR Apache-2.0. Bindings only: the PDFium shared library (BSD-3-Clause)
 # is located at run time (RUBRIC_PDFIUM_PATH / exe dir / system), so builds
 # stay pure Rust. See DECISIONS.md 2026-10-20 (PDF crate choice).

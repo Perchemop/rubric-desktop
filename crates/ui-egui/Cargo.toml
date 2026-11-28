@@ -1,0 +1,13 @@
+[package]
+name = "ui-egui"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+egui = "0.36"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"
+
+[dev-dependencies]
+tempfile = "3"

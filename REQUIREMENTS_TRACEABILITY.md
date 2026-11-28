@@ -73,7 +73,7 @@ Each row maps a spec area to its feature IDs and the planned modules.
 
 ## Feature requirements
 
-Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec/README.md` (2026-10-19).
+Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec/README.md` (2026-10-19). Draft specs appended for visibility are marked `DOCS ONLY` and do not change accepted feature totals or readiness counts.
 
 | ID | Feature | Target in Rubric | Status | Notes |
 |---|--------|----------------|--------|-------|
@@ -90,6 +90,7 @@ Legacy IDs F-00x predate the spec; group rows F-1xx…F-7xx reference `docs/spec
 | F-4xx | Navigation/pages (spec) | Document.pages, UiState camera | DONE | docs/spec/README.md F-401–F-406; R-S-011–R-S-012; F-404 (thumbnails), F-405 (grid + snap) and F-406 (rulers) done 2026-10-23; F-401 zoom presets done 2026-10-28 |
 | F-5xx | Persistence/I/O (spec) | .rubric.json store, PDF import, export/print | DONE | docs/spec/README.md F-501–F-507; R-S-013–R-S-015; native dialogs + recent files landed 2026-10-20; PDF import landed 2026-10-21; report export landed 2026-10-21; image export + print landed 2026-10-21; autosave + schema version landed 2026-10-26 |
 | F-6xx | UI/UX polish (spec) | shortcuts, theme, history | DONE | docs/spec/README.md F-601–F-605; R-S-016; F-601 (per-tool keys), F-602 (dark theme), F-603 (context menus) done 2026-10-23; F-605 (accessibility) done 2026-10-30 |
+| F-606 | Profile/Workspace System (draft spec) | planned: `Profile`, `UiLayout`, `ProfileStore`, migrations, predefined profiles, Profiles UI, auto-save | DOCS ONLY | docs/spec/profile-workspace-system.spec.md; docs/profile-schema.md; docs/user-guide/profiles.md. Spec is `Draft — Pending Review`; no implementation or CI evidence; unresolved schema-version, key-naming and theme-key conflicts; excluded from the accepted F-6xx group and 57-ID readiness totals. |
 | F-7xx | Packaging (spec) | CI release build, installers | DONE | docs/spec/README.md F-701–F-704; R-S-017; release.yml + package.yml done 2026-10-23 (installers unsigned — see docs/assumptions-and-questions Q-PACK-1) |
 | F-8xx | Bates numbering (spec) | Sequential page stamping overlay | DONE | docs/spec/README.md F-801–F-805; R-S-018; research `docs/research/bates-numbering.md`; config/placement/range + canvas overlay + PDF/page-image/print stamps shipped (PRs of 2026-11-05) |
 | R-C-* | Community/security/ops readiness (operating guide Part II — not product-spec scope) | — | DONE (initial wave) | see "Community, security and operating-hygiene requirements" below |
