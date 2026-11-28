@@ -10,8 +10,8 @@
 use egui::Modifiers as EguiModifiers;
 use ui_egui::keyboard::{
     DialogAction, FocusRingProperties, GanttAction, GanttJump, GlobalShortcut, InspectorAction,
-    KeyPress, KeyboardError, ResourcesAction, TableAction, ViewEvent, event_label,
-    resolve_global_shortcut,
+    KeyboardError, ResourcesAction, TableAction, ViewEvent, event_label, resolve_global_shortcut,
+    shortcut_label,
 };
 
 #[test]
@@ -298,14 +298,9 @@ fn test_shortcut_label_all() {
     );
 }
 
-#[test]
-fn test_key_to_number() {
-    assert_eq!(key_to_number(egui::Key::Num1), Some(1));
-    assert_eq!(key_to_number(egui::Key::Num5), Some(5));
-    assert_eq!(key_to_number(egui::Key::Num9), Some(9));
-    assert_eq!(key_to_number(egui::Key::Escape), None);
-    assert_eq!(key_to_number(egui::Key::F1), None);
-}
+// `key_to_number` is a private helper; its behaviour is unit-tested inside
+// `crates/ui-egui/src/keyboard.rs` (`test_key_to_number`) and is not repeated
+// here because integration tests cannot reach private items.
 
 #[test]
 fn test_focus_ring_properties_default() {
@@ -322,8 +317,8 @@ fn test_focus_ring_stroke_colour_contrast() {
     let bg_white = egui::Color32::WHITE;
     let bg_black = egui::Color32::BLACK;
 
-    let ratio_white = crate::design_tokens::contrast_ratio(fg.into(), bg_white.into());
-    let ratio_black = crate::design_tokens::contrast_ratio(fg.into(), bg_black.into());
+    let ratio_white = ui_egui::design_tokens::contrast_ratio(fg.into(), bg_white.into());
+    let ratio_black = ui_egui::design_tokens::contrast_ratio(fg.into(), bg_black.into());
 
     // AA-large requires ≥3:1 for UI components.
     assert!(
