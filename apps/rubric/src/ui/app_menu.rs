@@ -559,7 +559,7 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
             for name in &names {
                 if ui.button(name).clicked() {
                     if let Ok(profile) = app.profile_store.load_profile(name) {
-                        let _ = app.apply_profile(&profile);
+                        let _ = app.apply_profile(ui.ctx(), &profile);
                         app.active_profile = name.clone();
                         app.save_app_prefs();
                     }

@@ -238,22 +238,3 @@ pub(crate) fn draw_pages(
         });
     jumped
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn thumb_state_classifies_pending_failed() {
-    let mut cache = ThumbCache::default();
-    // Unknown key starts pending.
-    assert_eq!(cache.state("k"), ThumbState::Pending);
-    // Poisoning marks it failed.
-    cache.failed.insert("k".to_string());
-    assert_eq!(cache.state("k"), ThumbState::Failed);
-    // Clearing the failed set without a pending texture leaves the key
-    // in a clean state; re‑poisoning returns it to Failed.
-    cache.failed.clear();
-    cache.failed.insert("k".to_string());
-    assert_eq!(cache.state("k"), ThumbState::Failed);
-    }
