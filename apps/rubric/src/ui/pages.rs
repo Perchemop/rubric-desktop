@@ -147,13 +147,8 @@ pub(crate) fn draw_pages(
                     } else {
                         ui.visuals().extreme_bg_color
                     };
-                    ui.painter().rect(
-                        thumb_rect,
-                        3.0,
-                        fill,
-                        stroke,
-                        StrokeKind::Middle,
-                    );
+                    ui.painter()
+                        .rect(thumb_rect, 3.0, fill, stroke, StrokeKind::Middle);
 
                     // Rendered preview when the project is backed by a PDF; otherwise a
                     // numbered placeholder, which is honest about there being no image.
@@ -236,8 +231,9 @@ pub(crate) fn draw_pages(
                     }
                 }
             });
-            ui.add_space(GAP as f32);
-        });
+        }
+        ui.add_space(GAP as f32);
+    });
     jumped
 }
 
@@ -247,15 +243,16 @@ mod tests {
 
     #[test]
     fn thumb_state_classifies_pending_failed() {
-    let mut cache = ThumbCache::default();
-    // Unknown key starts pending.
-    assert_eq!(cache.state("k"), ThumbState::Pending);
-    // Poisoning marks it failed.
-    cache.failed.insert("k".to_string());
-    assert_eq!(cache.state("k"), ThumbState::Failed);
-    // Clearing the failed set without a pending texture leaves the key
-    // in a clean state; re‑poisoning returns it to Failed.
-    cache.failed.clear();
-    cache.failed.insert("k".to_string());
-    assert_eq!(cache.state("k"), ThumbState::Failed);
+        let mut cache = ThumbCache::default();
+        // Unknown key starts pending.
+        assert_eq!(cache.state("k"), ThumbState::Pending);
+        // Poisoning marks it failed.
+        cache.failed.insert("k".to_string());
+        assert_eq!(cache.state("k"), ThumbState::Failed);
+        // Clearing the failed set without a pending texture leaves the key
+        // in a clean state; re‑poisoning returns it to Failed.
+        cache.failed.clear();
+        cache.failed.insert("k".to_string());
+        assert_eq!(cache.state("k"), ThumbState::Failed);
     }
+}
