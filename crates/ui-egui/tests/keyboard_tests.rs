@@ -139,7 +139,8 @@ fn test_event_label_gantt_zoom() {
     let event = ViewEvent::Gantt {
         action: GanttAction::Zoom { factor: 1.25 },
     };
-    assert_eq!(event_label(&event), "Gantt: Zoom 1.3x");
+    // `{:.1}` rounds half to even, so 1.25 formats as "1.2".
+    assert_eq!(event_label(&event), "Gantt: Zoom 1.2x");
 }
 
 #[test]
