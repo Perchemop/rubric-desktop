@@ -2,6 +2,9 @@
 description: Keeps Rubric process docs up to date (PROGRESS, CHANGELOG, DECISIONS, REQUIREMENTS_TRACEABILITY, architecture docs)
 mode: subagent
 model: opencode/big-pickle
+skills:
+  - poteto-mode
+  - ponytail
 permissions:
   - action: edit
     resource: "*"

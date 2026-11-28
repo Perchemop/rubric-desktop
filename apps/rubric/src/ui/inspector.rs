@@ -13,7 +13,7 @@ use crate::domain::{
     BatesCorner, LayerError, MarkupKind, Project, ReviewStatus, Scale, StampPreset,
     MAX_BATES_DIGITS, MAX_BATES_START, MIN_BATES_DIGITS,
 };
-use crate::ui::app::{InspectorMode, UiState};
+use crate::ui::app::{InspectorMode, StatusKind, UiState};
 use crate::ui::icon_button::{eye_button, lock_button, triangle_button, TriangleDir};
 
 fn color32_to_domain(c: egui::Color32) -> Color {
@@ -89,7 +89,7 @@ pub(crate) fn draw_inspector(
             if let Some(doc) = project.active_mut() {
                 doc.add_layer("");
                 committed = true;
-                ui_state.status = "Layer added".to_string();
+                ui_state.set_status(StatusKind::Success, "Layer added");
             }
         }
         let layer_ids: Vec<Uuid> = project
@@ -113,11 +113,14 @@ pub(crate) fn draw_inspector(
                     if let Some(doc) = project.active_mut() {
                         if doc.set_layer_visible(id, !visible) {
                             committed = true;
-                            ui_state.status = if !visible {
-                                format!("Layer '{}' visible", layer.name)
-                            } else {
-                                format!("Layer '{}' hidden", layer.name)
-                            };
+                            ui_state.set_status(
+                                StatusKind::Success,
+                                if !visible {
+                                    format!("Layer '{}' visible", layer.name)
+                                } else {
+                                    format!("Layer '{}' hidden", layer.name)
+                                },
+                            );
                         }
                     }
                 }
@@ -127,11 +130,14 @@ pub(crate) fn draw_inspector(
                     if let Some(doc) = project.active_mut() {
                         if doc.set_layer_locked(id, !locked) {
                             committed = true;
-                            ui_state.status = if !locked {
-                                format!("Layer '{}' locked", layer.name)
-                            } else {
-                                format!("Layer '{}' unlocked", layer.name)
-                            };
+                            ui_state.set_status(
+                                StatusKind::Success,
+                                if !locked {
+                                    format!("Layer '{}' locked", layer.name)
+                                } else {
+                                    format!("Layer '{}' unlocked", layer.name)
+                                },
+                            );
                         }
                     }
                 }
@@ -153,9 +159,12 @@ pub(crate) fn draw_inspector(
                         if doc.rename_layer(id, &name) {
                             ui_state.layer_name_drafts.remove(&id);
                             committed = true;
-                            ui_state.status = format!("Layer renamed to '{}'", name.trim());
+                            ui_state.set_status(
+                                StatusKind::Success,
+                                format!("Layer renamed to '{}'", name.trim()),
+                            );
                         } else {
-                            ui_state.status = "Layer name cannot be empty".to_string();
+                            ui_state.set_status(StatusKind::Error, "Layer name cannot be empty");
                         }
                     }
                 }
@@ -172,7 +181,10 @@ pub(crate) fn draw_inspector(
                         if let Some(doc) = project.active_mut() {
                             if doc.move_layer_up(id) {
                                 committed = true;
-                                ui_state.status = format!("Layer '{}' moved up", layer.name);
+                                ui_state.set_status(
+                                    StatusKind::Success,
+                                    format!("Layer '{}' moved up", layer.name),
+                                );
                             }
                         }
                     }
@@ -185,7 +197,10 @@ pub(crate) fn draw_inspector(
                         if let Some(doc) = project.active_mut() {
                             if doc.move_layer_down(id) {
                                 committed = true;
-                                ui_state.status = format!("Layer '{}' moved down", layer.name);
+                                ui_state.set_status(
+                                    StatusKind::Success,
+                                    format!("Layer '{}' moved down", layer.name),
+                                );
                             }
                         }
                     }
@@ -195,14 +210,17 @@ pub(crate) fn draw_inspector(
                         match doc.remove_layer(id) {
                             Ok(()) => {
                                 committed = true;
-                                ui_state.status = "Layer removed".to_string();
+                                ui_state.set_status(StatusKind::Success, "Layer removed");
                             }
                             Err(LayerError::NotEmpty) => {
-                                ui_state.status =
-                                    "Layer not empty — move its markups first".to_string();
+                                ui_state.set_status(
+                                    StatusKind::Warning,
+                                    "Layer not empty — move its markups first",
+                                );
                             }
                             Err(LayerError::DefaultLayer) => {
-                                ui_state.status = "Cannot remove default layer".to_string();
+                                ui_state
+                                    .set_status(StatusKind::Error, "Cannot remove default layer");
                             }
                             Err(LayerError::NotFound) => {}
                         }
@@ -270,7 +288,8 @@ pub(crate) fn draw_inspector(
                         doc.touch();
                     }
                     committed = true;
-                    ui_state.status = format!("Scale → {}", scale.describe());
+                    ui_state
+                        .set_status(StatusKind::Success, format!("Scale → {}", scale.describe()));
                 }
             }
         });
@@ -301,7 +320,7 @@ pub(crate) fn draw_inspector(
                 doc.touch();
             }
             committed = true;
-            ui_state.status = format!("Unit → {}", scale.unit.name());
+            ui_state.set_status(StatusKind::Success, format!("Unit → {}", scale.unit.name()));
         }
 
         ui.separator();
@@ -321,7 +340,10 @@ pub(crate) fn draw_inspector(
         {
             project.touch();
             committed = true;
-            ui_state.status = format!("Precision → {}", project.settings.precision);
+            ui_state.set_status(
+                StatusKind::Success,
+                format!("Precision → {}", project.settings.precision),
+            );
         }
 
         ui.separator();
@@ -344,7 +366,7 @@ pub(crate) fn draw_inspector(
         });
         if ui.button("Apply custom").clicked() {
             if ui_state.scale_real_units <= 0.0 || ui_state.scale_paper_inches <= 0.0 {
-                ui_state.status = "Scale values must be positive".to_string();
+                ui_state.set_status(StatusKind::Error, "Scale values must be positive");
             } else {
                 let paper_pts = (ui_state.scale_paper_inches * 72.0).max(1.0);
                 let new_scale = Scale::from_ratio(scale.unit, ui_state.scale_real_units, paper_pts);
@@ -364,9 +386,12 @@ pub(crate) fn draw_inspector(
                         doc.touch();
                     }
                     committed = true;
-                    ui_state.status = format!("Scale → {}", new_scale.describe());
+                    ui_state.set_status(
+                        StatusKind::Success,
+                        format!("Scale → {}", new_scale.describe()),
+                    );
                 } else {
-                    ui_state.status = "Scale unchanged".to_string();
+                    ui_state.set_status(StatusKind::Info, "Scale unchanged");
 
                     ui.separator();
                     let page_count = project.active().map(|d| d.page_count()).unwrap_or(0);
@@ -384,7 +409,10 @@ pub(crate) fn draw_inspector(
                         if let Some(doc) = project.active_mut() {
                             let n = doc.apply_scale_to_all_pages(current_scale);
                             committed = true;
-                            ui_state.status = format!("Scale applied to {} pages", n);
+                            ui_state.set_status(
+                                StatusKind::Success,
+                                format!("Scale applied to {} pages", n),
+                            );
                         }
                     }
                 }
@@ -426,7 +454,7 @@ pub(crate) fn draw_inspector(
                 let resp_a = ui.text_edit_singleline(&mut author);
                 if resp_a.changed() {
                     project.settings.author = author;
-                    ui_state.status = "Author updated".to_string();
+                    ui_state.set_status(StatusKind::Success, "Author updated");
                     if resp_a.lost_focus() {
                         committed = true;
                     }
@@ -462,7 +490,10 @@ pub(crate) fn draw_inspector(
                                 )
                                 .clicked()
                             {
-                                ui_state.status = format!("Stamp tool → {}", preset.label());
+                                ui_state.set_status(
+                                    StatusKind::Success,
+                                    format!("Stamp tool → {}", preset.label()),
+                                );
                             }
                         }
                     });
@@ -515,10 +546,13 @@ pub(crate) fn draw_inspector(
                                     if let Some(doc) = project.active_mut() {
                                         doc.touch();
                                     }
-                                    ui_state.status = format!(
-                                        "Batch status → {} for {} markup(s)",
-                                        s.label(),
-                                        selected.len()
+                                    ui_state.set_status(
+                                        StatusKind::Success,
+                                        format!(
+                                            "Batch status → {} for {} markup(s)",
+                                            s.label(),
+                                            selected.len()
+                                        ),
                                     );
                                     committed = true;
                                 }
@@ -587,7 +621,10 @@ pub(crate) fn draw_inspector(
                                             && m.status != *s
                                         {
                                             m.status = *s;
-                                            ui_state.status = format!("Status → {}", s.label());
+                                            ui_state.set_status(
+                                                StatusKind::Success,
+                                                format!("Status → {}", s.label()),
+                                            );
                                             edited = true;
                                             committed = true;
                                         }
@@ -687,7 +724,10 @@ pub(crate) fn draw_inspector(
                                     m.style = m.style.with_stroke(preset.color());
                                     edited = true;
                                     committed = true;
-                                    ui_state.status = format!("Stamp → {}", preset.label());
+                                    ui_state.set_status(
+                                        StatusKind::Success,
+                                        format!("Stamp → {}", preset.label()),
+                                    );
                                 }
                             }
                         }
@@ -716,7 +756,10 @@ pub(crate) fn draw_inspector(
                                             if *id == default_id { None } else { Some(*id) };
                                         edited = true;
                                         committed = true;
-                                        ui_state.status = format!("Layer → {}", name);
+                                        ui_state.set_status(
+                                            StatusKind::Success,
+                                            format!("Layer → {}", name),
+                                        );
                                     }
                                 }
                             });
@@ -941,11 +984,14 @@ pub(crate) fn draw_inspector(
                         lock_changed = true;
                         edited = true;
                         committed = true;
-                        ui_state.status = if m.locked {
-                            "Markup locked".to_string()
-                        } else {
-                            "Markup unlocked".to_string()
-                        };
+                        ui_state.set_status(
+                            StatusKind::Success,
+                            if m.locked {
+                                "Markup locked".to_string()
+                            } else {
+                                "Markup unlocked".to_string()
+                            },
+                        );
                     }
                 });
 
@@ -955,7 +1001,10 @@ pub(crate) fn draw_inspector(
                         m.touch();
                         edited = true;
                         committed = true;
-                        ui_state.status = "Style set as default for markup kind".to_string();
+                        ui_state.set_status(
+                            StatusKind::Success,
+                            "Style set as default for markup kind",
+                        );
                         ui_state.default_styles.set_default(m.kind, m.style);
                     }
                 });
@@ -991,7 +1040,7 @@ pub(crate) fn draw_inspector(
 
         ui.collapsing("Comments", |ui| {
             if m.comments.is_empty() {
-                ui.small("No comments yet.");
+                ui.small("No comments yet. Select Add Comment…");
             } else {
                 for c in &m.comments {
                     ui.label(format!("{} · {}", c.author, c.created.format("%H:%M")));
@@ -1007,7 +1056,7 @@ pub(crate) fn draw_inspector(
                     let author = project.settings.author.clone();
                     if m.add_comment(author, comment_text.clone()).is_some() {
                         comment_text.clear();
-                        ui_state.status = "Comment added".to_string();
+                        ui_state.set_status(StatusKind::Success, "Comment added");
                         edited = true;
                         committed = true;
                     }
@@ -1078,7 +1127,7 @@ pub(crate) fn draw_inspector(
             let resp_a = ui.text_edit_singleline(&mut author);
             if resp_a.changed() {
                 project.settings.author = author;
-                ui_state.status = "Author updated".to_string();
+                ui_state.set_status(StatusKind::Success, "Author updated");
                 if resp_a.lost_focus() {
                     committed = true;
                 }
@@ -1276,7 +1325,10 @@ pub(crate) fn draw_inspector(
                         .selectable_value(&mut ui_state.active_stamp, *preset, preset.label())
                         .clicked()
                     {
-                        ui_state.status = format!("Stamp tool → {}", preset.label());
+                        ui_state.set_status(
+                            StatusKind::Success,
+                            format!("Stamp tool → {}", preset.label()),
+                        );
                     }
                 }
             });

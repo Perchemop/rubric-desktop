@@ -25,7 +25,7 @@ use uuid::Uuid;
 
 use crate::domain::{Color, Markup, MarkupKind, Project, StylePreset, StylePresetLibrary};
 
-use super::app::UiState;
+use super::app::{StatusKind, UiState};
 use super::theme::{to_color32, TEXT_CAPTION};
 
 // Session-only Drawing/Style mode per preset id. `true` = Drawing mode
@@ -136,7 +136,7 @@ pub(crate) fn draw_tool_chest(
             {
                 ui_state.recent_tools.clear();
                 set_recent_expanded(false);
-                ui_state.status = "Recent tools cleared".to_string();
+                ui_state.set_status(StatusKind::Success, "Recent tools cleared");
             }
             ui.label("Max");
             let mut max = ui_state.tool_chest_max_recents as i32;
@@ -260,9 +260,12 @@ pub(crate) fn draw_tool_chest(
                         if std::fs::write(&tmp, json.as_bytes()).is_ok()
                             && std::fs::rename(&tmp, &path).is_ok()
                         {
-                            ui_state.status = format!("Exported set to {}", path.display());
+                            ui_state.set_status(
+                                StatusKind::Success,
+                                format!("Exported set to {}", path.display()),
+                            );
                         } else {
-                            ui_state.status = "Export failed".to_string();
+                            ui_state.set_status(StatusKind::Error, "Export failed");
                         }
                     }
                 }
@@ -276,10 +279,13 @@ pub(crate) fn draw_tool_chest(
                 if let Ok(text) = std::fs::read_to_string(&path) {
                     match crate::domain::style_preset::import_set_json(library, &text) {
                         Ok(n) => {
-                            ui_state.status = format!("Imported {n} style(s)");
+                            ui_state
+                                .set_status(StatusKind::Success, format!("Imported {n} style(s)"));
                             persist_library(library);
                         }
-                        Err(e) => ui_state.status = format!("Import failed: {e}"),
+                        Err(e) => {
+                            ui_state.set_status(StatusKind::Error, format!("Import failed: {e}"))
+                        }
                     }
                 }
             }
@@ -294,10 +300,10 @@ pub(crate) fn draw_tool_chest(
             ui.add(egui::TextEdit::singleline(&mut d).desired_width(120.0));
             if ui.button("Save").clicked() {
                 if library.rename_set(id, d.clone()) {
-                    ui_state.status = "Set renamed".to_string();
+                    ui_state.set_status(StatusKind::Success, "Set renamed");
                     persist_library(library);
                 } else {
-                    ui_state.status = "Set name empty or duplicate".to_string();
+                    ui_state.set_status(StatusKind::Warning, "Set name empty or duplicate");
                 }
                 RENAME_SET.with(|c| *c.borrow_mut() = None);
             }
@@ -327,7 +333,7 @@ pub(crate) fn draw_tool_chest(
         ui.label(
             egui::RichText::new("Save a style below, then Apply it any time.")
                 .font(TEXT_CAPTION)
-                .color(egui::Color32::from_gray(120)),
+                .color(ui.visuals().weak_text_color()),
         );
     } else {
         let visible: Vec<StylePreset> = library
@@ -348,7 +354,7 @@ pub(crate) fn draw_tool_chest(
                     StylePresetLibrary::MAX_PRESETS
                 ))
                 .font(TEXT_CAPTION)
-                .color(egui::Color32::from_gray(120)),
+                .color(ui.visuals().weak_text_color()),
             );
         }
         ui.separator();
@@ -445,10 +451,13 @@ fn draw_preset_row(
             if is_armed_now {
                 set_armed(ui_state, preset, false);
             }
-            ui_state.status = format!(
-                "'{}' mode: {}",
-                preset.name,
-                if new_mode { "Drawing" } else { "Style" }
+            ui_state.set_status(
+                StatusKind::Success,
+                format!(
+                    "'{}' mode: {}",
+                    preset.name,
+                    if new_mode { "Drawing" } else { "Style" }
+                ),
             );
         }
         if preset.can_draw() {
@@ -514,7 +523,10 @@ fn draw_preset_row(
             {
                 ui_state.tool_chest_rename = None;
             }
-            ui_state.status = format!("Style '{}' deleted", preset.name);
+            ui_state.set_status(
+                StatusKind::Success,
+                format!("Style '{}' deleted", preset.name),
+            );
         }
     });
     project_mutated
@@ -541,7 +553,7 @@ fn draw_rename_editor(
         if ui.button("Save").clicked() {
             let new_name = draft.trim().to_string();
             if new_name.is_empty() {
-                ui_state.status = "Style name cannot be empty".to_string();
+                ui_state.set_status(StatusKind::Error, "Style name cannot be empty");
             } else if library.rename(preset.id, new_name.clone()) {
                 // Keep the armed copy in sync so the banner and the row
                 // agree on the new name.
@@ -553,10 +565,13 @@ fn draw_rename_editor(
                     armed.name = new_name.clone();
                 }
                 persist_library(library);
-                ui_state.status = format!("Style renamed to '{new_name}'");
+                ui_state.set_status(
+                    StatusKind::Success,
+                    format!("Style renamed to '{new_name}'"),
+                );
                 close = true;
             } else {
-                ui_state.status = "Style no longer exists".to_string();
+                ui_state.set_status(StatusKind::Error, "Style no longer exists");
                 close = true;
             }
         }
@@ -639,7 +654,7 @@ fn save_current_tool(
     library.save_named(StylePreset::from_style(name, kind, style, author));
     persist_library(library);
     ui_state.tool_chest_save_name.clear();
-    ui_state.status = format!("Style '{name}' saved");
+    ui_state.set_status(StatusKind::Success, format!("Style '{name}' saved"));
 }
 
 /// Capture the single selected markup as a named preset via
@@ -663,7 +678,7 @@ fn save_selected_markup(
         library.save_named(preset);
         persist_library(library);
         ui_state.tool_chest_save_name.clear();
-        ui_state.status = format!("Style '{name}' saved");
+        ui_state.set_status(StatusKind::Success, format!("Style '{name}' saved"));
     }
 }
 
@@ -676,7 +691,10 @@ fn save_selected_markup(
 fn set_armed(ui_state: &mut UiState, preset: &StylePreset, stop: bool) {
     if stop {
         ui_state.pending_style_preset = None;
-        ui_state.status = format!("Style '{}' stopped", preset.name);
+        ui_state.set_status(
+            StatusKind::Success,
+            format!("Style '{}' stopped", preset.name),
+        );
     } else {
         let drawing = drawing_mode_for(preset);
         let armed = if drawing {
@@ -685,11 +703,14 @@ fn set_armed(ui_state: &mut UiState, preset: &StylePreset, stop: bool) {
             preset.without_geometry()
         };
         ui_state.pending_style_preset = Some(armed);
-        ui_state.status = if drawing {
-            format!("'{}' active — next markup draws a duplicate", preset.name)
-        } else {
-            format!("'{}' active — next markup uses its style", preset.name)
-        };
+        ui_state.set_status(
+            StatusKind::Success,
+            if drawing {
+                format!("'{}' active — next markup draws a duplicate", preset.name)
+            } else {
+                format!("'{}' active — next markup uses its style", preset.name)
+            },
+        );
     }
 }
 
@@ -721,11 +742,14 @@ fn apply_preset_to_selection(
             doc.touch();
         }
     }
-    ui_state.status = if changed == 0 {
-        "No editable markups selected".to_string()
-    } else {
-        format!("'{}' applied to {changed} markup(s)", preset.name)
-    };
+    ui_state.set_status(
+        StatusKind::Success,
+        if changed == 0 {
+            "No editable markups selected".to_string()
+        } else {
+            format!("'{}' applied to {changed} markup(s)", preset.name)
+        },
+    );
     changed > 0
 }
 
@@ -811,10 +835,13 @@ fn draw_recent_row(
             if is_armed_now {
                 set_armed(ui_state, preset, false);
             }
-            ui_state.status = format!(
-                "'{}' mode: {}",
-                preset.name,
-                if new_mode { "Drawing" } else { "Style" }
+            ui_state.set_status(
+                StatusKind::Success,
+                format!(
+                    "'{}' mode: {}",
+                    preset.name,
+                    if new_mode { "Drawing" } else { "Style" }
+                ),
             );
         }
         if preset.can_draw() {

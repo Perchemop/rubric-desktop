@@ -29,6 +29,7 @@ pub mod pages;
 pub mod panel_access_bar;
 pub mod panel_manager;
 pub mod panel_shortcuts;
+pub mod profile_applicator;
 pub mod profile_manager_dialog;
 pub mod quantities_panel;
 pub mod release_notes;

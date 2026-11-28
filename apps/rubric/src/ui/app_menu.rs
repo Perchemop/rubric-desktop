@@ -548,30 +548,27 @@ pub(crate) fn draw_menu_bar(app: &mut RubricApp, ui: &mut Ui) {
             });
         });
         ui.menu_button("Profiles", |ui| {
-            // Predefined profiles (★) and custom profiles (👤) would be
-            // populated from the ProfileStore (domain-dev) once available.
-            // Placeholder list keeps the menu functional and compilable.
-            let profiles: Vec<(&str, bool)> = vec![
-                ("Default", true),
-                ("Review", true),
-                ("Measurement", true),
-                ("Markup", true),
-            ];
-            for (name, predefined) in &profiles {
-                let icon = if *predefined { "★" } else { "👤" };
-                let label = format!("{} {}", icon, name);
-                let resp = ui.button(&label);
-                resp.clone().on_hover_text(format!(
-                    "{} — {} profile. Layout: panels, toolbars, theme, measurement defaults.",
-                    name,
-                    if *predefined { "predefined" } else { "custom" }
-                ));
-                if resp.clicked() {
-                    // Profile application via ProfileApplicator (to be wired).
+            // Real saved profiles from the ProfileStore. Names only — no
+            // glyph column, no fake predefined list. Applying goes through
+            // the existing ProfileApplicator path (apply_profile).
+            let names: Vec<String> = app
+                .profile_store
+                .list_profiles()
+                .map(|v| v.into_iter().map(|s| s.name).collect())
+                .unwrap_or_default();
+            for name in &names {
+                if ui.button(name).clicked() {
+                    if let Ok(profile) = app.profile_store.load_profile(name) {
+                        let _ = app.apply_profile(ui.ctx(), &profile);
+                        app.active_profile = name.clone();
+                        app.save_app_prefs();
+                    }
                     ui.close();
                 }
             }
-            ui.separator();
+            if !names.is_empty() {
+                ui.separator();
+            }
             if ui.button("Manage Profiles…").clicked() {
                 crate::ui::profile_manager_dialog::open(ui.ctx());
                 ui.close();

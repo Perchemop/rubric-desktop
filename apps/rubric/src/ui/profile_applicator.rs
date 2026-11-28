@@ -1,22 +1,16 @@
 //! Apply a profile to the application UI state.
 
-use crate::domain::profile::{Profile, Theme};
+use crate::domain::profile::Profile;
 use crate::ui::app::RubricApp;
-use anyhow::Result;
 
 impl RubricApp {
     /// Apply a complete profile to the application state.
-    pub fn apply_profile(&mut self, profile: &Profile) -> anyhow::Result<()> {
+    pub fn apply_profile(&mut self, ctx: &egui::Context, profile: &Profile) -> anyhow::Result<()> {
         // Apply theme override
-        if let Some(theme) = profile.ui_layout.theme_override {
-            self.apply_theme(theme)?;
+        if let Some(theme) = profile.theme_override {
+            self.set_theme(ctx, theme);
         }
 
-        Ok(())
-    }
-
-    fn apply_theme(&mut self, theme: Theme) -> anyhow::Result<()> {
-        self.set_theme(theme);
         Ok(())
     }
 }

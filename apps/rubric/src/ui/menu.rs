@@ -15,7 +15,7 @@ use crate::domain::project;
 use crate::domain::{
     markup::ReviewStatus, takeoff::ConditionKind, units::MeasureKind, EditorAction, Tool,
 };
-use crate::ui::app::UiState;
+use crate::ui::app::{StatusKind, UiState};
 
 /// Menu label for a tool. `Select` has no markup kind, so it is named
 /// explicitly; every other tool uses its kind label.
@@ -195,7 +195,7 @@ pub(crate) fn draw_editor_context_menu(
             };
             if ui.selectable_label(selected, text).clicked() {
                 ui_state.active_tool = tool;
-                ui_state.status = format!("Tool: {}", tool_label(tool));
+                ui_state.set_status(StatusKind::Info, format!("Tool: {}", tool_label(tool)));
                 ui.close();
             }
         }

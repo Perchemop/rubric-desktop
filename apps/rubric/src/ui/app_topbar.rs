@@ -5,6 +5,7 @@
 use eframe::egui::{self, Align, Ui};
 
 use crate::ui::app::{RubricApp, StatusKind};
+use crate::ui::app_status::severity_text_color;
 use crate::ui::icon_button::{triangle_button, TriangleDir};
 use crate::ui::toolbar;
 
@@ -109,19 +110,21 @@ pub(crate) fn draw_top_bar(app: &mut RubricApp, ui: &mut Ui) {
             }
 
             // Toast notification (UI audit P1-1-b): transient, auto-clears after 3s.
-            if let Some((kind, msg, instant)) = &app.toast {
+            if let Some(toast) = &mut app.toast {
+                let (kind, msg, instant) = toast;
                 let age = instant.elapsed().as_secs_f32();
-                let show = age < 3.0;
-                let alpha = if show { 1.0 - (age / 3.0) } else { 0.0 };
-                if alpha > 0.0 {
-                    let toast_color = match kind {
-                        StatusKind::Info => ui.visuals().text_color(),
-                        StatusKind::Success => egui::Color32::from_rgb(76, 175, 80),
-                        StatusKind::Warning => egui::Color32::from_rgb(255, 152, 0),
-                        StatusKind::Error => egui::Color32::from_rgb(229, 57, 53),
+                if age >= RubricApp::TOAST_DURATION_SECS {
+                    app.toast = None;
+                } else {
+                    let prefixed = match kind {
+                        StatusKind::Info => msg.clone(),
+                        StatusKind::Success => format!("Success: {}", msg),
+                        StatusKind::Warning => format!("Warning: {}", msg),
+                        StatusKind::Error => format!("Error: {}", msg),
                     };
+                    let toast_color = severity_text_color(*kind, ui);
                     ui.add(egui::Label::new(
-                        egui::RichText::new(msg.clone()).color(toast_color),
+                        egui::RichText::new(prefixed).color(toast_color),
                     ));
                 }
             }

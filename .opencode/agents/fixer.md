@@ -2,6 +2,9 @@
 description: Fixes Rubric build-gate failures (compile errors, clippy warnings, fmt diffs) reported by CI or the parent agent
 mode: subagent
 model: opencode/glm-5.3-flash-free#high
+skills:
+  - poteto-mode
+  - ponytail
 permissions:
   - action: edit
     resource: "*"

@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::domain::takeoff::{quantity_rows, ConditionKind, QuantityRow};
 use crate::domain::Project;
-use crate::ui::app::UiState;
+use crate::ui::app::{StatusKind, UiState};
 
 /// An action requested by the quantities panel.
 ///
@@ -105,7 +105,6 @@ fn draw_quantity_row(
 ) -> Option<QuantityAction> {
     let is_unassigned = row.condition.id.is_nil();
     let selected = state.selected.contains(&row.condition.id);
-    let dark = ui.visuals().dark_mode;
 
     ui.horizontal(|ui| {
         ui.add_space(4.0);
@@ -118,11 +117,7 @@ fn draw_quantity_row(
         ui.painter().rect_stroke(
             rect,
             2.0,
-            egui::Stroke::new(1.0, if dark {
-                egui::Color32::WHITE
-            } else {
-                egui::Color32::BLACK
-            }.gamma_multiply(0.3)),
+            ui.visuals().widgets.inactive.bg_stroke,
             egui::StrokeKind::Middle,
         );
 
@@ -131,7 +126,7 @@ fn draw_quantity_row(
             ui.painter().rect_filled(
                 rect,
                 2.0,
-                egui::Color32::from_black_alpha(80),
+                ui.visuals().selection.bg_fill.gamma_multiply(0.35),
             );
         }
 
@@ -207,7 +202,7 @@ fn draw_quantity_row(
                 .on_hover_text(tooltip)
                 .clicked()
             {
-                state.status = "Mixed units — total shown in project default unit".to_string();
+                state.set_status(StatusKind::Info, "Mixed units — total shown in project default unit");
             }
         }
 
@@ -267,10 +262,13 @@ fn select_markups(project: &Project, condition_id: Uuid, is_unassigned: bool, st
     }
 
     if count > 0 {
-        state.status = format!(
-            "Selected {} markup{}",
-            count,
-            if count == 1 { "" } else { "s" }
+        state.set_status(
+            StatusKind::Info,
+            format!(
+                "Selected {} markup{}",
+                count,
+                if count == 1 { "" } else { "s" }
+            ),
         );
         // R-17: jump to the first contributor's page (same contract as the
         // Markups List rows). The panel owns session UI state directly.
@@ -289,7 +287,7 @@ fn export_quantities_csv(project: &Project, state: &mut UiState) {
     // Gate: only export when there are real conditions (not just Unassigned)
     let has_conditions = rows.iter().any(|r| !r.condition.id.is_nil());
     if !has_conditions {
-        state.status = "No takeoff conditions to export".to_string();
+        state.set_status(StatusKind::Warning, "No takeoff conditions to export");
         return;
     }
 
@@ -302,13 +300,16 @@ fn export_quantities_csv(project: &Project, state: &mut UiState) {
     };
 
     if let Err(e) = write_quantities_csv(&path, &rows) {
-        state.status = format!("Export failed: {e}");
+        state.set_status(StatusKind::Error, format!("Export failed: {e}"));
     } else {
-        state.status = format!(
-            "Quantities exported to {}",
-            path.file_name()
-                .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_else(|| "unknown".to_string())
+        state.set_status(
+            StatusKind::Success,
+            format!(
+                "Quantities exported to {}",
+                path.file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "unknown".to_string())
+            ),
         );
     }
 }

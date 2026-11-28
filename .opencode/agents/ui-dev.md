@@ -2,6 +2,9 @@
 description: Implements Rubric UI slices in egui/eframe (canvas, toolbar, inspector, app shell) on top of the domain layer
 mode: subagent
 model: opencode/beam-free#high
+skills:
+  - poteto-mode
+  - ponytail
 permissions:
   - action: edit
     resource: "*"

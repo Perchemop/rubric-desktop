@@ -104,18 +104,31 @@ pub(crate) fn draw_pages(
 
                     let thumb_rect = Rect::from_min_size(rect.min, Vec2::new(cell_w, thumb_h));
                     let is_current = index == current_page;
+                    // A failed thumbnail is visually distinct from a pending one:
+                    // error-tinted stroke + faint fill instead of the neutral
+                    // placeholder look.
+                    let page_failed = source_pdf.is_some_and(|path| {
+                        let key = RenderKey {
+                            pdf_id: path.display().to_string(),
+                            page: index,
+                            width_px: THUMB_WIDTH_PX,
+                        };
+                        cache.failed.contains(&key.to_string())
+                    });
                     let stroke = if is_current {
                         egui::Stroke::new(2.0, ui.visuals().selection.bg_fill)
+                    } else if page_failed {
+                        egui::Stroke::new(1.0, ui.visuals().error_fg_color)
                     } else {
                         egui::Stroke::new(1.0, ui.visuals().widgets.inactive.bg_fill)
                     };
-                    ui.painter().rect(
-                        thumb_rect,
-                        3.0,
-                        ui.visuals().extreme_bg_color,
-                        stroke,
-                        StrokeKind::Middle,
-                    );
+                    let fill = if page_failed {
+                        ui.visuals().faint_bg_color
+                    } else {
+                        ui.visuals().extreme_bg_color
+                    };
+                    ui.painter()
+                        .rect(thumb_rect, 3.0, fill, stroke, StrokeKind::Middle);
 
                     // Rendered preview when the project is backed by a PDF; otherwise a
                     // numbered placeholder, which is honest about there being no image.
@@ -150,13 +163,23 @@ pub(crate) fn draw_pages(
                             }
                             None => {
                                 let centre = thumb_rect.center();
-                                ui.painter().text(
-                                    centre,
-                                    egui::Align2::CENTER_CENTER,
-                                    format!("{}", index + 1),
-                                    FontId::proportional(thumb_h * 0.45),
-                                    ui.visuals().text_color(),
-                                );
+                                if page_failed {
+                                    ui.painter().text(
+                                        centre,
+                                        egui::Align2::CENTER_CENTER,
+                                        "Failed",
+                                        FontId::proportional(thumb_h * 0.25),
+                                        ui.visuals().error_fg_color,
+                                    );
+                                } else {
+                                    ui.painter().text(
+                                        centre,
+                                        egui::Align2::CENTER_CENTER,
+                                        format!("{}", index + 1),
+                                        FontId::proportional(thumb_h * 0.45),
+                                        ui.visuals().text_color(),
+                                    );
+                                }
                             }
                         }
                     }
@@ -177,6 +200,11 @@ pub(crate) fn draw_pages(
                         FontId::proportional(11.0),
                         caption_colour,
                     );
+                    if page_failed {
+                        response.clone().on_hover_text(
+                            "Thumbnail failed to render. It retries when the page is shown again.",
+                        );
+                    }
                     if response.clicked() && !is_current {
                         jumped = Some(index);
                         ui.ctx().request_repaint();

@@ -10,6 +10,7 @@ use crate::domain::geom::Pt;
 use crate::domain::markup::Markup;
 use crate::domain::{ruler_ticks, Grid, Page, Rect as DRect, Scale};
 use crate::ui::canvas_geom::{screen_rect_page_rotated, to_screen, to_screen_rotated};
+use crate::ui::theme::ACCENT;
 
 /// Draw a small dark measurement badge with white text at `anchor` (screen
 /// space). Used for measurement labels and the running count total.
@@ -271,7 +272,7 @@ pub(crate) fn draw_minimap(
     painter.rect_stroke(
         viewport_minimap,
         1.0,
-        Stroke::new(1.0, Color32::from_rgb(228, 87, 46)),
+        Stroke::new(1.0, ACCENT),
         StrokeKind::Middle,
     );
     painter.rect_filled(
