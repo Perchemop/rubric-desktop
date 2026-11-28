@@ -7,12 +7,12 @@
 //! > **Note:** The `keyboard.rs` module is pure Rust — no egui RenderContext
 //!   or OS input is needed. Tests can run on any CI runner.
 
+use egui::Modifiers as EguiModifiers;
 use ui_egui::keyboard::{
     DialogAction, FocusRingProperties, GanttAction, GanttJump, GlobalShortcut, InspectorAction,
     KeyPress, KeyboardError, ResourcesAction, TableAction, ViewEvent, event_label,
     resolve_global_shortcut,
 };
-use egui::Modifiers as EguiModifiers;
 
 #[test]
 fn test_resolve_f1_help() {
