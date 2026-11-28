@@ -86,7 +86,11 @@ are not the same as the serde defaults for every field.
             "markups_list",
             "properties",
             "stamps",
-            "measurements"
+            "measurements",
+            "quantities",
+            "pages",
+            "tools",
+            "inspector"
           ]
         },
         {

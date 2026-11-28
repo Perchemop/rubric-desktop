@@ -1065,10 +1065,11 @@ mod tests {
 
     #[test]
     fn get_command_exists() {
-        let cmd = get_command("select");
+        // Registry ids are the short forms from `docs/toolbar-command-reference.md`.
+        let cmd = get_command(icon::SELECT);
         assert!(cmd.is_some());
         let cmd = cmd.unwrap();
-        assert_eq!(cmd.id, "select");
+        assert_eq!(cmd.id, icon::SELECT);
         assert_eq!(cmd.name, "Select");
     }
 
@@ -1097,13 +1098,13 @@ mod tests {
             10
         );
 
-        // Markup Tools: 15 commands
+        // Markup Tools: 16 commands (includes Stamp Preset)
         assert_eq!(
             by_cat
                 .get(&CommandCategory::MarkupTools)
                 .map(|v| v.len())
                 .unwrap_or(0),
-            15
+            16
         );
 
         // Measurement Tools: 9 commands
@@ -1165,7 +1166,7 @@ mod tests {
     fn get_commands_for_category_test() {
         let cmds = get_commands_for_category(CommandCategory::SelectionNavigation);
         assert_eq!(cmds.len(), 10);
-        assert!(cmds.iter().any(|c| c.0 == "select"));
+        assert!(cmds.iter().any(|c| c.0 == icon::SELECT));
         assert!(cmds.iter().any(|c| c.0 == "pan"));
     }
 
@@ -1173,7 +1174,7 @@ mod tests {
     fn get_all_command_ids_test() {
         let all_ids = get_all_command_ids();
         assert_eq!(all_ids.len(), 70);
-        assert!(all_ids.iter().any(|c| c.0 == "select"));
+        assert!(all_ids.iter().any(|c| c.0 == icon::SELECT));
         assert!(all_ids.iter().any(|c| c.0 == "save"));
     }
 
@@ -1198,10 +1199,10 @@ mod tests {
 
     #[test]
     fn cmd_info_from_registry() {
-        let info = get_command("length").unwrap();
-        assert_eq!(info.id, "length");
+        let info = get_command(icon::LENGTH).unwrap();
+        assert_eq!(info.id, icon::LENGTH);
         assert_eq!(info.name, "Length");
-        assert_eq!(info.icon, "ln");
+        assert_eq!(info.icon, icon::LENGTH);
         assert_eq!(info.shortcut, "1");
         assert_eq!(info.category, CommandCategory::MeasurementTools);
     }

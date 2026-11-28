@@ -132,10 +132,12 @@ described in section 5 rather than editing the version field by hand.
         "properties",
         "stamps",
         "measurements",
-        "bookmarks",
-        "status"
+        "quantities",
+        "pages",
+        "tools",
+        "inspector"
       ],
-      "description": "Stable identifier for a dockable panel."
+      "description": "Stable identifier for a dockable panel. Extension panels use any other non-empty string (PanelId::Other in source)."
     },
     "panels": {
       "type": "object",

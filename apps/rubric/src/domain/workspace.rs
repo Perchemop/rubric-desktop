@@ -12,8 +12,16 @@ use thiserror::Error;
 /// Panel identifiers that can be docked, floated, or closed.
 ///
 /// Extensible for future plugins via the `Other(String)` variant.
+///
+/// Serialised as a plain JSON string (snake_case for the built-in panels, the
+/// extension name for the extensible variant — see
+/// `docs/panel-layout-schema.md`) so `PanelId` is always a valid JSON object
+/// key for `BTreeMap<PanelId, _>` fields of `WorkspaceState`. The previous
+/// `untagged` representation serialised unit variants as `null`, which
+/// serde_json rejects as a map key ("key must be a string") and which made
+/// every unit variant deserialise back as the first declared variant.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case", untagged)]
+#[serde(from = "String", into = "String")]
 pub enum PanelId {
     /// Page Thumbnails panel.
     Thumbnails,
@@ -39,6 +47,49 @@ pub enum PanelId {
     Inspector,
     /// Extensible variant for plugin panels or future additions.
     Other(String),
+}
+
+impl From<PanelId> for String {
+    fn from(id: PanelId) -> Self {
+        match id {
+            PanelId::Thumbnails => "thumbnails".to_string(),
+            PanelId::Layers => "layers".to_string(),
+            PanelId::ToolChest => "tool_chest".to_string(),
+            PanelId::MarkupsList => "markups_list".to_string(),
+            PanelId::Properties => "properties".to_string(),
+            PanelId::Stamps => "stamps".to_string(),
+            PanelId::Measurements => "measurements".to_string(),
+            PanelId::Quantities => "quantities".to_string(),
+            PanelId::Pages => "pages".to_string(),
+            PanelId::Tools => "tools".to_string(),
+            PanelId::Inspector => "inspector".to_string(),
+            // Extension identifiers serialise as their bare name, matching
+            // `docs/panel-layout-schema.md` (any non-empty string outside the
+            // built-in identifiers is an extension panel id).
+            PanelId::Other(name) => name,
+        }
+    }
+}
+
+impl From<String> for PanelId {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "thumbnails" => PanelId::Thumbnails,
+            "layers" => PanelId::Layers,
+            "tool_chest" => PanelId::ToolChest,
+            "markups_list" => PanelId::MarkupsList,
+            "properties" => PanelId::Properties,
+            "stamps" => PanelId::Stamps,
+            "measurements" => PanelId::Measurements,
+            "quantities" => PanelId::Quantities,
+            "pages" => PanelId::Pages,
+            "tools" => PanelId::Tools,
+            "inspector" => PanelId::Inspector,
+            // Unrecognised identifiers (future/foreign files) keep their name
+            // in the extensible variant rather than failing to load.
+            unknown => PanelId::Other(unknown.to_string()),
+        }
+    }
 }
 
 impl std::fmt::Display for PanelId {
@@ -371,6 +422,55 @@ mod tests {
         let json = serde_json::to_string(&ws).expect("serialize");
         let back: WorkspaceState = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, ws);
+    }
+
+    /// Regression: the previous `untagged` representation serialised unit
+    /// variants as `null`, which serde_json rejects as an object key
+    /// ("key must be a string") and which deserialised every unit variant
+    /// back as the first declared variant (`Thumbnails`).
+    #[test]
+    fn panel_id_is_a_valid_json_map_key() {
+        let mut region = BTreeMap::new();
+        region.insert(PanelId::Properties, Region::Right);
+        region.insert(PanelId::Layers, Region::Left);
+        let json = serde_json::to_string(&region).expect("PanelId keys must serialise");
+        assert!(json.contains("\"properties\""), "unexpected JSON: {json}");
+        let back: BTreeMap<PanelId, Region> = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.get(&PanelId::Properties), Some(&Region::Right));
+        assert_eq!(back.get(&PanelId::Layers), Some(&Region::Left));
+        assert_eq!(back.get(&PanelId::Thumbnails), None);
+    }
+
+    /// Regression: unit variants must round-trip to themselves, not collapse
+    /// into the first variant of the enum.
+    #[test]
+    fn panel_id_unit_variants_roundtrip_distinctly() {
+        for id in [
+            PanelId::Thumbnails,
+            PanelId::Layers,
+            PanelId::ToolChest,
+            PanelId::MarkupsList,
+            PanelId::Properties,
+            PanelId::Stamps,
+            PanelId::Measurements,
+            PanelId::Quantities,
+            PanelId::Pages,
+            PanelId::Tools,
+            PanelId::Inspector,
+        ] {
+            let json = serde_json::to_string(&id).expect("serialise");
+            let back: PanelId = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back, id, "round-trip changed {json}");
+        }
+    }
+
+    #[test]
+    fn panel_id_other_roundtrips_through_string() {
+        let id = PanelId::Other("bookmarks".to_string());
+        let json = serde_json::to_string(&id).expect("serialise");
+        assert_eq!(json, "\"bookmarks\"");
+        let back: PanelId = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, id);
     }
 
     #[test]
