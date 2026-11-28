@@ -113,10 +113,13 @@ pub(crate) fn draw_inspector(
                     if let Some(doc) = project.active_mut() {
                         if doc.set_layer_visible(id, !visible) {
                             committed = true;
-                            ui_state.set_status(StatusKind::Success, if !visible {
-                                format!("Layer '{}' visible", layer.name)
-                            } else {
-                                format!("Layer '{}' hidden", layer.name)
+                            ui_state.set_status(
+                                StatusKind::Success,
+                                if !visible {
+                                    format!("Layer '{}' visible", layer.name)
+                                } else {
+                                    format!("Layer '{}' hidden", layer.name)
+                                },
                             );
                         }
                     }
@@ -127,10 +130,13 @@ pub(crate) fn draw_inspector(
                     if let Some(doc) = project.active_mut() {
                         if doc.set_layer_locked(id, !locked) {
                             committed = true;
-                            ui_state.set_status(StatusKind::Success, if !locked {
-                                format!("Layer '{}' locked", layer.name)
-                            } else {
-                                format!("Layer '{}' unlocked", layer.name)
+                            ui_state.set_status(
+                                StatusKind::Success,
+                                if !locked {
+                                    format!("Layer '{}' locked", layer.name)
+                                } else {
+                                    format!("Layer '{}' unlocked", layer.name)
+                                },
                             );
                         }
                     }
@@ -943,10 +949,13 @@ pub(crate) fn draw_inspector(
                         lock_changed = true;
                         edited = true;
                         committed = true;
-                        ui_state.set_status(StatusKind::Success, if m.locked {
-                            "Markup locked".to_string()
-                        } else {
-                            "Markup unlocked".to_string()
+                        ui_state.set_status(
+                            StatusKind::Success,
+                            if m.locked {
+                                "Markup locked".to_string()
+                            } else {
+                                "Markup unlocked".to_string()
+                            },
                         );
                     }
                 });

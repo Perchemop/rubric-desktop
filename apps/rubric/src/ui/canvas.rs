@@ -1933,7 +1933,10 @@ pub(crate) fn draw_canvas(
                     }
                     let n = ui_state.selected.len();
                     if n > 0 {
-                        ui_state.set_status(super::app::StatusKind::Info, format!("Selected {} markup{}", n, if n == 1 { "" } else { "s" }));
+                        ui_state.set_status(
+                            super::app::StatusKind::Info,
+                            format!("Selected {} markup{}", n, if n == 1 { "" } else { "s" }),
+                        );
                     } else {
                         ui_state.set_status(super::app::StatusKind::Info, "Nothing selected");
                     }

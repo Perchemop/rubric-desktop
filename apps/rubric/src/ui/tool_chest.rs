@@ -686,10 +686,13 @@ fn set_armed(ui_state: &mut UiState, preset: &StylePreset, stop: bool) {
             preset.without_geometry()
         };
         ui_state.pending_style_preset = Some(armed);
-        ui_state.set_status(StatusKind::Success, if drawing {
-            format!("'{}' active — next markup draws a duplicate", preset.name)
-        } else {
-            format!("'{}' active — next markup uses its style", preset.name)
+        ui_state.set_status(
+            StatusKind::Success,
+            if drawing {
+                format!("'{}' active — next markup draws a duplicate", preset.name)
+            } else {
+                format!("'{}' active — next markup uses its style", preset.name)
+            },
         );
     }
 }
@@ -722,10 +725,13 @@ fn apply_preset_to_selection(
             doc.touch();
         }
     }
-    ui_state.set_status(StatusKind::Success, if changed == 0 {
-        "No editable markups selected".to_string()
-    } else {
-        format!("'{}' applied to {changed} markup(s)", preset.name)
+    ui_state.set_status(
+        StatusKind::Success,
+        if changed == 0 {
+            "No editable markups selected".to_string()
+        } else {
+            format!("'{}' applied to {changed} markup(s)", preset.name)
+        },
     );
     changed > 0
 }
