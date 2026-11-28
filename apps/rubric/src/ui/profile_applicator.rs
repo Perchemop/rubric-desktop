@@ -1,7 +1,6 @@
 //! Apply a profile to the application UI state.
 
 use crate::domain::profile::Profile;
-use crate::domain::Theme;
 use crate::ui::app::RubricApp;
 
 impl RubricApp {
