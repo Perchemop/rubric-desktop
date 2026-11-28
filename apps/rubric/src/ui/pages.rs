@@ -107,15 +107,14 @@ pub(crate) fn draw_pages(
                     // A failed thumbnail is visually distinct from a pending one:
                     // error-tinted stroke + faint fill instead of the neutral
                     // placeholder look.
-                    let page_failed = source_pdf
-            .is_some_and(|path| {
-                let key = RenderKey {
-                    pdf_id: path.display().to_string(),
-                    page: index,
-                    width_px: THUMB_WIDTH_PX,
-                };
-                cache.failed.contains(&key.to_string())
-            });
+                    let page_failed = source_pdf.is_some_and(|path| {
+                        let key = RenderKey {
+                            pdf_id: path.display().to_string(),
+                            page: index,
+                            width_px: THUMB_WIDTH_PX,
+                        };
+                        cache.failed.contains(&key.to_string())
+                    });
                     let stroke = if is_current {
                         egui::Stroke::new(2.0, ui.visuals().selection.bg_fill)
                     } else if page_failed {
