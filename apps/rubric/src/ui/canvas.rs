@@ -56,7 +56,10 @@ fn creation_allowed(project: &Project, ui_state: &mut super::app::UiState) -> bo
         .is_some_and(|l| l.locked);
     let allowed = has_document && !locked;
     if has_document && locked {
-        ui_state.set_status(super::app::StatusKind::Warning, "Layer locked — new markups cannot be created");
+        ui_state.set_status(
+            super::app::StatusKind::Warning,
+            "Layer locked — new markups cannot be created",
+        );
     }
     allowed
 }
@@ -950,7 +953,8 @@ pub(crate) fn draw_canvas(
                                     failed_page_textures.insert(attempt_key.clone());
                                     let msg = format!("PDF background unavailable: {e}");
                                     if bg_error.as_ref() != Some(&msg) {
-                                        ui_state.set_status(super::app::StatusKind::Error, msg.clone());
+                                        ui_state
+                                            .set_status(super::app::StatusKind::Error, msg.clone());
                                         *bg_error = Some(msg);
                                     }
                                 }
@@ -1821,10 +1825,16 @@ pub(crate) fn draw_canvas(
                             // Shift+click toggles selection without clearing.
                             if ui_state.selected.contains(&id) {
                                 ui_state.selected.remove(&id);
-                                ui_state.set_status(super::app::StatusKind::Info, format!("Selected {} markup(s)", ui_state.selected.len()));
+                                ui_state.set_status(
+                                    super::app::StatusKind::Info,
+                                    format!("Selected {} markup(s)", ui_state.selected.len()),
+                                );
                             } else {
                                 ui_state.selected.insert(id);
-                                ui_state.set_status(super::app::StatusKind::Info, format!("Selected {} markup(s)", ui_state.selected.len()));
+                                ui_state.set_status(
+                                    super::app::StatusKind::Info,
+                                    format!("Selected {} markup(s)", ui_state.selected.len()),
+                                );
                             }
                         } else {
                             ui_state.selected.clear();
@@ -1870,7 +1880,10 @@ pub(crate) fn draw_canvas(
                             };
                             if kind_ok {
                                 if !editable {
-                                    ui_state.set_status(super::app::StatusKind::Warning, "Locked layer — edits disabled");
+                                    ui_state.set_status(
+                                        super::app::StatusKind::Warning,
+                                        "Locked layer — edits disabled",
+                                    );
                                 } else if !visible {
                                     // not pickable when hidden; nothing to do
                                 } else {
@@ -1880,7 +1893,8 @@ pub(crate) fn draw_canvas(
                                         text: original,
                                         focus_requested: false,
                                     });
-                                    ui_state.set_status(super::app::StatusKind::Info, "Editing text");
+                                    ui_state
+                                        .set_status(super::app::StatusKind::Info, "Editing text");
                                 }
                             }
                         }
@@ -1984,7 +1998,10 @@ pub(crate) fn draw_canvas(
                             crate::ui::tool_chest::record_recent(ui_state, &m);
                             doc.add_markup(m);
                         }
-                        ui_state.set_status(super::app::StatusKind::Success, format!("Placed '{}'", preset.name));
+                        ui_state.set_status(
+                            super::app::StatusKind::Success,
+                            format!("Placed '{}'", preset.name),
+                        );
                         mutated = true;
                     }
                 } else if is_path_kind(kind) {
@@ -2011,7 +2028,10 @@ pub(crate) fn draw_canvas(
                                 crate::ui::tool_chest::record_recent(ui_state, &m);
                                 doc.add_markup(m);
                             }
-                            ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
+                            ui_state.set_status(
+                                super::app::StatusKind::Success,
+                                format!("Added {}", kind.label()),
+                            );
                             mutated = true;
                         }
                         *draw_state = super::app::DrawState::Idle;
@@ -2059,7 +2079,10 @@ pub(crate) fn draw_canvas(
                                     crate::ui::tool_chest::record_recent(ui_state, &m);
                                     doc.add_markup(m);
                                 }
-                                ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
+                                ui_state.set_status(
+                                    super::app::StatusKind::Success,
+                                    format!("Added {}", kind.label()),
+                                );
                                 mutated = true;
                             }
                             *draw_state = super::app::DrawState::Idle;
@@ -2150,7 +2173,10 @@ pub(crate) fn draw_canvas(
                         crate::ui::tool_chest::record_recent(ui_state, &m);
                         doc.add_markup(m);
                     }
-                    ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
+                    ui_state.set_status(
+                        super::app::StatusKind::Success,
+                        format!("Added {}", kind.label()),
+                    );
                     mutated = true;
                     if is_text {
                         ui_state.text_edit = Some(super::app::TextEditState {
@@ -2164,7 +2190,10 @@ pub(crate) fn draw_canvas(
                     if kind == MarkupKind::Note {
                         ui_state.note_popover = Some(new_id);
                         ui_state.note_draft.clear();
-                        ui_state.set_status(super::app::StatusKind::Success, "Note added — add a comment");
+                        ui_state.set_status(
+                            super::app::StatusKind::Success,
+                            "Note added — add a comment",
+                        );
                     }
                 }
             } else if ui_state.active_tool == Tool::Calibrate {
@@ -2189,7 +2218,10 @@ pub(crate) fn draw_canvas(
                             // A zero-length reference calibrates nothing:
                             // cancel without a snapshot.
                             *draw_state = super::app::DrawState::Idle;
-                            ui_state.set_status(super::app::StatusKind::Warning, "Calibration cancelled — segment too short");
+                            ui_state.set_status(
+                                super::app::StatusKind::Warning,
+                                "Calibration cancelled — segment too short",
+                            );
                         } else {
                             let measured = page.scale.points_to_units(f64::from(len));
                             ui_state.calibration = Some(super::app::CalibrationDialog {
@@ -2199,7 +2231,10 @@ pub(crate) fn draw_canvas(
                                 unit: page.scale.unit,
                             });
                             *draw_state = super::app::DrawState::Idle;
-                            ui_state.set_status(super::app::StatusKind::Info, "Calibrating — enter the real distance");
+                            ui_state.set_status(
+                                super::app::StatusKind::Info,
+                                "Calibrating — enter the real distance",
+                            );
                         }
                     } else {
                         // First click anchors the known-distance segment.
@@ -2207,7 +2242,10 @@ pub(crate) fn draw_canvas(
                             start: Some(pp),
                             end: pp,
                         };
-                        ui_state.set_status(super::app::StatusKind::Info, "Calibrate: click the second point of the known distance");
+                        ui_state.set_status(
+                            super::app::StatusKind::Info,
+                            "Calibrate: click the second point of the known distance",
+                        );
                     }
                 }
             }
@@ -2243,7 +2281,10 @@ pub(crate) fn draw_canvas(
                         crate::ui::tool_chest::record_recent(ui_state, &m);
                         doc.add_markup(m);
                     }
-                    ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
+                    ui_state.set_status(
+                        super::app::StatusKind::Success,
+                        format!("Added {}", kind.label()),
+                    );
                     mutated = true;
                 }
                 *draw_state = super::app::DrawState::Idle;
@@ -2270,7 +2311,10 @@ pub(crate) fn draw_canvas(
                             crate::ui::tool_chest::record_recent(ui_state, &m);
                             doc.add_markup(m);
                         }
-                        ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
+                        ui_state.set_status(
+                            super::app::StatusKind::Success,
+                            format!("Added {}", kind.label()),
+                        );
                         mutated = true;
                     }
                 }
@@ -2309,7 +2353,10 @@ pub(crate) fn draw_canvas(
                         crate::ui::tool_chest::record_recent(ui_state, &m);
                         doc.add_markup(m);
                     }
-                    ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
+                    ui_state.set_status(
+                        super::app::StatusKind::Success,
+                        format!("Added {}", kind.label()),
+                    );
                     mutated = true;
                 }
                 *draw_state = super::app::DrawState::Idle;
@@ -2335,7 +2382,10 @@ pub(crate) fn draw_canvas(
                             crate::ui::tool_chest::record_recent(ui_state, &m);
                             doc.add_markup(m);
                         }
-                        ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
+                        ui_state.set_status(
+                            super::app::StatusKind::Success,
+                            format!("Added {}", kind.label()),
+                        );
                         mutated = true;
                     }
                 }
@@ -2529,7 +2579,10 @@ pub(crate) fn draw_canvas(
                                 crate::ui::tool_chest::record_recent(ui_state, &m);
                                 doc.add_markup(m);
                             }
-                            ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
+                            ui_state.set_status(
+                                super::app::StatusKind::Success,
+                                format!("Added {}", kind.label()),
+                            );
                             mutated = true;
                             if is_text {
                                 ui_state.text_edit = Some(super::app::TextEditState {
@@ -2543,7 +2596,10 @@ pub(crate) fn draw_canvas(
                             if kind == MarkupKind::Note {
                                 ui_state.note_popover = Some(new_id);
                                 ui_state.note_draft.clear();
-                                ui_state.set_status(super::app::StatusKind::Success, "Note added — add a comment");
+                                ui_state.set_status(
+                                    super::app::StatusKind::Success,
+                                    "Note added — add a comment",
+                                );
                             }
                         }
                     }
@@ -2560,7 +2616,10 @@ pub(crate) fn draw_canvas(
                                 crate::ui::tool_chest::record_recent(ui_state, &m);
                                 doc.add_markup(m);
                             }
-                            ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
+                            ui_state.set_status(
+                                super::app::StatusKind::Success,
+                                format!("Added {}", kind.label()),
+                            );
                             mutated = true;
                         }
                     }
@@ -2588,7 +2647,10 @@ pub(crate) fn draw_canvas(
                             crate::ui::tool_chest::record_recent(ui_state, &m);
                             doc.add_markup(m);
                         }
-                        ui_state.set_status(super::app::StatusKind::Success, format!("Added {}", kind.label()));
+                        ui_state.set_status(
+                            super::app::StatusKind::Success,
+                            format!("Added {}", kind.label()),
+                        );
                         mutated = true;
                     }
                     super::app::DrawState::Ink {

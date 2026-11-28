@@ -260,7 +260,10 @@ pub(crate) fn draw_tool_chest(
                         if std::fs::write(&tmp, json.as_bytes()).is_ok()
                             && std::fs::rename(&tmp, &path).is_ok()
                         {
-                            ui_state.set_status(StatusKind::Success, format!("Exported set to {}", path.display()));
+                            ui_state.set_status(
+                                StatusKind::Success,
+                                format!("Exported set to {}", path.display()),
+                            );
                         } else {
                             ui_state.set_status(StatusKind::Error, "Export failed");
                         }
@@ -276,10 +279,13 @@ pub(crate) fn draw_tool_chest(
                 if let Ok(text) = std::fs::read_to_string(&path) {
                     match crate::domain::style_preset::import_set_json(library, &text) {
                         Ok(n) => {
-                            ui_state.set_status(StatusKind::Success, format!("Imported {n} style(s)"));
+                            ui_state
+                                .set_status(StatusKind::Success, format!("Imported {n} style(s)"));
                             persist_library(library);
                         }
-                        Err(e) => ui_state.set_status(StatusKind::Error, format!("Import failed: {e}")),
+                        Err(e) => {
+                            ui_state.set_status(StatusKind::Error, format!("Import failed: {e}"))
+                        }
                     }
                 }
             }
@@ -445,11 +451,13 @@ fn draw_preset_row(
             if is_armed_now {
                 set_armed(ui_state, preset, false);
             }
-            ui_state.set_status(StatusKind::Success, format!(
-                "'{}' mode: {}",
-                preset.name,
-                if new_mode { "Drawing" } else { "Style" }
-            )),
+            ui_state.set_status(
+                StatusKind::Success,
+                format!(
+                    "'{}' mode: {}",
+                    preset.name,
+                    if new_mode { "Drawing" } else { "Style" }
+                ),
             );
         }
         if preset.can_draw() {
@@ -515,7 +523,10 @@ fn draw_preset_row(
             {
                 ui_state.tool_chest_rename = None;
             }
-            ui_state.set_status(StatusKind::Success, format!("Style '{}' deleted", preset.name));
+            ui_state.set_status(
+                StatusKind::Success,
+                format!("Style '{}' deleted", preset.name),
+            );
         }
     });
     project_mutated
@@ -554,7 +565,10 @@ fn draw_rename_editor(
                     armed.name = new_name.clone();
                 }
                 persist_library(library);
-                ui_state.set_status(StatusKind::Success, format!("Style renamed to '{new_name}'"));
+                ui_state.set_status(
+                    StatusKind::Success,
+                    format!("Style renamed to '{new_name}'"),
+                );
                 close = true;
             } else {
                 ui_state.set_status(StatusKind::Error, "Style no longer exists");
@@ -677,7 +691,10 @@ fn save_selected_markup(
 fn set_armed(ui_state: &mut UiState, preset: &StylePreset, stop: bool) {
     if stop {
         ui_state.pending_style_preset = None;
-        ui_state.set_status(StatusKind::Success, format!("Style '{}' stopped", preset.name));
+        ui_state.set_status(
+            StatusKind::Success,
+            format!("Style '{}' stopped", preset.name),
+        );
     } else {
         let drawing = drawing_mode_for(preset);
         let armed = if drawing {
@@ -818,11 +835,13 @@ fn draw_recent_row(
             if is_armed_now {
                 set_armed(ui_state, preset, false);
             }
-            ui_state.set_status(StatusKind::Success, format!(
-                "'{}' mode: {}",
-                preset.name,
-                if new_mode { "Drawing" } else { "Style" }
-            )),
+            ui_state.set_status(
+                StatusKind::Success,
+                format!(
+                    "'{}' mode: {}",
+                    preset.name,
+                    if new_mode { "Drawing" } else { "Style" }
+                ),
             );
         }
         if preset.can_draw() {

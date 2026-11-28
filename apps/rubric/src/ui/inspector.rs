@@ -159,7 +159,10 @@ pub(crate) fn draw_inspector(
                         if doc.rename_layer(id, &name) {
                             ui_state.layer_name_drafts.remove(&id);
                             committed = true;
-                            ui_state.set_status(StatusKind::Success, format!("Layer renamed to '{}'", name.trim()));
+                            ui_state.set_status(
+                                StatusKind::Success,
+                                format!("Layer renamed to '{}'", name.trim()),
+                            );
                         } else {
                             ui_state.set_status(StatusKind::Error, "Layer name cannot be empty");
                         }
@@ -178,7 +181,10 @@ pub(crate) fn draw_inspector(
                         if let Some(doc) = project.active_mut() {
                             if doc.move_layer_up(id) {
                                 committed = true;
-                                ui_state.set_status(StatusKind::Success, format!("Layer '{}' moved up", layer.name));
+                                ui_state.set_status(
+                                    StatusKind::Success,
+                                    format!("Layer '{}' moved up", layer.name),
+                                );
                             }
                         }
                     }
@@ -191,7 +197,10 @@ pub(crate) fn draw_inspector(
                         if let Some(doc) = project.active_mut() {
                             if doc.move_layer_down(id) {
                                 committed = true;
-                                ui_state.set_status(StatusKind::Success, format!("Layer '{}' moved down", layer.name));
+                                ui_state.set_status(
+                                    StatusKind::Success,
+                                    format!("Layer '{}' moved down", layer.name),
+                                );
                             }
                         }
                     }
@@ -204,10 +213,14 @@ pub(crate) fn draw_inspector(
                                 ui_state.set_status(StatusKind::Success, "Layer removed");
                             }
                             Err(LayerError::NotEmpty) => {
-                                ui_state.set_status(StatusKind::Warning, "Layer not empty — move its markups first");
+                                ui_state.set_status(
+                                    StatusKind::Warning,
+                                    "Layer not empty — move its markups first",
+                                );
                             }
                             Err(LayerError::DefaultLayer) => {
-                                ui_state.set_status(StatusKind::Error, "Cannot remove default layer");
+                                ui_state
+                                    .set_status(StatusKind::Error, "Cannot remove default layer");
                             }
                             Err(LayerError::NotFound) => {}
                         }
@@ -275,7 +288,8 @@ pub(crate) fn draw_inspector(
                         doc.touch();
                     }
                     committed = true;
-                    ui_state.set_status(StatusKind::Success, format!("Scale → {}", scale.describe()));
+                    ui_state
+                        .set_status(StatusKind::Success, format!("Scale → {}", scale.describe()));
                 }
             }
         });
@@ -326,7 +340,10 @@ pub(crate) fn draw_inspector(
         {
             project.touch();
             committed = true;
-            ui_state.set_status(StatusKind::Success, format!("Precision → {}", project.settings.precision));
+            ui_state.set_status(
+                StatusKind::Success,
+                format!("Precision → {}", project.settings.precision),
+            );
         }
 
         ui.separator();
@@ -369,7 +386,10 @@ pub(crate) fn draw_inspector(
                         doc.touch();
                     }
                     committed = true;
-                    ui_state.set_status(StatusKind::Success, format!("Scale → {}", new_scale.describe()));
+                    ui_state.set_status(
+                        StatusKind::Success,
+                        format!("Scale → {}", new_scale.describe()),
+                    );
                 } else {
                     ui_state.set_status(StatusKind::Info, "Scale unchanged");
 
@@ -389,7 +409,10 @@ pub(crate) fn draw_inspector(
                         if let Some(doc) = project.active_mut() {
                             let n = doc.apply_scale_to_all_pages(current_scale);
                             committed = true;
-                            ui_state.set_status(StatusKind::Success, format!("Scale applied to {} pages", n));
+                            ui_state.set_status(
+                                StatusKind::Success,
+                                format!("Scale applied to {} pages", n),
+                            );
                         }
                     }
                 }
@@ -467,7 +490,10 @@ pub(crate) fn draw_inspector(
                                 )
                                 .clicked()
                             {
-                                ui_state.set_status(StatusKind::Success, format!("Stamp tool → {}", preset.label()));
+                                ui_state.set_status(
+                                    StatusKind::Success,
+                                    format!("Stamp tool → {}", preset.label()),
+                                );
                             }
                         }
                     });
@@ -595,7 +621,10 @@ pub(crate) fn draw_inspector(
                                             && m.status != *s
                                         {
                                             m.status = *s;
-                                            ui_state.set_status(StatusKind::Success, format!("Status → {}", s.label()));
+                                            ui_state.set_status(
+                                                StatusKind::Success,
+                                                format!("Status → {}", s.label()),
+                                            );
                                             edited = true;
                                             committed = true;
                                         }
@@ -695,7 +724,10 @@ pub(crate) fn draw_inspector(
                                     m.style = m.style.with_stroke(preset.color());
                                     edited = true;
                                     committed = true;
-                                    ui_state.set_status(StatusKind::Success, format!("Stamp → {}", preset.label()));
+                                    ui_state.set_status(
+                                        StatusKind::Success,
+                                        format!("Stamp → {}", preset.label()),
+                                    );
                                 }
                             }
                         }
@@ -724,7 +756,10 @@ pub(crate) fn draw_inspector(
                                             if *id == default_id { None } else { Some(*id) };
                                         edited = true;
                                         committed = true;
-                                        ui_state.set_status(StatusKind::Success, format!("Layer → {}", name));
+                                        ui_state.set_status(
+                                            StatusKind::Success,
+                                            format!("Layer → {}", name),
+                                        );
                                     }
                                 }
                             });
@@ -966,7 +1001,10 @@ pub(crate) fn draw_inspector(
                         m.touch();
                         edited = true;
                         committed = true;
-                        ui_state.set_status(StatusKind::Success, "Style set as default for markup kind");
+                        ui_state.set_status(
+                            StatusKind::Success,
+                            "Style set as default for markup kind",
+                        );
                         ui_state.default_styles.set_default(m.kind, m.style);
                     }
                 });
@@ -1287,7 +1325,10 @@ pub(crate) fn draw_inspector(
                         .selectable_value(&mut ui_state.active_stamp, *preset, preset.label())
                         .clicked()
                     {
-                        ui_state.set_status(StatusKind::Success, format!("Stamp tool → {}", preset.label()));
+                        ui_state.set_status(
+                            StatusKind::Success,
+                            format!("Stamp tool → {}", preset.label()),
+                        );
                     }
                 }
             });

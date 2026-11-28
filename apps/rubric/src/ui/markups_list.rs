@@ -490,10 +490,10 @@ pub(crate) fn draw_markups_list(
                                 state.set_status(
                                     StatusKind::Success,
                                     format!(
-                                    "Batch status → {} for {} markup(s)",
-                                    s.label(),
-                                    selected_count
-                                );
+                                        "Batch status → {} for {} markup(s)",
+                                        s.label(),
+                                        selected_count
+                                    ),
                                 );
                             }
                         });
@@ -886,7 +886,10 @@ fn export_csv(project: &Project, filtered: &MarkupList, state: &mut UiState) {
         out.push('\n');
     }
     match std::fs::write(&path, out) {
-        Ok(_) => state.set_status(StatusKind::Success, format!("Exported {} row(s) to {}", filtered.len(), path.display())),
+        Ok(_) => state.set_status(
+            StatusKind::Success,
+            format!("Exported {} row(s) to {}", filtered.len(), path.display()),
+        ),
         Err(e) => state.set_status(StatusKind::Error, format!("CSV export failed: {e}")),
     }
 }
